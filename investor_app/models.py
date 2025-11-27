@@ -32,7 +32,9 @@ class RentalIncome(models.Model):
     property = models.ForeignKey(
         Property, on_delete=models.CASCADE, related_name="rental_incomes"
     )
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))]
+    )
     date = models.DateField()
 
     def __str__(self) -> str:
@@ -44,7 +46,9 @@ class OperatingExpense(models.Model):
         Property, on_delete=models.CASCADE, related_name="operating_expenses"
     )
     category = models.CharField(max_length=100)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))]
+    )
     date = models.DateField()
 
     def __str__(self) -> str:
