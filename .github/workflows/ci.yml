@@ -63,7 +63,12 @@ jobs:
 
       - name: Mypy (type checks)
         run: |
-          mypy .
+          # Skip mypy if no Python files exist (excluding virtual envs and cache dirs)
+          if find . -name "*.py" -not -path "./.git/*" -not -path "./.venv/*" -not -path "./__pycache__/*" -not -path "./.tox/*" | grep -q .; then
+            mypy .
+          else
+            echo "No Python files found, skipping mypy"
+          fi
 
       - name: Run tests
         env:
@@ -71,7 +76,8 @@ jobs:
         run: |
           # Wait briefly for Postgres service health to be stable
           sleep 5
-          pytest -q
+          # Run pytest, but don't fail if no tests are collected
+          pytest -q || [ $? -eq 5 ]
 
       - name: Job finish metadata
         if: always()
