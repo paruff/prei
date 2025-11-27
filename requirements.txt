@@ -5,6 +5,6 @@ numpy-financial>=1.0
 django-environ>=0.9
 pytest>=7.0
 pytest-django>=4.0
-ruff>=0.20
+ruff>=0.1.0
 mypy>=0.991
 black>=24.1
