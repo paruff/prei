@@ -1,0 +1,10 @@
+Django>=4.2,<5
+psycopg2-binary>=2.9
+numpy>=1.25
+numpy-financial>=1.0
+django-environ>=0.9
+pytest>=7.0
+pytest-django>=4.0
+ruff>=0.20
+mypy>=0.991
+black>=24.1
