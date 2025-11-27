@@ -180,6 +180,12 @@ class TestCalculateIrr:
         irr = calculate_irr(cashflows)
         assert irr == Decimal("1.0000")
 
+    def test_irr_invalid_cashflows_raises(self):
+        # All positive cashflows cannot compute IRR
+        cashflows = [100, 100, 100]
+        with pytest.raises(ValueError, match="IRR could not be calculated"):
+            calculate_irr(cashflows)
+
 
 class TestNpv:
     """Tests for npv function."""

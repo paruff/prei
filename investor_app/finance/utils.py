@@ -26,7 +26,7 @@ def _to_decimal(value: float | str | Decimal) -> Decimal:
 
 def quantize_currency(value: Decimal, places: int = 2) -> Decimal:
     """Round Decimal to currency places (default 2)."""
-    quant = Decimal("0." + "0" * (places - 1) + "1") if places > 0 else Decimal("1")
+    quant = Decimal(10) ** -places
     return value.quantize(quant, rounding=ROUND_HALF_UP)
 
 
@@ -79,10 +79,12 @@ def calculate_irr(cashflows: Iterable[float | Decimal | str]) -> Decimal:
     cashflows: Iterable where the first element is negative (initial investment), followed by net incomes.
     Returns Decimal rate (e.g., 0.12 for 12%).
     """
+    import math
+
     # Convert to floats for numpy_financial, preserve Decimal precision for final conversion
     floats: List[float] = [float(_to_decimal(x)) for x in cashflows]
     rate = nf.irr(floats)
-    if rate is None:
+    if rate is None or math.isnan(rate):
         # numpy_financial returns nan under some inputs; raise for explicit handling upstream
         raise ValueError("IRR could not be calculated for the provided cashflows")
     # Convert back to Decimal with reasonable precision
