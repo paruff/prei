@@ -5,7 +5,6 @@ Functions that require numpy_financial convert to float internally.
 """
 
 from decimal import Decimal
-from typing import List
 
 import numpy_financial as npf
 
@@ -74,7 +73,7 @@ def calculate_cash_on_cash(
     return annual_cash_flow / total_cash_invested
 
 
-def calculate_irr(cash_flows: List[Decimal]) -> Decimal:
+def calculate_irr(cash_flows: list[Decimal]) -> Decimal:
     """Calculate Internal Rate of Return (IRR).
 
     Args:

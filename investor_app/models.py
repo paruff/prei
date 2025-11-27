@@ -6,22 +6,16 @@ from django.db import models
 class Property(models.Model):
     """Model representing a real estate property."""
 
-    name: models.CharField = models.CharField(max_length=255)
-    address: models.TextField = models.TextField()
-    purchase_price: models.DecimalField = models.DecimalField(
-        max_digits=15, decimal_places=2
-    )
-    current_value: models.DecimalField = models.DecimalField(
-        max_digits=15, decimal_places=2
-    )
-    square_footage: models.DecimalField = models.DecimalField(
+    name = models.CharField(max_length=255)
+    address = models.TextField()
+    purchase_price = models.DecimalField(max_digits=15, decimal_places=2)
+    current_value = models.DecimalField(max_digits=15, decimal_places=2)
+    square_footage = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
-    year_built: models.PositiveIntegerField = models.PositiveIntegerField(
-        null=True, blank=True
-    )
-    created_at: models.DateTimeField = models.DateTimeField(auto_now_add=True)
-    updated_at: models.DateTimeField = models.DateTimeField(auto_now=True)
+    year_built = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         """Meta options for Property model."""
@@ -36,18 +30,16 @@ class Property(models.Model):
 class RentalIncome(models.Model):
     """Model representing rental income for a property."""
 
-    property: models.ForeignKey = models.ForeignKey(
+    property = models.ForeignKey(
         Property, on_delete=models.CASCADE, related_name="rental_incomes"
     )
-    description: models.CharField = models.CharField(max_length=255)
-    monthly_amount: models.DecimalField = models.DecimalField(
-        max_digits=10, decimal_places=2
-    )
-    start_date: models.DateField = models.DateField()
-    end_date: models.DateField = models.DateField(null=True, blank=True)
-    is_active: models.BooleanField = models.BooleanField(default=True)
-    created_at: models.DateTimeField = models.DateTimeField(auto_now_add=True)
-    updated_at: models.DateTimeField = models.DateTimeField(auto_now=True)
+    description = models.CharField(max_length=255)
+    monthly_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
         """Return string representation of the rental income."""
@@ -64,21 +56,17 @@ class OperatingExpense(models.Model):
         ("one_time", "One-time"),
     ]
 
-    property: models.ForeignKey = models.ForeignKey(
+    property = models.ForeignKey(
         Property, on_delete=models.CASCADE, related_name="operating_expenses"
     )
-    description: models.CharField = models.CharField(max_length=255)
-    amount: models.DecimalField = models.DecimalField(
-        max_digits=10, decimal_places=2
-    )
-    frequency: models.CharField = models.CharField(
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    frequency = models.CharField(
         max_length=20, choices=FREQUENCY_CHOICES, default="monthly"
     )
-    category: models.CharField = models.CharField(
-        max_length=100, null=True, blank=True
-    )
-    created_at: models.DateTimeField = models.DateTimeField(auto_now_add=True)
-    updated_at: models.DateTimeField = models.DateTimeField(auto_now=True)
+    category = models.CharField(max_length=100, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
         """Return string representation of the operating expense."""
@@ -88,28 +76,28 @@ class OperatingExpense(models.Model):
 class InvestmentAnalysis(models.Model):
     """Model representing an investment analysis for a property."""
 
-    property: models.ForeignKey = models.ForeignKey(
+    property = models.ForeignKey(
         Property, on_delete=models.CASCADE, related_name="investment_analyses"
     )
-    analysis_date: models.DateField = models.DateField()
-    noi: models.DecimalField = models.DecimalField(
+    analysis_date = models.DateField()
+    noi = models.DecimalField(
         max_digits=15, decimal_places=2, null=True, blank=True
     )
-    cap_rate: models.DecimalField = models.DecimalField(
+    cap_rate = models.DecimalField(
         max_digits=6, decimal_places=4, null=True, blank=True
     )
-    cash_on_cash_return: models.DecimalField = models.DecimalField(
+    cash_on_cash_return = models.DecimalField(
         max_digits=6, decimal_places=4, null=True, blank=True
     )
-    irr: models.DecimalField = models.DecimalField(
+    irr = models.DecimalField(
         max_digits=6, decimal_places=4, null=True, blank=True
     )
-    total_cash_invested: models.DecimalField = models.DecimalField(
+    total_cash_invested = models.DecimalField(
         max_digits=15, decimal_places=2, null=True, blank=True
     )
-    notes: models.TextField = models.TextField(null=True, blank=True)
-    created_at: models.DateTimeField = models.DateTimeField(auto_now_add=True)
-    updated_at: models.DateTimeField = models.DateTimeField(auto_now=True)
+    notes = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         """Meta options for InvestmentAnalysis model."""

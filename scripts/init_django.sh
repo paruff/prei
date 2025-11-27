@@ -26,7 +26,11 @@ source venv/bin/activate
 
 # Install Django and dependencies
 pip install --upgrade pip
-pip install django numpy-financial pytest pytest-django
+if [ -f "requirements.txt" ]; then
+    pip install -r requirements.txt
+else
+    pip install django numpy-financial pytest pytest-django
+fi
 
 # Create Django project if manage.py doesn't exist
 if [ ! -f "manage.py" ]; then
