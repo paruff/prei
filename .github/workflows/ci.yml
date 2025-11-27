@@ -63,8 +63,8 @@ jobs:
 
       - name: Mypy (type checks)
         run: |
-          # Skip mypy if no Python files exist
-          if find . -name "*.py" -not -path "./.git/*" | grep -q .; then
+          # Skip mypy if no Python files exist (excluding virtual envs and cache dirs)
+          if find . -name "*.py" -not -path "./.git/*" -not -path "./.venv/*" -not -path "./__pycache__/*" -not -path "./.tox/*" | grep -q .; then
             mypy .
           else
             echo "No Python files found, skipping mypy"
