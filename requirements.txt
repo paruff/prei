@@ -1,0 +1,4 @@
+django>=5.2.0
+numpy-financial>=1.0.0
+pytest>=8.0.0
+pytest-django>=4.5.0
