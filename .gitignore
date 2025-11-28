@@ -45,3 +45,6 @@ media
 # Environment variables
 .env
 .env.local
+
+# Pytest
+.pytest_cache/
