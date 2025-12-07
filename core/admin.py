@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Property, RentalIncome, OperatingExpense, Transaction, InvestmentAnalysis
+from .models import (
+    Property,
+    RentalIncome,
+    OperatingExpense,
+    Transaction,
+    InvestmentAnalysis,
+)
 
 
 @admin.register(Property)
@@ -26,4 +32,12 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(InvestmentAnalysis)
 class InvestmentAnalysisAdmin(admin.ModelAdmin):
-    list_display = ("property", "noi", "cap_rate", "cash_on_cash", "irr", "dscr", "updated_at")
+    list_display = (
+        "property",
+        "noi",
+        "cap_rate",
+        "cash_on_cash",
+        "irr",
+        "dscr",
+        "updated_at",
+    )

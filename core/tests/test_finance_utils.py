@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from investor_app.finance.utils import noi, cap_rate, cash_on_cash, dscr, irr
 
+
 def test_noi_basic():
     assert noi(Decimal("1000"), Decimal("300")) == Decimal("8400")
 

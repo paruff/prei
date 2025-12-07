@@ -1,15 +1,22 @@
+from decimal import Decimal
+from typing import Iterable
+
 import numpy as np
 import numpy_financial as npf
+
 # removed unused 'settings' import
 
 from core.models import Property, InvestmentAnalysis
+
 
 def to_decimal(value: Decimal | float | int) -> Decimal:
     return value if isinstance(value, Decimal) else Decimal(str(value))
 
 
 def noi(monthly_income: Decimal, monthly_expenses: Decimal) -> Decimal:
-    return to_decimal(monthly_income) * Decimal(12) - to_decimal(monthly_expenses) * Decimal(12)
+    return to_decimal(monthly_income) * Decimal(12) - to_decimal(
+        monthly_expenses
+    ) * Decimal(12)
 
 
 def cap_rate(annual_noi: Decimal, purchase_price: Decimal) -> Decimal:
@@ -47,18 +54,24 @@ def compute_analysis_for_property(prop: Property) -> InvestmentAnalysis:
     annual_noi = noi(monthly_income, monthly_expense)
 
     # Placeholder values for total cash invested and debt service; refine as data model expands
-    total_cash_invested = Decimal(prop.purchase_price)
+    total_cash_invested = to_decimal(prop.purchase_price)
     annual_cash_flow = annual_noi  # assumes no debt service for MVP
     annual_debt_service = Decimal("0")
 
     analysis, _ = InvestmentAnalysis.objects.get_or_create(property=prop)
     analysis.noi = annual_noi.quantize(Decimal("0.01"))
-    analysis.cap_rate = cap_rate(annual_noi, to_decimal(prop.purchase_price)).quantize(Decimal("0.0001"))
-    analysis.cash_on_cash = cash_on_cash(annual_cash_flow, total_cash_invested).quantize(Decimal("0.0001"))
+    analysis.cap_rate = cap_rate(annual_noi, to_decimal(prop.purchase_price)).quantize(
+        Decimal("0.0001")
+    )
+    analysis.cash_on_cash = cash_on_cash(
+        annual_cash_flow, total_cash_invested
+    ).quantize(Decimal("0.0001"))
     analysis.dscr = dscr(annual_noi, annual_debt_service).quantize(Decimal("0.0001"))
 
     # Simple IRR: initial outlay negative, then 12 months of NOI as inflows for one year horizon
-    cashflows = [to_decimal(prop.purchase_price) * Decimal(-1)] + [annual_noi / Decimal(12)] * 12
+    cashflows = [to_decimal(prop.purchase_price) * Decimal(-1)] + [
+        annual_noi / Decimal(12)
+    ] * 12
     analysis.irr = irr(cashflows).quantize(Decimal("0.0001"))
     analysis.save()
     return analysis
