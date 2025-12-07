@@ -1,14 +1,8 @@
-from __future__ import annotations
-
-from decimal import Decimal
-from typing import Iterable
-
 import numpy as np
 import numpy_financial as npf
-from django.conf import settings
+# removed unused 'settings' import
 
 from core.models import Property, InvestmentAnalysis
-
 
 def to_decimal(value: Decimal | float | int) -> Decimal:
     return value if isinstance(value, Decimal) else Decimal(str(value))
