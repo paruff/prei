@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Investor Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 8px; }
+      th { background: #f7f7f7; text-align: left; }
+    </style>
+  </head>
+  <body>
+    <h1>Top Properties</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>NOI</th>
+          <th>Cap Rate</th>
+          <th>Cash-on-Cash</th>
+          <th>IRR</th>
+          <th>DSCR</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in analyses %}
+          <tr>
+            <td>{{ a.property }}</td>
+            <td>${{ a.noi }}</td>
+            <td>{{ a.cap_rate|floatformat:4 }}</td>
+            <td>{{ a.cash_on_cash|floatformat:4 }}</td>
+            <td>{{ a.irr|floatformat:4 }}</td>
+            <td>{{ a.dscr|floatformat:4 }}</td>
+            <td>{{ a.updated_at }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">No properties yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+  </html>
