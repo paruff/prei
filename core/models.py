@@ -27,7 +27,9 @@ class Property(models.Model):
 
 
 class RentalIncome(models.Model):
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="rental_incomes")
+    property = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="rental_incomes"
+    )
     monthly_rent = models.DecimalField(max_digits=10, decimal_places=2)
     effective_date = models.DateField()
     vacancy_rate = models.DecimalField(max_digits=5, decimal_places=4, default=settings.FINANCE_DEFAULTS["vacancy_rate"])  # type: ignore[index]
@@ -42,10 +44,14 @@ class OperatingExpense(models.Model):
         MONTHLY = "monthly", "Monthly"
         ANNUAL = "annual", "Annual"
 
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="operating_expenses")
+    property = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="operating_expenses"
+    )
     category = models.CharField(max_length=64)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    frequency = models.CharField(max_length=16, choices=Frequency.choices, default=Frequency.MONTHLY)
+    frequency = models.CharField(
+        max_length=16, choices=Frequency.choices, default=Frequency.MONTHLY
+    )
     effective_date = models.DateField()
 
     def monthly_amount(self) -> Decimal:
@@ -60,7 +66,9 @@ class Transaction(models.Model):
         CAPEX = "capex", "Capex"
         OPEX = "opex", "Opex"
 
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="transactions")
+    property = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="transactions"
+    )
     type = models.CharField(max_length=16, choices=Type.choices)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     date = models.DateField()
@@ -68,10 +76,14 @@ class Transaction(models.Model):
 
 
 class InvestmentAnalysis(models.Model):
-    property = models.OneToOneField(Property, on_delete=models.CASCADE, related_name="analysis")
+    property = models.OneToOneField(
+        Property, on_delete=models.CASCADE, related_name="analysis"
+    )
     noi = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
     cap_rate = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))
-    cash_on_cash = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))
+    cash_on_cash = models.DecimalField(
+        max_digits=6, decimal_places=4, default=Decimal("0")
+    )
     irr = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))
     dscr = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))
 

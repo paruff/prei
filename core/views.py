@@ -7,6 +7,7 @@ from django.shortcuts import render
 from .models import Property, InvestmentAnalysis
 from investor_app.finance.utils import compute_analysis_for_property
 
+
 def dashboard(request):
     properties = Property.objects.all()[:20]
     analyses: list[InvestmentAnalysis] = []

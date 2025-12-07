@@ -10,7 +10,9 @@ from core.models import Property, RentalIncome, OperatingExpense
 @pytest.fixture
 def user(db):
     User = get_user_model()
-    return User.objects.create_user(username="tester", email="tester@example.com", password="pass")
+    return User.objects.create_user(
+        username="tester", email="tester@example.com", password="pass"
+    )
 
 
 def test_bdd_dashboard_flow(client, db, user):
