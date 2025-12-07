@@ -1,3 +1,6 @@
+from decimal import Decimal
+from typing import Iterable
+
 import numpy as np
 import numpy_financial as npf
 # removed unused 'settings' import
@@ -47,7 +50,7 @@ def compute_analysis_for_property(prop: Property) -> InvestmentAnalysis:
     annual_noi = noi(monthly_income, monthly_expense)
 
     # Placeholder values for total cash invested and debt service; refine as data model expands
-    total_cash_invested = Decimal(prop.purchase_price)
+    total_cash_invested = to_decimal(prop.purchase_price)
     annual_cash_flow = annual_noi  # assumes no debt service for MVP
     annual_debt_service = Decimal("0")
 
