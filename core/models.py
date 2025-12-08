@@ -126,9 +126,9 @@ class GrowthArea(models.Model):
         housing_weight = Decimal("0.15")
 
         score = (
-            Decimal(self.population_growth_rate) * pop_weight
-            + Decimal(self.employment_growth_rate) * emp_weight
-            + Decimal(self.median_income_growth) * income_weight
+            self.population_growth_rate * pop_weight
+            + self.employment_growth_rate * emp_weight
+            + self.median_income_growth * income_weight
             + Decimal(self.housing_demand_index) * housing_weight
         )
         return score

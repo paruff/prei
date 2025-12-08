@@ -5,8 +5,9 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import DatabaseError
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
@@ -51,7 +52,7 @@ def growth_areas_list(request):
 
         try:
             state_code = validate_state_code(state_code_raw)
-        except Exception as e:
+        except serializers.ValidationError as e:
             return Response(
                 {
                     "error": str(e),
@@ -63,7 +64,7 @@ def growth_areas_list(request):
         # Validate minGrowthScore parameter
         try:
             min_score = validate_min_growth_score(request.GET.get("minGrowthScore"))
-        except Exception as e:
+        except serializers.ValidationError as e:
             return Response(
                 {
                     "error": str(e),
@@ -133,7 +134,7 @@ def growth_areas_list(request):
 
             return Response(response_data, status=status.HTTP_200_OK)
 
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Database error while retrieving growth areas: {str(e)}")
             return Response(
                 {
