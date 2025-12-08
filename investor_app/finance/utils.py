@@ -1,12 +1,13 @@
+from datetime import datetime
 from decimal import Decimal
-from typing import Iterable, Dict, Any
+from typing import Any, Dict, Iterable
 
 import numpy as np
 import numpy_financial as npf
 
 # removed unused 'settings' import
 
-from core.models import Property, InvestmentAnalysis, Listing
+from core.models import InvestmentAnalysis, Listing, Property
 
 
 def to_decimal(value: Decimal | float | int) -> Decimal:
@@ -148,8 +149,6 @@ def estimate_insurance(
     type_factor = type_factors.get(property_type, Decimal("1.0"))
 
     # Adjust for age
-    from datetime import datetime
-
     current_year = datetime.now().year
     age = max(0, current_year - year_built)
     age_factor = Decimal("1.0") + (Decimal(age) / Decimal(50))

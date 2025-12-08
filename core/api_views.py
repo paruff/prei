@@ -13,8 +13,20 @@ from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
+from investor_app.finance.utils import (
+    calculate_break_even_rent,
+    calculate_carrying_costs as calc_costs,
+    cap_rate as calc_cap_rate,
+    cash_on_cash as calc_coc,
+    dscr as calc_dscr,
+)
+
 from .models import ForeclosureProperty, GrowthArea
-from .serializers import ForeclosurePropertySerializer, GrowthAreaSerializer
+from .serializers import (
+    CarryingCostRequestSerializer,
+    ForeclosurePropertySerializer,
+    GrowthAreaSerializer,
+)
 from .validators import (
     validate_foreclosure_stages,
     validate_location_parameter,
@@ -468,17 +480,6 @@ def calculate_carrying_costs(request):
     Returns:
         JSON response with detailed carrying cost breakdown, cash flow analysis, and investment metrics
     """
-    from decimal import Decimal
-
-    from .serializers import CarryingCostRequestSerializer
-    from investor_app.finance.utils import (
-        calculate_break_even_rent,
-        calculate_carrying_costs as calc_costs,
-        cash_on_cash as calc_coc,
-        cap_rate as calc_cap_rate,
-        dscr as calc_dscr,
-    )
-
     try:
         # Validate request data
         serializer = CarryingCostRequestSerializer(data=request.data)
