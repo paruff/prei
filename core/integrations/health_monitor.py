@@ -387,6 +387,25 @@ class DataSourceHealthMonitor:
         """
         Send alert for unhealthy data source.
 
+        TODO: Implement production alerting mechanisms
+        Current implementation only logs alerts. For production deployment:
+        1. Email alerts via Django email backend
+        2. Slack notifications via webhook
+        3. PagerDuty integration for critical alerts
+        4. SMS alerts for budget overruns
+
+        Example production implementation:
+        ```python
+        from django.core.mail import send_mail
+
+        send_mail(
+            subject=f"Alert: {source} data source unhealthy",
+            message=error_msg,
+            from_email=settings.ALERT_FROM_EMAIL,
+            recipient_list=settings.ALERT_RECIPIENTS,
+        )
+        ```
+
         Args:
             source: Source name
             status: Health status dictionary
@@ -394,8 +413,7 @@ class DataSourceHealthMonitor:
         error_msg = status.get("error", "Unknown error")
         logger.error(f"ALERT: Data source {source} is unhealthy - {error_msg}")
 
-        # In production, this would send email/Slack/PagerDuty alerts
-        # For now, just log the alert
+        # Production: Send email/Slack/PagerDuty alerts here
 
     def get_health_dashboard_data(self) -> Dict[str, Any]:
         """

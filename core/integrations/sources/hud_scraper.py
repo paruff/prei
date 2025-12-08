@@ -197,7 +197,8 @@ class HUDHomeScraper:
         sqft_text = self._safe_extract_text(listing, self.SELECTORS["sqft"])
         prop_type = self._safe_extract_text(listing, self.SELECTORS["type"])
         listed_text = self._safe_extract_text(listing, self.SELECTORS["listed"])
-        # Note: bid_open_text could be added to track bid opening dates if needed
+        # bid_open_date not extracted - ForeclosureProperty model doesn't have this field
+        # If needed in future, add bid_open_date field to model and extract here
         bid_close_text = self._safe_extract_text(listing, self.SELECTORS["bid_close"])
         status = self._safe_extract_text(listing, self.SELECTORS["status"])
 
