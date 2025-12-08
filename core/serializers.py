@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import ForeclosureProperty, GrowthArea
@@ -186,10 +188,18 @@ class FinancingSerializer(serializers.Serializer):
     interestRate = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0)
     loanTermYears = serializers.IntegerField(min_value=1, max_value=50)
     closingCosts = serializers.DecimalField(
-        max_digits=12, decimal_places=2, min_value=0, required=False, default=0
+        max_digits=12,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+        default=Decimal("0"),
     )
     loanPoints = serializers.DecimalField(
-        max_digits=12, decimal_places=2, min_value=0, required=False, default=0
+        max_digits=12,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+        default=Decimal("0"),
     )
 
 
@@ -203,19 +213,19 @@ class OperatingExpensesSerializer(serializers.Serializer):
         max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True
     )
     hoaMonthly = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=0, default=0
+        max_digits=10, decimal_places=2, min_value=0, default=Decimal("0")
     )
     utilitiesMonthly = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=0, default=0
+        max_digits=10, decimal_places=2, min_value=0, default=Decimal("0")
     )
     maintenanceAnnualPercent = serializers.DecimalField(
-        max_digits=5, decimal_places=2, min_value=0, default=1.0
+        max_digits=5, decimal_places=2, min_value=0, default=Decimal("1.0")
     )
     propertyManagementPercent = serializers.DecimalField(
-        max_digits=5, decimal_places=2, min_value=0, default=10
+        max_digits=5, decimal_places=2, min_value=0, default=Decimal("10")
     )
     vacancyRatePercent = serializers.DecimalField(
-        max_digits=5, decimal_places=2, min_value=0, max_value=100, default=8
+        max_digits=5, decimal_places=2, min_value=0, max_value=100, default=Decimal("8")
     )
 
 
@@ -224,7 +234,7 @@ class RentalIncomeSerializer(serializers.Serializer):
 
     monthlyRent = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
     otherMonthlyIncome = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=0, default=0
+        max_digits=10, decimal_places=2, min_value=0, default=Decimal("0")
     )
 
 
