@@ -48,3 +48,4 @@ media
 
 # MkDocs build output
 site/
+test_db.sqlite3

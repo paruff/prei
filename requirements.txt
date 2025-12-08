@@ -1,4 +1,5 @@
 Django>=4.2,<5
+djangorestframework>=3.14,<4.0
 psycopg2-binary>=2.9
 numpy>=1.25
 numpy-financial>=1.0
@@ -10,4 +11,5 @@ ruff>=0.4.0
 mypy>=0.991
 black>=24.1
 django-stubs>=4.2.0
+djangorestframework-stubs>=3.14
 types-psycopg2>=2.9
