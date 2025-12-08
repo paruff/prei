@@ -272,7 +272,7 @@ def foreclosures_list(request):
             if property_types:
                 queryset = queryset.filter(property_type__in=property_types)
 
-            # Price range filter (use opening_bid as primary, estimated_value as fallback)
+            # Price range filter (use opening_bid if available, else estimated_value)
             min_price = validate_positive_decimal(
                 request.GET.get("minPrice"), "minPrice"
             )
@@ -281,11 +281,21 @@ def foreclosures_list(request):
             )
             if min_price is not None:
                 queryset = queryset.filter(
-                    Q(opening_bid__gte=min_price) | Q(estimated_value__gte=min_price)
+                    Q(opening_bid__gte=min_price, opening_bid__isnull=False)
+                    | Q(
+                        opening_bid__isnull=True,
+                        estimated_value__gte=min_price,
+                        estimated_value__isnull=False,
+                    )
                 )
             if max_price is not None:
                 queryset = queryset.filter(
-                    Q(opening_bid__lte=max_price) | Q(estimated_value__lte=max_price)
+                    Q(opening_bid__lte=max_price, opening_bid__isnull=False)
+                    | Q(
+                        opening_bid__isnull=True,
+                        estimated_value__lte=max_price,
+                        estimated_value__isnull=False,
+                    )
                 )
 
             # Bedroom filter
