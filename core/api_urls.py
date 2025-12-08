@@ -10,4 +10,9 @@ urlpatterns = [
         api_views.growth_areas_list,
         name="growth-areas-list",
     ),
+    path(
+        "v1/foreclosures",
+        api_views.foreclosures_list,
+        name="foreclosures-list",
+    ),
 ]

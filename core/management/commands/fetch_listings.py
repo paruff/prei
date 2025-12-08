@@ -1,4 +1,5 @@
-from typing import Iterable, Dict
+from typing import Dict, Iterable
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
 

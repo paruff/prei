@@ -1,12 +1,13 @@
 from django.contrib import admin
 
 from .models import (
-    Property,
-    RentalIncome,
-    OperatingExpense,
-    Transaction,
+    ForeclosureProperty,
     InvestmentAnalysis,
     Listing,
+    OperatingExpense,
+    Property,
+    RentalIncome,
+    Transaction,
 )
 
 
@@ -59,3 +60,27 @@ class ListingAdmin(admin.ModelAdmin):
     )
     list_filter = ("source", "property_type", "state")
     search_fields = ("address", "city", "state", "zip_code", "url")
+
+
+@admin.register(ForeclosureProperty)
+class ForeclosurePropertyAdmin(admin.ModelAdmin):
+    list_display = (
+        "property_id",
+        "street",
+        "city",
+        "state",
+        "foreclosure_status",
+        "auction_date",
+        "opening_bid",
+        "data_source",
+    )
+    list_filter = ("foreclosure_status", "property_type", "state", "data_source")
+    search_fields = (
+        "property_id",
+        "street",
+        "city",
+        "state",
+        "zip_code",
+        "case_number",
+    )
+    date_hierarchy = "auction_date"

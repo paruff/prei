@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from django.utils import timezone
 
 from core.models import GrowthArea

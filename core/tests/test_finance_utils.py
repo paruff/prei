@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from investor_app.finance.utils import noi, cap_rate, cash_on_cash, dscr, irr
+from investor_app.finance.utils import cap_rate, cash_on_cash, dscr, irr, noi
 
 
 def test_noi_basic():
