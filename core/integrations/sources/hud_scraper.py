@@ -111,7 +111,7 @@ class HUDHomeScraper:
         """
         logger.info(f"Starting HUD scrape for state: {state_code}")
 
-        properties = []
+        properties: List[Dict[str, Any]] = []
 
         try:
             # Production implementation would use Playwright here
@@ -301,7 +301,7 @@ class HUDHomeScraper:
         try:
             elem = listing.select_one(selector)
             if elem:
-                return elem.text.strip()
+                return str(elem.text.strip())
         except Exception as e:
             logger.debug(f"Failed to extract text with selector '{selector}': {str(e)}")
 
