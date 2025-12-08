@@ -6,6 +6,7 @@ from .models import (
     OperatingExpense,
     Transaction,
     InvestmentAnalysis,
+    Listing,
 )
 
 
@@ -41,3 +42,20 @@ class InvestmentAnalysisAdmin(admin.ModelAdmin):
         "dscr",
         "updated_at",
     )
+
+
+@admin.register(Listing)
+class ListingAdmin(admin.ModelAdmin):
+    list_display = (
+        "address",
+        "city",
+        "state",
+        "price",
+        "beds",
+        "baths",
+        "sq_ft",
+        "source",
+        "posted_at",
+    )
+    list_filter = ("source", "property_type", "state")
+    search_fields = ("address", "city", "state", "zip_code", "url")

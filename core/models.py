@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.core.validators import MinValueValidator
 
 
 User = get_user_model()
@@ -88,3 +89,34 @@ class InvestmentAnalysis(models.Model):
     dscr = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))
 
     updated_at = models.DateTimeField(auto_now=True)
+
+class Listing(models.Model):
+    """Normalized real estate listing ingested from external sources.
+
+    Fields capture essential attributes for filtering and scoring in Phase 1.
+    """
+
+    SOURCE_CHOICES = (
+        ("dummy", "Dummy"),
+        ("external", "External"),
+    )
+
+    source = models.CharField(max_length=64, choices=SOURCE_CHOICES)
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=128, blank=True, default="")
+    state = models.CharField(max_length=64, blank=True, default="")
+    zip_code = models.CharField(max_length=16, blank=True, default="")
+    price = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0"))])
+    beds = models.PositiveIntegerField(default=0)
+    baths = models.DecimalField(max_digits=4, decimal_places=1, default=Decimal("0"))
+    sq_ft = models.PositiveIntegerField(default=0)
+    property_type = models.CharField(max_length=64, blank=True, default="")
+    url = models.URLField(unique=True)
+    posted_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-posted_at", "-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.address} ({self.city}, {self.state}) - ${self.price}"
