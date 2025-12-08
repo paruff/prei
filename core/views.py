@@ -2,7 +2,6 @@ from __future__ import annotations
 
 # removed unused Decimal import
 from django.shortcuts import render
-from django.utils import timezone
 
 # keep only the models that are actually used
 from .models import Property, InvestmentAnalysis, Listing
@@ -32,10 +31,12 @@ def dashboard(request):
 
     listings = []
     for lst in listings_qs[:50]:
-        listings.append({
-            "obj": lst,
-            "score": score_listing_v1(lst),
-        })
+        listings.append(
+            {
+                "obj": lst,
+                "score": score_listing_v1(lst),
+            }
+        )
 
     return render(
         request,
