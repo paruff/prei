@@ -444,11 +444,3 @@ def foreclosures_list(request):
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
-        logger.error(f"Unexpected error in growth_areas_list: {str(e)}")
-        return Response(
-            {
-                "error": "Economic data service temporarily unavailable. Please try again later.",
-                "code": "SERVICE_UNAVAILABLE",
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
