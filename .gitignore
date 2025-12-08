@@ -45,3 +45,6 @@ media
 # Environment variables
 .env
 .env.local
+
+# MkDocs build output
+site/
