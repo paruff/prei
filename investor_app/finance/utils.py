@@ -6,7 +6,7 @@ import numpy_financial as npf
 
 # removed unused 'settings' import
 
-from core.models import Property, InvestmentAnalysis
+from core.models import Property, InvestmentAnalysis, Listing
 
 
 def to_decimal(value: Decimal | float | int) -> Decimal:
@@ -43,6 +43,29 @@ def irr(cashflows: Iterable[Decimal]) -> Decimal:
         return to_decimal(npf.irr(cf))
     except Exception:
         return Decimal("0")
+
+
+def score_listing_v1(listing: Listing) -> Decimal:
+    """Basic Phase 1 scoring using price per sq ft and freshness.
+
+    Higher score is better. This is a simple heuristic for MVP.
+    """
+    price = to_decimal(listing.price) if listing.price is not None else Decimal("0")
+    sq_ft = Decimal(listing.sq_ft or 0)
+    # price per square foot (lower is better)
+    ppsf = (price / sq_ft) if sq_ft > 0 else Decimal("0")
+    # freshness boost: recent postings get a bump
+    from django.utils import timezone
+
+    now = timezone.now()
+    age_hours = Decimal(max(1, (now - listing.posted_at).total_seconds() / 3600))
+    freshness = Decimal(1) / age_hours
+
+    # Combine with weights
+    # To avoid division by zero or extreme values, clamp ppsf
+    ppsf_clamped = ppsf if ppsf > 0 else Decimal("1000000")
+    score = (Decimal(1000000) / ppsf_clamped) + (freshness * Decimal(10))
+    return score
 
 
 def compute_analysis_for_property(prop: Property) -> InvestmentAnalysis:

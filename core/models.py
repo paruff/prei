@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.core.validators import MinValueValidator
 
 
 User = get_user_model()
@@ -89,46 +90,33 @@ class InvestmentAnalysis(models.Model):
 
     updated_at = models.DateTimeField(auto_now=True)
 
+class Listing(models.Model):
+    """Normalized real estate listing ingested from external sources.
 
-class GrowthArea(models.Model):
-    """Economic growth area data for real estate investment analysis."""
+    Fields capture essential attributes for filtering and scoring in Phase 1.
+    """
 
-    state = models.CharField(max_length=2, db_index=True)
-    city_name = models.CharField(max_length=255)
-    metro_area = models.CharField(max_length=255, blank=True)
-    population_growth_rate = models.DecimalField(max_digits=6, decimal_places=2)
-    employment_growth_rate = models.DecimalField(max_digits=6, decimal_places=2)
-    median_income_growth = models.DecimalField(max_digits=6, decimal_places=2)
-    housing_demand_index = models.IntegerField()
-    latitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
+    SOURCE_CHOICES = (
+        ("dummy", "Dummy"),
+        ("external", "External"),
     )
-    longitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
-    )
-    data_timestamp = models.DateTimeField()
+
+    source = models.CharField(max_length=64, choices=SOURCE_CHOICES)
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=128, blank=True, default="")
+    state = models.CharField(max_length=64, blank=True, default="")
+    zip_code = models.CharField(max_length=16, blank=True, default="")
+    price = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0"))])
+    beds = models.PositiveIntegerField(default=0)
+    baths = models.DecimalField(max_digits=4, decimal_places=1, default=Decimal("0"))
+    sq_ft = models.PositiveIntegerField(default=0)
+    property_type = models.CharField(max_length=64, blank=True, default="")
+    url = models.URLField(unique=True)
+    posted_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [["state", "city_name"]]
-        ordering = ["-data_timestamp"]
+        ordering = ["-posted_at", "-created_at"]
 
-    def __str__(self) -> str:  # noqa: D401
-        return f"{self.city_name}, {self.state}"
-
-    @property
-    def composite_score(self) -> Decimal:
-        """Calculate composite growth score based on weighted metrics."""
-        pop_weight = Decimal("0.25")
-        emp_weight = Decimal("0.35")
-        income_weight = Decimal("0.25")
-        housing_weight = Decimal("0.15")
-
-        score = (
-            self.population_growth_rate * pop_weight
-            + self.employment_growth_rate * emp_weight
-            + self.median_income_growth * income_weight
-            + Decimal(self.housing_demand_index) * housing_weight
-        )
-        return score
+    def __str__(self) -> str:
+        return f"{self.address} ({self.city}, {self.state}) - ${self.price}"

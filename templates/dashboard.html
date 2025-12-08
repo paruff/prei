@@ -41,5 +41,50 @@
         {% endfor %}
       </tbody>
     </table>
+
+    <h2 style="margin-top:2rem">New Listings</h2>
+    <form method="get" style="margin-bottom:1rem">
+      <label>Min Price <input type="number" name="min_price" value="{{ request.GET.min_price }}" /></label>
+      <label>Max Price <input type="number" name="max_price" value="{{ request.GET.max_price }}" /></label>
+      <label>State <input type="text" name="state" value="{{ request.GET.state }}" /></label>
+      <button type="submit">Filter</button>
+    </form>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Address</th>
+          <th>City</th>
+          <th>State</th>
+          <th>Price</th>
+          <th>Beds</th>
+          <th>Baths</th>
+          <th>Sq Ft</th>
+          <th>Source</th>
+          <th>Posted</th>
+          <th>Score (V1)</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in listings %}
+          <tr>
+            <td>{{ item.obj.address }}</td>
+            <td>{{ item.obj.city }}</td>
+            <td>{{ item.obj.state }}</td>
+            <td>${{ item.obj.price }}</td>
+            <td>{{ item.obj.beds }}</td>
+            <td>{{ item.obj.baths }}</td>
+            <td>{{ item.obj.sq_ft }}</td>
+            <td>{{ item.obj.source }}</td>
+            <td>{{ item.obj.posted_at }}</td>
+            <td>{{ item.score|floatformat:2 }}</td>
+            <td><a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="11">No listings available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </body>
   </html>
