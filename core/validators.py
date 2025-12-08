@@ -123,8 +123,6 @@ def validate_min_growth_score(score: str | int | float | None) -> float:
         )
 
     if score_float < 0 or score_float > 100:
-        raise serializers.ValidationError(
-            "minGrowthScore must be between 0 and 100."
-        )
+        raise serializers.ValidationError("minGrowthScore must be between 0 and 100.")
 
     return score_float

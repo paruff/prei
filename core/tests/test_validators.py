@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import pytest
-from decimal import Decimal
 from rest_framework import serializers
 
-from core.validators import validate_state_code, validate_min_growth_score, VALID_US_STATES
+from core.validators import (
+    validate_state_code,
+    validate_min_growth_score,
+    VALID_US_STATES,
+)
 
 
 class TestValidateStateCode:
@@ -83,11 +86,56 @@ class TestValidUSStates:
     def test_valid_us_states_contains_all_50_states(self):
         """Test that all 50 states are in the set."""
         states_50 = {
-            "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-            "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-            "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-            "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-            "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "FL",
+            "GA",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY",
         }
         for state in states_50:
             assert state in VALID_US_STATES

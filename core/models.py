@@ -100,8 +100,12 @@ class GrowthArea(models.Model):
     employment_growth_rate = models.DecimalField(max_digits=6, decimal_places=2)
     median_income_growth = models.DecimalField(max_digits=6, decimal_places=2)
     housing_demand_index = models.IntegerField()
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
     data_timestamp = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

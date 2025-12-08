@@ -27,7 +27,9 @@ class CoordinatesSerializer(serializers.Serializer):
     """Serializer for coordinates nested object."""
 
     latitude = serializers.DecimalField(max_digits=9, decimal_places=6, allow_null=True)
-    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, allow_null=True)
+    longitude = serializers.DecimalField(
+        max_digits=9, decimal_places=6, allow_null=True
+    )
 
 
 class GrowthAreaSerializer(serializers.ModelSerializer):

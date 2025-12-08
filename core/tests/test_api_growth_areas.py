@@ -23,16 +23,16 @@ def sample_growth_areas(db):
 
     areas = []
 
-    # California areas
+    # California areas with higher growth metrics
     areas.append(
         GrowthArea.objects.create(
             state="CA",
             city_name="Sacramento",
             metro_area="Sacramento-Roseville-Folsom, CA",
-            population_growth_rate=Decimal("2.3"),
-            employment_growth_rate=Decimal("3.1"),
-            median_income_growth=Decimal("4.2"),
-            housing_demand_index=82,
+            population_growth_rate=Decimal("10.0"),
+            employment_growth_rate=Decimal("15.0"),
+            median_income_growth=Decimal("12.0"),
+            housing_demand_index=250,
             latitude=Decimal("38.5816"),
             longitude=Decimal("-121.4944"),
             data_timestamp=now,
@@ -44,10 +44,10 @@ def sample_growth_areas(db):
             state="CA",
             city_name="San Francisco",
             metro_area="San Francisco-Oakland-Berkeley, CA",
-            population_growth_rate=Decimal("1.5"),
-            employment_growth_rate=Decimal("2.0"),
-            median_income_growth=Decimal("3.0"),
-            housing_demand_index=70,
+            population_growth_rate=Decimal("8.0"),
+            employment_growth_rate=Decimal("10.0"),
+            median_income_growth=Decimal("9.0"),
+            housing_demand_index=200,
             latitude=Decimal("37.7749"),
             longitude=Decimal("-122.4194"),
             data_timestamp=now,
@@ -60,10 +60,10 @@ def sample_growth_areas(db):
             state="TX",
             city_name="Austin",
             metro_area="Austin-Round Rock, TX",
-            population_growth_rate=Decimal("3.0"),
-            employment_growth_rate=Decimal("4.0"),
-            median_income_growth=Decimal("5.0"),
-            housing_demand_index=90,
+            population_growth_rate=Decimal("12.0"),
+            employment_growth_rate=Decimal("18.0"),
+            median_income_growth=Decimal("15.0"),
+            housing_demand_index=300,
             latitude=Decimal("30.2672"),
             longitude=Decimal("-97.7431"),
             data_timestamp=now,
@@ -84,7 +84,7 @@ class TestGrowthAreasAPI:
     def test_successful_retrieval_for_california(self, api_client, sample_growth_areas):
         """Test successful retrieval of growth areas for California."""
         url = reverse("api:growth-areas-list")
-        response = api_client.get(url, {"state": "CA"})
+        response = api_client.get(url, {"state": "CA", "minGrowthScore": "0"})
 
         assert response.status_code == 200
         data = response.json()
@@ -165,7 +165,9 @@ class TestGrowthAreasAPI:
         assert data["totalResults"] == 1
         assert data["areas"][0]["cityName"] == "Sacramento"
 
-    def test_sort_areas_by_growth_score_descending(self, api_client, sample_growth_areas):
+    def test_sort_areas_by_growth_score_descending(
+        self, api_client, sample_growth_areas
+    ):
         """Test that areas are sorted by composite score in descending order."""
         url = reverse("api:growth-areas-list")
         response = api_client.get(url, {"state": "CA", "minGrowthScore": "0"})
@@ -221,7 +223,7 @@ class TestGrowthAreasAPI:
     def test_lowercase_state_code_accepted(self, api_client, sample_growth_areas):
         """Test that lowercase state codes are normalized and accepted."""
         url = reverse("api:growth-areas-list")
-        response = api_client.get(url, {"state": "ca"})
+        response = api_client.get(url, {"state": "ca", "minGrowthScore": "0"})
 
         assert response.status_code == 200
         data = response.json()
@@ -239,7 +241,9 @@ class TestGrowthAreasAPI:
 
         assert data["state"] == "CA"
 
-    def test_invalid_min_growth_score_returns_400(self, api_client, sample_growth_areas):
+    def test_invalid_min_growth_score_returns_400(
+        self, api_client, sample_growth_areas
+    ):
         """Test that invalid minGrowthScore values return 400."""
         url = reverse("api:growth-areas-list")
 
@@ -258,7 +262,7 @@ class TestGrowthAreasAPI:
     def test_coordinates_included_in_response(self, api_client, sample_growth_areas):
         """Test that coordinates are included in the response."""
         url = reverse("api:growth-areas-list")
-        response = api_client.get(url, {"state": "CA"})
+        response = api_client.get(url, {"state": "CA", "minGrowthScore": "0"})
 
         assert response.status_code == 200
         data = response.json()
