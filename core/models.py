@@ -88,3 +88,43 @@ class InvestmentAnalysis(models.Model):
     dscr = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))
 
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class GrowthArea(models.Model):
+    """Economic growth area data for real estate investment analysis."""
+
+    state = models.CharField(max_length=2, db_index=True)
+    city_name = models.CharField(max_length=255)
+    metro_area = models.CharField(max_length=255, blank=True)
+    population_growth_rate = models.DecimalField(max_digits=6, decimal_places=2)
+    employment_growth_rate = models.DecimalField(max_digits=6, decimal_places=2)
+    median_income_growth = models.DecimalField(max_digits=6, decimal_places=2)
+    housing_demand_index = models.IntegerField()
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    data_timestamp = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [["state", "city_name"]]
+        ordering = ["-data_timestamp"]
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"{self.city_name}, {self.state}"
+
+    @property
+    def composite_score(self) -> Decimal:
+        """Calculate composite growth score based on weighted metrics."""
+        pop_weight = Decimal("0.25")
+        emp_weight = Decimal("0.35")
+        income_weight = Decimal("0.25")
+        housing_weight = Decimal("0.15")
+
+        score = (
+            Decimal(self.population_growth_rate) * pop_weight
+            + Decimal(self.employment_growth_rate) * emp_weight
+            + Decimal(self.median_income_growth) * income_weight
+            + Decimal(self.housing_demand_index) * housing_weight
+        )
+        return score
