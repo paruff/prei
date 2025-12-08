@@ -6,11 +6,10 @@ import logging
 import os
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import requests
 from django.core.cache import cache
-from django.db.models import Count
 from django.utils import timezone
 
 from core.models import ForeclosureProperty
@@ -260,9 +259,7 @@ class DataSourceHealthMonitor:
             "period": f"{days} days",
             "avgRequiredFields": round(
                 sum(
-                    sum(
-                        1 for field in required_fields if getattr(prop, field, None)
-                    )
+                    sum(1 for field in required_fields if getattr(prop, field, None))
                     for prop in recent_props
                 )
                 / total_count,
@@ -270,9 +267,7 @@ class DataSourceHealthMonitor:
             ),
             "avgImportantFields": round(
                 sum(
-                    sum(
-                        1 for field in important_fields if getattr(prop, field, None)
-                    )
+                    sum(1 for field in important_fields if getattr(prop, field, None))
                     for prop in recent_props
                 )
                 / total_count,
@@ -326,7 +321,9 @@ class DataSourceHealthMonitor:
             "period": f"{hours} hours",
         }
 
-    def get_cost_tracking(self, source: str = "attom", days: int = 30) -> Dict[str, Any]:
+    def get_cost_tracking(
+        self, source: str = "attom", days: int = 30
+    ) -> Dict[str, Any]:
         """
         Get cost tracking information for ATTOM API.
 

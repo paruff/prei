@@ -64,7 +64,11 @@ class HUDHomeScraper:
 
     # Alternative selectors if primary ones fail
     ALT_SELECTORS = {
-        "property_listing": ["div.listing-item", "div.property-card", "article.property"],
+        "property_listing": [
+            "div.listing-item",
+            "div.property-card",
+            "article.property",
+        ],
         "address": ["div.property-address", "span.address", "p.address"],
     }
 
@@ -113,7 +117,9 @@ class HUDHomeScraper:
             await asyncio.sleep(random.uniform(2, 5))
 
             self.scraped_count = len(properties)
-            logger.info(f"Completed HUD scrape for {state_code}: {len(properties)} properties")
+            logger.info(
+                f"Completed HUD scrape for {state_code}: {len(properties)} properties"
+            )
 
             return properties
 
@@ -147,7 +153,9 @@ class HUDHomeScraper:
                     break
 
         if not listings:
-            logger.warning("No property listings found - website structure may have changed")
+            logger.warning(
+                "No property listings found - website structure may have changed"
+            )
             raise HUDWebsiteChangeError("Could not find property listings in HTML")
 
         for listing in listings:
@@ -182,7 +190,7 @@ class HUDHomeScraper:
         sqft_text = self._safe_extract_text(listing, self.SELECTORS["sqft"])
         prop_type = self._safe_extract_text(listing, self.SELECTORS["type"])
         listed_text = self._safe_extract_text(listing, self.SELECTORS["listed"])
-        bid_open_text = self._safe_extract_text(listing, self.SELECTORS["bid_open"])
+        # bid_open_text not currently used in property_data
         bid_close_text = self._safe_extract_text(listing, self.SELECTORS["bid_close"])
         status = self._safe_extract_text(listing, self.SELECTORS["status"])
 

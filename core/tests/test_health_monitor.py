@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from django.utils import timezone
@@ -217,6 +216,7 @@ class TestDataSourceHealthMonitor:
     @pytest.mark.django_db
     def test_get_health_dashboard_data(self, mock_cache, health_monitor):
         """Test getting comprehensive dashboard data."""
+
         # Mock health status in cache
         def cache_get_side_effect(key, default=None):
             if key.startswith("health:"):

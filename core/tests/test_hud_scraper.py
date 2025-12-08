@@ -230,7 +230,6 @@ class TestHUDHomeScraper:
 
     def test_scrape_state_placeholder_sync(self, hud_scraper):
         """Test scrape_state returns empty list (placeholder - synchronous version)."""
-        import asyncio
 
         properties = asyncio.run(hud_scraper.scrape_state("FL"))
 

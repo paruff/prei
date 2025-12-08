@@ -10,7 +10,6 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 import requests
-from django.conf import settings
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
@@ -103,7 +102,9 @@ class ATTOMAdapter:
                 )
 
             if response.status_code != 200:
-                logger.error(f"ATTOM API error: {response.status_code} - {response.text}")
+                logger.error(
+                    f"ATTOM API error: {response.status_code} - {response.text}"
+                )
                 raise ATTOMAPIError(
                     f"API request failed with status {response.status_code}"
                 )
@@ -161,7 +162,9 @@ class ATTOMAdapter:
                 )
 
             if response.status_code != 200:
-                logger.error(f"ATTOM API error: {response.status_code} - {response.text}")
+                logger.error(
+                    f"ATTOM API error: {response.status_code} - {response.text}"
+                )
                 raise ATTOMAPIError(
                     f"API request failed with status {response.status_code}"
                 )
@@ -264,9 +267,7 @@ class ATTOMAdapter:
             "estimated_value": self._safe_decimal(
                 attom_data.get("avm", {}).get("amount", {}).get("value")
             ),
-            "tax_assessed_value": self._safe_decimal(
-                summary_data.get("assessedValue")
-            ),
+            "tax_assessed_value": self._safe_decimal(summary_data.get("assessedValue")),
         }
 
         return normalized
@@ -339,9 +340,7 @@ class ATTOMAdapter:
         hash_value = hashlib.md5(address_str.encode()).hexdigest()[:12]
         return f"ATTOM-{hash_value}"
 
-    def _generate_cache_key(
-        self, address: str, address2: Optional[str] = None
-    ) -> str:
+    def _generate_cache_key(self, address: str, address2: Optional[str] = None) -> str:
         """
         Generate cache key for property data.
 
@@ -446,7 +445,11 @@ class ATTOMAdapter:
         """
         from datetime import timedelta
 
-        stats: Dict[str, Any] = {"days": [], "total_calls": 0, "total_cost": Decimal("0")}
+        stats: Dict[str, Any] = {
+            "days": [],
+            "total_calls": 0,
+            "total_cost": Decimal("0"),
+        }
 
         today = datetime.now().date()
 
@@ -460,7 +463,9 @@ class ATTOMAdapter:
             calls = cache.get(call_count_key, 0)
             cost = cache.get(cost_key, Decimal("0"))
 
-            stats["days"].append({"date": date_str, "calls": calls, "cost": float(cost)})
+            stats["days"].append(
+                {"date": date_str, "calls": calls, "cost": float(cost)}
+            )
             stats["total_calls"] += calls
             stats["total_cost"] += cost
 

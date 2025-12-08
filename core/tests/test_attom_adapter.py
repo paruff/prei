@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -88,7 +87,9 @@ class TestATTOMAdapter:
         mock_get.assert_called_once()
 
     @patch("core.integrations.sources.attom_adapter.requests.Session.get")
-    def test_fetch_property_detail_authentication_failure(self, mock_get, attom_adapter):
+    def test_fetch_property_detail_authentication_failure(
+        self, mock_get, attom_adapter
+    ):
         """Test authentication failure handling."""
         mock_response = Mock()
         mock_response.status_code = 401
@@ -189,7 +190,10 @@ class TestATTOMAdapter:
 
     def test_map_property_type_single_family(self, attom_adapter):
         """Test property type mapping for single family."""
-        assert attom_adapter._map_property_type("Single Family Residential") == "single-family"
+        assert (
+            attom_adapter._map_property_type("Single Family Residential")
+            == "single-family"
+        )
 
     def test_map_property_type_condo(self, attom_adapter):
         """Test property type mapping for condo."""
@@ -197,7 +201,9 @@ class TestATTOMAdapter:
 
     def test_map_property_type_multi_family(self, attom_adapter):
         """Test property type mapping for multi-family."""
-        assert attom_adapter._map_property_type("Multi Family Dwelling") == "multi-family"
+        assert (
+            attom_adapter._map_property_type("Multi Family Dwelling") == "multi-family"
+        )
 
     def test_generate_property_id(self, attom_adapter, sample_attom_response):
         """Test property ID generation."""
