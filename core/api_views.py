@@ -13,8 +13,20 @@ from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
+from investor_app.finance.utils import (
+    calculate_break_even_rent,
+    calculate_carrying_costs as calc_costs,
+    cap_rate as calc_cap_rate,
+    cash_on_cash as calc_coc,
+    dscr as calc_dscr,
+)
+
 from .models import ForeclosureProperty, GrowthArea
-from .serializers import ForeclosurePropertySerializer, GrowthAreaSerializer
+from .serializers import (
+    CarryingCostRequestSerializer,
+    ForeclosurePropertySerializer,
+    GrowthAreaSerializer,
+)
 from .validators import (
     validate_foreclosure_stages,
     validate_location_parameter,
@@ -450,6 +462,399 @@ def foreclosures_list(request):
         return Response(
             {
                 "error": "Foreclosure data service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
+@api_view(["POST"])
+@throttle_classes([UserRateThrottle, AnonRateThrottle])
+def calculate_carrying_costs(request):
+    """
+    Calculate carrying costs and investment metrics for a property.
+
+    Request Body:
+        JSON object containing property details, financing, operating expenses, and rental income
+
+    Returns:
+        JSON response with detailed carrying cost breakdown, cash flow analysis, and investment metrics
+    """
+    try:
+        # Validate request data
+        serializer = CarryingCostRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {"error": "Invalid request data", "details": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = serializer.validated_data
+
+        # Extract data
+        property_details = data["propertyDetails"]
+        financing = data["financing"]
+        operating_expenses = data["operatingExpenses"]
+        rental_income = data["rentalIncome"]
+
+        purchase_price = property_details["purchasePrice"]
+        property_type = property_details["propertyType"]
+        year_built = property_details.get("yearBuilt", 2000)
+        square_feet = property_details.get("squareFeet")
+
+        down_payment = financing["downPayment"]
+        loan_amount = financing["loanAmount"]
+        interest_rate = financing["interestRate"]
+        loan_term_years = financing["loanTermYears"]
+        closing_costs = financing.get("closingCosts", Decimal("0"))
+        loan_points = financing.get("loanPoints", Decimal("0"))
+
+        property_tax_rate = operating_expenses["propertyTaxRate"]
+        insurance_annual = operating_expenses.get("insuranceAnnual")
+        hoa_monthly = operating_expenses["hoaMonthly"]
+        utilities_monthly = operating_expenses["utilitiesMonthly"]
+        maintenance_annual_percent = operating_expenses["maintenanceAnnualPercent"]
+        property_management_percent = operating_expenses["propertyManagementPercent"]
+        vacancy_rate_percent = operating_expenses["vacancyRatePercent"]
+
+        monthly_rent = rental_income["monthlyRent"]
+        other_monthly_income = rental_income.get("otherMonthlyIncome", Decimal("0"))
+
+        # Calculate carrying costs
+        carrying_costs = calc_costs(
+            purchase_price=purchase_price,
+            loan_amount=loan_amount,
+            interest_rate=interest_rate,
+            loan_term_years=loan_term_years,
+            property_tax_rate=property_tax_rate,
+            insurance_annual=insurance_annual,
+            hoa_monthly=hoa_monthly,
+            utilities_monthly=utilities_monthly,
+            maintenance_annual_percent=maintenance_annual_percent,
+            property_type=property_type,
+            year_built=year_built,
+        )
+
+        # Calculate property management cost
+        monthly_property_management = (
+            monthly_rent * property_management_percent / Decimal(100)
+        )
+        annual_property_management = monthly_property_management * Decimal(12)
+
+        # Add property management to carrying costs
+        carrying_costs["monthly"]["propertyManagement"] = (
+            monthly_property_management.quantize(Decimal("0.01"))
+        )
+        carrying_costs["annual"]["propertyManagement"] = (
+            annual_property_management.quantize(Decimal("0.01"))
+        )
+
+        # Recalculate totals with property management
+        carrying_costs["monthly"]["total"] = (
+            carrying_costs["monthly"]["total"] + monthly_property_management
+        ).quantize(Decimal("0.01"))
+        carrying_costs["annual"]["total"] = (
+            carrying_costs["annual"]["total"] + annual_property_management
+        ).quantize(Decimal("0.01"))
+
+        # Calculate cost breakdown percentages
+        total_annual = carrying_costs["annual"]["total"]
+        breakdown_percentages = {
+            "mortgage": (
+                float(
+                    (
+                        carrying_costs["annual"]["mortgage"]
+                        / total_annual
+                        * Decimal(100)
+                    ).quantize(Decimal("0.1"))
+                )
+                if total_annual > 0
+                else 0
+            ),
+            "propertyTax": (
+                float(
+                    (
+                        carrying_costs["annual"]["propertyTax"]
+                        / total_annual
+                        * Decimal(100)
+                    ).quantize(Decimal("0.1"))
+                )
+                if total_annual > 0
+                else 0
+            ),
+            "insurance": (
+                float(
+                    (
+                        carrying_costs["annual"]["insurance"]
+                        / total_annual
+                        * Decimal(100)
+                    ).quantize(Decimal("0.1"))
+                )
+                if total_annual > 0
+                else 0
+            ),
+            "utilities": (
+                float(
+                    (
+                        carrying_costs["annual"]["utilities"]
+                        / total_annual
+                        * Decimal(100)
+                    ).quantize(Decimal("0.1"))
+                )
+                if total_annual > 0
+                else 0
+            ),
+            "maintenance": (
+                float(
+                    (
+                        carrying_costs["annual"]["maintenance"]
+                        / total_annual
+                        * Decimal(100)
+                    ).quantize(Decimal("0.1"))
+                )
+                if total_annual > 0
+                else 0
+            ),
+            "propertyManagement": (
+                float(
+                    (annual_property_management / total_annual * Decimal(100)).quantize(
+                        Decimal("0.1")
+                    )
+                )
+                if total_annual > 0
+                else 0
+            ),
+        }
+
+        # Add breakdown to carrying costs
+        carrying_costs["breakdown"] = {"percentages": breakdown_percentages}
+
+        # Calculate per square foot metrics if square footage is available
+        if square_feet and square_feet > 0:
+            carrying_costs["perSquareFoot"] = {
+                "monthly": float(
+                    (
+                        carrying_costs["monthly"]["total"] / Decimal(square_feet)
+                    ).quantize(Decimal("0.01"))
+                ),
+                "annual": float(
+                    (carrying_costs["annual"]["total"] / Decimal(square_feet)).quantize(
+                        Decimal("0.01")
+                    )
+                ),
+            }
+
+        # Add data quality indicators
+        carrying_costs["dataQuality"] = {
+            "propertyTax": "calculated",
+            "insurance": "estimated" if insurance_annual is None else "user_provided",
+            "maintenance": "industry_standard",
+            "utilities": "user_provided",
+        }
+
+        # Calculate cash flow
+        gross_rental_income_monthly = monthly_rent + other_monthly_income
+        gross_rental_income_annual = gross_rental_income_monthly * Decimal(12)
+
+        vacancy_loss_monthly = (
+            gross_rental_income_monthly * vacancy_rate_percent / Decimal(100)
+        )
+        vacancy_loss_annual = vacancy_loss_monthly * Decimal(12)
+
+        effective_gross_income_monthly = (
+            gross_rental_income_monthly - vacancy_loss_monthly
+        )
+        effective_gross_income_annual = effective_gross_income_monthly * Decimal(12)
+
+        # Operating expenses (excluding debt service and property management)
+        operating_expenses_monthly = (
+            carrying_costs["monthly"]["propertyTax"]
+            + carrying_costs["monthly"]["insurance"]
+            + carrying_costs["monthly"]["hoa"]
+            + carrying_costs["monthly"]["utilities"]
+            + carrying_costs["monthly"]["maintenance"]
+        )
+        operating_expenses_annual = operating_expenses_monthly * Decimal(12)
+
+        # NOI (Net Operating Income)
+        noi_monthly = effective_gross_income_monthly - operating_expenses_monthly
+        noi_annual = noi_monthly * Decimal(12)
+
+        # Debt service
+        debt_service_monthly = carrying_costs["monthly"]["mortgage"]
+        debt_service_annual = debt_service_monthly * Decimal(12)
+
+        # Net cash flow (after debt service and property management)
+        net_cash_flow_monthly = (
+            noi_monthly - debt_service_monthly - monthly_property_management
+        )
+        net_cash_flow_annual = net_cash_flow_monthly * Decimal(12)
+
+        cash_flow = {
+            "monthly": {
+                "grossRentalIncome": float(
+                    gross_rental_income_monthly.quantize(Decimal("0.01"))
+                ),
+                "vacancyLoss": float(vacancy_loss_monthly.quantize(Decimal("0.01"))),
+                "effectiveGrossIncome": float(
+                    effective_gross_income_monthly.quantize(Decimal("0.01"))
+                ),
+                "operatingExpenses": float(
+                    operating_expenses_monthly.quantize(Decimal("0.01"))
+                ),
+                "noi": float(noi_monthly.quantize(Decimal("0.01"))),
+                "debtService": float(debt_service_monthly.quantize(Decimal("0.01"))),
+                "netCashFlow": float(net_cash_flow_monthly.quantize(Decimal("0.01"))),
+            },
+            "annual": {
+                "grossRentalIncome": float(
+                    gross_rental_income_annual.quantize(Decimal("0.01"))
+                ),
+                "vacancyLoss": float(vacancy_loss_annual.quantize(Decimal("0.01"))),
+                "effectiveGrossIncome": float(
+                    effective_gross_income_annual.quantize(Decimal("0.01"))
+                ),
+                "operatingExpenses": float(
+                    operating_expenses_annual.quantize(Decimal("0.01"))
+                ),
+                "noi": float(noi_annual.quantize(Decimal("0.01"))),
+                "debtService": float(debt_service_annual.quantize(Decimal("0.01"))),
+                "netCashFlow": float(net_cash_flow_annual.quantize(Decimal("0.01"))),
+            },
+        }
+
+        # Calculate investment metrics
+        total_cash_invested = down_payment + closing_costs + loan_points
+
+        # Cash-on-Cash Return
+        coc_return = calc_coc(net_cash_flow_annual, total_cash_invested)
+        coc_return_percent = float((coc_return * Decimal(100)).quantize(Decimal("0.1")))
+
+        # COC interpretation
+        if coc_return_percent < 0:
+            coc_interpretation = "negative"
+        elif coc_return_percent < 5:
+            coc_interpretation = "poor"
+        elif coc_return_percent < 8:
+            coc_interpretation = "fair"
+        elif coc_return_percent < 12:
+            coc_interpretation = "good"
+        else:
+            coc_interpretation = "excellent"
+
+        # Cap Rate
+        cap_rate_value = calc_cap_rate(noi_annual, purchase_price)
+        cap_rate_percent = float(
+            (cap_rate_value * Decimal(100)).quantize(Decimal("0.1"))
+        )
+
+        # Break-even rent
+        # Monthly costs excluding property management (will be added to break-even rent)
+        monthly_costs_excl_mgmt = (
+            carrying_costs["monthly"]["mortgage"]
+            + carrying_costs["monthly"]["propertyTax"]
+            + carrying_costs["monthly"]["insurance"]
+            + carrying_costs["monthly"]["hoa"]
+            + carrying_costs["monthly"]["utilities"]
+            + carrying_costs["monthly"]["maintenance"]
+        )
+
+        break_even = calculate_break_even_rent(
+            monthly_costs_excl_mgmt, vacancy_rate_percent, property_management_percent
+        )
+
+        coverage_ratio = (
+            float((monthly_rent / break_even["monthly"]).quantize(Decimal("0.01")))
+            if break_even["monthly"] > 0
+            else 0
+        )
+
+        # Debt Service Coverage Ratio
+        dscr_value = calc_dscr(noi_annual, debt_service_annual)
+        dscr_ratio = float(dscr_value.quantize(Decimal("0.01")))
+
+        investment_metrics = {
+            "totalCashInvested": float(total_cash_invested.quantize(Decimal("0.01"))),
+            "cocReturn": coc_return_percent,
+            "cocInterpretation": coc_interpretation,
+            "capRate": cap_rate_percent,
+            "breakEvenRent": {
+                "monthly": float(break_even["monthly"]),
+                "coverage": coverage_ratio,
+            },
+            "debtCoverageRatio": dscr_ratio,
+        }
+
+        # Generate warnings
+        warnings = []
+        if net_cash_flow_monthly < 0:
+            warnings.append(
+                {
+                    "type": "negative_cash_flow",
+                    "severity": "high",
+                    "message": f"Property shows negative cash flow. Monthly rent of ${float(monthly_rent)} does not cover monthly carrying costs of ${float(carrying_costs['monthly']['total'])}.",
+                }
+            )
+
+        if break_even["monthly"] > monthly_rent:
+            pct_over = float(
+                (
+                    (break_even["monthly"] - monthly_rent) / monthly_rent * Decimal(100)
+                ).quantize(Decimal("0"))
+            )
+            warnings.append(
+                {
+                    "type": "break_even_mismatch",
+                    "severity": "high",
+                    "message": f"Break-even rent (${float(break_even['monthly'])}) exceeds market rent (${float(monthly_rent)}) by {pct_over}%. Property may not be viable as rental.",
+                }
+            )
+
+        if dscr_ratio < 1.25 and loan_amount > 0:
+            warnings.append(
+                {
+                    "type": "low_dcr",
+                    "severity": "medium",
+                    "message": f"Debt Coverage Ratio of {dscr_ratio} is below lender minimum (1.25). Refinancing may be difficult.",
+                }
+            )
+
+        # Build response
+        # Convert Decimal to float for JSON serialization
+        carrying_costs_output = {
+            "monthly": {k: float(v) for k, v in carrying_costs["monthly"].items()},
+            "annual": {k: float(v) for k, v in carrying_costs["annual"].items()},
+            "breakdown": carrying_costs["breakdown"],
+            "dataQuality": carrying_costs["dataQuality"],
+        }
+
+        if "perSquareFoot" in carrying_costs:
+            carrying_costs_output["perSquareFoot"] = carrying_costs["perSquareFoot"]
+
+        response_data = {
+            "property": {
+                "address": property_details["location"]["address"],
+                "purchasePrice": float(purchase_price),
+                "propertyType": property_type,
+            },
+            "carryingCosts": carrying_costs_output,
+            "cashFlow": cash_flow,
+            "investmentMetrics": investment_metrics,
+            "warnings": warnings,
+            "calculationTimestamp": timezone.now().isoformat(),
+        }
+
+        logger.info(
+            f"Carrying costs calculated for property at {property_details['location']['address']}"
+        )
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.error(f"Unexpected error in calculate_carrying_costs: {str(e)}")
+        return Response(
+            {
+                "error": "Carrying cost calculation service temporarily unavailable. Please try again later.",
                 "code": "SERVICE_UNAVAILABLE",
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
