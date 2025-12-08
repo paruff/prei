@@ -228,10 +228,11 @@ class TestHUDHomeScraper:
 
         assert id1 == id2
 
-    @pytest.mark.asyncio
-    async def test_scrape_state_placeholder(self, hud_scraper):
-        """Test scrape_state returns empty list (placeholder)."""
-        properties = await hud_scraper.scrape_state("FL")
+    def test_scrape_state_placeholder_sync(self, hud_scraper):
+        """Test scrape_state returns empty list (placeholder - synchronous version)."""
+        import asyncio
+
+        properties = asyncio.run(hud_scraper.scrape_state("FL"))
 
         # Placeholder implementation returns empty list
         assert properties == []

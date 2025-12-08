@@ -7,6 +7,7 @@ django-environ>=0.9
 pytest>=7.0
 pytest-django>=4.0
 pytest-bdd>=7.0
+pytest-asyncio>=0.23.0
 ruff>=0.4.0
 mypy>=0.991
 black>=24.1

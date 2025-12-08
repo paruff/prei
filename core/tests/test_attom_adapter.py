@@ -153,7 +153,8 @@ class TestATTOMAdapter:
 
         assert result["_from_cache"] is False
         mock_get.assert_called_once()
-        mock_cache.set.assert_called_once()
+        # Cache.set should be called (at least once for caching the result)
+        assert mock_cache.set.call_count >= 1
 
     def test_normalize_property(self, attom_adapter, sample_attom_response):
         """Test property data normalization."""

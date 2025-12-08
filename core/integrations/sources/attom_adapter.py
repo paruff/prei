@@ -374,8 +374,8 @@ class ATTOMAdapter:
         call_count_key = f"attom_calls_{today}"
         cost_key = f"attom_cost_{today}"
 
-        current_calls = cache.get(call_count_key, 0)
-        current_cost = cache.get(cost_key, Decimal("0"))
+        current_calls = cache.get(call_count_key, 0) or 0
+        current_cost = cache.get(cost_key, Decimal("0")) or Decimal("0")
 
         cache.set(call_count_key, current_calls + 1, 86400 * 7)  # Keep for 7 days
 

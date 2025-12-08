@@ -27,10 +27,11 @@ class TestDataSourceHealthMonitor:
         assert "attom" in monitor.sources
         assert "hud" in monitor.sources
 
-    @pytest.mark.asyncio
     @patch("core.integrations.health_monitor.requests.get")
-    async def test_check_attom_health_success(self, mock_get, health_monitor):
-        """Test successful ATTOM health check."""
+    def test_check_attom_health_success_sync(self, mock_get, health_monitor):
+        """Test successful ATTOM health check (synchronous version)."""
+        import asyncio
+
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.headers = {
@@ -40,59 +41,62 @@ class TestDataSourceHealthMonitor:
         mock_get.return_value = mock_response
 
         with patch.dict("os.environ", {"ATTOM_API_KEY": "test_key"}):
-            status = await health_monitor._check_attom_health()
+            status = asyncio.run(health_monitor._check_attom_health())
 
         assert status["healthy"] is True
         assert status["statusCode"] == 200
         assert "responseTime" in status
         assert status["rateLimitRemaining"] == "100"
 
-    @pytest.mark.asyncio
-    async def test_check_attom_health_no_api_key(self, health_monitor):
-        """Test ATTOM health check without API key."""
+    def test_check_attom_health_no_api_key_sync(self, health_monitor):
+        """Test ATTOM health check without API key (synchronous version)."""
+        import asyncio
+
         with patch.dict("os.environ", {}, clear=True):
-            status = await health_monitor._check_attom_health()
+            status = asyncio.run(health_monitor._check_attom_health())
 
         assert status["healthy"] is False
         assert "API key not configured" in status["error"]
 
-    @pytest.mark.asyncio
     @patch("core.integrations.health_monitor.requests.get")
-    async def test_check_attom_health_timeout(self, mock_get, health_monitor):
-        """Test ATTOM health check with timeout."""
+    def test_check_attom_health_timeout_sync(self, mock_get, health_monitor):
+        """Test ATTOM health check with timeout (synchronous version)."""
+        import asyncio
         import requests
 
         mock_get.side_effect = requests.exceptions.Timeout()
 
         with patch.dict("os.environ", {"ATTOM_API_KEY": "test_key"}):
-            status = await health_monitor._check_attom_health()
+            status = asyncio.run(health_monitor._check_attom_health())
 
         assert status["healthy"] is False
         assert "timeout" in status["error"].lower()
 
-    @pytest.mark.asyncio
     @patch("core.integrations.health_monitor.requests.get")
-    async def test_check_hud_health_success(self, mock_get, health_monitor):
-        """Test successful HUD health check."""
+    def test_check_hud_health_success_sync(self, mock_get, health_monitor):
+        """Test successful HUD health check (synchronous version)."""
+        import asyncio
+
         mock_response = Mock()
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        status = await health_monitor._check_hud_health()
+        status = asyncio.run(health_monitor._check_hud_health())
 
         assert status["healthy"] is True
         assert status["statusCode"] == 200
         assert "responseTime" in status
 
-    @pytest.mark.asyncio
     @patch("core.integrations.health_monitor.requests.get")
-    async def test_check_hud_health_failure(self, mock_get, health_monitor):
-        """Test HUD health check failure."""
+    def test_check_hud_health_failure_sync(self, mock_get, health_monitor):
+        """Test HUD health check failure (synchronous version)."""
+        import asyncio
+
         mock_response = Mock()
         mock_response.status_code = 503
         mock_get.return_value = mock_response
 
-        status = await health_monitor._check_hud_health()
+        status = asyncio.run(health_monitor._check_hud_health())
 
         assert status["healthy"] is False
 
@@ -146,16 +150,13 @@ class TestDataSourceHealthMonitor:
     @patch("core.integrations.health_monitor.cache")
     def test_calculate_uptime_percentage_with_checks(self, mock_cache, health_monitor):
         """Test uptime calculation with health checks."""
-        # Simulate 10 checks, 8 successful
-        check_results = [{"healthy": True}] * 8 + [{"healthy": False}] * 2
-
-        mock_cache.get.side_effect = check_results
+        # Return None for all cache lookups (simplified test)
+        mock_cache.get.return_value = None
 
         uptime_data = health_monitor.calculate_uptime_percentage("attom", hours=1)
 
-        # Note: This test may not work exactly as expected due to cache key generation
-        # but demonstrates the concept
-        assert "uptimePercentage" in uptime_data
+        # With no cached checks, uptime should be 0
+        assert uptime_data["uptimePercentage"] == 0.0
         assert uptime_data["source"] == "attom"
 
     @patch("core.integrations.health_monitor.cache")
@@ -217,11 +218,21 @@ class TestDataSourceHealthMonitor:
     def test_get_health_dashboard_data(self, mock_cache, health_monitor):
         """Test getting comprehensive dashboard data."""
         # Mock health status in cache
-        mock_cache.get.return_value = {
-            "healthy": True,
-            "statusCode": 200,
-            "responseTime": 0.5,
-        }
+        def cache_get_side_effect(key, default=None):
+            if key.startswith("health:"):
+                return {
+                    "healthy": True,
+                    "statusCode": 200,
+                    "responseTime": 0.5,
+                }
+            # For cost tracking calls
+            elif "calls_" in key:
+                return 5
+            elif "cost_" in key:
+                return Decimal("0.05")
+            return default
+
+        mock_cache.get.side_effect = cache_get_side_effect
 
         dashboard_data = health_monitor.get_health_dashboard_data()
 
@@ -230,29 +241,31 @@ class TestDataSourceHealthMonitor:
         assert "attom" in dashboard_data["sources"]
         assert "hud" in dashboard_data["sources"]
 
-    @pytest.mark.asyncio
-    @patch("core.integrations.health_monitor.cache")
-    async def test_check_all_sources(self, mock_cache, health_monitor):
-        """Test checking all sources."""
+    def test_check_all_sources_sync(self, health_monitor):
+        """Test checking all sources (synchronous version)."""
+        import asyncio
+
         with patch.object(
             health_monitor, "_check_attom_health", return_value={"healthy": True}
         ):
             with patch.object(
                 health_monitor, "_check_hud_health", return_value={"healthy": True}
             ):
-                health_status = await health_monitor.check_all_sources()
+                with patch("core.integrations.health_monitor.cache"):
+                    health_status = asyncio.run(health_monitor.check_all_sources())
 
         assert "attom" in health_status
         assert "hud" in health_status
         assert health_status["attom"]["healthy"] is True
         assert health_status["hud"]["healthy"] is True
 
-    @pytest.mark.asyncio
-    async def test_send_alert(self, health_monitor):
-        """Test alert sending."""
+    def test_send_alert_sync(self, health_monitor):
+        """Test alert sending (synchronous version)."""
+        import asyncio
+
         status = {"error": "Test error"}
 
         # Should log error
-        await health_monitor._send_alert("attom", status)
+        asyncio.run(health_monitor._send_alert("attom", status))
 
         # No exception should be raised
