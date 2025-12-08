@@ -15,4 +15,9 @@ urlpatterns = [
         api_views.foreclosures_list,
         name="foreclosures-list",
     ),
+    path(
+        "v1/real-estate/carrying-costs/calculate",
+        api_views.calculate_carrying_costs,
+        name="carrying-costs-calculate",
+    ),
 ]

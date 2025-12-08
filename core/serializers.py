@@ -145,3 +145,98 @@ class ForeclosurePropertySerializer(serializers.ModelSerializer):
             "images",
             "links",
         ]
+
+
+# Carrying Cost Serializers
+
+
+class LocationSerializer(serializers.Serializer):
+    """Serializer for property location."""
+
+    address = serializers.CharField(max_length=255)
+    county = serializers.CharField(max_length=128, required=False, allow_blank=True)
+    state = serializers.CharField(max_length=2)
+    zip = serializers.CharField(max_length=16, source="zip_code")
+
+
+class PropertyDetailsInputSerializer(serializers.Serializer):
+    """Serializer for property details input."""
+
+    purchasePrice = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0
+    )
+    propertyType = serializers.ChoiceField(
+        choices=["single-family", "condo", "multi-family", "commercial"],
+        default="single-family",
+    )
+    squareFeet = serializers.IntegerField(min_value=0, required=False, allow_null=True)
+    bedrooms = serializers.IntegerField(min_value=0, required=False, allow_null=True)
+    bathrooms = serializers.DecimalField(
+        max_digits=4, decimal_places=1, min_value=0, required=False, allow_null=True
+    )
+    yearBuilt = serializers.IntegerField(min_value=1800, required=False, default=2000)
+    location = LocationSerializer()
+
+
+class FinancingSerializer(serializers.Serializer):
+    """Serializer for financing details."""
+
+    downPayment = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
+    loanAmount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
+    interestRate = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0)
+    loanTermYears = serializers.IntegerField(min_value=1, max_value=50)
+    closingCosts = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0, required=False, default=0
+    )
+    loanPoints = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0, required=False, default=0
+    )
+
+
+class OperatingExpensesSerializer(serializers.Serializer):
+    """Serializer for operating expenses."""
+
+    propertyTaxRate = serializers.DecimalField(
+        max_digits=5, decimal_places=2, min_value=0
+    )
+    insuranceAnnual = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
+    hoaMonthly = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, default=0
+    )
+    utilitiesMonthly = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, default=0
+    )
+    maintenanceAnnualPercent = serializers.DecimalField(
+        max_digits=5, decimal_places=2, min_value=0, default=1.0
+    )
+    propertyManagementPercent = serializers.DecimalField(
+        max_digits=5, decimal_places=2, min_value=0, default=10
+    )
+    vacancyRatePercent = serializers.DecimalField(
+        max_digits=5, decimal_places=2, min_value=0, max_value=100, default=8
+    )
+
+
+class RentalIncomeSerializer(serializers.Serializer):
+    """Serializer for rental income."""
+
+    monthlyRent = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
+    otherMonthlyIncome = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, default=0
+    )
+
+
+class CarryingCostRequestSerializer(serializers.Serializer):
+    """Serializer for carrying cost calculation request."""
+
+    propertyDetails = PropertyDetailsInputSerializer()
+    financing = FinancingSerializer()
+    operatingExpenses = OperatingExpensesSerializer()
+    rentalIncome = RentalIncomeSerializer()
+    investmentStrategy = serializers.ChoiceField(
+        choices=["buy-and-hold", "flip", "vacation-rental"],
+        default="buy-and-hold",
+        required=False,
+    )
