@@ -56,9 +56,11 @@ class ATTOMAdapter:
             logger.warning("ATTOM API key not configured")
 
         self.session = requests.Session()
-        self.session.headers.update(
-            {"apikey": self.api_key, "Accept": "application/json"}
-        )
+        headers: Dict[str, str] = {
+            "apikey": self.api_key or "",
+            "Accept": "application/json",
+        }
+        self.session.headers.update(headers)
 
     def fetch_property_detail(
         self, address: str, address2: Optional[str] = None
@@ -109,7 +111,8 @@ class ATTOMAdapter:
                     f"API request failed with status {response.status_code}"
                 )
 
-            return response.json()
+            result: Dict[str, Any] = response.json()
+            return result
 
         except requests.exceptions.Timeout:
             logger.error(f"ATTOM API request timeout for {address}")
@@ -169,7 +172,8 @@ class ATTOMAdapter:
                     f"API request failed with status {response.status_code}"
                 )
 
-            return response.json()
+            result: Dict[str, Any] = response.json()
+            return result
 
         except requests.exceptions.Timeout:
             logger.error(f"ATTOM API request timeout for geoid {geoid}")
@@ -196,8 +200,9 @@ class ATTOMAdapter:
 
         if cached_data:
             logger.info(f"Returning cached data for {address}")
-            cached_data["_from_cache"] = True
-            return cached_data
+            result_cached: Dict[str, Any] = cached_data
+            result_cached["_from_cache"] = True
+            return result_cached
 
         try:
             data = self.fetch_property_detail(address, address2)
