@@ -7,7 +7,7 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
-from core.models import Property, RentalIncome, OperatingExpense
+from core.models import OperatingExpense, Property, RentalIncome
 
 
 class Command(BaseCommand):

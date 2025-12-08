@@ -3,9 +3,10 @@ from __future__ import annotations
 # removed unused Decimal import
 from django.shortcuts import render
 
-# keep only the models that are actually used
-from .models import Property, InvestmentAnalysis, Listing
 from investor_app.finance.utils import compute_analysis_for_property, score_listing_v1
+
+# keep only the models that are actually used
+from .models import InvestmentAnalysis, Listing, Property
 
 
 def dashboard(request):

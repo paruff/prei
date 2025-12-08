@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Property, RentalIncome, OperatingExpense
+from core.models import OperatingExpense, Property, RentalIncome
 
 
 def test_dashboard_computes_analysis(client, db, user):

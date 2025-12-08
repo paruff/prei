@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Iterable, Dict
+from typing import Dict, Iterable
 
 
 def fetch() -> Iterable[Dict]:
