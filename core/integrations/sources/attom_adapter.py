@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
@@ -419,11 +419,9 @@ class ATTOMAdapter:
 
         try:
             # Try parsing common date formats
-            from datetime import datetime as dt
-
             for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"]:
                 try:
-                    parsed_date = dt.strptime(date_str, fmt)
+                    parsed_date = datetime.strptime(date_str, fmt)
                     return parsed_date.date().isoformat()
                 except ValueError:
                     continue
@@ -443,8 +441,6 @@ class ATTOMAdapter:
         Returns:
             Dictionary with usage statistics
         """
-        from datetime import timedelta
-
         stats: Dict[str, Any] = {
             "days": [],
             "total_calls": 0,
@@ -479,6 +475,13 @@ def fetch(location: Optional[str] = None) -> List[Dict[str, Any]]:
     Fetch foreclosure properties from ATTOM API.
 
     This is a convenience function that matches the interface of other adapters.
+    Note: This is a placeholder for basic adapter interface compatibility.
+
+    TODO: Implement batch fetching with proper geoid/radius parameters for production use.
+    For production, this should:
+    1. Accept location parameter and convert to geoid
+    2. Call fetch_foreclosure_data with appropriate radius
+    3. Normalize and return property data
 
     Args:
         location: Optional location filter (not used for ATTOM batch fetch)
@@ -486,7 +489,5 @@ def fetch(location: Optional[str] = None) -> List[Dict[str, Any]]:
     Returns:
         List of normalized property dictionaries
     """
-    # Note: This is a placeholder. In production, you would need to implement
-    # batch fetching with proper geoid/radius parameters
-    logger.info("ATTOM fetch called - requires geoid/radius parameters")
+    logger.info("ATTOM fetch called - requires geoid/radius parameters for production")
     return []

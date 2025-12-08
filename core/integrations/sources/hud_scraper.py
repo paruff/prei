@@ -81,8 +81,24 @@ class HUDHomeScraper:
         """
         Scrape all HUD properties for a given state.
 
-        Note: This is a placeholder implementation. In production, this would
-        use Playwright to navigate the actual HUD website.
+        Note: This is a placeholder implementation. For production use,
+        see the TODO below for Playwright implementation details.
+
+        TODO: Implement production scraper with Playwright
+        Requirements for production implementation:
+        1. Use Playwright to handle JavaScript-rendered content
+        2. Navigate to HUD Home Store website
+        3. Search for properties by state
+        4. Extract property listings with pagination
+        5. Handle rate limiting (2-5 seconds between requests)
+        6. Implement robust error handling for website changes
+
+        Example implementation approach:
+        - Use async_playwright() context manager
+        - Launch chromium browser in headless mode
+        - Rotate user agents for requests
+        - Implement exponential backoff on errors
+        - Respect robots.txt directives
 
         Args:
             state_code: 2-letter state code (e.g., "FL", "CA")
@@ -98,16 +114,7 @@ class HUDHomeScraper:
         properties = []
 
         try:
-            # In production, this would use Playwright:
-            # async with async_playwright() as p:
-            #     browser = await p.chromium.launch(headless=True)
-            #     context = await browser.new_context(
-            #         user_agent=random.choice(self.USER_AGENTS)
-            #     )
-            #     page = await context.new_page()
-            #     ...
-
-            # For now, return empty list as placeholder
+            # Production implementation would use Playwright here
             logger.warning(
                 f"HUD scraper for {state_code} is a placeholder - "
                 "requires Playwright for production use"
@@ -190,7 +197,7 @@ class HUDHomeScraper:
         sqft_text = self._safe_extract_text(listing, self.SELECTORS["sqft"])
         prop_type = self._safe_extract_text(listing, self.SELECTORS["type"])
         listed_text = self._safe_extract_text(listing, self.SELECTORS["listed"])
-        # bid_open_text not currently used in property_data
+        # Note: bid_open_text could be added to track bid opening dates if needed
         bid_close_text = self._safe_extract_text(listing, self.SELECTORS["bid_close"])
         status = self._safe_extract_text(listing, self.SELECTORS["status"])
 

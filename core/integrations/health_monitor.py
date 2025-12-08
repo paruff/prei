@@ -340,8 +340,6 @@ class DataSourceHealthMonitor:
                 "error": "Cost tracking only available for ATTOM",
             }
 
-        from datetime import timedelta
-
         stats: Dict[str, Any] = {
             "source": "ATTOM",
             "days": [],
