@@ -9,11 +9,16 @@
     </thead>
     <tbody>
       {% for s in top_growth %}
-        <tr>
-          <td>{% if s.zip_code %}{{ s.zip_code }}{% else %}{{ s.city }}, {{ s.state }}{% endif %}</td>
-          <td>{{ s.rent_index }}</td>
-          <td>{{ s.price_trend|floatformat:2 }}</td>
-        </tr>
+          <tr>
+            <td>{% if s.zip_code %}{{ s.zip_code }}{% else %}{{ s.city }}, {{ s.state }}{% endif %}</td>
+            <td>{{ s.rent_index }}</td>
+            <td>{{ s.price_trend|floatformat:2 }}</td>
+            <td>
+              <a href="/search?state={{ s.state }}&zip={{ s.zip_code }}">View Properties</a>
+              |
+              <a href="#" onclick="fetchHUD('{{ s.state }}','{{ s.zip_code }}'); return false;">Pull HUD</a>
+            </td>
+          </tr>
       {% empty %}
         <tr><td colspan="3">No market snapshots available.</td></tr>
       {% endfor %}
@@ -39,4 +44,9 @@
       {% endfor %}
     </tbody>
   </table>
+    <script>
+      async function fetchHUD(state, zip) {
+        alert(`Trigger HUD fetch for ${state} ${zip}. Run the management command in the server.`);
+      }
+    </script>
 {% endblock %}

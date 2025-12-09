@@ -67,10 +67,26 @@ def growth_areas(request):
 
 
 def search_listings(request):
+    # Optionally load a saved search to prefill filters
+    saved_id = request.GET.get("saved_id")
     query = request.GET.get("q", "")
     zip_code = request.GET.get("zip", "")
     state = request.GET.get("state", "")
     sort = request.GET.get("sort", "score")
+    min_price = request.GET.get("min_price")
+    max_price = request.GET.get("max_price")
+
+    if saved_id:
+        try:
+            s = SavedSearch.objects.get(id=int(saved_id), user=request.user)
+            query = s.query or query
+            zip_code = s.zip_code or zip_code
+            state = s.state or state
+            # Allow saved bounds to apply unless overridden
+            min_price = min_price or (str(s.min_price) if s.min_price is not None else None)
+            max_price = max_price or (str(s.max_price) if s.max_price is not None else None)
+        except (SavedSearch.DoesNotExist, ValueError):
+            pass
 
     qs = Listing.objects.all()
     if query:
@@ -79,6 +95,17 @@ def search_listings(request):
         qs = qs.filter(zip_code__iexact=zip_code)
     if state:
         qs = qs.filter(state__iexact=state)
+
+    if min_price:
+        try:
+            qs = qs.filter(price__gte=min_price)
+        except Exception:
+            pass
+    if max_price:
+        try:
+            qs = qs.filter(price__lte=max_price)
+        except Exception:
+            pass
 
     items = [{"obj": lst, "score": score_listing_v1(lst)} for lst in qs[:200]]
     if sort == "score":
@@ -106,7 +133,16 @@ def search_listings(request):
     return render(
         request,
         "search_listings.html",
-        {"items": items, "q": query, "zip": zip_code, "state": state, "sort": sort, "saved": saved},
+        {
+            "items": items,
+            "q": query,
+            "zip": zip_code,
+            "state": state,
+            "sort": sort,
+            "min_price": min_price or "",
+            "max_price": max_price or "",
+            "saved": saved,
+        },
     )
 
 

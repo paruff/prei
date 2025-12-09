@@ -6,6 +6,8 @@
     <label>Query <input type="text" name="q" value="{{ q }}" /></label>
     <label>ZIP <input type="text" name="zip" value="{{ zip }}" /></label>
     <label>State <input type="text" name="state" value="{{ state }}" /></label>
+    <label>Min Price <input type="number" name="min_price" value="{{ min_price }}" /></label>
+    <label>Max Price <input type="number" name="max_price" value="{{ max_price }}" /></label>
     <label>Sort
       <select name="sort">
         <option value="score" {% if sort == 'score' %}selected{% endif %}>Score</option>
@@ -26,7 +28,10 @@
   <h3>Saved Searches</h3>
   <ul>
     {% for s in saved %}
-      <li>{{ s.name }} — {{ s.state }} {{ s.zip_code }} (q={{ s.query }})</li>
+      <li>
+        {{ s.name }} — {{ s.state }} {{ s.zip_code }} (q={{ s.query }})
+        <a href="?saved_id={{ s.id }}&sort={{ sort }}" style="margin-left:0.5rem">Apply</a>
+      </li>
     {% empty %}
       <li>No saved searches yet.</li>
     {% endfor %}
