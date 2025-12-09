@@ -163,7 +163,9 @@ class TestAlertsAPI:
             "maxOpeningBid": "500000.00",
         }
 
-        response = authenticated_client.post("/api/v1/alerts", alert_data, format="json")
+        response = authenticated_client.post(
+            "/api/v1/alerts", alert_data, format="json"
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "California Auctions"
@@ -310,7 +312,9 @@ class TestNotificationsAPI:
         assert len(data["notifications"]) == 1
         assert data["notifications"][0]["title"] == "Read"
 
-    def test_mark_notification_read(self, authenticated_client, user, foreclosure_property):
+    def test_mark_notification_read(
+        self, authenticated_client, user, foreclosure_property
+    ):
         """Test marking notification as read."""
         notification = Notification.objects.create(
             user=user,
@@ -333,7 +337,9 @@ class TestNotificationsAPI:
         notification.refresh_from_db()
         assert notification.is_read is True
 
-    def test_dismiss_notification(self, authenticated_client, user, foreclosure_property):
+    def test_dismiss_notification(
+        self, authenticated_client, user, foreclosure_property
+    ):
         """Test dismissing notification."""
         notification = Notification.objects.create(
             user=user,

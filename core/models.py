@@ -351,9 +351,7 @@ class AuctionAlert(models.Model):
     )
 
     # Reminder settings
-    reminder_days_before = models.JSONField(
-        default=list, blank=True
-    )  # e.g., [7, 3, 1]
+    reminder_days_before = models.JSONField(default=list, blank=True)  # e.g., [7, 3, 1]
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -476,7 +474,9 @@ class Notification(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="notifications"
     )
-    notification_type = models.CharField(max_length=32, choices=NOTIFICATION_TYPE_CHOICES)
+    notification_type = models.CharField(
+        max_length=32, choices=NOTIFICATION_TYPE_CHOICES
+    )
     priority = models.CharField(
         max_length=16, choices=PRIORITY_CHOICES, default="medium"
     )

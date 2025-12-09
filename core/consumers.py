@@ -131,7 +131,9 @@ class AuctionConsumer(AsyncWebsocketConsumer):
                     "state": prop.state,
                     "zipCode": prop.zip_code,
                     "foreclosureStatus": prop.foreclosure_status,
-                    "auctionDate": prop.auction_date.isoformat() if prop.auction_date else None,
+                    "auctionDate": (
+                        prop.auction_date.isoformat() if prop.auction_date else None
+                    ),
                     "auctionTime": prop.auction_time,
                     "openingBid": float(prop.opening_bid) if prop.opening_bid else None,
                 }

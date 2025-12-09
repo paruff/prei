@@ -15,7 +15,10 @@ from core.models import ForeclosureProperty, UserWatchlist
 
 User = get_user_model()
 
-pytestmark = [pytest.mark.asyncio, pytest.mark.skip(reason="WebSocket tests require Redis server")]
+pytestmark = [
+    pytest.mark.asyncio,
+    pytest.mark.skip(reason="WebSocket tests require Redis server"),
+]
 
 
 @pytest.fixture
@@ -98,7 +101,9 @@ class TestAuctionConsumer:
 
         await communicator.disconnect()
 
-    async def test_subscribe_to_property(self, user, foreclosure_property, mock_channel_layer):
+    async def test_subscribe_to_property(
+        self, user, foreclosure_property, mock_channel_layer
+    ):
         """Test subscribing to a property via WebSocket."""
         communicator = WebsocketCommunicator(AuctionConsumer.as_asgi(), "/ws/auctions/")
         communicator.scope["user"] = user
@@ -130,12 +135,17 @@ class TestAuctionConsumer:
 
         await communicator.disconnect()
 
-    async def test_unsubscribe_from_property(self, user, foreclosure_property, mock_channel_layer):
+    async def test_unsubscribe_from_property(
+        self, user, foreclosure_property, mock_channel_layer
+    ):
         """Test unsubscribing from a property via WebSocket."""
+
         # Create watchlist entry first
         @database_sync_to_async
         def create_watchlist():
-            return UserWatchlist.objects.create(user=user, property=foreclosure_property)
+            return UserWatchlist.objects.create(
+                user=user, property=foreclosure_property
+            )
 
         await create_watchlist()
 
@@ -169,12 +179,17 @@ class TestAuctionConsumer:
 
         await communicator.disconnect()
 
-    async def test_initial_state_includes_watchlist(self, user, foreclosure_property, mock_channel_layer):
+    async def test_initial_state_includes_watchlist(
+        self, user, foreclosure_property, mock_channel_layer
+    ):
         """Test initial state includes user's watchlist."""
+
         # Create watchlist entry
         @database_sync_to_async
         def create_watchlist():
-            return UserWatchlist.objects.create(user=user, property=foreclosure_property)
+            return UserWatchlist.objects.create(
+                user=user, property=foreclosure_property
+            )
 
         await create_watchlist()
 

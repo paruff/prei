@@ -51,7 +51,9 @@ class TestAuctionMonitoring:
     """Test auction monitoring tasks."""
 
     @patch("core.tasks.get_channel_layer")
-    def test_broadcast_auction_update(self, mock_get_channel_layer, user, foreclosure_property):
+    def test_broadcast_auction_update(
+        self, mock_get_channel_layer, user, foreclosure_property
+    ):
         """Test broadcasting auction update to WebSocket clients."""
         # Create watchlist entry
         UserWatchlist.objects.create(user=user, property=foreclosure_property)
@@ -86,7 +88,7 @@ class TestAuctionMonitoring:
             mock_channel_layer = Mock()
             mock_channel_layer.group_send = AsyncMock()
             mock_get_channel_layer.return_value = mock_channel_layer
-            
+
             # Send reminder
             send_auction_reminder_notification(user, foreclosure_property, days=7)
 
@@ -113,7 +115,7 @@ class TestAuctionMonitoring:
             mock_channel_layer = Mock()
             mock_channel_layer.group_send = AsyncMock()
             mock_get_channel_layer.return_value = mock_channel_layer
-            
+
             # Try to send reminder
             send_auction_reminder_notification(user, foreclosure_property, days=3)
 
@@ -128,7 +130,7 @@ class TestAuctionMonitoring:
         mock_channel_layer = Mock()
         mock_channel_layer.group_send = AsyncMock()
         mock_get_channel_layer.return_value = mock_channel_layer
-        
+
         # Create auction exactly 7 days away
         auction_date = timezone.now() + timedelta(days=7)
         property_7_days = ForeclosureProperty.objects.create(

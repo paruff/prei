@@ -72,7 +72,9 @@ def check_auction_for_changes(auction: ForeclosureProperty) -> None:
         if days_until_auction in [7, 3, 1]:
             # Send reminder
             for watcher in watchers:
-                send_auction_reminder_notification(watcher.user, auction, days_until_auction)
+                send_auction_reminder_notification(
+                    watcher.user, auction, days_until_auction
+                )
 
 
 def broadcast_auction_update(property_id: int, changes: Dict[str, Any]) -> None:
@@ -102,7 +104,9 @@ def broadcast_auction_update(property_id: int, changes: Dict[str, Any]) -> None:
             },
         )
 
-    logger.info(f"Broadcast auction update for property {property_id} to {watchers.count()} users")
+    logger.info(
+        f"Broadcast auction update for property {property_id} to {watchers.count()} users"
+    )
 
 
 @shared_task(ignore_result=True)
@@ -146,7 +150,9 @@ def send_auction_reminders() -> None:
                         watcher.user, auction, hours=int(hours_until)
                     )
                 else:
-                    send_auction_reminder_notification(watcher.user, auction, days_until)
+                    send_auction_reminder_notification(
+                        watcher.user, auction, days_until
+                    )
 
     logger.info("Auction reminders task completed")
 
@@ -183,7 +189,9 @@ def send_auction_reminder_notification(
         data={
             "days_until": days,
             "hours_until": hours,
-            "auction_date": auction.auction_date.isoformat() if auction.auction_date else None,
+            "auction_date": (
+                auction.auction_date.isoformat() if auction.auction_date else None
+            ),
         },
     )
 
@@ -209,7 +217,9 @@ def send_auction_reminder_notification(
         },
     )
 
-    logger.info(f"Sent reminder notification to {user.username} for property {auction.id}")
+    logger.info(
+        f"Sent reminder notification to {user.username} for property {auction.id}"
+    )
 
 
 @shared_task(ignore_result=True)
@@ -234,7 +244,9 @@ def check_new_auctions_for_alerts() -> None:
                 send_alert_notification(alert.user, auction, alert)
 
 
-def send_alert_notification(user, auction: ForeclosureProperty, alert: AuctionAlert) -> None:
+def send_alert_notification(
+    user, auction: ForeclosureProperty, alert: AuctionAlert
+) -> None:
     """Send notification for alert match."""
     notification = Notification.objects.create(
         user=user,

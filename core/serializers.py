@@ -294,7 +294,9 @@ class AuctionAlertSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    radiusMiles = serializers.IntegerField(source="radius_miles", required=False, allow_null=True)
+    radiusMiles = serializers.IntegerField(
+        source="radius_miles", required=False, allow_null=True
+    )
     centerLatitude = serializers.DecimalField(
         source="center_latitude",
         max_digits=9,
@@ -343,8 +345,12 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
     notifySms = serializers.BooleanField(source="notify_sms")
     notifyPush = serializers.BooleanField(source="notify_push")
     notifyInApp = serializers.BooleanField(source="notify_in_app")
-    quietHoursStart = serializers.TimeField(source="quiet_hours_start", required=False, allow_null=True)
-    quietHoursEnd = serializers.TimeField(source="quiet_hours_end", required=False, allow_null=True)
+    quietHoursStart = serializers.TimeField(
+        source="quiet_hours_start", required=False, allow_null=True
+    )
+    quietHoursEnd = serializers.TimeField(
+        source="quiet_hours_end", required=False, allow_null=True
+    )
     deviceTokens = serializers.JSONField(source="device_tokens", required=False)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
     updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
@@ -370,11 +376,17 @@ class NotificationSerializer(serializers.ModelSerializer):
     """Serializer for Notification model."""
 
     notificationType = serializers.CharField(source="notification_type")
-    propertyId = serializers.CharField(source="property.property_id", read_only=True, allow_null=True)
+    propertyId = serializers.CharField(
+        source="property.property_id", read_only=True, allow_null=True
+    )
     isRead = serializers.BooleanField(source="is_read", read_only=True)
     isDismissed = serializers.BooleanField(source="is_dismissed", read_only=True)
-    readAt = serializers.DateTimeField(source="read_at", read_only=True, allow_null=True)
-    dismissedAt = serializers.DateTimeField(source="dismissed_at", read_only=True, allow_null=True)
+    readAt = serializers.DateTimeField(
+        source="read_at", read_only=True, allow_null=True
+    )
+    dismissedAt = serializers.DateTimeField(
+        source="dismissed_at", read_only=True, allow_null=True
+    )
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:

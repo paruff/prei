@@ -1048,7 +1048,9 @@ def notifications_view(request):
         notifications = notifications.filter(is_read=is_read.lower() == "true")
 
     if is_dismissed is not None:
-        notifications = notifications.filter(is_dismissed=is_dismissed.lower() == "true")
+        notifications = notifications.filter(
+            is_dismissed=is_dismissed.lower() == "true"
+        )
 
     serializer = NotificationSerializer(notifications, many=True)
     return Response({"notifications": serializer.data}, status=status.HTTP_200_OK)
@@ -1119,7 +1121,9 @@ def notification_preferences_view(request):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     elif request.method == "PUT":
-        serializer = NotificationPreferenceSerializer(prefs, data=request.data, partial=True)
+        serializer = NotificationPreferenceSerializer(
+            prefs, data=request.data, partial=True
+        )
 
         if not serializer.is_valid():
             return Response(
