@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Analyze Property{% endblock %}
+{% block content %}
+  <h1>Analyze Property</h1>
+  {% if error %}
+    <p style="color:red">{{ error }}</p>
+  {% else %}
+    <h2>{{ property }}</h2>
+    <h3>Financial KPIs</h3>
+    <ul>
+      <li>NOI: ${{ analysis.noi }}</li>
+      <li>Cap Rate: {{ analysis.cap_rate|floatformat:4 }}</li>
+      <li>Cash-on-Cash: {{ analysis.cash_on_cash|floatformat:4 }}</li>
+      <li>IRR: {{ analysis.irr|floatformat:4 }}</li>
+      <li>DSCR: {{ analysis.dscr|floatformat:4 }}</li>
+    </ul>
+
+    <h3>Carry Costs (Placeholder)</h3>
+    <table>
+      <thead>
+        <tr><th>Category</th><th>Monthly</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Taxes</td><td>${{ carry_costs.taxes }}</td></tr>
+        <tr><td>Insurance</td><td>${{ carry_costs.insurance }}</td></tr>
+        <tr><td>Maintenance</td><td>${{ carry_costs.maintenance }}</td></tr>
+        <tr><td>Management Fees</td><td>${{ carry_costs.management_fees }}</td></tr>
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

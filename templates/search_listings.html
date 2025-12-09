@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Find Properties{% endblock %}
+{% block content %}
+  <h1>Find Properties</h1>
+  <form method="get" style="margin-bottom:1rem">
+    <label>Query <input type="text" name="q" value="{{ q }}" /></label>
+    <label>ZIP <input type="text" name="zip" value="{{ zip }}" /></label>
+    <label>State <input type="text" name="state" value="{{ state }}" /></label>
+    <button type="submit">Search</button>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Address</th>
+        <th>City</th>
+        <th>State</th>
+        <th>ZIP</th>
+        <th>Price</th>
+        <th>Beds</th>
+        <th>Baths</th>
+        <th>Sq Ft</th>
+        <th>Score (V1)</th>
+        <th>Link</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td>{{ item.obj.address }}</td>
+          <td>{{ item.obj.city }}</td>
+          <td>{{ item.obj.state }}</td>
+          <td>{{ item.obj.zip_code }}</td>
+          <td>${{ item.obj.price }}</td>
+          <td>{{ item.obj.beds }}</td>
+          <td>{{ item.obj.baths }}</td>
+          <td>{{ item.obj.sq_ft }}</td>
+          <td>{{ item.score|floatformat:2 }}</td>
+          <td><a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="10">No results.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
