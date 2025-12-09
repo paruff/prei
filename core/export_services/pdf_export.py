@@ -266,44 +266,48 @@ class PDFExportService:
                 Paragraph("Cash Flow Analysis", self.styles["SectionHeader"])
             )
 
-            # Generate chart
+            # Generate chart with proper cleanup
             fig, ax = plt.subplots(figsize=(6, 4))
+            try:
+                cash_flow = analysis["cashFlow"]
+                if "monthly" in cash_flow:
+                    monthly = cash_flow["monthly"]
+                    categories = []
+                    values = []
 
-            cash_flow = analysis["cashFlow"]
-            if "monthly" in cash_flow:
-                monthly = cash_flow["monthly"]
-                categories = []
-                values = []
+                    # Add key cash flow items
+                    items = [
+                        ("grossRentalIncome", "Gross Rental Income"),
+                        ("operatingExpenses", "Operating Expenses"),
+                        ("debtService", "Debt Service"),
+                        ("netCashFlow", "Net Cash Flow"),
+                    ]
 
-                # Add key cash flow items
-                items = [
-                    ("grossRentalIncome", "Gross Rental Income"),
-                    ("operatingExpenses", "Operating Expenses"),
-                    ("debtService", "Debt Service"),
-                    ("netCashFlow", "Net Cash Flow"),
-                ]
+                    for key, label in items:
+                        if key in monthly:
+                            categories.append(label)
+                            values.append(monthly[key])
 
-                for key, label in items:
-                    if key in monthly:
-                        categories.append(label)
-                        values.append(monthly[key])
+                    if categories and values:
+                        ax.bar(categories, values, color="#2563eb")
+                        ax.set_ylabel("Monthly Amount ($)")
+                        ax.set_title("Monthly Cash Flow Breakdown")
+                        ax.grid(axis="y", alpha=0.3)
+                        plt.xticks(rotation=45, ha="right")
 
-                if categories and values:
-                    ax.bar(categories, values, color="#2563eb")
-                    ax.set_ylabel("Monthly Amount ($)")
-                    ax.set_title("Monthly Cash Flow Breakdown")
-                    ax.grid(axis="y", alpha=0.3)
-                    plt.xticks(rotation=45, ha="right")
+                        # Save chart to buffer
+                        img_buffer = io.BytesIO()
+                        plt.savefig(
+                            img_buffer, format="png", dpi=150, bbox_inches="tight"
+                        )
+                        img_buffer.seek(0)
 
-                    # Save chart to buffer
-                    img_buffer = io.BytesIO()
-                    plt.savefig(img_buffer, format="png", dpi=150, bbox_inches="tight")
-                    img_buffer.seek(0)
-                    plt.close()
-
-                    # Add chart to PDF
-                    chart_img = Image(img_buffer, width=6 * inch, height=4 * inch)
-                    elements.append(chart_img)
+                        # Add chart to PDF
+                        chart_img = Image(img_buffer, width=6 * inch, height=4 * inch)
+                        elements.append(chart_img)
+            finally:
+                # Always close the figure explicitly
+                plt.close(fig)
 
         return elements
 
