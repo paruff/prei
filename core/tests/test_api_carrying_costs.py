@@ -288,7 +288,9 @@ def test_calculate_carrying_costs_positive_cash_flow(client):
     # Should have recommendations
     assert "recommendations" in data
     recommendations = data["recommendations"]
-    
+
     # Should have at least some recommendations (could be strong_investment or others)
     # The specific recommendation depends on the CoC return percentage
-    assert len(recommendations) >= 0  # May or may not have recommendations depending on metrics
+    assert (
+        len(recommendations) >= 0
+    )  # May or may not have recommendations depending on metrics
