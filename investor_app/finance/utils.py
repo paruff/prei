@@ -336,18 +336,20 @@ def calculate_principal_paydown(
         return monthly_principal * Decimal(num_years * 12)
 
     monthly_rate = rate / Decimal(100) / Decimal(12)
-    monthly_payment = calculate_monthly_mortgage(loan_amount, interest_rate, loan_term_years)
+    monthly_payment = calculate_monthly_mortgage(
+        loan_amount, interest_rate, loan_term_years
+    )
 
     # Calculate principal paid by simulating each payment
     remaining_balance = loan_amt
     total_principal_paid = Decimal("0")
-    
+
     for month in range(num_years * 12):
         interest_payment = remaining_balance * monthly_rate
         principal_payment = monthly_payment - interest_payment
         total_principal_paid += principal_payment
         remaining_balance -= principal_payment
-        
+
         if remaining_balance <= 0:
             break
 
@@ -411,13 +413,17 @@ def calculate_tax_benefits(
     loan_amt = to_decimal(loan_amount)
     rate = to_decimal(interest_rate)
     monthly_rate = rate / Decimal(100) / Decimal(12)
-    monthly_payment = calculate_monthly_mortgage(loan_amount, interest_rate, loan_term_years)
+    monthly_payment = calculate_monthly_mortgage(
+        loan_amount, interest_rate, loan_term_years
+    )
 
     # Calculate remaining balance at start of year
     payments_before = (year_num - 1) * 12
     if payments_before > 0:
         num_payments = loan_term_years * 12
-        remaining_factor = (Decimal(1) + monthly_rate) ** Decimal(num_payments - payments_before)
+        remaining_factor = (Decimal(1) + monthly_rate) ** Decimal(
+            num_payments - payments_before
+        )
         payment_factor = (Decimal(1) + monthly_rate) ** Decimal(num_payments)
         balance_start = loan_amt * (
             (remaining_factor - Decimal(1)) / (payment_factor - Decimal(1))
@@ -487,49 +493,65 @@ def calculate_roi_components(
     )
 
     year1_total_return = (
-        year1_cash_flow + year1_principal_paydown + year1_appreciation + year1_tax_benefits
+        year1_cash_flow
+        + year1_principal_paydown
+        + year1_appreciation
+        + year1_tax_benefits
     )
 
     if total_cash_invested > 0:
-        year1_roi = (year1_total_return / to_decimal(total_cash_invested) * Decimal(100))
+        year1_roi = year1_total_return / to_decimal(total_cash_invested) * Decimal(100)
     else:
         year1_roi = Decimal("0")
 
     # Multi-year calculations
-    total_cash_flow = year1_cash_flow * Decimal(num_years)  # Simplified: assumes constant
+    total_cash_flow = year1_cash_flow * Decimal(
+        num_years
+    )  # Simplified: assumes constant
     total_principal_paydown = calculate_principal_paydown(
         loan_amount, interest_rate, loan_term_years, num_years
     )
-    total_appreciation = calculate_appreciation(purchase_price, appreciation_rate, num_years)
-    
+    total_appreciation = calculate_appreciation(
+        purchase_price, appreciation_rate, num_years
+    )
+
     # Sum tax benefits for each year
     total_tax_benefits = Decimal("0")
     for year in range(1, num_years + 1):
         total_tax_benefits += calculate_tax_benefits(
-            loan_amount, interest_rate, loan_term_years, purchase_price, tax_bracket, year
+            loan_amount,
+            interest_rate,
+            loan_term_years,
+            purchase_price,
+            tax_bracket,
+            year,
         )
 
     total_return = (
-        total_cash_flow + total_principal_paydown + total_appreciation + total_tax_benefits
+        total_cash_flow
+        + total_principal_paydown
+        + total_appreciation
+        + total_tax_benefits
     )
 
     if total_cash_invested > 0:
-        multi_year_roi = (total_return / to_decimal(total_cash_invested) * Decimal(100))
+        multi_year_roi = total_return / to_decimal(total_cash_invested) * Decimal(100)
         # Annualized return
         annualized_roi = (
-            ((Decimal(1) + multi_year_roi / Decimal(100)) ** (Decimal(1) / Decimal(num_years)) - Decimal(1))
-            * Decimal(100)
-        )
+            (Decimal(1) + multi_year_roi / Decimal(100))
+            ** (Decimal(1) / Decimal(num_years))
+            - Decimal(1)
+        ) * Decimal(100)
     else:
         multi_year_roi = Decimal("0")
         annualized_roi = Decimal("0")
 
     # Component percentages for year 1
     if year1_total_return > 0:
-        cash_flow_pct = (year1_cash_flow / year1_total_return * Decimal(100))
-        appreciation_pct = (year1_appreciation / year1_total_return * Decimal(100))
-        equity_pct = (year1_principal_paydown / year1_total_return * Decimal(100))
-        tax_pct = (year1_tax_benefits / year1_total_return * Decimal(100))
+        cash_flow_pct = year1_cash_flow / year1_total_return * Decimal(100)
+        appreciation_pct = year1_appreciation / year1_total_return * Decimal(100)
+        equity_pct = year1_principal_paydown / year1_total_return * Decimal(100)
+        tax_pct = year1_tax_benefits / year1_total_return * Decimal(100)
     else:
         cash_flow_pct = appreciation_pct = equity_pct = tax_pct = Decimal("0")
 
@@ -632,10 +654,12 @@ def calculate_flip_strategy(
         Dictionary with flip strategy analysis
     """
     # Calculate holding costs for the period
-    monthly_mortgage = calculate_monthly_mortgage(loan_amount, interest_rate, loan_term_years)
+    monthly_mortgage = calculate_monthly_mortgage(
+        loan_amount, interest_rate, loan_term_years
+    )
     annual_property_tax = calculate_property_tax(purchase_price, property_tax_rate)
     monthly_property_tax = annual_property_tax / Decimal(12)
-    
+
     if insurance_annual is None:
         annual_insurance = estimate_insurance(purchase_price, property_type, year_built)
     else:
@@ -643,9 +667,12 @@ def calculate_flip_strategy(
     monthly_insurance = annual_insurance / Decimal(12)
 
     monthly_holding_costs = (
-        monthly_mortgage + monthly_property_tax + monthly_insurance + to_decimal(utilities_monthly)
+        monthly_mortgage
+        + monthly_property_tax
+        + monthly_insurance
+        + to_decimal(utilities_monthly)
     )
-    
+
     total_holding_costs = monthly_holding_costs * Decimal(holding_period_months)
 
     # Total investment
@@ -658,31 +685,28 @@ def calculate_flip_strategy(
     # Calculate proceeds
     gross_sale_proceeds = to_decimal(expected_sale_price)
     net_sale_proceeds = gross_sale_proceeds - to_decimal(selling_costs)
-    
+
     # Remaining loan balance after holding period
     principal_paid = calculate_principal_paydown(
         loan_amount, interest_rate, loan_term_years, holding_period_months // 12
     )
     remaining_loan = to_decimal(loan_amount) - principal_paid
-    
+
     # Net profit
     net_profit = (
-        net_sale_proceeds
-        - remaining_loan
-        - total_holding_costs
-        - total_investment
+        net_sale_proceeds - remaining_loan - total_holding_costs - total_investment
     )
 
     # ROI
     if total_investment > 0:
-        roi_percent = (net_profit / total_investment * Decimal(100))
+        roi_percent = net_profit / total_investment * Decimal(100)
         # Annualized return
         years = Decimal(holding_period_months) / Decimal(12)
         if years > 0 and roi_percent > Decimal("-100"):
             annualized_return = (
-                ((Decimal(1) + roi_percent / Decimal(100)) ** (Decimal(1) / years) - Decimal(1))
-                * Decimal(100)
-            )
+                (Decimal(1) + roi_percent / Decimal(100)) ** (Decimal(1) / years)
+                - Decimal(1)
+            ) * Decimal(100)
         else:
             annualized_return = Decimal("0")
     else:
@@ -749,11 +773,12 @@ def calculate_rental_strategy(
 
     # ROI
     if total_investment > 0:
-        roi_percent = (total_gain / total_investment * Decimal(100))
+        roi_percent = total_gain / total_investment * Decimal(100)
         annualized_return = (
-            ((Decimal(1) + roi_percent / Decimal(100)) ** (Decimal(1) / Decimal(holding_period_years)) - Decimal(1))
-            * Decimal(100)
-        )
+            (Decimal(1) + roi_percent / Decimal(100))
+            ** (Decimal(1) / Decimal(holding_period_years))
+            - Decimal(1)
+        ) * Decimal(100)
     else:
         roi_percent = Decimal("0")
         annualized_return = Decimal("0")
@@ -761,10 +786,18 @@ def calculate_rental_strategy(
     return {
         "totalInvestment": total_investment.quantize(Decimal("0.01")),
         "year1CashFlow": to_decimal(annual_cash_flow).quantize(Decimal("0.01")),
-        f"year{holding_period_years}CashFlow": to_decimal(annual_cash_flow).quantize(Decimal("0.01")),  # Simplified
-        f"totalCashFlow{holding_period_years}Years": total_cash_flow.quantize(Decimal("0.01")),
-        f"equityBuildup{holding_period_years}Years": equity_buildup.quantize(Decimal("0.01")),
-        f"appreciation{holding_period_years}Years": appreciation.quantize(Decimal("0.01")),
+        f"year{holding_period_years}CashFlow": to_decimal(annual_cash_flow).quantize(
+            Decimal("0.01")
+        ),  # Simplified
+        f"totalCashFlow{holding_period_years}Years": total_cash_flow.quantize(
+            Decimal("0.01")
+        ),
+        f"equityBuildup{holding_period_years}Years": equity_buildup.quantize(
+            Decimal("0.01")
+        ),
+        f"appreciation{holding_period_years}Years": appreciation.quantize(
+            Decimal("0.01")
+        ),
         f"totalGain{holding_period_years}Years": total_gain.quantize(Decimal("0.01")),
         "roi": roi_percent.quantize(Decimal("0.1")),
         "timeframe": f"{holding_period_years} years",
@@ -808,56 +841,64 @@ def calculate_vacation_rental_strategy(
     # Calculate annual income
     nights_per_year = Decimal(365)
     occupied_nights = nights_per_year * to_decimal(avg_occupancy_rate) / Decimal(100)
-    
+
     # Assume average stay is 3 nights
     avg_stay_length = Decimal(3)
     num_stays = occupied_nights / avg_stay_length
-    
-    annual_rental_income = (
-        occupied_nights * to_decimal(avg_nightly_rate)
-        + num_stays * to_decimal(cleaning_fee_per_stay)
-    )
-    
+
+    annual_rental_income = occupied_nights * to_decimal(
+        avg_nightly_rate
+    ) + num_stays * to_decimal(cleaning_fee_per_stay)
+
     # Annual expenses
-    monthly_mortgage = calculate_monthly_mortgage(loan_amount, interest_rate, loan_term_years)
+    monthly_mortgage = calculate_monthly_mortgage(
+        loan_amount, interest_rate, loan_term_years
+    )
     annual_debt_service = monthly_mortgage * Decimal(12)
     annual_operating_expenses = to_decimal(monthly_operating_expenses) * Decimal(12)
-    
+
     # Cash flow
-    annual_cash_flow = annual_rental_income - annual_debt_service - annual_operating_expenses
-    
+    annual_cash_flow = (
+        annual_rental_income - annual_debt_service - annual_operating_expenses
+    )
+
     # Calculate year 1 CoC
     if total_investment > 0:
-        coc_return = (annual_cash_flow / total_investment * Decimal(100))
+        coc_return = annual_cash_flow / total_investment * Decimal(100)
     else:
         coc_return = Decimal("0")
 
     # 5-year projection (simplified)
     total_cash_flow = annual_cash_flow * Decimal(holding_period_years)
-    
+
     # Equity buildup
     equity_buildup = calculate_principal_paydown(
         loan_amount, interest_rate, loan_term_years, holding_period_years
     )
-    
+
     # Appreciation (3% default)
-    appreciation = calculate_appreciation(purchase_price, Decimal("3.0"), holding_period_years)
-    
+    appreciation = calculate_appreciation(
+        purchase_price, Decimal("3.0"), holding_period_years
+    )
+
     total_gain = total_cash_flow + equity_buildup + appreciation
-    
+
     if total_investment > 0:
-        roi_percent = (total_gain / total_investment * Decimal(100))
+        roi_percent = total_gain / total_investment * Decimal(100)
         annualized_return = (
-            ((Decimal(1) + roi_percent / Decimal(100)) ** (Decimal(1) / Decimal(holding_period_years)) - Decimal(1))
-            * Decimal(100)
-        )
+            (Decimal(1) + roi_percent / Decimal(100))
+            ** (Decimal(1) / Decimal(holding_period_years))
+            - Decimal(1)
+        ) * Decimal(100)
     else:
         roi_percent = Decimal("0")
         annualized_return = Decimal("0")
 
     return {
         "totalInvestment": total_investment.quantize(Decimal("0.01")),
-        "avgMonthlyIncome": (annual_rental_income / Decimal(12)).quantize(Decimal("0.01")),
+        "avgMonthlyIncome": (annual_rental_income / Decimal(12)).quantize(
+            Decimal("0.01")
+        ),
         "avgMonthlyExpenses": (
             (annual_debt_service + annual_operating_expenses) / Decimal(12)
         ).quantize(Decimal("0.01")),
@@ -866,5 +907,9 @@ def calculate_vacation_rental_strategy(
         "roi": roi_percent.quantize(Decimal("0.1")),
         "timeframe": f"{holding_period_years} years",
         "annualizedReturn": annualized_return.quantize(Decimal("0.1")),
-        "seasonalityImpact": "High - Occupancy varies by season" if avg_occupancy_rate < 75 else "Moderate",
+        "seasonalityImpact": (
+            "High - Occupancy varies by season"
+            if avg_occupancy_rate < 75
+            else "Moderate"
+        ),
     }

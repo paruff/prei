@@ -411,10 +411,16 @@ class NotificationSerializer(serializers.ModelSerializer):
 class FlipStrategyAssumptionsSerializer(serializers.Serializer):
     """Serializer for flip strategy assumptions."""
 
-    renovationCosts = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
+    renovationCosts = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0
+    )
     holdingPeriodMonths = serializers.IntegerField(min_value=1, max_value=24)
-    expectedSalePrice = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
-    sellingCosts = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
+    expectedSalePrice = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0
+    )
+    sellingCosts = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0
+    )
 
 
 class RentalStrategyAssumptionsSerializer(serializers.Serializer):
@@ -430,7 +436,9 @@ class RentalStrategyAssumptionsSerializer(serializers.Serializer):
 class VacationRentalStrategyAssumptionsSerializer(serializers.Serializer):
     """Serializer for vacation rental strategy assumptions."""
 
-    avgNightlyRate = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
+    avgNightlyRate = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0
+    )
     avgOccupancyRate = serializers.DecimalField(
         max_digits=5, decimal_places=2, min_value=0, max_value=100
     )
@@ -454,20 +462,20 @@ class StrategyComparisonRequestSerializer(serializers.Serializer):
     def validate_assumptions(self, value):
         """Validate that assumptions match selected strategies."""
         strategies = self.initial_data.get("strategies", [])
-        
+
         if "flip" in strategies and "flip" not in value:
             raise serializers.ValidationError(
                 "Flip strategy selected but no flip assumptions provided"
             )
-        
+
         if "rental" in strategies and "rental" not in value:
             raise serializers.ValidationError(
                 "Rental strategy selected but no rental assumptions provided"
             )
-        
+
         if "vacation_rental" in strategies and "vacation_rental" not in value:
             raise serializers.ValidationError(
                 "Vacation rental strategy selected but no vacation_rental assumptions provided"
             )
-        
+
         return value

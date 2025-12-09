@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
+from typing import Any, Dict
 
 from django.conf import settings
 from django.core.cache import cache
@@ -487,6 +488,58 @@ def foreclosures_list(request):
         )
 
 
+def get_property_type_defaults(
+    property_type: str, purchase_price: Decimal
+) -> Dict[str, Any]:
+    """Get default values based on property type.
+
+    Args:
+        property_type: Type of property (single-family, condo, multi-family, commercial)
+        purchase_price: Property purchase price
+
+    Returns:
+        Dictionary with default values for the property type
+    """
+    defaults = {
+        "single-family": {
+            "hoaMonthly": Decimal("0"),
+            "utilitiesMonthly": Decimal("200"),  # Standard utilities
+            "maintenanceAnnualPercent": Decimal("1.0"),  # 1% rule
+            "propertyManagementPercent": Decimal("10"),  # Standard 10%
+            "vacancyRatePercent": Decimal("8"),  # Industry average
+            "description": "Single-family home with standard utilities and lawn/exterior maintenance",
+        },
+        "condo": {
+            "hoaMonthly": Decimal(
+                str(purchase_price * Decimal("0.0003"))
+            ),  # ~0.03% of value per month
+            "utilitiesMonthly": Decimal("150"),  # Lower utilities (no yard)
+            "maintenanceAnnualPercent": Decimal("0.5"),  # Lower (HOA covers exterior)
+            "propertyManagementPercent": Decimal("10"),
+            "vacancyRatePercent": Decimal("8"),
+            "description": "Condo with HOA fees covering exterior maintenance and some utilities",
+        },
+        "multi-family": {
+            "hoaMonthly": Decimal("0"),
+            "utilitiesMonthly": Decimal("300"),  # Per-unit utilities higher
+            "maintenanceAnnualPercent": Decimal("1.5"),  # Higher maintenance
+            "propertyManagementPercent": Decimal("12"),  # Higher management fees
+            "vacancyRatePercent": Decimal("10"),  # Slightly higher vacancy
+            "description": "Multi-family property with higher management fees and maintenance reserves",
+        },
+        "commercial": {
+            "hoaMonthly": Decimal("0"),
+            "utilitiesMonthly": Decimal("400"),  # Higher commercial utilities
+            "maintenanceAnnualPercent": Decimal("2.0"),  # Higher for commercial
+            "propertyManagementPercent": Decimal("8"),  # Professional management
+            "vacancyRatePercent": Decimal("12"),  # Higher commercial vacancy
+            "description": "Commercial property with triple-net lease adjustments possible",
+        },
+    }
+
+    return defaults.get(property_type, defaults["single-family"])
+
+
 @api_view(["POST"])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def calculate_carrying_costs(request):
@@ -821,24 +874,40 @@ def calculate_carrying_costs(request):
                 "year5Annualized": float(roi_data["year5Projected"]["annualizedRoi"]),
                 "components": {
                     "cashFlowReturn": float(roi_data["components"]["cashFlowReturn"]),
-                    "appreciationReturn": float(roi_data["components"]["appreciationReturn"]),
-                    "equityBuildupReturn": float(roi_data["components"]["equityBuildupReturn"]),
-                    "taxBenefitsReturn": float(roi_data["components"]["taxBenefitsReturn"]),
+                    "appreciationReturn": float(
+                        roi_data["components"]["appreciationReturn"]
+                    ),
+                    "equityBuildupReturn": float(
+                        roi_data["components"]["equityBuildupReturn"]
+                    ),
+                    "taxBenefitsReturn": float(
+                        roi_data["components"]["taxBenefitsReturn"]
+                    ),
                 },
                 "breakdown": {
                     "year1": {
                         "totalReturn": float(roi_data["year1"]["totalReturn"]),
                         "cashFlow": float(roi_data["year1"]["cashFlow"]),
-                        "principalPaydown": float(roi_data["year1"]["principalPaydown"]),
+                        "principalPaydown": float(
+                            roi_data["year1"]["principalPaydown"]
+                        ),
                         "appreciation": float(roi_data["year1"]["appreciation"]),
                         "taxBenefits": float(roi_data["year1"]["taxBenefits"]),
                     },
                     "year5": {
                         "totalReturn": float(roi_data["year5Projected"]["totalReturn"]),
-                        "totalCashFlow": float(roi_data["year5Projected"]["totalCashFlow"]),
-                        "totalPrincipalPaydown": float(roi_data["year5Projected"]["totalPrincipalPaydown"]),
-                        "totalAppreciation": float(roi_data["year5Projected"]["totalAppreciation"]),
-                        "totalTaxBenefits": float(roi_data["year5Projected"]["totalTaxBenefits"]),
+                        "totalCashFlow": float(
+                            roi_data["year5Projected"]["totalCashFlow"]
+                        ),
+                        "totalPrincipalPaydown": float(
+                            roi_data["year5Projected"]["totalPrincipalPaydown"]
+                        ),
+                        "totalAppreciation": float(
+                            roi_data["year5Projected"]["totalAppreciation"]
+                        ),
+                        "totalTaxBenefits": float(
+                            roi_data["year5Projected"]["totalTaxBenefits"]
+                        ),
                     },
                 },
             },
@@ -878,6 +947,82 @@ def calculate_carrying_costs(request):
                 }
             )
 
+        # Generate recommendations
+        recommendations = []
+
+        # Recommendation: Increase down payment if negative cash flow
+        if net_cash_flow_monthly < 0:
+            # Calculate required down payment for positive cash flow
+            # Need to reduce monthly mortgage payment
+            monthly_shortfall = abs(net_cash_flow_monthly)
+
+            # Estimate loan amount reduction needed (simplified)
+            # Using rough approximation: $1000 loan reduction ~ $7 monthly payment reduction
+            estimated_loan_reduction = monthly_shortfall * Decimal(
+                140
+            )  # Rough multiplier
+            new_down_payment = down_payment + estimated_loan_reduction
+
+            down_payment_pct = new_down_payment / purchase_price * Decimal(100)
+
+            if down_payment_pct <= Decimal(50):  # Only suggest if reasonable
+                recommendations.append(
+                    {
+                        "type": "increase_down_payment",
+                        "description": f"Increase down payment to {float(down_payment_pct):.0f}% (${float(new_down_payment):,.0f}) to reduce monthly debt service and improve cash flow",
+                        "estimatedImpact": "Monthly cash flow would improve to approximately $0",
+                    }
+                )
+
+        # Recommendation: Consider different strategy if flip would be better
+        if net_cash_flow_monthly < 0 and break_even["monthly"] > monthly_rent * Decimal(
+            "1.2"
+        ):
+            # Property struggling as rental - suggest flip
+            recommendations.append(
+                {
+                    "type": "consider_flip_strategy",
+                    "description": "Property may be better suited for fix-and-flip given negative rental cash flow and high break-even rent",
+                    "estimatedImpact": "Consider renovation and quick sale to capture appreciation",
+                }
+            )
+
+        # Recommendation: Refinance if DSCR is low but cash flow is positive
+        if dscr_ratio < 1.25 and net_cash_flow_monthly > 0 and loan_amount > 0:
+            recommendations.append(
+                {
+                    "type": "improve_dscr",
+                    "description": "Consider refinancing to improve DSCR for future lending opportunities",
+                    "estimatedImpact": "Increase rent or reduce operating expenses to achieve DSCR > 1.25",
+                }
+            )
+
+        # Recommendation: Good investment if positive cash flow and good metrics
+        if net_cash_flow_monthly > 0 and coc_return_percent > 8:
+            recommendations.append(
+                {
+                    "type": "strong_investment",
+                    "description": "Property shows strong fundamentals with positive cash flow and good CoC return",
+                    "estimatedImpact": f"Annual cash flow of ${float(net_cash_flow_annual):,.0f} with {coc_return_percent:.1f}% CoC return",
+                }
+            )
+
+        # Recommendation: Consider vacation rental for certain property types
+        if (
+            property_type in ["condo", "single-family"]
+            and "location" in property_details
+        ):
+            location = property_details["location"]
+            # Check if in potential vacation rental area (simplified - just check FL for demo)
+            if location.get("state") == "FL":
+                recommendations.append(
+                    {
+                        "type": "consider_vacation_rental",
+                        "description": "Property location may be suitable for vacation rental strategy with potentially higher income",
+                        "estimatedImpact": "Vacation rentals can generate 20-50% more income than traditional rentals in tourist areas",
+                    }
+                )
+
         # Build response
         # Convert Decimal to float for JSON serialization
         carrying_costs_output = {
@@ -900,6 +1045,7 @@ def calculate_carrying_costs(request):
             "cashFlow": cash_flow,
             "investmentMetrics": investment_metrics,
             "warnings": warnings,
+            "recommendations": recommendations,
             "calculationTimestamp": timezone.now().isoformat(),
         }
 
@@ -1548,12 +1694,18 @@ def compare_investment_strategies(request):
         # Calculate flip strategy
         if "flip" in strategies:
             flip_assumptions = assumptions.get("flip", {})
-            
+
             flip_result = calculate_flip_strategy(
                 purchase_price=purchase_price,
-                renovation_costs=Decimal(str(flip_assumptions.get("renovationCosts", 0))),
-                holding_period_months=int(flip_assumptions.get("holdingPeriodMonths", 6)),
-                expected_sale_price=Decimal(str(flip_assumptions.get("expectedSalePrice", purchase_price))),
+                renovation_costs=Decimal(
+                    str(flip_assumptions.get("renovationCosts", 0))
+                ),
+                holding_period_months=int(
+                    flip_assumptions.get("holdingPeriodMonths", 6)
+                ),
+                expected_sale_price=Decimal(
+                    str(flip_assumptions.get("expectedSalePrice", purchase_price))
+                ),
                 selling_costs=Decimal(str(flip_assumptions.get("sellingCosts", 0))),
                 down_payment=down_payment,
                 loan_amount=loan_amount,
@@ -1567,19 +1719,28 @@ def compare_investment_strategies(request):
                 year_built=year_built,
             )
 
-            results["flip"] = {k: float(v) if isinstance(v, Decimal) else v for k, v in flip_result.items()}
+            results["flip"] = {
+                k: float(v) if isinstance(v, Decimal) else v
+                for k, v in flip_result.items()
+            }
 
         # Calculate rental strategy
         if "rental" in strategies:
             rental_assumptions = assumptions.get("rental", {})
             monthly_rent = Decimal(str(rental_assumptions.get("monthlyRent", 0)))
             holding_period_years = int(rental_assumptions.get("holdingPeriodYears", 5))
-            appreciation_rate = Decimal(str(rental_assumptions.get("appreciationRate", 3.0)))
+            appreciation_rate = Decimal(
+                str(rental_assumptions.get("appreciationRate", 3.0))
+            )
 
             # Calculate annual cash flow
-            monthly_property_management = monthly_rent * property_management_percent / Decimal(100)
-            monthly_total = carrying_costs["monthly"]["total"] + monthly_property_management
-            
+            monthly_property_management = (
+                monthly_rent * property_management_percent / Decimal(100)
+            )
+            monthly_total = (
+                carrying_costs["monthly"]["total"] + monthly_property_management
+            )
+
             gross_income = monthly_rent
             vacancy_loss = gross_income * vacancy_rate_percent / Decimal(100)
             effective_income = gross_income - vacancy_loss
@@ -1597,14 +1758,19 @@ def compare_investment_strategies(request):
                 holding_period_years=holding_period_years,
             )
 
-            results["rental"] = {k: float(v) if isinstance(v, Decimal) else v for k, v in rental_result.items()}
+            results["rental"] = {
+                k: float(v) if isinstance(v, Decimal) else v
+                for k, v in rental_result.items()
+            }
 
         # Calculate vacation rental strategy
         if "vacation_rental" in strategies:
             vr_assumptions = assumptions.get("vacation_rental", {})
-            
+
             avg_nightly_rate = Decimal(str(vr_assumptions.get("avgNightlyRate", 0)))
-            avg_occupancy_rate = Decimal(str(vr_assumptions.get("avgOccupancyRate", 65)))
+            avg_occupancy_rate = Decimal(
+                str(vr_assumptions.get("avgOccupancyRate", 65))
+            )
             cleaning_fee = Decimal(str(vr_assumptions.get("cleaningFeePerStay", 150)))
 
             # Operating expenses for vacation rental (higher than normal rental)
@@ -1613,7 +1779,8 @@ def compare_investment_strategies(request):
                 + carrying_costs["monthly"]["insurance"]
                 + carrying_costs["monthly"]["hoa"]
                 + carrying_costs["monthly"]["utilities"]
-                + carrying_costs["monthly"]["maintenance"] * Decimal("1.5")  # Higher maintenance
+                + carrying_costs["monthly"]["maintenance"]
+                * Decimal("1.5")  # Higher maintenance
             )
 
             vr_result = calculate_vacation_rental_strategy(
@@ -1630,12 +1797,15 @@ def compare_investment_strategies(request):
                 holding_period_years=5,
             )
 
-            results["vacation_rental"] = {k: float(v) if isinstance(v, Decimal) else v for k, v in vr_result.items()}
+            results["vacation_rental"] = {
+                k: float(v) if isinstance(v, Decimal) else v
+                for k, v in vr_result.items()
+            }
 
         # Determine best strategy
         best_strategy = None
         best_roi = Decimal("-999999")
-        
+
         for strategy_name, strategy_data in results.items():
             roi = Decimal(str(strategy_data.get("roi", 0)))
             if roi > best_roi:
