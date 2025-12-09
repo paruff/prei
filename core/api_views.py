@@ -17,7 +17,10 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from investor_app.finance.utils import (
     calculate_break_even_rent,
     calculate_carrying_costs as calc_costs,
+    calculate_flip_strategy,
+    calculate_rental_strategy,
     calculate_roi_components,
+    calculate_vacation_rental_strategy,
     cap_rate as calc_cap_rate,
     cash_on_cash as calc_coc,
     dscr as calc_dscr,
@@ -38,6 +41,7 @@ from .serializers import (
     GrowthAreaSerializer,
     NotificationPreferenceSerializer,
     NotificationSerializer,
+    StrategyComparisonRequestSerializer,
     UserWatchlistSerializer,
 )
 from .validators import (
@@ -1469,6 +1473,236 @@ def export_property_analysis_pdf(request):
         return Response(
             {
                 "error": "Export service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
+@api_view(["POST"])
+@throttle_classes([UserRateThrottle, AnonRateThrottle])
+def compare_investment_strategies(request):
+    """
+    Compare different investment strategies for a property.
+
+    Request Body:
+        JSON object containing property details, financing, operating expenses,
+        strategies to compare, and strategy-specific assumptions
+
+    Returns:
+        JSON response with side-by-side strategy comparison and recommendation
+    """
+    try:
+        # Validate request data
+        serializer = StrategyComparisonRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {"error": "Invalid request data", "details": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = serializer.validated_data
+
+        # Extract common data
+        property_details = data["propertyDetails"]
+        financing = data["financing"]
+        operating_expenses = data["operatingExpenses"]
+        strategies = data["strategies"]
+        assumptions = data.get("assumptions", {})
+
+        purchase_price = property_details["purchasePrice"]
+        property_type = property_details["propertyType"]
+        year_built = property_details.get("yearBuilt", 2000)
+
+        down_payment = financing["downPayment"]
+        loan_amount = financing["loanAmount"]
+        interest_rate = financing["interestRate"]
+        loan_term_years = financing["loanTermYears"]
+        closing_costs = financing.get("closingCosts", Decimal("0"))
+
+        property_tax_rate = operating_expenses["propertyTaxRate"]
+        insurance_annual = operating_expenses.get("insuranceAnnual")
+        hoa_monthly = operating_expenses["hoaMonthly"]
+        utilities_monthly = operating_expenses["utilitiesMonthly"]
+        maintenance_annual_percent = operating_expenses["maintenanceAnnualPercent"]
+        property_management_percent = operating_expenses["propertyManagementPercent"]
+        vacancy_rate_percent = operating_expenses["vacancyRatePercent"]
+
+        # Calculate carrying costs (needed for rental strategies)
+        carrying_costs = calc_costs(
+            purchase_price=purchase_price,
+            loan_amount=loan_amount,
+            interest_rate=interest_rate,
+            loan_term_years=loan_term_years,
+            property_tax_rate=property_tax_rate,
+            insurance_annual=insurance_annual,
+            hoa_monthly=hoa_monthly,
+            utilities_monthly=utilities_monthly,
+            maintenance_annual_percent=maintenance_annual_percent,
+            property_type=property_type,
+            year_built=year_built,
+        )
+
+        results = {}
+
+        # Calculate flip strategy
+        if "flip" in strategies:
+            flip_assumptions = assumptions.get("flip", {})
+            
+            flip_result = calculate_flip_strategy(
+                purchase_price=purchase_price,
+                renovation_costs=Decimal(str(flip_assumptions.get("renovationCosts", 0))),
+                holding_period_months=int(flip_assumptions.get("holdingPeriodMonths", 6)),
+                expected_sale_price=Decimal(str(flip_assumptions.get("expectedSalePrice", purchase_price))),
+                selling_costs=Decimal(str(flip_assumptions.get("sellingCosts", 0))),
+                down_payment=down_payment,
+                loan_amount=loan_amount,
+                interest_rate=interest_rate,
+                loan_term_years=loan_term_years,
+                closing_costs=closing_costs,
+                property_tax_rate=property_tax_rate,
+                insurance_annual=insurance_annual,
+                utilities_monthly=utilities_monthly,
+                property_type=property_type,
+                year_built=year_built,
+            )
+
+            results["flip"] = {k: float(v) if isinstance(v, Decimal) else v for k, v in flip_result.items()}
+
+        # Calculate rental strategy
+        if "rental" in strategies:
+            rental_assumptions = assumptions.get("rental", {})
+            monthly_rent = Decimal(str(rental_assumptions.get("monthlyRent", 0)))
+            holding_period_years = int(rental_assumptions.get("holdingPeriodYears", 5))
+            appreciation_rate = Decimal(str(rental_assumptions.get("appreciationRate", 3.0)))
+
+            # Calculate annual cash flow
+            monthly_property_management = monthly_rent * property_management_percent / Decimal(100)
+            monthly_total = carrying_costs["monthly"]["total"] + monthly_property_management
+            
+            gross_income = monthly_rent
+            vacancy_loss = gross_income * vacancy_rate_percent / Decimal(100)
+            effective_income = gross_income - vacancy_loss
+            annual_cash_flow = (effective_income - monthly_total) * Decimal(12)
+
+            rental_result = calculate_rental_strategy(
+                purchase_price=purchase_price,
+                down_payment=down_payment,
+                loan_amount=loan_amount,
+                interest_rate=interest_rate,
+                loan_term_years=loan_term_years,
+                closing_costs=closing_costs,
+                annual_cash_flow=annual_cash_flow,
+                appreciation_rate=appreciation_rate,
+                holding_period_years=holding_period_years,
+            )
+
+            results["rental"] = {k: float(v) if isinstance(v, Decimal) else v for k, v in rental_result.items()}
+
+        # Calculate vacation rental strategy
+        if "vacation_rental" in strategies:
+            vr_assumptions = assumptions.get("vacation_rental", {})
+            
+            avg_nightly_rate = Decimal(str(vr_assumptions.get("avgNightlyRate", 0)))
+            avg_occupancy_rate = Decimal(str(vr_assumptions.get("avgOccupancyRate", 65)))
+            cleaning_fee = Decimal(str(vr_assumptions.get("cleaningFeePerStay", 150)))
+
+            # Operating expenses for vacation rental (higher than normal rental)
+            monthly_operating = (
+                carrying_costs["monthly"]["propertyTax"]
+                + carrying_costs["monthly"]["insurance"]
+                + carrying_costs["monthly"]["hoa"]
+                + carrying_costs["monthly"]["utilities"]
+                + carrying_costs["monthly"]["maintenance"] * Decimal("1.5")  # Higher maintenance
+            )
+
+            vr_result = calculate_vacation_rental_strategy(
+                purchase_price=purchase_price,
+                down_payment=down_payment,
+                loan_amount=loan_amount,
+                interest_rate=interest_rate,
+                loan_term_years=loan_term_years,
+                closing_costs=closing_costs,
+                avg_nightly_rate=avg_nightly_rate,
+                avg_occupancy_rate=avg_occupancy_rate,
+                cleaning_fee_per_stay=cleaning_fee,
+                monthly_operating_expenses=monthly_operating,
+                holding_period_years=5,
+            )
+
+            results["vacation_rental"] = {k: float(v) if isinstance(v, Decimal) else v for k, v in vr_result.items()}
+
+        # Determine best strategy
+        best_strategy = None
+        best_roi = Decimal("-999999")
+        
+        for strategy_name, strategy_data in results.items():
+            roi = Decimal(str(strategy_data.get("roi", 0)))
+            if roi > best_roi:
+                best_roi = roi
+                best_strategy = strategy_name
+
+        # Generate recommendation
+        recommendation = {
+            "bestStrategy": best_strategy,
+            "reasoning": "",
+            "riskFactors": [],
+        }
+
+        if best_strategy == "flip":
+            recommendation["reasoning"] = (
+                f"Fix-and-flip offers highest return ({float(best_roi):.1f}% ROI) with shortest timeline. "
+                "This strategy provides quick capital turnover."
+            )
+            recommendation["riskFactors"] = [
+                "Market conditions could change during renovation",
+                "Renovation could exceed budget or timeline",
+                "Flipping requires active management and expertise",
+            ]
+        elif best_strategy == "rental":
+            recommendation["reasoning"] = (
+                f"Buy-and-hold rental offers {float(best_roi):.1f}% ROI with steady long-term growth. "
+                "This strategy provides passive income and wealth building through appreciation and equity."
+            )
+            recommendation["riskFactors"] = [
+                "Tenant vacancies can impact cash flow",
+                "Property management and maintenance are ongoing",
+                "Market appreciation is not guaranteed",
+            ]
+        elif best_strategy == "vacation_rental":
+            recommendation["reasoning"] = (
+                f"Vacation rental offers {float(best_roi):.1f}% ROI with higher income potential. "
+                "This strategy can generate more cash flow than traditional rentals in the right market."
+            )
+            recommendation["riskFactors"] = [
+                "Seasonal fluctuations in occupancy",
+                "More hands-on management required",
+                "Higher operating costs and regulations",
+            ]
+
+        # Build response
+        response_data = {
+            "property": {
+                "address": property_details["location"]["address"],
+                "purchasePrice": float(purchase_price),
+                "propertyType": property_type,
+            },
+            "strategies": results,
+            "recommendation": recommendation,
+            "calculationTimestamp": timezone.now().isoformat(),
+        }
+
+        logger.info(
+            f"Strategy comparison completed for property at {property_details['location']['address']}"
+        )
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.error(f"Unexpected error in compare_investment_strategies: {str(e)}")
+        return Response(
+            {
+                "error": "Strategy comparison service temporarily unavailable. Please try again later.",
                 "code": "SERVICE_UNAVAILABLE",
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
