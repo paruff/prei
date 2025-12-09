@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.utils import timezone
 
 from core.models import Listing, MarketSnapshot, Property
-from core.services.cma import price_per_sqft, find_undervalued
+from core.services.cma import find_undervalued
 from core.services.portfolio import aggregate_portfolio
 
 
