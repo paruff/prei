@@ -12,6 +12,7 @@
           <th>IRR</th>
           <th>DSCR</th>
           <th>Updated</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -25,6 +26,11 @@
             <td>{{ a.dscr|floatformat:4 }}</td>
             <td>{{ a.updated_at }}</td>
             <td><a href="{% url 'analyze_property' a.property.id %}">Analyze</a></td>
+            <td>
+              <a href="{% url 'analyze_property' a.property.id %}">Analyze</a>
+              |
+              <a href="{% url 'report_property' a.property.id %}">Report</a>
+            </td>
           </tr>
         {% empty %}
           <tr><td colspan="7">No properties yet.</td></tr>
@@ -53,7 +59,7 @@
           <th>Source</th>
           <th>Posted</th>
           <th>Score (V1)</th>
-          <th>Link</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -69,7 +75,11 @@
             <td>{{ item.obj.source }}</td>
             <td>{{ item.obj.posted_at }}</td>
             <td>{{ item.score|floatformat:2 }}</td>
-            <td><a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a></td>
+            <td>
+              <a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a>
+              |
+              <a href="{% url 'report_listing' item.obj.id %}">Report</a>
+            </td>
           </tr>
         {% empty %}
           <tr><td colspan="11">No listings available.</td></tr>

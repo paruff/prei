@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Property Report{% endblock %}
+{% block content %}
+  <h1>Property Report</h1>
+  {% if error %}
+    <p style="color:red">{{ error }}</p>
+  {% endif %}
+
+  {% if listing %}
+    <h2>Listing</h2>
+    <p>{{ listing.address }}, {{ listing.city }}, {{ listing.state }} {{ listing.zip_code }}</p>
+    <ul>
+      <li>Price: ${{ listing.price }}</li>
+      <li>Beds/Baths: {{ listing.beds }} / {{ listing.baths }}</li>
+      <li>Sq Ft: {{ listing.sq_ft }}</li>
+      <li>Posted: {{ listing.posted_at }}</li>
+      <li><a href="{{ listing.url }}" target="_blank" rel="noopener">Original Listing</a></li>
+    </ul>
+  {% endif %}
+
+  {% if property %}
+    <h2>Property</h2>
+    <p>{{ property }}</p>
+  {% endif %}
+
+  {% if analysis %}
+    <h3>Financial KPIs</h3>
+    <ul>
+      <li>NOI: ${{ analysis.noi }}</li>
+      <li>Cap Rate: {{ analysis.cap_rate|floatformat:4 }}</li>
+      <li>Cash-on-Cash: {{ analysis.cash_on_cash|floatformat:4 }}</li>
+      <li>IRR: {{ analysis.irr|floatformat:4 }}</li>
+      <li>DSCR: {{ analysis.dscr|floatformat:4 }}</li>
+    </ul>
+  {% endif %}
+
+  {% if comps %}
+    <h3>Comparable Sales</h3>
+    <table>
+      <thead><tr><th>Address</th><th>Price</th><th>Sq Ft</th><th>PPSF</th></tr></thead>
+      <tbody>
+        {% for c in comps %}
+          <tr><td>{{ c.address }}</td><td>${{ c.price }}</td><td>{{ c.sq_ft }}</td><td>{{ c.ppsf }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if rent_estimate %}
+    <h3>Rent Estimate</h3>
+    <p>Estimated Monthly Rent: ${{ rent_estimate }}</p>
+  {% endif %}
+
+  {% if crime is not None or schools is not None %}
+    <h3>Area Scores</h3>
+    <ul>
+      {% if crime is not None %}<li>Crime Score: {{ crime }}</li>{% endif %}
+      {% if schools is not None %}<li>School Rating: {{ schools }}</li>{% endif %}
+    </ul>
+  {% endif %}
+{% endblock %}

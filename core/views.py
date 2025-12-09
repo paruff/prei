@@ -4,6 +4,10 @@ from __future__ import annotations
 from django.shortcuts import render
 
 from investor_app.finance.utils import compute_analysis_for_property, score_listing_v1
+from core.integrations.market.comps import get_comps_for_listing
+from core.integrations.market.rents import get_rent_estimate_for_listing
+from core.integrations.market.crime import get_crime_score
+from core.integrations.market.schools import get_school_rating
 
 # keep only the models that are actually used
 from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot
@@ -81,12 +85,31 @@ def analyze_property(request, property_id: int):
 
     analysis = compute_analysis_for_property(prop)
 
-    # Carry cost sheet placeholders: taxes, insurance, maintenance, mgmt fees
+    # What-if inputs for carry costs and rehab estimate
+    def num(name, default=0):
+        try:
+            return float(request.POST.get(name, default))
+        except Exception:
+            return default
+
+    taxes = num("taxes")
+    insurance = num("insurance")
+    maintenance = num("maintenance")
+    management_fees = num("management_fees")
+    rehab_estimate = num("rehab_estimate")
+
+    monthly_income = float(analysis.noi) / 12.0  # NOI approximates net of opex, adjust via inputs
+    additional_monthly_costs = taxes + insurance + maintenance + management_fees
+    rehab_monthly = rehab_estimate / 12.0 if rehab_estimate else 0.0
+    projected_monthly_cash_flow = monthly_income - additional_monthly_costs - rehab_monthly
+
     carry_costs = {
-        "taxes": 0,
-        "insurance": 0,
-        "maintenance": 0,
-        "management_fees": 0,
+        "taxes": taxes,
+        "insurance": insurance,
+        "maintenance": maintenance,
+        "management_fees": management_fees,
+        "rehab_estimate": rehab_estimate,
+        "projected_monthly_cash_flow": projected_monthly_cash_flow,
     }
 
     return render(
@@ -94,3 +117,41 @@ def analyze_property(request, property_id: int):
         "analyze_property.html",
         {"property": prop, "analysis": analysis, "carry_costs": carry_costs},
     )
+
+
+def report_listing(request, listing_id: int):
+    try:
+        lst = Listing.objects.get(id=listing_id)
+    except Listing.DoesNotExist:
+        return render(request, "property_report.html", {"error": "Listing not found."}, status=404)
+
+    comps = get_comps_for_listing(lst)
+    rent_estimate = get_rent_estimate_for_listing(lst)
+    crime = get_crime_score(lst.zip_code, lst.city, lst.state)
+    schools = get_school_rating(lst.zip_code, lst.city, lst.state)
+    context = {
+        "listing": lst,
+        "comps": comps,
+        "rent_estimate": rent_estimate,
+        "crime": crime,
+        "schools": schools,
+    }
+    return render(request, "property_report.html", context)
+
+
+def report_property(request, property_id: int):
+    try:
+        prop = Property.objects.get(id=property_id)
+    except Property.DoesNotExist:
+        return render(request, "property_report.html", {"error": "Property not found."}, status=404)
+
+    analysis = compute_analysis_for_property(prop)
+    context = {
+        "property": prop,
+        "analysis": analysis,
+        "comps": [],
+        "rent_estimate": None,
+        "crime": None,
+        "schools": None,
+    }
+    return render(request, "property_report.html", context)
