@@ -21,11 +21,11 @@ class AuctionConsumer(AsyncWebsocketConsumer):
         """Handle WebSocket connection."""
         self.user = self.scope["user"]
 
-        if not self.user.is_authenticated:
+        if not self.user.is_authenticated:  # type: ignore[union-attr]
             await self.close()
             return
 
-        self.user_group_name = f"user_{self.user.id}"
+        self.user_group_name = f"user_{self.user.id}"  # type: ignore[union-attr]
 
         # Join user-specific group
         await self.channel_layer.group_add(self.user_group_name, self.channel_name)
@@ -35,7 +35,7 @@ class AuctionConsumer(AsyncWebsocketConsumer):
         # Send initial state
         await self.send_initial_state()
 
-        logger.info(f"WebSocket connected for user {self.user.username}")
+        logger.info(f"WebSocket connected for user {self.user.username}")  # type: ignore[union-attr]
 
     async def disconnect(self, close_code: int) -> None:
         """Handle WebSocket disconnection."""
@@ -43,9 +43,9 @@ class AuctionConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_discard(
                 self.user_group_name, self.channel_name
             )
-            logger.info(f"WebSocket disconnected for user {self.user.username}")
+            logger.info(f"WebSocket disconnected for user {self.user.username}")  # type: ignore[union-attr]
 
-    async def receive(self, text_data: str) -> None:
+    async def receive(self, text_data: str = "") -> None:  # type: ignore[override]
         """Handle messages from WebSocket."""
         try:
             data = json.loads(text_data)
@@ -116,7 +116,7 @@ class AuctionConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_user_watchlist_auctions(self) -> list:
         """Get all auctions in user's watchlist."""
-        watchlist_items = UserWatchlist.objects.filter(user=self.user).select_related(
+        watchlist_items = UserWatchlist.objects.filter(user=self.user).select_related(  # type: ignore[misc]
             "property"
         )
 
@@ -159,8 +159,9 @@ class AuctionConsumer(AsyncWebsocketConsumer):
     def remove_from_watchlist(self, property_id: str) -> bool:
         """Remove property from user's watchlist."""
         try:
-            UserWatchlist.objects.filter(
-                user=self.user, property_id=property_id
+            # Convert property_id to int for filtering
+            UserWatchlist.objects.filter(  # type: ignore[misc]
+                user=self.user, property__id=int(property_id)
             ).delete()
             return True
         except Exception as e:

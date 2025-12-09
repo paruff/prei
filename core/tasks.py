@@ -96,7 +96,7 @@ def broadcast_auction_update(property_id: int, changes: Dict[str, Any]) -> None:
     # Send to each user's group
     for user_id in watchers:
         user_group = f"user_{user_id}"
-        async_to_sync(channel_layer.group_send)(
+        async_to_sync(channel_layer.group_send)(  # type: ignore[union-attr]
             user_group,
             {
                 "type": "auction.update",
@@ -199,7 +199,7 @@ def send_auction_reminder_notification(
     channel_layer = get_channel_layer()
     user_group = f"user_{user.id}"
 
-    async_to_sync(channel_layer.group_send)(
+    async_to_sync(channel_layer.group_send)(  # type: ignore[union-attr]
         user_group,
         {
             "type": "auction.update",
@@ -263,7 +263,7 @@ def send_alert_notification(
     channel_layer = get_channel_layer()
     user_group = f"user_{user.id}"
 
-    async_to_sync(channel_layer.group_send)(
+    async_to_sync(channel_layer.group_send)(  # type: ignore[union-attr]
         user_group,
         {
             "type": "auction.update",
