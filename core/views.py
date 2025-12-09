@@ -6,7 +6,8 @@ from django.shortcuts import render
 from investor_app.finance.utils import compute_analysis_for_property, score_listing_v1
 
 # keep only the models that are actually used
-from .models import InvestmentAnalysis, Listing, Property
+from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot
+from core.services.cma import find_undervalued
 
 
 def dashboard(request):
@@ -47,8 +48,12 @@ def dashboard(request):
 
 
 def growth_areas(request):
-    # Placeholder: In Phase 2, integrate market data and trends.
-    return render(request, "growth_areas.html", {})
+    # Simple mock analytics: top MarketSnapshots by price_trend and rent_index
+    snapshots = MarketSnapshot.objects.all()[:50]
+    top_growth = sorted(snapshots, key=lambda s: (s.price_trend, s.rent_index), reverse=True)[:10]
+    # Flag undervalued listings globally as a placeholder
+    undervalued = find_undervalued(Listing.objects.all()[:200])
+    return render(request, "growth_areas.html", {"top_growth": top_growth, "undervalued": undervalued})
 
 
 def search_listings(request):
