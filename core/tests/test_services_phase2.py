@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.utils import timezone
 
 from core.models import Listing, MarketSnapshot, Property
-from core.services.cma import price_per_sqft, find_undervalued
+from core.services.cma import find_undervalued
 from core.services.portfolio import aggregate_portfolio
 
 
@@ -45,7 +45,7 @@ def test_cma_flags_undervalued_listings():
 @pytest.mark.django_db
 def test_portfolio_aggregation_works(user):
     # Create one property to ensure aggregation runs; KPI values computed by utils
-    p = Property.objects.create(
+    Property.objects.create(
         user=user,
         address="1 Test",
         city="X",
