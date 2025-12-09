@@ -1,4 +1,3 @@
-from decimal import Decimal
 from django.shortcuts import render
 
 from core.services.portfolio import aggregate_portfolio
