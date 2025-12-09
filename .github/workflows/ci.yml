@@ -1,6 +1,4 @@
-# CI workflow (updated ruff step to run --fix and commit fixes)
-# NOTE: If you already have a workflow file under a different name/path,
-# apply the ruff step changes from this file into your existing workflow.
+# CI workflow (ruff --fix will be applied and committed if any fixes occur)
 
 name: CI
 
@@ -20,7 +18,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # allow subsequent steps to push commits
           persist-credentials: true
 
       - name: Set up Python
@@ -34,17 +31,13 @@ jobs:
           pip install -r requirements.txt || true
           pip install ruff
 
-      - name: Run ruff (apply trivial fixes)
-        # Run ruff with --fix to auto-apply fixable issues.
-        # If changes are applied, the subsequent step will commit and push them.
+      - name: Apply ruff safe fixes (allow step to continue)
         run: |
-          # Show ruff version
           ruff --version
-          # Run ruff and apply safe fixes in-place
-          ruff check --fix .
+          # Apply safe fixes; don't stop the job if non-zero
+          ruff check --fix . || true
 
       - name: Commit and push ruff fixes (if any)
-        # Uses EndBug/add-and-commit to commit any changes created by ruff --fix
         uses: EndBug/add-and-commit@v9
         with:
           message: "ci: apply ruff --fix fixes"
@@ -52,6 +45,11 @@ jobs:
           author_email: "41898282+github-actions[bot]@users.noreply.github.com"
           add: "."
           push: true
+
+      - name: Re-run ruff to fail if remaining violations exist
+        run: |
+          # This will exit non-zero (and fail the job) if there are still violations after fixes
+          ruff check .
 
       - name: Run tests
         run: |
