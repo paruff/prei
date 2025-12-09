@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 # Configure matplotlib backend before importing pyplot
 import matplotlib
@@ -26,6 +26,9 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+if TYPE_CHECKING:
+    from reportlab.platypus.flowables import Flowable
 
 
 class PDFExportService:
@@ -120,23 +123,23 @@ class PDFExportService:
 
     def _build_cover_page(
         self, property_data: Dict[str, Any], branding: Optional[Dict[str, Any]]
-    ) -> List:
+    ) -> List[Flowable]:
         """Build cover page elements."""
-        elements = []
+        elements: List[Flowable] = []
 
         # Title
         address = property_data.get("address", "Property Analysis")
         title = Paragraph(
             f"Property Investment Analysis<br/>{address}", self.styles["CustomTitle"]
         )
-        title.alignment = TA_CENTER
+        title.alignment = TA_CENTER  # type: ignore[attr-defined]
         elements.append(title)
         elements.append(Spacer(1, 0.3 * inch))
 
         # Generation date
         date_str = datetime.now().strftime("%B %d, %Y")
         date_para = Paragraph(f"Report Generated: {date_str}", self.styles["Normal"])
-        date_para.alignment = TA_CENTER
+        date_para.alignment = TA_CENTER  # type: ignore[attr-defined]
         elements.append(Spacer(1, 0.5 * inch))
         elements.append(date_para)
 
@@ -144,9 +147,9 @@ class PDFExportService:
 
     def _build_executive_summary(
         self, property_data: Dict[str, Any], analysis: Dict[str, Any]
-    ) -> List:
+    ) -> List[Flowable]:
         """Build executive summary section."""
-        elements = []
+        elements: List[Flowable] = []
 
         # Section header
         elements.append(Paragraph("Executive Summary", self.styles["SectionHeader"]))
@@ -171,9 +174,9 @@ class PDFExportService:
 
         return elements
 
-    def _build_property_details(self, property_data: Dict[str, Any]) -> List:
+    def _build_property_details(self, property_data: Dict[str, Any]) -> List[Flowable]:
         """Build property details section."""
-        elements = []
+        elements: List[Flowable] = []
 
         # Section header
         elements.append(Paragraph("Property Details", self.styles["SectionHeader"]))
@@ -192,9 +195,9 @@ class PDFExportService:
 
         return elements
 
-    def _build_financial_analysis(self, analysis: Dict[str, Any]) -> List:
+    def _build_financial_analysis(self, analysis: Dict[str, Any]) -> List[Flowable]:
         """Build financial analysis section."""
-        elements = []
+        elements: List[Flowable] = []
 
         # Section header
         elements.append(Paragraph("Financial Analysis", self.styles["SectionHeader"]))
@@ -256,9 +259,9 @@ class PDFExportService:
 
         return elements
 
-    def _build_charts(self, analysis: Dict[str, Any]) -> List:
+    def _build_charts(self, analysis: Dict[str, Any]) -> List[Flowable]:
         """Build charts for visualization."""
-        elements = []
+        elements: List[Flowable] = []
 
         # Cash flow chart (if cash flow data is available)
         if "cashFlow" in analysis:
