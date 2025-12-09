@@ -21,3 +21,7 @@ playwright>=1.40.0
 celery>=5.3.0
 redis>=5.0.0
 django-redis>=5.4.0
+channels>=4.0.0
+channels-redis>=4.2.0
+daphne>=4.1.0
+cffi>=1.0.0
