@@ -54,10 +54,16 @@ def dashboard(request):
 def growth_areas(request):
     # Simple mock analytics: top MarketSnapshots by price_trend and rent_index
     snapshots = MarketSnapshot.objects.all()[:50]
-    top_growth = sorted(snapshots, key=lambda s: (s.price_trend, s.rent_index), reverse=True)[:10]
+    top_growth = sorted(
+        snapshots, key=lambda s: (s.price_trend, s.rent_index), reverse=True
+    )[:10]
     # Flag undervalued listings globally as a placeholder
     undervalued = find_undervalued(Listing.objects.all()[:200])
-    return render(request, "growth_areas.html", {"top_growth": top_growth, "undervalued": undervalued})
+    return render(
+        request,
+        "growth_areas.html",
+        {"top_growth": top_growth, "undervalued": undervalued},
+    )
 
 
 def search_listings(request):
@@ -74,14 +80,23 @@ def search_listings(request):
         qs = qs.filter(state__iexact=state)
 
     items = [{"obj": lst, "score": score_listing_v1(lst)} for lst in qs[:100]]
-    return render(request, "search_listings.html", {"items": items, "q": query, "zip": zip_code, "state": state})
+    return render(
+        request,
+        "search_listings.html",
+        {"items": items, "q": query, "zip": zip_code, "state": state},
+    )
 
 
 def analyze_property(request, property_id: int):
     try:
         prop = Property.objects.get(id=property_id)
     except Property.DoesNotExist:
-        return render(request, "analyze_property.html", {"error": "Property not found."}, status=404)
+        return render(
+            request,
+            "analyze_property.html",
+            {"error": "Property not found."},
+            status=404,
+        )
 
     analysis = compute_analysis_for_property(prop)
 

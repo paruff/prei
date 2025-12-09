@@ -20,6 +20,11 @@ urlpatterns = [
         api_views.calculate_carrying_costs,
         name="carrying-costs-calculate",
     ),
+    path(
+        "v1/real-estate/carrying-costs/compare-strategies",
+        api_views.compare_investment_strategies,
+        name="strategy-comparison",
+    ),
     # Watchlist endpoints
     path(
         "v1/watchlist",
