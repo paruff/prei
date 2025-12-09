@@ -159,6 +159,21 @@ class MarketSnapshot(models.Model):
             f"MarketSnapshot {label} (trend={self.price_trend}, rent={self.rent_index})"
         )
 
+class SavedSearch(models.Model):
+    """Persisted search filters for listings, per user."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="saved_searches")
+    name = models.CharField(max_length=128)
+    query = models.CharField(max_length=255, blank=True, default="")
+    zip_code = models.CharField(max_length=16, blank=True, default="")
+    state = models.CharField(max_length=64, blank=True, default="")
+    min_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    max_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"SavedSearch {self.name} ({self.state} {self.zip_code})"
+
 
 class GrowthArea(models.Model):
     """Economic growth area data for real estate investment analysis."""

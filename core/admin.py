@@ -4,6 +4,7 @@ from .models import (
     ForeclosureProperty,
     InvestmentAnalysis,
     Listing,
+    SavedSearch,
     OperatingExpense,
     Property,
     RentalIncome,
@@ -76,6 +77,11 @@ class MarketSnapshotAdmin(admin.ModelAdmin):
     )
     list_filter = ("area_type", "state")
     search_fields = ("zip_code", "city", "state")
+
+@admin.register(SavedSearch)
+class SavedSearchAdmin(admin.ModelAdmin):
+    list_display = ("user", "name", "state", "zip_code", "min_price", "max_price", "created_at")
+    search_fields = ("name", "state", "zip_code")
 
 
 @admin.register(ForeclosureProperty)

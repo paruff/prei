@@ -6,8 +6,32 @@
     <label>Query <input type="text" name="q" value="{{ q }}" /></label>
     <label>ZIP <input type="text" name="zip" value="{{ zip }}" /></label>
     <label>State <input type="text" name="state" value="{{ state }}" /></label>
+    <label>Sort
+      <select name="sort">
+        <option value="score" {% if sort == 'score' %}selected{% endif %}>Score</option>
+        <option value="price" {% if sort == 'price' %}selected{% endif %}>Price</option>
+      </select>
+    </label>
     <button type="submit">Search</button>
   </form>
+
+  {% if request.user.is_authenticated %}
+  <form method="post" style="margin-bottom:1rem">
+    {% csrf_token %}
+    <input type="hidden" name="min_price" value="" />
+    <input type="hidden" name="max_price" value="" />
+    <label>Name <input type="text" name="name" placeholder="Save this search as..." /></label>
+    <button type="submit">Save Search</button>
+  </form>
+  <h3>Saved Searches</h3>
+  <ul>
+    {% for s in saved %}
+      <li>{{ s.name }} — {{ s.state }} {{ s.zip_code }} (q={{ s.query }})</li>
+    {% empty %}
+      <li>No saved searches yet.</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 
   <table>
     <thead>

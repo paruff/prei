@@ -10,7 +10,7 @@ from core.integrations.market.crime import get_crime_score
 from core.integrations.market.schools import get_school_rating
 
 # keep only the models that are actually used
-from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot
+from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot, SavedSearch
 from core.services.cma import find_undervalued
 
 
@@ -70,6 +70,7 @@ def search_listings(request):
     query = request.GET.get("q", "")
     zip_code = request.GET.get("zip", "")
     state = request.GET.get("state", "")
+    sort = request.GET.get("sort", "score")
 
     qs = Listing.objects.all()
     if query:
@@ -79,11 +80,33 @@ def search_listings(request):
     if state:
         qs = qs.filter(state__iexact=state)
 
-    items = [{"obj": lst, "score": score_listing_v1(lst)} for lst in qs[:100]]
+    items = [{"obj": lst, "score": score_listing_v1(lst)} for lst in qs[:200]]
+    if sort == "score":
+        items.sort(key=lambda x: x["score"], reverse=True)
+    elif sort == "price":
+        items.sort(key=lambda x: x["obj"].price)
+
+    # Save filter if requested
+    if request.method == "POST" and request.user.is_authenticated:
+        name = request.POST.get("name") or "Saved Search"
+        SavedSearch.objects.create(
+            user=request.user,
+            name=name,
+            query=query,
+            zip_code=zip_code,
+            state=state,
+            min_price=request.POST.get("min_price") or None,
+            max_price=request.POST.get("max_price") or None,
+        )
+
+    saved = []
+    if request.user.is_authenticated:
+        saved = list(SavedSearch.objects.filter(user=request.user).order_by("-created_at")[:10])
+
     return render(
         request,
         "search_listings.html",
-        {"items": items, "q": query, "zip": zip_code, "state": state},
+        {"items": items, "q": query, "zip": zip_code, "state": state, "sort": sort, "saved": saved},
     )
 
 
