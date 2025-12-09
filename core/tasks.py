@@ -103,7 +103,7 @@ def broadcast_auction_update(property_id: int, changes: Dict[str, Any]) -> None:
             },
         )
 
-    logger.info(f"Broadcast auction update for property {property_id} to {len(list(watchers))} users")
+    logger.info(f"Broadcast auction update for property {property_id} to {watchers.count()} users")
 
 
 @shared_task(ignore_result=True)

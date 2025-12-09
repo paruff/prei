@@ -444,9 +444,9 @@ class NotificationPreference(models.Model):
         if not self.quiet_hours_start or not self.quiet_hours_end:
             return False
 
-        from datetime import datetime
+        from django.utils import timezone
 
-        now = datetime.now().time()
+        now = timezone.now().time()
 
         # Handle quiet hours that span midnight
         if self.quiet_hours_start <= self.quiet_hours_end:
