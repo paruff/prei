@@ -1774,13 +1774,14 @@ def compare_investment_strategies(request):
             cleaning_fee = Decimal(str(vr_assumptions.get("cleaningFeePerStay", 150)))
 
             # Operating expenses for vacation rental (higher than normal rental)
+            # Maintenance is 1.5x higher due to increased turnover and wear
+            maintenance_multiplier = Decimal("1.5")
             monthly_operating = (
                 carrying_costs["monthly"]["propertyTax"]
                 + carrying_costs["monthly"]["insurance"]
                 + carrying_costs["monthly"]["hoa"]
                 + carrying_costs["monthly"]["utilities"]
-                + carrying_costs["monthly"]["maintenance"]
-                * Decimal("1.5")  # Higher maintenance
+                + carrying_costs["monthly"]["maintenance"] * maintenance_multiplier
             )
 
             vr_result = calculate_vacation_rental_strategy(

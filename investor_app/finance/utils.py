@@ -418,6 +418,8 @@ def calculate_tax_benefits(
     )
 
     # Calculate remaining balance at start of year
+    # Uses standard amortization formula: B = P * [(1+r)^(n-k) - 1] / [(1+r)^n - 1]
+    # where B=balance, P=principal, r=rate, n=total payments, k=payments made
     payments_before = (year_num - 1) * 12
     if payments_before > 0:
         num_payments = loan_term_years * 12
@@ -817,6 +819,7 @@ def calculate_vacation_rental_strategy(
     cleaning_fee_per_stay: Decimal,
     monthly_operating_expenses: Decimal,
     holding_period_years: int = 5,
+    avg_stay_length_nights: int = 3,  # Typical vacation rental stay length
 ) -> Dict[str, Any]:
     """Calculate vacation rental strategy returns.
 
@@ -832,6 +835,7 @@ def calculate_vacation_rental_strategy(
         cleaning_fee_per_stay: Cleaning fee per stay
         monthly_operating_expenses: Monthly operating expenses
         holding_period_years: How many years to hold
+        avg_stay_length_nights: Average length of stay in nights (default 3)
 
     Returns:
         Dictionary with vacation rental strategy analysis
@@ -842,8 +846,8 @@ def calculate_vacation_rental_strategy(
     nights_per_year = Decimal(365)
     occupied_nights = nights_per_year * to_decimal(avg_occupancy_rate) / Decimal(100)
 
-    # Assume average stay is 3 nights
-    avg_stay_length = Decimal(3)
+    # Calculate number of stays based on average stay length
+    avg_stay_length = Decimal(avg_stay_length_nights)
     num_stays = occupied_nights / avg_stay_length
 
     annual_rental_income = occupied_nights * to_decimal(
