@@ -50,6 +50,7 @@ from .validators import (
     validate_state_code,
 )
 from .export_services import CSVExportService, JSONExportService, PDFExportService
+from .export_helpers import apply_foreclosure_filters, parse_and_filter_location
 
 logger = logging.getLogger(__name__)
 
@@ -1158,7 +1159,7 @@ def export_foreclosures_csv(request):
         # Extract filters from request
         filters = request.data.get("filters", {})
         fields = request.data.get("fields")
-        
+
         # Validate location parameter
         location = filters.get("location")
         if not location:
@@ -1170,8 +1171,9 @@ def export_foreclosures_csv(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Parse and filter by location using helper
         try:
-            location = validate_location_parameter(location)
+            location, queryset = parse_and_filter_location(location)
         except serializers.ValidationError as e:
             return Response(
                 {
@@ -1181,73 +1183,9 @@ def export_foreclosures_csv(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Build queryset based on location (similar to foreclosures_list)
-        queryset = ForeclosureProperty.objects.all()
-
-        # Parse location
-        location_parts = [part.strip() for part in location.split(",")]
-
-        if len(location_parts) == 1:
-            single_value = location_parts[0]
-            if single_value.isdigit() and len(single_value) == 5:
-                queryset = queryset.filter(zip_code=single_value)
-            elif len(single_value) == 2 and single_value.isalpha():
-                try:
-                    state_code = validate_state_code(single_value)
-                    queryset = queryset.filter(state=state_code)
-                except serializers.ValidationError:
-                    queryset = queryset.filter(
-                        Q(county__icontains=single_value)
-                        | Q(city__icontains=single_value)
-                    )
-            else:
-                queryset = queryset.filter(
-                    Q(county__icontains=single_value) | Q(city__icontains=single_value)
-                )
-        elif len(location_parts) == 2:
-            city_name, state_code = location_parts
-            try:
-                state_code = validate_state_code(state_code)
-                queryset = queryset.filter(city__icontains=city_name, state=state_code)
-            except serializers.ValidationError:
-                return Response(
-                    {
-                        "error": "Invalid geographic area",
-                        "code": "INVALID_LOCATION",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        # Apply additional filters
+        # Apply additional filters using helper
         try:
-            stages = validate_foreclosure_stages(filters.get("stage"))
-            if stages:
-                queryset = queryset.filter(foreclosure_status__in=stages)
-
-            property_types = validate_property_types(filters.get("propertyType"))
-            if property_types:
-                queryset = queryset.filter(property_type__in=property_types)
-
-            min_price = validate_positive_decimal(filters.get("minPrice"), "minPrice")
-            max_price = validate_positive_decimal(filters.get("maxPrice"), "maxPrice")
-            if min_price is not None:
-                queryset = queryset.filter(
-                    Q(opening_bid__gte=min_price, opening_bid__isnull=False)
-                    | Q(
-                        opening_bid__isnull=True,
-                        estimated_value__gte=min_price,
-                        estimated_value__isnull=False,
-                    )
-                )
-            if max_price is not None:
-                queryset = queryset.filter(
-                    Q(opening_bid__lte=max_price, opening_bid__isnull=False)
-                    | Q(
-                        opening_bid__isnull=True,
-                        estimated_value__lte=max_price,
-                        estimated_value__isnull=False,
-                    )
-                )
+            queryset, stages = apply_foreclosure_filters(queryset, filters)
         except serializers.ValidationError as e:
             return Response(
                 {"error": str(e), "code": "INVALID_PARAMETER"},
@@ -1272,29 +1210,37 @@ def export_foreclosures_csv(request):
         # Convert to dictionaries for CSV export
         property_dicts = []
         for prop in properties:
-            property_dicts.append({
-                "property_id": prop.property_id,
-                "street": prop.street,
-                "city": prop.city,
-                "state": prop.state,
-                "zip_code": prop.zip_code,
-                "foreclosure_status": prop.foreclosure_status,
-                "filing_date": prop.filing_date,
-                "auction_date": prop.auction_date,
-                "opening_bid": prop.opening_bid,
-                "estimated_value": prop.estimated_value,
-                "bedrooms": prop.bedrooms,
-                "bathrooms": prop.bathrooms,
-                "square_footage": prop.square_footage,
-                "property_type": prop.property_type,
-                "lender_name": prop.lender_name,
-                "data_source": prop.data_source,
-                "data_timestamp": prop.data_timestamp,
-            })
+            property_dicts.append(
+                {
+                    "property_id": prop.property_id,
+                    "street": prop.street,
+                    "city": prop.city,
+                    "state": prop.state,
+                    "zip_code": prop.zip_code,
+                    "foreclosure_status": prop.foreclosure_status,
+                    "filing_date": prop.filing_date,
+                    "auction_date": prop.auction_date,
+                    "opening_bid": prop.opening_bid,
+                    "estimated_value": prop.estimated_value,
+                    "bedrooms": prop.bedrooms,
+                    "bathrooms": prop.bathrooms,
+                    "square_footage": prop.square_footage,
+                    "property_type": prop.property_type,
+                    "lender_name": prop.lender_name,
+                    "data_source": prop.data_source,
+                    "data_timestamp": prop.data_timestamp,
+                }
+            )
 
         # Generate CSV
         csv_service = CSVExportService()
-        csv_content = csv_service.export_foreclosures(property_dicts, fields)
+        try:
+            csv_content = csv_service.export_foreclosures(property_dicts, fields)
+        except ValueError as e:
+            return Response(
+                {"error": str(e), "code": "INVALID_FIELDS"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Generate filename
         filename = csv_service.generate_filename(
@@ -1351,8 +1297,9 @@ def export_foreclosures_json(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Parse and filter by location using helper
         try:
-            location = validate_location_parameter(location)
+            location, queryset = parse_and_filter_location(location)
         except serializers.ValidationError as e:
             return Response(
                 {
@@ -1362,52 +1309,9 @@ def export_foreclosures_json(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Build queryset (similar to CSV export)
-        queryset = ForeclosureProperty.objects.all()
-
-        # Parse location
-        location_parts = [part.strip() for part in location.split(",")]
-
-        if len(location_parts) == 1:
-            single_value = location_parts[0]
-            if single_value.isdigit() and len(single_value) == 5:
-                queryset = queryset.filter(zip_code=single_value)
-            elif len(single_value) == 2 and single_value.isalpha():
-                try:
-                    state_code = validate_state_code(single_value)
-                    queryset = queryset.filter(state=state_code)
-                except serializers.ValidationError:
-                    queryset = queryset.filter(
-                        Q(county__icontains=single_value)
-                        | Q(city__icontains=single_value)
-                    )
-            else:
-                queryset = queryset.filter(
-                    Q(county__icontains=single_value) | Q(city__icontains=single_value)
-                )
-        elif len(location_parts) == 2:
-            city_name, state_code = location_parts
-            try:
-                state_code = validate_state_code(state_code)
-                queryset = queryset.filter(city__icontains=city_name, state=state_code)
-            except serializers.ValidationError:
-                return Response(
-                    {
-                        "error": "Invalid geographic area",
-                        "code": "INVALID_LOCATION",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        # Apply additional filters
+        # Apply additional filters using helper
         try:
-            stages = validate_foreclosure_stages(filters.get("stage"))
-            if stages:
-                queryset = queryset.filter(foreclosure_status__in=stages)
-
-            property_types = validate_property_types(filters.get("propertyType"))
-            if property_types:
-                queryset = queryset.filter(property_type__in=property_types)
+            queryset, _ = apply_foreclosure_filters(queryset, filters)
         except serializers.ValidationError as e:
             return Response(
                 {"error": str(e), "code": "INVALID_PARAMETER"},
@@ -1516,9 +1420,7 @@ def export_property_analysis_pdf(request):
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
-        logger.info(
-            f"PDF export completed for property: {property_address}"
-        )
+        logger.info(f"PDF export completed for property: {property_address}")
 
         return response
 

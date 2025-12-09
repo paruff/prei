@@ -46,10 +46,22 @@ class CSVExportService:
 
         Returns:
             CSV content as string
+
+        Raises:
+            ValueError: If any field in fields is not a valid foreclosure field
         """
         # Use all fields if none specified
         if not fields:
             fields = list(self.foreclosure_field_mapping.keys())
+        else:
+            # Validate that all requested fields are valid
+            invalid_fields = [
+                f for f in fields if f not in self.foreclosure_field_mapping
+            ]
+            if invalid_fields:
+                raise ValueError(
+                    f"Invalid field(s) requested: {', '.join(invalid_fields)}"
+                )
 
         # Create CSV in memory
         output = io.StringIO()

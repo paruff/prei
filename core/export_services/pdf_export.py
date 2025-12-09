@@ -6,7 +6,11 @@ import io
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+# Configure matplotlib backend before importing pyplot
 import matplotlib
+
+matplotlib.use("Agg")  # Use non-interactive backend
+
 import matplotlib.pyplot as plt
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -22,9 +26,6 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-
-# Use non-interactive backend for matplotlib
-matplotlib.use("Agg")
 
 
 class PDFExportService:
