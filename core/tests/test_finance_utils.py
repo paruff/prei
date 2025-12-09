@@ -1,11 +1,15 @@
 from decimal import Decimal
 
 from investor_app.finance.utils import (
+    calculate_appreciation,
     calculate_break_even_rent,
     calculate_carrying_costs,
     calculate_maintenance_reserve,
     calculate_monthly_mortgage,
+    calculate_principal_paydown,
     calculate_property_tax,
+    calculate_roi_components,
+    calculate_tax_benefits,
     cap_rate,
     cash_on_cash,
     dscr,
@@ -221,3 +225,163 @@ def test_calculate_carrying_costs_all_cash():
     assert result["monthly"]["propertyTax"] > Decimal("0")
     assert result["monthly"]["insurance"] > Decimal("0")
     assert result["monthly"]["maintenance"] > Decimal("0")
+
+
+def test_calculate_principal_paydown_year1():
+    """Test principal paydown calculation for first year."""
+    # $280,000 loan at 7.5% for 30 years
+    principal = calculate_principal_paydown(
+        loan_amount=Decimal("280000"),
+        interest_rate=Decimal("7.5"),
+        loan_term_years=30,
+        num_years=1,
+    )
+
+    # First year should pay down a small amount (mostly interest)
+    # At 7.5%, most of the payment is interest in year 1
+    # Expected: ~$2,500 - $2,700 for year 1
+    assert principal > Decimal("2400")
+    assert principal < Decimal("2800")
+
+
+def test_calculate_principal_paydown_zero_loan():
+    """Test principal paydown with zero loan amount."""
+    principal = calculate_principal_paydown(
+        loan_amount=Decimal("0"),
+        interest_rate=Decimal("7.5"),
+        loan_term_years=30,
+        num_years=1,
+    )
+
+    assert principal == Decimal("0")
+
+
+def test_calculate_principal_paydown_zero_interest():
+    """Test principal paydown with zero interest (equal payments)."""
+    # $240,000 loan at 0% for 30 years
+    principal = calculate_principal_paydown(
+        loan_amount=Decimal("240000"),
+        interest_rate=Decimal("0"),
+        loan_term_years=30,
+        num_years=1,
+    )
+
+    # With 0% interest, annual principal = 240000 / 30 = 8000
+    assert abs(principal - Decimal("8000")) < Decimal("0.01")
+
+
+def test_calculate_appreciation():
+    """Test appreciation calculation."""
+    appreciation = calculate_appreciation(
+        property_value=Decimal("350000"),
+        appreciation_rate=Decimal("3.0"),
+        num_years=1,
+    )
+
+    # 350000 * 0.03 = 10,500
+    assert abs(appreciation - Decimal("10500")) < Decimal("1")
+
+
+def test_calculate_appreciation_five_years():
+    """Test appreciation over 5 years (compound)."""
+    appreciation = calculate_appreciation(
+        property_value=Decimal("350000"),
+        appreciation_rate=Decimal("3.0"),
+        num_years=5,
+    )
+
+    # 350000 * ((1.03)^5 - 1) = 350000 * 0.159274 = 55,745.90
+    assert abs(appreciation - Decimal("55745.90")) < Decimal("10")
+
+
+def test_calculate_tax_benefits_with_loan():
+    """Test tax benefits calculation with mortgage."""
+    tax_benefits = calculate_tax_benefits(
+        loan_amount=Decimal("280000"),
+        interest_rate=Decimal("7.5"),
+        loan_term_years=30,
+        property_value=Decimal("350000"),
+        tax_bracket=Decimal("24"),
+        year_num=1,
+    )
+
+    # Should include mortgage interest deduction + depreciation
+    # Year 1 interest ~$21,000, depreciation ~$10,182
+    # Total deductions ~$31,182, tax savings ~$7,483
+    assert tax_benefits > Decimal("6000")
+    assert tax_benefits < Decimal("10000")
+
+
+def test_calculate_tax_benefits_all_cash():
+    """Test tax benefits for all-cash purchase (depreciation only)."""
+    tax_benefits = calculate_tax_benefits(
+        loan_amount=Decimal("0"),
+        interest_rate=Decimal("0"),
+        loan_term_years=30,
+        property_value=Decimal("350000"),
+        tax_bracket=Decimal("24"),
+        year_num=1,
+    )
+
+    # Only depreciation: 350000 * 0.80 / 27.5 * 0.24 = $2,443.64
+    assert abs(tax_benefits - Decimal("2443.64")) < Decimal("10")
+
+
+def test_calculate_roi_components():
+    """Test comprehensive ROI calculation."""
+    roi = calculate_roi_components(
+        purchase_price=Decimal("350000"),
+        loan_amount=Decimal("280000"),
+        interest_rate=Decimal("7.5"),
+        loan_term_years=30,
+        total_cash_invested=Decimal("81300"),
+        annual_cash_flow=Decimal("5000"),
+        appreciation_rate=Decimal("3.0"),
+        tax_bracket=Decimal("24"),
+        num_years=5,
+    )
+
+    # Verify structure
+    assert "year1" in roi
+    assert "year5Projected" in roi
+    assert "components" in roi
+
+    # Year 1 should have all components
+    assert "roi" in roi["year1"]
+    assert "cashFlow" in roi["year1"]
+    assert "principalPaydown" in roi["year1"]
+    assert "appreciation" in roi["year1"]
+    assert "taxBenefits" in roi["year1"]
+
+    # Components should be percentages
+    assert roi["components"]["cashFlowReturn"] >= Decimal("0")
+    assert roi["components"]["appreciationReturn"] >= Decimal("0")
+    assert roi["components"]["equityBuildupReturn"] >= Decimal("0")
+    assert roi["components"]["taxBenefitsReturn"] >= Decimal("0")
+
+    # Year 1 ROI should be reasonable
+    assert roi["year1"]["roi"] > Decimal("-50")  # Not terribly negative
+    assert roi["year1"]["roi"] < Decimal("100")  # Not unrealistic
+
+
+def test_calculate_roi_components_all_cash():
+    """Test ROI calculation for all-cash purchase."""
+    roi = calculate_roi_components(
+        purchase_price=Decimal("350000"),
+        loan_amount=Decimal("0"),
+        interest_rate=Decimal("0"),
+        loan_term_years=30,
+        total_cash_invested=Decimal("350000"),
+        annual_cash_flow=Decimal("15000"),
+        appreciation_rate=Decimal("3.0"),
+        tax_bracket=Decimal("24"),
+        num_years=5,
+    )
+
+    # No principal paydown for all-cash
+    assert roi["year1"]["principalPaydown"] == Decimal("0.00")
+
+    # Should still have cash flow, appreciation, and tax benefits
+    assert roi["year1"]["cashFlow"] > Decimal("0")
+    assert roi["year1"]["appreciation"] > Decimal("0")
+    assert roi["year1"]["taxBenefits"] > Decimal("0")

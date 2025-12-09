@@ -135,10 +135,18 @@ class MarketSnapshot(models.Model):
     city = models.CharField(max_length=128, blank=True, default="")
     state = models.CharField(max_length=64, blank=True, default="")
 
-    rent_index = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
-    price_trend = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))  # % change
-    crime_score = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal("0"))  # lower better
-    school_rating = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal("0"))
+    rent_index = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    price_trend = models.DecimalField(
+        max_digits=6, decimal_places=4, default=Decimal("0")
+    )  # % change
+    crime_score = models.DecimalField(
+        max_digits=6, decimal_places=2, default=Decimal("0")
+    )  # lower better
+    school_rating = models.DecimalField(
+        max_digits=6, decimal_places=2, default=Decimal("0")
+    )
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -147,7 +155,9 @@ class MarketSnapshot(models.Model):
 
     def __str__(self) -> str:
         label = self.zip_code or f"{self.city}, {self.state}".strip(", ")
-        return f"MarketSnapshot {label} (trend={self.price_trend}, rent={self.rent_index})"
+        return (
+            f"MarketSnapshot {label} (trend={self.price_trend}, rent={self.rent_index})"
+        )
 
 
 class GrowthArea(models.Model):

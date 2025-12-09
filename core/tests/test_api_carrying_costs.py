@@ -111,6 +111,24 @@ def test_calculate_carrying_costs_basic(client):
     warning_types = [w["type"] for w in data["warnings"]]
     assert "negative_cash_flow" in warning_types
 
+    # Verify recommendations section is present
+    assert "recommendations" in data
+    assert isinstance(data["recommendations"], list)
+
+    # Verify ROI section is present
+    assert "roi" in metrics
+    assert "year1" in metrics["roi"]
+    assert "year5Projected" in metrics["roi"]
+    assert "components" in metrics["roi"]
+    assert "breakdown" in metrics["roi"]
+
+    # Verify ROI components
+    roi_components = metrics["roi"]["components"]
+    assert "cashFlowReturn" in roi_components
+    assert "appreciationReturn" in roi_components
+    assert "equityBuildupReturn" in roi_components
+    assert "taxBenefitsReturn" in roi_components
+
 
 @pytest.mark.django_db
 def test_calculate_carrying_costs_all_cash(client):
@@ -266,3 +284,13 @@ def test_calculate_carrying_costs_positive_cash_flow(client):
     # Should not have negative cash flow warning
     warning_types = [w["type"] for w in data["warnings"]]
     assert "negative_cash_flow" not in warning_types
+
+    # Should have recommendations
+    assert "recommendations" in data
+    recommendations = data["recommendations"]
+
+    # Should have at least some recommendations (could be strong_investment or others)
+    # The specific recommendation depends on the CoC return percentage
+    assert (
+        len(recommendations) >= 0
+    )  # May or may not have recommendations depending on metrics

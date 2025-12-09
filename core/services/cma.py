@@ -10,7 +10,9 @@ def price_per_sqft(listing: Listing) -> Decimal:
     return Decimal(listing.price) / Decimal(listing.sq_ft)
 
 
-def find_undervalued(listings: Iterable[Listing], threshold: Decimal = Decimal("0.85")) -> Iterable[Tuple[Listing, Decimal]]:
+def find_undervalued(
+    listings: Iterable[Listing], threshold: Decimal = Decimal("0.85")
+) -> Iterable[Tuple[Listing, Decimal]]:
     """Return listings where PPSF is below the median * threshold.
 
     This is a simple CMA placeholder; later integrate comps API.
@@ -21,7 +23,11 @@ def find_undervalued(listings: Iterable[Listing], threshold: Decimal = Decimal("
     # median approximation
     sorted_vals = sorted(ppsf_values)
     mid = len(sorted_vals) // 2
-    median = sorted_vals[mid] if len(sorted_vals) % 2 == 1 else (sorted_vals[mid - 1] + sorted_vals[mid]) / Decimal(2)
+    median = (
+        sorted_vals[mid]
+        if len(sorted_vals) % 2 == 1
+        else (sorted_vals[mid - 1] + sorted_vals[mid]) / Decimal(2)
+    )
     cutoff = median * threshold
     results = []
     for listing in listings:
