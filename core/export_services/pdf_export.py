@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 from datetime import datetime
-from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 import matplotlib
@@ -149,9 +148,7 @@ class PDFExportService:
         elements = []
 
         # Section header
-        elements.append(
-            Paragraph("Executive Summary", self.styles["SectionHeader"])
-        )
+        elements.append(Paragraph("Executive Summary", self.styles["SectionHeader"]))
 
         # Key metrics
         metrics_text = f"""
@@ -188,9 +185,7 @@ class PDFExportService:
         """
 
         if property_data.get("squareFeet"):
-            details_text += (
-                f"<b>Square Feet:</b> {property_data['squareFeet']:,}<br/>"
-            )
+            details_text += f"<b>Square Feet:</b> {property_data['squareFeet']:,}<br/>"
 
         elements.append(Paragraph(details_text, self.styles["Normal"]))
 
@@ -201,9 +196,7 @@ class PDFExportService:
         elements = []
 
         # Section header
-        elements.append(
-            Paragraph("Financial Analysis", self.styles["SectionHeader"])
-        )
+        elements.append(Paragraph("Financial Analysis", self.styles["SectionHeader"]))
 
         # Carrying costs table
         if "carryingCosts" in analysis:
@@ -269,9 +262,7 @@ class PDFExportService:
         # Cash flow chart (if cash flow data is available)
         if "cashFlow" in analysis:
             elements.append(
-                Paragraph(
-                    "Cash Flow Analysis", self.styles["SectionHeader"]
-                )
+                Paragraph("Cash Flow Analysis", self.styles["SectionHeader"])
             )
 
             # Generate chart
@@ -305,9 +296,7 @@ class PDFExportService:
 
                     # Save chart to buffer
                     img_buffer = io.BytesIO()
-                    plt.savefig(
-                        img_buffer, format="png", dpi=150, bbox_inches="tight"
-                    )
+                    plt.savefig(img_buffer, format="png", dpi=150, bbox_inches="tight")
                     img_buffer.seek(0)
                     plt.close()
 

@@ -28,9 +28,7 @@ def api_client():
 def user(db):
     """Create test user."""
     return User.objects.create_user(
-        username="testuser",
-        email="test@example.com",
-        password="testpass123"
+        username="testuser", email="test@example.com", password="testpass123"
     )
 
 
@@ -45,7 +43,7 @@ def auth_client(api_client, user):
 def foreclosure_properties(db):
     """Create test foreclosure properties."""
     properties = []
-    
+
     # Create properties in Miami, FL
     for i in range(5):
         prop = ForeclosureProperty.objects.create(
@@ -67,7 +65,7 @@ def foreclosure_properties(db):
             lender_name="Test Bank",
         )
         properties.append(prop)
-    
+
     return properties
 
 
@@ -78,29 +76,31 @@ class TestExportForeclosuresCSV:
     def test_export_foreclosures_csv_success(self, api_client, foreclosure_properties):
         """Test successful CSV export."""
         url = reverse("api:export-foreclosures-csv")
-        
+
         data = {
             "filters": {
                 "location": "Miami, FL",
             }
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "text/csv"
         assert "Content-Disposition" in response
         assert "foreclosures" in response["Content-Disposition"]
-        
+
         # Check CSV content
         content = response.content.decode("utf-8")
         assert "Property ID" in content
         assert "FC-FL-MD-12345" in content
 
-    def test_export_foreclosures_csv_with_filters(self, api_client, foreclosure_properties):
+    def test_export_foreclosures_csv_with_filters(
+        self, api_client, foreclosure_properties
+    ):
         """Test CSV export with filters applied."""
         url = reverse("api:export-foreclosures-csv")
-        
+
         data = {
             "filters": {
                 "location": "Miami, FL",
@@ -109,35 +109,37 @@ class TestExportForeclosuresCSV:
                 "maxPrice": "290000",
             }
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         # Check that filtered properties are in CSV
         content = response.content.decode("utf-8")
         assert "FC-FL-MD-12346" in content  # 260,000
         assert "FC-FL-MD-12347" in content  # 270,000
         assert "FC-FL-MD-12348" in content  # 280,000
 
-    def test_export_foreclosures_csv_with_field_selection(self, api_client, foreclosure_properties):
+    def test_export_foreclosures_csv_with_field_selection(
+        self, api_client, foreclosure_properties
+    ):
         """Test CSV export with specific field selection."""
         url = reverse("api:export-foreclosures-csv")
-        
+
         data = {
             "filters": {
                 "location": "Miami, FL",
             },
             "fields": ["property_id", "street", "city", "state", "opening_bid"],
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         content = response.content.decode("utf-8")
         lines = content.split("\n")
-        
+
         # Check header has only selected fields
         header = lines[0]
         assert "Property ID" in header
@@ -145,7 +147,7 @@ class TestExportForeclosuresCSV:
         assert "City" in header
         assert "State" in header
         assert "Opening Bid" in header
-        
+
         # Check that non-selected fields are not in header
         assert "Bedrooms" not in header
         assert "Square Feet" not in header
@@ -153,42 +155,40 @@ class TestExportForeclosuresCSV:
     def test_export_foreclosures_csv_missing_location(self, api_client):
         """Test CSV export fails without location."""
         url = reverse("api:export-foreclosures-csv")
-        
-        data = {
-            "filters": {}
-        }
-        
+
+        data = {"filters": {}}
+
         response = api_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "error" in response.data
 
     def test_export_foreclosures_csv_invalid_location(self, api_client):
         """Test CSV export fails with invalid location."""
         url = reverse("api:export-foreclosures-csv")
-        
+
         data = {
             "filters": {
                 "location": "",  # Empty location
             }
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_export_foreclosures_csv_empty_results(self, api_client):
         """Test CSV export with no matching properties."""
         url = reverse("api:export-foreclosures-csv")
-        
+
         data = {
             "filters": {
                 "location": "Phoenix, AZ",  # No properties in this location
             }
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         # Should still return CSV with headers
         assert response.status_code == status.HTTP_200_OK
         content = response.content.decode("utf-8")
@@ -202,22 +202,22 @@ class TestExportForeclosuresJSON:
     def test_export_foreclosures_json_success(self, api_client, foreclosure_properties):
         """Test successful JSON export."""
         url = reverse("api:export-foreclosures-json")
-        
+
         data = {
             "filters": {
                 "location": "Miami, FL",
             }
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/json"
         assert "Content-Disposition" in response
-        
+
         # Parse JSON content
         content = json.loads(response.content.decode("utf-8"))
-        
+
         # Check metadata
         assert "metadata" in content
         assert "version" in content["metadata"]
@@ -225,49 +225,53 @@ class TestExportForeclosuresJSON:
         assert "exportType" in content["metadata"]
         assert content["metadata"]["exportType"] == "foreclosures"
         assert "recordCount" in content["metadata"]
-        
+
         # Check data
         assert "data" in content
         assert len(content["data"]) == 5
 
-    def test_export_foreclosures_json_includes_filters(self, api_client, foreclosure_properties):
+    def test_export_foreclosures_json_includes_filters(
+        self, api_client, foreclosure_properties
+    ):
         """Test JSON export includes filter information in metadata."""
         url = reverse("api:export-foreclosures-json")
-        
+
         data = {
             "filters": {
                 "location": "Miami, FL",
                 "stage": "auction",
             }
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         content = json.loads(response.content.decode("utf-8"))
-        
+
         # Check that filters are in metadata
         assert "filters" in content["metadata"]
         assert content["metadata"]["filters"]["location"] == "Miami, FL"
         assert content["metadata"]["filters"]["stage"] == "auction"
 
-    def test_export_foreclosures_json_authenticated_user(self, auth_client, foreclosure_properties):
+    def test_export_foreclosures_json_authenticated_user(
+        self, auth_client, foreclosure_properties
+    ):
         """Test JSON export includes user email for authenticated users."""
         url = reverse("api:export-foreclosures-json")
-        
+
         data = {
             "filters": {
                 "location": "Miami, FL",
             }
         }
-        
+
         response = auth_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         content = json.loads(response.content.decode("utf-8"))
-        
+
         # Check that user email is in metadata
         assert content["metadata"]["exportedBy"] == "test@example.com"
 
@@ -279,7 +283,7 @@ class TestExportPropertyAnalysisPDF:
     def test_export_property_analysis_pdf_success(self, auth_client):
         """Test successful PDF export."""
         url = reverse("api:export-property-pdf")
-        
+
         data = {
             "propertyData": {
                 "address": "123 Ocean Drive, Miami, FL 33139",
@@ -318,48 +322,48 @@ class TestExportPropertyAnalysisPDF:
                 },
             },
         }
-        
+
         response = auth_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
         assert "Content-Disposition" in response
         assert "property_analysis" in response["Content-Disposition"]
-        
+
         # Check PDF magic number
-        assert response.content[:4] == b'%PDF'
+        assert response.content[:4] == b"%PDF"
 
     def test_export_property_analysis_pdf_requires_auth(self, api_client):
         """Test PDF export requires authentication."""
         url = reverse("api:export-property-pdf")
-        
+
         data = {
             "propertyData": {"address": "Test"},
             "analysisResults": {},
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_export_property_analysis_pdf_missing_data(self, auth_client):
         """Test PDF export fails with missing required data."""
         url = reverse("api:export-property-pdf")
-        
+
         # Missing analysisResults
         data = {
             "propertyData": {"address": "Test"},
         }
-        
+
         response = auth_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "error" in response.data
 
     def test_export_property_analysis_pdf_file_size(self, auth_client):
         """Test PDF export file size is reasonable."""
         url = reverse("api:export-property-pdf")
-        
+
         data = {
             "propertyData": {
                 "address": "123 Ocean Drive",
@@ -373,11 +377,11 @@ class TestExportPropertyAnalysisPDF:
                 },
             },
         }
-        
+
         response = auth_client.post(url, data, format="json")
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         # Check file size is less than 5MB
         assert len(response.content) < 5 * 1024 * 1024
 
@@ -400,17 +404,17 @@ class TestExportSizeLimits:
                 zip_code="33139",
                 foreclosure_status="auction",
             )
-        
+
         url = reverse("api:export-foreclosures-csv")
-        
+
         data = {
             "filters": {
                 "location": "Miami, FL",
             }
         }
-        
+
         response = api_client.post(url, data, format="json")
-        
+
         # Should reject as too large
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "EXPORT_TOO_LARGE" in response.data["code"]
