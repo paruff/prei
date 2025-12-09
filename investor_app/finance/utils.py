@@ -307,6 +307,259 @@ def calculate_carrying_costs(
     }
 
 
+def calculate_principal_paydown(
+    loan_amount: Decimal,
+    interest_rate: Decimal,
+    loan_term_years: int,
+    num_years: int = 1,
+) -> Decimal:
+    """Calculate total principal paid down over specified number of years.
+
+    Args:
+        loan_amount: Initial loan amount
+        interest_rate: Annual interest rate as percentage (e.g., 7.5 for 7.5%)
+        loan_term_years: Total loan term in years
+        num_years: Number of years to calculate paydown for (default 1)
+
+    Returns:
+        Total principal paid down over the specified period
+    """
+    if loan_amount == 0 or num_years == 0:
+        return Decimal("0")
+
+    loan_amt = to_decimal(loan_amount)
+    rate = to_decimal(interest_rate)
+
+    if rate == 0:
+        # No interest - equal principal payments
+        monthly_principal = loan_amt / Decimal(loan_term_years * 12)
+        return monthly_principal * Decimal(num_years * 12)
+
+    monthly_rate = rate / Decimal(100) / Decimal(12)
+    monthly_payment = calculate_monthly_mortgage(loan_amount, interest_rate, loan_term_years)
+
+    # Calculate principal paid by simulating each payment
+    remaining_balance = loan_amt
+    total_principal_paid = Decimal("0")
+    
+    for month in range(num_years * 12):
+        interest_payment = remaining_balance * monthly_rate
+        principal_payment = monthly_payment - interest_payment
+        total_principal_paid += principal_payment
+        remaining_balance -= principal_payment
+        
+        if remaining_balance <= 0:
+            break
+
+    return total_principal_paid.quantize(Decimal("0.01"))
+
+
+def calculate_appreciation(
+    property_value: Decimal,
+    appreciation_rate: Decimal,
+    num_years: int = 1,
+) -> Decimal:
+    """Calculate property appreciation over specified number of years.
+
+    Args:
+        property_value: Current property value
+        appreciation_rate: Annual appreciation rate as percentage (e.g., 3.0 for 3%)
+        num_years: Number of years to project (default 1)
+
+    Returns:
+        Total appreciation amount
+    """
+    value = to_decimal(property_value)
+    rate = to_decimal(appreciation_rate) / Decimal(100)
+
+    future_value = value * ((Decimal(1) + rate) ** Decimal(num_years))
+    appreciation = future_value - value
+
+    return appreciation.quantize(Decimal("0.01"))
+
+
+def calculate_tax_benefits(
+    loan_amount: Decimal,
+    interest_rate: Decimal,
+    loan_term_years: int,
+    property_value: Decimal,
+    tax_bracket: Decimal = Decimal("24"),
+    year_num: int = 1,
+) -> Decimal:
+    """Calculate tax benefits from mortgage interest deduction and depreciation.
+
+    Args:
+        loan_amount: Mortgage loan amount
+        interest_rate: Annual interest rate as percentage
+        loan_term_years: Loan term in years
+        property_value: Property value (for depreciation calculation)
+        tax_bracket: Marginal tax bracket as percentage (default 24%)
+        year_num: Which year to calculate benefits for (default 1)
+
+    Returns:
+        Total tax benefit amount for the specified year
+    """
+    if loan_amount == 0:
+        # All cash - only depreciation benefit
+        # Residential property: 27.5 year straight-line depreciation on 80% of value
+        building_value = to_decimal(property_value) * Decimal("0.80")
+        annual_depreciation = building_value / Decimal("27.5")
+        tax_savings = annual_depreciation * (to_decimal(tax_bracket) / Decimal(100))
+        return tax_savings.quantize(Decimal("0.01"))
+
+    # Calculate interest paid in specific year
+    loan_amt = to_decimal(loan_amount)
+    rate = to_decimal(interest_rate)
+    monthly_rate = rate / Decimal(100) / Decimal(12)
+    monthly_payment = calculate_monthly_mortgage(loan_amount, interest_rate, loan_term_years)
+
+    # Calculate remaining balance at start of year
+    payments_before = (year_num - 1) * 12
+    if payments_before > 0:
+        num_payments = loan_term_years * 12
+        remaining_factor = (Decimal(1) + monthly_rate) ** Decimal(num_payments - payments_before)
+        payment_factor = (Decimal(1) + monthly_rate) ** Decimal(num_payments)
+        balance_start = loan_amt * (
+            (remaining_factor - Decimal(1)) / (payment_factor - Decimal(1))
+        )
+    else:
+        balance_start = loan_amt
+
+    # Calculate interest for each month of the year
+    total_interest = Decimal("0")
+    balance = balance_start
+    for _ in range(12):
+        interest_payment = balance * monthly_rate
+        principal_payment = monthly_payment - interest_payment
+        total_interest += interest_payment
+        balance -= principal_payment
+        if balance <= 0:
+            break
+
+    # Add depreciation
+    building_value = to_decimal(property_value) * Decimal("0.80")
+    annual_depreciation = building_value / Decimal("27.5")
+
+    # Total deductions
+    total_deductions = total_interest + annual_depreciation
+
+    # Tax savings
+    tax_savings = total_deductions * (to_decimal(tax_bracket) / Decimal(100))
+
+    return tax_savings.quantize(Decimal("0.01"))
+
+
+def calculate_roi_components(
+    purchase_price: Decimal,
+    loan_amount: Decimal,
+    interest_rate: Decimal,
+    loan_term_years: int,
+    total_cash_invested: Decimal,
+    annual_cash_flow: Decimal,
+    appreciation_rate: Decimal = Decimal("3.0"),
+    tax_bracket: Decimal = Decimal("24"),
+    num_years: int = 5,
+) -> Dict[str, Any]:
+    """Calculate comprehensive ROI with all components over multiple years.
+
+    Args:
+        purchase_price: Property purchase price
+        loan_amount: Mortgage loan amount
+        interest_rate: Annual interest rate as percentage
+        loan_term_years: Loan term in years
+        total_cash_invested: Total cash invested (down payment + closing costs)
+        annual_cash_flow: Annual pre-tax cash flow
+        appreciation_rate: Annual appreciation rate as percentage (default 3%)
+        tax_bracket: Marginal tax bracket as percentage (default 24%)
+        num_years: Number of years to project (default 5)
+
+    Returns:
+        Dictionary with ROI components and projections
+    """
+    # Year 1 calculations
+    year1_cash_flow = to_decimal(annual_cash_flow)
+    year1_principal_paydown = calculate_principal_paydown(
+        loan_amount, interest_rate, loan_term_years, 1
+    )
+    year1_appreciation = calculate_appreciation(purchase_price, appreciation_rate, 1)
+    year1_tax_benefits = calculate_tax_benefits(
+        loan_amount, interest_rate, loan_term_years, purchase_price, tax_bracket, 1
+    )
+
+    year1_total_return = (
+        year1_cash_flow + year1_principal_paydown + year1_appreciation + year1_tax_benefits
+    )
+
+    if total_cash_invested > 0:
+        year1_roi = (year1_total_return / to_decimal(total_cash_invested) * Decimal(100))
+    else:
+        year1_roi = Decimal("0")
+
+    # Multi-year calculations
+    total_cash_flow = year1_cash_flow * Decimal(num_years)  # Simplified: assumes constant
+    total_principal_paydown = calculate_principal_paydown(
+        loan_amount, interest_rate, loan_term_years, num_years
+    )
+    total_appreciation = calculate_appreciation(purchase_price, appreciation_rate, num_years)
+    
+    # Sum tax benefits for each year
+    total_tax_benefits = Decimal("0")
+    for year in range(1, num_years + 1):
+        total_tax_benefits += calculate_tax_benefits(
+            loan_amount, interest_rate, loan_term_years, purchase_price, tax_bracket, year
+        )
+
+    total_return = (
+        total_cash_flow + total_principal_paydown + total_appreciation + total_tax_benefits
+    )
+
+    if total_cash_invested > 0:
+        multi_year_roi = (total_return / to_decimal(total_cash_invested) * Decimal(100))
+        # Annualized return
+        annualized_roi = (
+            ((Decimal(1) + multi_year_roi / Decimal(100)) ** (Decimal(1) / Decimal(num_years)) - Decimal(1))
+            * Decimal(100)
+        )
+    else:
+        multi_year_roi = Decimal("0")
+        annualized_roi = Decimal("0")
+
+    # Component percentages for year 1
+    if year1_total_return > 0:
+        cash_flow_pct = (year1_cash_flow / year1_total_return * Decimal(100))
+        appreciation_pct = (year1_appreciation / year1_total_return * Decimal(100))
+        equity_pct = (year1_principal_paydown / year1_total_return * Decimal(100))
+        tax_pct = (year1_tax_benefits / year1_total_return * Decimal(100))
+    else:
+        cash_flow_pct = appreciation_pct = equity_pct = tax_pct = Decimal("0")
+
+    return {
+        "year1": {
+            "roi": year1_roi.quantize(Decimal("0.1")),
+            "totalReturn": year1_total_return.quantize(Decimal("0.01")),
+            "cashFlow": year1_cash_flow.quantize(Decimal("0.01")),
+            "principalPaydown": year1_principal_paydown.quantize(Decimal("0.01")),
+            "appreciation": year1_appreciation.quantize(Decimal("0.01")),
+            "taxBenefits": year1_tax_benefits.quantize(Decimal("0.01")),
+        },
+        f"year{num_years}Projected": {
+            "roi": multi_year_roi.quantize(Decimal("0.1")),
+            "annualizedRoi": annualized_roi.quantize(Decimal("0.1")),
+            "totalReturn": total_return.quantize(Decimal("0.01")),
+            "totalCashFlow": total_cash_flow.quantize(Decimal("0.01")),
+            "totalPrincipalPaydown": total_principal_paydown.quantize(Decimal("0.01")),
+            "totalAppreciation": total_appreciation.quantize(Decimal("0.01")),
+            "totalTaxBenefits": total_tax_benefits.quantize(Decimal("0.01")),
+        },
+        "components": {
+            "cashFlowReturn": cash_flow_pct.quantize(Decimal("0.1")),
+            "appreciationReturn": appreciation_pct.quantize(Decimal("0.1")),
+            "equityBuildupReturn": equity_pct.quantize(Decimal("0.1")),
+            "taxBenefitsReturn": tax_pct.quantize(Decimal("0.1")),
+        },
+    }
+
+
 def compute_analysis_for_property(prop: Property) -> InvestmentAnalysis:
     incomes = prop.rental_incomes.all()
     expenses = prop.operating_expenses.all()

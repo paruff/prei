@@ -17,6 +17,7 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from investor_app.finance.utils import (
     calculate_break_even_rent,
     calculate_carrying_costs as calc_costs,
+    calculate_roi_components,
     cap_rate as calc_cap_rate,
     cash_on_cash as calc_coc,
     dscr as calc_dscr,
@@ -787,6 +788,19 @@ def calculate_carrying_costs(request):
         dscr_value = calc_dscr(noi_annual, debt_service_annual)
         dscr_ratio = float(dscr_value.quantize(Decimal("0.01")))
 
+        # ROI Calculations
+        roi_data = calculate_roi_components(
+            purchase_price=purchase_price,
+            loan_amount=loan_amount,
+            interest_rate=interest_rate,
+            loan_term_years=loan_term_years,
+            total_cash_invested=total_cash_invested,
+            annual_cash_flow=net_cash_flow_annual,
+            appreciation_rate=Decimal("3.0"),  # Default 3% appreciation
+            tax_bracket=Decimal("24"),  # Default 24% tax bracket
+            num_years=5,
+        )
+
         investment_metrics = {
             "totalCashInvested": float(total_cash_invested.quantize(Decimal("0.01"))),
             "cocReturn": coc_return_percent,
@@ -797,6 +811,33 @@ def calculate_carrying_costs(request):
                 "coverage": coverage_ratio,
             },
             "debtCoverageRatio": dscr_ratio,
+            "roi": {
+                "year1": float(roi_data["year1"]["roi"]),
+                "year5Projected": float(roi_data["year5Projected"]["roi"]),
+                "year5Annualized": float(roi_data["year5Projected"]["annualizedRoi"]),
+                "components": {
+                    "cashFlowReturn": float(roi_data["components"]["cashFlowReturn"]),
+                    "appreciationReturn": float(roi_data["components"]["appreciationReturn"]),
+                    "equityBuildupReturn": float(roi_data["components"]["equityBuildupReturn"]),
+                    "taxBenefitsReturn": float(roi_data["components"]["taxBenefitsReturn"]),
+                },
+                "breakdown": {
+                    "year1": {
+                        "totalReturn": float(roi_data["year1"]["totalReturn"]),
+                        "cashFlow": float(roi_data["year1"]["cashFlow"]),
+                        "principalPaydown": float(roi_data["year1"]["principalPaydown"]),
+                        "appreciation": float(roi_data["year1"]["appreciation"]),
+                        "taxBenefits": float(roi_data["year1"]["taxBenefits"]),
+                    },
+                    "year5": {
+                        "totalReturn": float(roi_data["year5Projected"]["totalReturn"]),
+                        "totalCashFlow": float(roi_data["year5Projected"]["totalCashFlow"]),
+                        "totalPrincipalPaydown": float(roi_data["year5Projected"]["totalPrincipalPaydown"]),
+                        "totalAppreciation": float(roi_data["year5Projected"]["totalAppreciation"]),
+                        "totalTaxBenefits": float(roi_data["year5Projected"]["totalTaxBenefits"]),
+                    },
+                },
+            },
         }
 
         # Generate warnings

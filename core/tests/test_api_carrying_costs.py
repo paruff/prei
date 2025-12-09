@@ -111,6 +111,20 @@ def test_calculate_carrying_costs_basic(client):
     warning_types = [w["type"] for w in data["warnings"]]
     assert "negative_cash_flow" in warning_types
 
+    # Verify ROI section is present
+    assert "roi" in metrics
+    assert "year1" in metrics["roi"]
+    assert "year5Projected" in metrics["roi"]
+    assert "components" in metrics["roi"]
+    assert "breakdown" in metrics["roi"]
+
+    # Verify ROI components
+    roi_components = metrics["roi"]["components"]
+    assert "cashFlowReturn" in roi_components
+    assert "appreciationReturn" in roi_components
+    assert "equityBuildupReturn" in roi_components
+    assert "taxBenefitsReturn" in roi_components
+
 
 @pytest.mark.django_db
 def test_calculate_carrying_costs_all_cash(client):
