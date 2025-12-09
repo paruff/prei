@@ -286,7 +286,7 @@ class TestNotificationsAPI:
             property=foreclosure_property,
             is_read=False,
         )
-        read_notif = Notification.objects.create(
+        Notification.objects.create(
             user=user,
             notification_type="reminder",
             priority="low",

@@ -102,7 +102,6 @@ class TestAuctionMonitoring:
         from datetime import time
 
         # Set quiet hours (current time should be within)
-        now = timezone.now()
         NotificationPreference.objects.create(
             user=user,
             quiet_hours_start=time(0, 0),  # Midnight
