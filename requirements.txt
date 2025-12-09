@@ -25,3 +25,6 @@ channels>=4.0.0
 channels-redis>=4.2.0
 daphne>=4.1.0
 cffi>=1.0.0
+reportlab>=4.0.0
+matplotlib>=3.8.0
+pillow>=10.0.0

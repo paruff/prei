@@ -64,4 +64,20 @@ urlpatterns = [
         api_views.notification_preferences_view,
         name="notification-preferences",
     ),
+    # Export endpoints
+    path(
+        "v1/export/foreclosures/csv",
+        api_views.export_foreclosures_csv,
+        name="export-foreclosures-csv",
+    ),
+    path(
+        "v1/export/foreclosures/json",
+        api_views.export_foreclosures_json,
+        name="export-foreclosures-json",
+    ),
+    path(
+        "v1/export/property/pdf",
+        api_views.export_property_analysis_pdf,
+        name="export-property-pdf",
+    ),
 ]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import logging
 from decimal import Decimal
 
@@ -7,6 +8,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db import DatabaseError
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.decorators import api_view, throttle_classes
@@ -47,6 +49,7 @@ from .validators import (
     validate_property_types,
     validate_state_code,
 )
+from .export_services import CSVExportService, JSONExportService, PDFExportService
 
 logger = logging.getLogger(__name__)
 
@@ -1133,3 +1136,398 @@ def notification_preferences_view(request):
 
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Export API endpoints
+
+
+@api_view(["POST"])
+@throttle_classes([UserRateThrottle, AnonRateThrottle])
+def export_foreclosures_csv(request):
+    """
+    Export foreclosure listings to CSV format.
+
+    Request Body:
+        - filters: Dictionary of filters to apply (location, stage, price range, etc.)
+        - fields: Optional list of fields to include in export
+
+    Returns:
+        CSV file download
+    """
+    try:
+        # Extract filters from request
+        filters = request.data.get("filters", {})
+        fields = request.data.get("fields")
+        
+        # Validate location parameter
+        location = filters.get("location")
+        if not location:
+            return Response(
+                {
+                    "error": "Location parameter is required",
+                    "code": "INVALID_REQUEST",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            location = validate_location_parameter(location)
+        except serializers.ValidationError as e:
+            return Response(
+                {
+                    "error": str(e),
+                    "code": "INVALID_LOCATION",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build queryset based on location (similar to foreclosures_list)
+        queryset = ForeclosureProperty.objects.all()
+
+        # Parse location
+        location_parts = [part.strip() for part in location.split(",")]
+
+        if len(location_parts) == 1:
+            single_value = location_parts[0]
+            if single_value.isdigit() and len(single_value) == 5:
+                queryset = queryset.filter(zip_code=single_value)
+            elif len(single_value) == 2 and single_value.isalpha():
+                try:
+                    state_code = validate_state_code(single_value)
+                    queryset = queryset.filter(state=state_code)
+                except serializers.ValidationError:
+                    queryset = queryset.filter(
+                        Q(county__icontains=single_value)
+                        | Q(city__icontains=single_value)
+                    )
+            else:
+                queryset = queryset.filter(
+                    Q(county__icontains=single_value) | Q(city__icontains=single_value)
+                )
+        elif len(location_parts) == 2:
+            city_name, state_code = location_parts
+            try:
+                state_code = validate_state_code(state_code)
+                queryset = queryset.filter(city__icontains=city_name, state=state_code)
+            except serializers.ValidationError:
+                return Response(
+                    {
+                        "error": "Invalid geographic area",
+                        "code": "INVALID_LOCATION",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Apply additional filters
+        try:
+            stages = validate_foreclosure_stages(filters.get("stage"))
+            if stages:
+                queryset = queryset.filter(foreclosure_status__in=stages)
+
+            property_types = validate_property_types(filters.get("propertyType"))
+            if property_types:
+                queryset = queryset.filter(property_type__in=property_types)
+
+            min_price = validate_positive_decimal(filters.get("minPrice"), "minPrice")
+            max_price = validate_positive_decimal(filters.get("maxPrice"), "maxPrice")
+            if min_price is not None:
+                queryset = queryset.filter(
+                    Q(opening_bid__gte=min_price, opening_bid__isnull=False)
+                    | Q(
+                        opening_bid__isnull=True,
+                        estimated_value__gte=min_price,
+                        estimated_value__isnull=False,
+                    )
+                )
+            if max_price is not None:
+                queryset = queryset.filter(
+                    Q(opening_bid__lte=max_price, opening_bid__isnull=False)
+                    | Q(
+                        opening_bid__isnull=True,
+                        estimated_value__lte=max_price,
+                        estimated_value__isnull=False,
+                    )
+                )
+        except serializers.ValidationError as e:
+            return Response(
+                {"error": str(e), "code": "INVALID_PARAMETER"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Limit export size (max 500 properties for synchronous export)
+        total_count = queryset.count()
+        if total_count > 500:
+            return Response(
+                {
+                    "error": f"Export too large ({total_count} properties). Maximum 500 properties for synchronous export.",
+                    "code": "EXPORT_TOO_LARGE",
+                    "totalCount": total_count,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get properties
+        properties = queryset.order_by("auction_date", "-created_at")[:500]
+
+        # Convert to dictionaries for CSV export
+        property_dicts = []
+        for prop in properties:
+            property_dicts.append({
+                "property_id": prop.property_id,
+                "street": prop.street,
+                "city": prop.city,
+                "state": prop.state,
+                "zip_code": prop.zip_code,
+                "foreclosure_status": prop.foreclosure_status,
+                "filing_date": prop.filing_date,
+                "auction_date": prop.auction_date,
+                "opening_bid": prop.opening_bid,
+                "estimated_value": prop.estimated_value,
+                "bedrooms": prop.bedrooms,
+                "bathrooms": prop.bathrooms,
+                "square_footage": prop.square_footage,
+                "property_type": prop.property_type,
+                "lender_name": prop.lender_name,
+                "data_source": prop.data_source,
+                "data_timestamp": prop.data_timestamp,
+            })
+
+        # Generate CSV
+        csv_service = CSVExportService()
+        csv_content = csv_service.export_foreclosures(property_dicts, fields)
+
+        # Generate filename
+        filename = csv_service.generate_filename(
+            "foreclosures",
+            location,
+            {"stage": stages} if stages else None,
+        )
+
+        # Return CSV as download
+        response = HttpResponse(csv_content, content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        logger.info(
+            f"CSV export completed - {len(property_dicts)} properties exported for location: {location}"
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Unexpected error in export_foreclosures_csv: {str(e)}")
+        return Response(
+            {
+                "error": "Export service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
+@api_view(["POST"])
+@throttle_classes([UserRateThrottle, AnonRateThrottle])
+def export_foreclosures_json(request):
+    """
+    Export foreclosure listings to JSON format with metadata.
+
+    Request Body:
+        - filters: Dictionary of filters to apply
+
+    Returns:
+        JSON file download
+    """
+    try:
+        # Extract filters from request
+        filters = request.data.get("filters", {})
+
+        # Validate location parameter
+        location = filters.get("location")
+        if not location:
+            return Response(
+                {
+                    "error": "Location parameter is required",
+                    "code": "INVALID_REQUEST",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            location = validate_location_parameter(location)
+        except serializers.ValidationError as e:
+            return Response(
+                {
+                    "error": str(e),
+                    "code": "INVALID_LOCATION",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build queryset (similar to CSV export)
+        queryset = ForeclosureProperty.objects.all()
+
+        # Parse location
+        location_parts = [part.strip() for part in location.split(",")]
+
+        if len(location_parts) == 1:
+            single_value = location_parts[0]
+            if single_value.isdigit() and len(single_value) == 5:
+                queryset = queryset.filter(zip_code=single_value)
+            elif len(single_value) == 2 and single_value.isalpha():
+                try:
+                    state_code = validate_state_code(single_value)
+                    queryset = queryset.filter(state=state_code)
+                except serializers.ValidationError:
+                    queryset = queryset.filter(
+                        Q(county__icontains=single_value)
+                        | Q(city__icontains=single_value)
+                    )
+            else:
+                queryset = queryset.filter(
+                    Q(county__icontains=single_value) | Q(city__icontains=single_value)
+                )
+        elif len(location_parts) == 2:
+            city_name, state_code = location_parts
+            try:
+                state_code = validate_state_code(state_code)
+                queryset = queryset.filter(city__icontains=city_name, state=state_code)
+            except serializers.ValidationError:
+                return Response(
+                    {
+                        "error": "Invalid geographic area",
+                        "code": "INVALID_LOCATION",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Apply additional filters
+        try:
+            stages = validate_foreclosure_stages(filters.get("stage"))
+            if stages:
+                queryset = queryset.filter(foreclosure_status__in=stages)
+
+            property_types = validate_property_types(filters.get("propertyType"))
+            if property_types:
+                queryset = queryset.filter(property_type__in=property_types)
+        except serializers.ValidationError as e:
+            return Response(
+                {"error": str(e), "code": "INVALID_PARAMETER"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Limit export size
+        total_count = queryset.count()
+        if total_count > 500:
+            return Response(
+                {
+                    "error": f"Export too large ({total_count} properties). Maximum 500 properties for synchronous export.",
+                    "code": "EXPORT_TOO_LARGE",
+                    "totalCount": total_count,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get properties and serialize
+        properties = queryset.order_by("auction_date", "-created_at")[:500]
+        serializer = ForeclosurePropertySerializer(properties, many=True)
+
+        # Generate JSON with metadata
+        json_service = JSONExportService()
+        user_email = request.user.email if request.user.is_authenticated else None
+        json_content = json_service.export_with_metadata(
+            serializer.data,
+            "foreclosures",
+            filters,
+            user_email,
+        )
+
+        # Generate filename
+        filename = json_service.generate_filename("foreclosures", location)
+
+        # Return JSON as download
+        response = HttpResponse(json_content, content_type="application/json")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        logger.info(
+            f"JSON export completed - {len(properties)} properties exported for location: {location}"
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Unexpected error in export_foreclosures_json: {str(e)}")
+        return Response(
+            {
+                "error": "Export service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
+@api_view(["POST"])
+@throttle_classes([UserRateThrottle])
+def export_property_analysis_pdf(request):
+    """
+    Export property analysis to PDF format.
+
+    Request Body:
+        - propertyData: Property information
+        - analysisResults: Financial analysis results
+
+    Returns:
+        PDF file download
+    """
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        # Extract data from request
+        property_data = request.data.get("propertyData", {})
+        analysis_results = request.data.get("analysisResults", {})
+
+        if not property_data or not analysis_results:
+            return Response(
+                {
+                    "error": "Both propertyData and analysisResults are required",
+                    "code": "INVALID_REQUEST",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get user branding (optional)
+        user_branding = None
+
+        # Generate PDF
+        pdf_service = PDFExportService()
+        pdf_bytes = pdf_service.generate_property_analysis_report(
+            property_data,
+            analysis_results,
+            user_branding,
+        )
+
+        # Generate filename
+        property_address = property_data.get("address", "property")
+        filename = pdf_service.generate_filename(property_address)
+
+        # Return PDF as download
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        logger.info(
+            f"PDF export completed for property: {property_address}"
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Unexpected error in export_property_analysis_pdf: {str(e)}")
+        return Response(
+            {
+                "error": "Export service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
