@@ -32,6 +32,7 @@ USE_TZ = True
 LANGUAGE_CODE = "en-us"
 
 INSTALLED_APPS = [
+    "daphne",  # Should be first for async support
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "channels",
     "core",
 ]
 
@@ -121,3 +123,34 @@ REST_FRAMEWORK = {
 
 # Growth areas API cache duration (in seconds)
 GROWTH_AREAS_CACHE_DURATION = 86400  # 24 hours
+
+# Redis configuration
+REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+
+# Django Channels configuration
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+        },
+    },
+}
+
+# Celery configuration
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default=REDIS_URL)
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default=REDIS_URL)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "monitor-auctions": {
+        "task": "core.tasks.monitor_auctions_task",
+        "schedule": 900.0,  # Every 15 minutes (in seconds)
+    },
+    "send-auction-reminders": {
+        "task": "core.tasks.send_auction_reminders",
+        "schedule": 1800.0,  # Every 30 minutes (in seconds)
+    },
+}

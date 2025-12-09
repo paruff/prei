@@ -21,11 +21,22 @@ from investor_app.finance.utils import (
     dscr as calc_dscr,
 )
 
-from .models import ForeclosureProperty, GrowthArea
+from .models import (
+    AuctionAlert,
+    ForeclosureProperty,
+    GrowthArea,
+    Notification,
+    NotificationPreference,
+    UserWatchlist,
+)
 from .serializers import (
+    AuctionAlertSerializer,
     CarryingCostRequestSerializer,
     ForeclosurePropertySerializer,
     GrowthAreaSerializer,
+    NotificationPreferenceSerializer,
+    NotificationSerializer,
+    UserWatchlistSerializer,
 )
 from .validators import (
     validate_foreclosure_stages,
@@ -859,3 +870,266 @@ def calculate_carrying_costs(request):
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+
+
+# Watchlist API endpoints
+
+
+@api_view(["GET", "POST"])
+@throttle_classes([UserRateThrottle])
+def watchlist_view(request):
+    """
+    Get user's watchlist or add property to watchlist.
+
+    GET: List all watchlist items
+    POST: Add property to watchlist (requires propertyId in body)
+    """
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if request.method == "GET":
+        watchlist = UserWatchlist.objects.filter(user=request.user).select_related(
+            "property"
+        )
+        serializer = UserWatchlistSerializer(watchlist, many=True)
+        return Response({"watchlist": serializer.data}, status=status.HTTP_200_OK)
+
+    elif request.method == "POST":
+        property_id = request.data.get("propertyId")
+        notes = request.data.get("notes", "")
+
+        if not property_id:
+            return Response(
+                {"error": "propertyId is required", "code": "INVALID_REQUEST"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            property_obj = ForeclosureProperty.objects.get(id=property_id)
+        except ForeclosureProperty.DoesNotExist:
+            return Response(
+                {"error": "Property not found", "code": "NOT_FOUND"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        watchlist_item, created = UserWatchlist.objects.get_or_create(
+            user=request.user, property=property_obj, defaults={"notes": notes}
+        )
+
+        if not created:
+            return Response(
+                {"error": "Property already in watchlist", "code": "ALREADY_EXISTS"},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        serializer = UserWatchlistSerializer(watchlist_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["DELETE"])
+@throttle_classes([UserRateThrottle])
+def watchlist_item_delete(request, item_id):
+    """Remove property from watchlist."""
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        watchlist_item = UserWatchlist.objects.get(id=item_id, user=request.user)
+        watchlist_item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except UserWatchlist.DoesNotExist:
+        return Response(
+            {"error": "Watchlist item not found", "code": "NOT_FOUND"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+
+# Alerts API endpoints
+
+
+@api_view(["GET", "POST"])
+@throttle_classes([UserRateThrottle])
+def alerts_view(request):
+    """
+    Get user's alerts or create new alert.
+
+    GET: List all alerts
+    POST: Create new alert
+    """
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if request.method == "GET":
+        alerts = AuctionAlert.objects.filter(user=request.user)
+        serializer = AuctionAlertSerializer(alerts, many=True)
+        return Response({"alerts": serializer.data}, status=status.HTTP_200_OK)
+
+    elif request.method == "POST":
+        serializer = AuctionAlertSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                {"error": serializer.errors, "code": "VALIDATION_ERROR"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET", "PUT", "DELETE"])
+@throttle_classes([UserRateThrottle])
+def alert_detail(request, alert_id):
+    """Get, update, or delete specific alert."""
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        alert = AuctionAlert.objects.get(id=alert_id, user=request.user)
+    except AuctionAlert.DoesNotExist:
+        return Response(
+            {"error": "Alert not found", "code": "NOT_FOUND"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if request.method == "GET":
+        serializer = AuctionAlertSerializer(alert)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == "PUT":
+        serializer = AuctionAlertSerializer(alert, data=request.data, partial=True)
+
+        if not serializer.is_valid():
+            return Response(
+                {"error": serializer.errors, "code": "VALIDATION_ERROR"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == "DELETE":
+        alert.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# Notifications API endpoints
+
+
+@api_view(["GET"])
+@throttle_classes([UserRateThrottle])
+def notifications_view(request):
+    """Get user's notifications."""
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # Filter options
+    is_read = request.GET.get("isRead")
+    is_dismissed = request.GET.get("isDismissed")
+
+    notifications = Notification.objects.filter(user=request.user)
+
+    if is_read is not None:
+        notifications = notifications.filter(is_read=is_read.lower() == "true")
+
+    if is_dismissed is not None:
+        notifications = notifications.filter(
+            is_dismissed=is_dismissed.lower() == "true"
+        )
+
+    serializer = NotificationSerializer(notifications, many=True)
+    return Response({"notifications": serializer.data}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@throttle_classes([UserRateThrottle])
+def notification_mark_read(request, notification_id):
+    """Mark notification as read."""
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        notification = Notification.objects.get(id=notification_id, user=request.user)
+        notification.mark_read()
+        serializer = NotificationSerializer(notification)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Notification.DoesNotExist:
+        return Response(
+            {"error": "Notification not found", "code": "NOT_FOUND"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+
+@api_view(["POST"])
+@throttle_classes([UserRateThrottle])
+def notification_dismiss(request, notification_id):
+    """Dismiss notification."""
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        notification = Notification.objects.get(id=notification_id, user=request.user)
+        notification.dismiss()
+        serializer = NotificationSerializer(notification)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Notification.DoesNotExist:
+        return Response(
+            {"error": "Notification not found", "code": "NOT_FOUND"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+
+# Notification Preferences API endpoints
+
+
+@api_view(["GET", "PUT"])
+@throttle_classes([UserRateThrottle])
+def notification_preferences_view(request):
+    """Get or update user's notification preferences."""
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # Get or create preferences
+    prefs, created = NotificationPreference.objects.get_or_create(user=request.user)
+
+    if request.method == "GET":
+        serializer = NotificationPreferenceSerializer(prefs)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == "PUT":
+        serializer = NotificationPreferenceSerializer(
+            prefs, data=request.data, partial=True
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                {"error": serializer.errors, "code": "VALIDATION_ERROR"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)

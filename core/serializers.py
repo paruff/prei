@@ -4,7 +4,14 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from .models import ForeclosureProperty, GrowthArea
+from .models import (
+    AuctionAlert,
+    ForeclosureProperty,
+    GrowthArea,
+    Notification,
+    NotificationPreference,
+    UserWatchlist,
+)
 
 
 class GrowthMetricsSerializer(serializers.Serializer):
@@ -250,3 +257,152 @@ class CarryingCostRequestSerializer(serializers.Serializer):
         default="buy-and-hold",
         required=False,
     )
+
+
+# Auction Monitoring Serializers
+
+
+class UserWatchlistSerializer(serializers.ModelSerializer):
+    """Serializer for UserWatchlist model."""
+
+    propertyId = serializers.CharField(source="property.property_id", read_only=True)
+    property = ForeclosurePropertySerializer(read_only=True)
+    addedAt = serializers.DateTimeField(source="added_at", read_only=True)
+
+    class Meta:
+        model = UserWatchlist
+        fields = ["id", "propertyId", "property", "notes", "addedAt"]
+
+
+class AuctionAlertSerializer(serializers.ModelSerializer):
+    """Serializer for AuctionAlert model."""
+
+    alertType = serializers.CharField(source="alert_type")
+    isActive = serializers.BooleanField(source="is_active")
+    propertyTypes = serializers.JSONField(source="property_types", required=False)
+    minOpeningBid = serializers.DecimalField(
+        source="min_opening_bid",
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+    )
+    maxOpeningBid = serializers.DecimalField(
+        source="max_opening_bid",
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+    )
+    radiusMiles = serializers.IntegerField(
+        source="radius_miles", required=False, allow_null=True
+    )
+    centerLatitude = serializers.DecimalField(
+        source="center_latitude",
+        max_digits=9,
+        decimal_places=6,
+        required=False,
+        allow_null=True,
+    )
+    centerLongitude = serializers.DecimalField(
+        source="center_longitude",
+        max_digits=9,
+        decimal_places=6,
+        required=False,
+        allow_null=True,
+    )
+    reminderDaysBefore = serializers.JSONField(
+        source="reminder_days_before", required=False
+    )
+    createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+    updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
+
+    class Meta:
+        model = AuctionAlert
+        fields = [
+            "id",
+            "name",
+            "alertType",
+            "isActive",
+            "states",
+            "cities",
+            "propertyTypes",
+            "minOpeningBid",
+            "maxOpeningBid",
+            "radiusMiles",
+            "centerLatitude",
+            "centerLongitude",
+            "reminderDaysBefore",
+            "createdAt",
+            "updatedAt",
+        ]
+
+
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    """Serializer for NotificationPreference model."""
+
+    notifyEmail = serializers.BooleanField(source="notify_email")
+    notifySms = serializers.BooleanField(source="notify_sms")
+    notifyPush = serializers.BooleanField(source="notify_push")
+    notifyInApp = serializers.BooleanField(source="notify_in_app")
+    quietHoursStart = serializers.TimeField(
+        source="quiet_hours_start", required=False, allow_null=True
+    )
+    quietHoursEnd = serializers.TimeField(
+        source="quiet_hours_end", required=False, allow_null=True
+    )
+    deviceTokens = serializers.JSONField(source="device_tokens", required=False)
+    createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+    updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
+
+    class Meta:
+        model = NotificationPreference
+        fields = [
+            "notifyEmail",
+            "notifySms",
+            "notifyPush",
+            "notifyInApp",
+            "quietHoursStart",
+            "quietHoursEnd",
+            "email",
+            "phone",
+            "deviceTokens",
+            "createdAt",
+            "updatedAt",
+        ]
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Serializer for Notification model."""
+
+    notificationType = serializers.CharField(source="notification_type")
+    propertyId = serializers.CharField(
+        source="property.property_id", read_only=True, allow_null=True
+    )
+    isRead = serializers.BooleanField(source="is_read", read_only=True)
+    isDismissed = serializers.BooleanField(source="is_dismissed", read_only=True)
+    readAt = serializers.DateTimeField(
+        source="read_at", read_only=True, allow_null=True
+    )
+    dismissedAt = serializers.DateTimeField(
+        source="dismissed_at", read_only=True, allow_null=True
+    )
+    createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+
+    class Meta:
+        model = Notification
+        fields = [
+            "id",
+            "notificationType",
+            "priority",
+            "title",
+            "body",
+            "propertyId",
+            "url",
+            "data",
+            "isRead",
+            "isDismissed",
+            "readAt",
+            "dismissedAt",
+            "createdAt",
+        ]
