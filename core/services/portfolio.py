@@ -23,11 +23,7 @@ def aggregate_portfolio(user) -> Dict[str, Decimal]:
         cap_rates.append(to_decimal(analysis.cap_rate))
         cocs.append(to_decimal(analysis.cash_on_cash))
 
-    avg_cap_rate = (
-        sum(cap_rates, Decimal("0")) / Decimal(len(cap_rates))
-        if cap_rates
-        else Decimal("0")
-    )
+    avg_cap_rate = sum(cap_rates, Decimal("0")) / Decimal(len(cap_rates)) if cap_rates else Decimal("0")
     avg_coc = sum(cocs, Decimal("0")) / Decimal(len(cocs)) if cocs else Decimal("0")
     return {
         "total_noi": total_noi,

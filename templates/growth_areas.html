@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Economically Growing Areas{% endblock %}
+{% block content %}
+  <h1>Economically Growing Areas</h1>
+  <h2>Top Growth Markets</h2>
+  <table>
+    <thead>
+      <tr><th>Area</th><th>Rent Index</th><th>Price Trend %</th></tr>
+    </thead>
+    <tbody>
+      {% for s in top_growth %}
+        <tr>
+          <td>{% if s.zip_code %}{{ s.zip_code }}{% else %}{{ s.city }}, {{ s.state }}{% endif %}</td>
+          <td>{{ s.rent_index }}</td>
+          <td>{{ s.price_trend|floatformat:2 }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3">No market snapshots available.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:2rem">Undervalued Listings (CMA)</h2>
+  <table>
+    <thead>
+      <tr><th>Address</th><th>City</th><th>State</th><th>PPSF</th><th>Link</th></tr>
+    </thead>
+    <tbody>
+      {% for l, ppsf in undervalued %}
+        <tr>
+          <td>{{ l.address }}</td>
+          <td>{{ l.city }}</td>
+          <td>{{ l.state }}</td>
+          <td>{{ ppsf|floatformat:2 }}</td>
+          <td><a href="{{ l.url }}" target="_blank" rel="noopener">View</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">No undervalued listings found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

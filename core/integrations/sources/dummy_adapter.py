@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, Iterable
 
 
 def fetch() -> Iterable[Dict]:
     """Return a small set of dummy listings for Phase 1 pipeline testing."""
-    base_time = datetime.utcnow()
+    base_time = datetime.now(timezone.utc)
     return [
         {
             "source": "dummy",

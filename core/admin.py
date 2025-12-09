@@ -8,6 +8,7 @@ from .models import (
     Property,
     RentalIncome,
     Transaction,
+    MarketSnapshot,
 )
 
 
@@ -60,6 +61,12 @@ class ListingAdmin(admin.ModelAdmin):
     )
     list_filter = ("source", "property_type", "state")
     search_fields = ("address", "city", "state", "zip_code", "url")
+
+@admin.register(MarketSnapshot)
+class MarketSnapshotAdmin(admin.ModelAdmin):
+    list_display = ("area_type", "zip_code", "city", "state", "rent_index", "price_trend", "updated_at")
+    list_filter = ("area_type", "state")
+    search_fields = ("zip_code", "city", "state")
 
 
 @admin.register(ForeclosureProperty)

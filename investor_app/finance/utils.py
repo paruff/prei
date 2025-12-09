@@ -41,7 +41,10 @@ def dscr(annual_noi: Decimal, annual_debt_service: Decimal) -> Decimal:
 def irr(cashflows: Iterable[Decimal]) -> Decimal:
     cf = np.array([float(c) for c in cashflows], dtype=float)
     try:
-        return to_decimal(npf.irr(cf))
+        value = float(npf.irr(cf))
+        if np.isnan(value) or np.isinf(value):
+            return Decimal("0")
+        return to_decimal(value)
     except Exception:
         return Decimal("0")
 
