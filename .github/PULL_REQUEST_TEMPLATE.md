@@ -30,10 +30,10 @@
 
 <!-- Ask Copilot: "Does this diff violate any rules in .github/copilot-instructions.md?" -->
 
-- [ ] No Firebase SDK calls in `screens/` or `components/`
-- [ ] No business logic in screen files
-- [ ] No inline type definitions (all types in `src/types/index.ts`)
-- [ ] No `any` in catch blocks
+- [ ] No financial math directly in views or models (all in `investor_app/finance/utils.py` or `core/services/`)
+- [ ] No external API calls in views (all in `core/integrations/`)
+- [ ] No `float` used for currency — Decimal throughout
+- [ ] No `any` type in new code
 
 **What I was NOT sure about (flag for human review):**
 
@@ -43,7 +43,7 @@
 
 ## Checklist
 
-- [ ] `npm run preflight` passes (lint + typecheck + tests)
+- [ ] `ruff check . && black --check . && pytest -q` passes (lint + format + tests)
 - [ ] PR is < 400 changed lines, OR `large-pr-approved` label has been applied by a human
 - [ ] No secrets or credentials in any changed file
 - [ ] New features are behind a feature flag (if applicable)

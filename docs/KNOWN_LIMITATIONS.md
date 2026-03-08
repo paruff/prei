@@ -22,7 +22,7 @@ Format: `### [LIMIT-ID] Short description` followed by location, impact, workaro
 
 ### [LIMIT-01] [PLACEHOLDER — short description]
 
-**Location:** `src/[path/to/file.ts]`
+**Location:** `core/[path/to/file.py]`
 **Impact:** [Who is affected and how]
 **Workaround:** [Current mitigation, or “None”]
 **Fix tracked in:** #[ISSUE-NUMBER] (or “Not yet filed”)
