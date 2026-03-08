@@ -109,24 +109,9 @@ jobs:
   test:
     name: "🧪 Tests"
     runs-on: ubuntu-latest
-    services:
-      db:
-        image: postgres:15
-        env:
-          POSTGRES_DB: prei_test
-          POSTGRES_USER: prei
-          POSTGRES_PASSWORD: prei
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
-      DATABASE_URL: postgres://prei:prei@localhost:5432/prei_test
-      # Prefer repo secret; fallback is intentional for fork/CI-only runs (non-production)
-      SECRET_KEY: ${{ secrets.SECRET_KEY || 'ci-test-secret-key-not-for-production' }}
+      # Tests use SQLite (pytest.ini sets DJANGO_SETTINGS_MODULE=investor_app.settings_test).
+      # No external database service needed. SECRET_KEY is set per-step below.
       DEBUG: "False"
     steps:
       - name: "job-start"
@@ -141,6 +126,7 @@ jobs:
       - run: pip install -r requirements.txt pytest pytest-django pytest-bdd coverage
       - name: Run tests
         run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
           coverage run -m pytest -q --tb=short
           coverage report --fail-under=80
       - name: "job-finish"
