@@ -1,0 +1,145 @@
+name: CI Quality Gate — prei
+
+# DORA 2025 (INSTAB-01): Control systems must be proportionally stronger as AI increases change volume.
+
+# DORA METRICS: All jobs log start time, commit SHA, finish time (DORA-friendly logging).
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+
+  # ─────────────────────────────────────
+  # GATE 1: PR Size (DORA INSTAB-01)
+  # ─────────────────────────────────────
+
+  pr-size-check:
+    name: "🔢 PR Size Gate"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check PR size
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const changed = pr.additions + pr.deletions;
+            const limit = 400;
+            const hasOverride = pr.labels.some(l => l.name === 'large-pr-approved');
+            if (changed > limit && !hasOverride) {
+              core.setFailed(`❌ PR size: ${changed} lines (limit: ${limit}). Split into smaller PRs or get large-pr-approved label from a human.`);
+            } else {
+              console.log(`✅ PR size: ${changed} lines`);
+            }
+
+  # ─────────────────────────────────────
+  # GATE 2: Lint + Format
+  # ─────────────────────────────────────
+
+  lint:
+    name: "🔍 Lint & Format"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: echo "job-start:$(date -u +%Y-%m-%dT%H:%M:%SZ) sha:${{ github.sha }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install ruff black
+      - name: Ruff
+        run: ruff check .
+      - name: Black
+        run: black --check .
+      - name: "job-finish"
+        run: echo "job-finish:$(date -u +%Y-%m-%dT%H:%M:%SZ) ✅ Lint passed"
+
+  # ─────────────────────────────────────
+  # GATE 3: Type Check
+  # ─────────────────────────────────────
+
+  typecheck:
+    name: "🔷 Type Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: echo "job-start:$(date -u +%Y-%m-%dT%H:%M:%SZ) sha:${{ github.sha }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt mypy django-stubs
+      - name: Mypy
+        run: mypy core/ finance/ --ignore-missing-imports
+      - name: "job-finish"
+        run: echo "job-finish:$(date -u +%Y-%m-%dT%H:%M:%SZ) ✅ TypeCheck passed"
+
+  # ─────────────────────────────────────
+  # GATE 4: Tests
+  # ─────────────────────────────────────
+
+  test:
+    name: "🧪 Tests"
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_DB: prei_test
+          POSTGRES_USER: prei
+          POSTGRES_PASSWORD: prei
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://prei:prei@localhost:5432/prei_test
+      SECRET_KEY: ci-test-secret-key-not-for-production
+      DEBUG: "False"
+    steps:
+      - name: "job-start"
+        run: echo "job-start:$(date -u +%Y-%m-%dT%H:%M:%SZ) sha:${{ github.sha }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt pytest pytest-django pytest-bdd coverage
+      - name: Run tests
+        run: |
+          coverage run -m pytest -q --tb=short
+          coverage report --fail-under=80
+      - name: "job-finish"
+        run: echo "job-finish:$(date -u +%Y-%m-%dT%H:%M:%SZ) ✅ Tests passed"
+
+  # ─────────────────────────────────────
+  # SUMMARY
+  # ─────────────────────────────────────
+
+  ci-summary:
+    name: "✅ CI Complete"
+    needs: [lint, typecheck, test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all gates
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] ||
+             [ "${{ needs.typecheck.result }}" != "success" ] ||
+             [ "${{ needs.test.result }}" != "success" ]; then
+            echo "❌ One or more CI gates failed"
+            exit 1
+          fi
+          echo "✅ All CI gates passed — ready for human review"
