@@ -51,25 +51,31 @@ jobs:
             );
 
             if (codeChanged && !docsUpdated) {
+              const changedCodePaths = changedPaths
+                .filter(f => f.startsWith('core/') || f.startsWith('investor_app/'))
+                .join(', ');
+              const body = [
+                '## \U0001f4c4 Documentation Freshness Reminder',
+                '',
+                'This PR changes `core/services/`, `investor_app/finance/`, or `core/integrations/` but does not update the living documentation.',
+                '',
+                '**If any public functions were added, removed, or changed:**',
+                'Run `@docs-agent` with this prompt:',
+                '```',
+                `@docs-agent The following files changed in this PR: ${changedCodePaths}`,
+                'Please update docs/API_SURFACE.md and docs/CHANGE_IMPACT_MAP.md to reflect the changes.',
+                '```',
+                '',
+                '**If no public API changed** (internal refactor only):',
+                'Add a comment below: "No public API changes \u2014 docs freshness N/A"',
+                '',
+                '*DORA 2025: Undocumented APIs force every agent to reverse-engineer intent from implementation.*',
+              ].join('\n');
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `## \U0001f4c4 Documentation Freshness Reminder
-
-This PR changes \`core/services/\`, \`investor_app/finance/\`, or \`core/integrations/\` but does not update the living documentation.
-
-**If any public functions were added, removed, or changed:**
-Run \`@docs-agent\` with this prompt:
-\`\`\`
-@docs-agent The following files changed in this PR: ${changedPaths.filter(f => f.startsWith('core/') || f.startsWith('investor_app/')).join(', ')}
-Please update docs/API_SURFACE.md and docs/CHANGE_IMPACT_MAP.md to reflect the changes.
-\`\`\`
-
-**If no public API changed** (internal refactor only):
-Add a comment below: "No public API changes — docs freshness N/A"
-
-*DORA 2025: Undocumented APIs force every agent to reverse-engineer intent from implementation.*`
+                body,
               });
               console.log('\U0001f4c4 Documentation reminder posted');
             } else if (codeChanged && docsUpdated) {
