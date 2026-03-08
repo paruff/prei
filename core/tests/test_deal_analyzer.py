@@ -207,9 +207,7 @@ def test_mortgage_known_value():
 
 def test_mortgage_large_loan_amount():
     """Mortgage on a very large loan (e.g. $10 M) should not overflow."""
-    payment = calculate_monthly_mortgage(
-        Decimal("10000000"), Decimal("7.5"), 30
-    )
+    payment = calculate_monthly_mortgage(Decimal("10000000"), Decimal("7.5"), 30)
     # Proportional to $280k → $1 958.35, so $10M ≈ $69 941
     assert payment > Decimal("60000")
     assert payment < Decimal("80000")
@@ -236,9 +234,7 @@ def test_mortgage_short_term():
 
 def test_break_even_rent_happy_path():
     """Standard break-even rent calculation."""
-    result = calculate_break_even_rent(
-        Decimal("2500"), Decimal("5"), Decimal("10")
-    )
+    result = calculate_break_even_rent(Decimal("2500"), Decimal("5"), Decimal("10"))
     assert "monthly" in result
     assert "annual" in result
     # rent * (1 - 0.05) * (1 - 0.10) = 2500  →  rent = 2500 / (0.95 * 0.90) ≈ 2923.98
@@ -250,35 +246,27 @@ def test_break_even_rent_happy_path():
 
 def test_break_even_rent_zero_vacancy_zero_management():
     """With 0% vacancy and 0% management, break-even rent equals costs."""
-    result = calculate_break_even_rent(
-        Decimal("2000"), Decimal("0"), Decimal("0")
-    )
+    result = calculate_break_even_rent(Decimal("2000"), Decimal("0"), Decimal("0"))
     assert result["monthly"] == Decimal("2000.00")
 
 
 def test_break_even_rent_zero_denominator():
     """100% vacancy makes divisor zero — must return Decimal('0'), not raise."""
-    result = calculate_break_even_rent(
-        Decimal("2500"), Decimal("100"), Decimal("0")
-    )
+    result = calculate_break_even_rent(Decimal("2500"), Decimal("100"), Decimal("0"))
     assert result["monthly"] == Decimal("0")
     assert result["annual"] == Decimal("0")
 
 
 def test_break_even_rent_zero_denominator_via_management():
     """100% management fee makes divisor zero — must return Decimal('0'), not raise."""
-    result = calculate_break_even_rent(
-        Decimal("2500"), Decimal("0"), Decimal("100")
-    )
+    result = calculate_break_even_rent(Decimal("2500"), Decimal("0"), Decimal("100"))
     assert result["monthly"] == Decimal("0")
     assert result["annual"] == Decimal("0")
 
 
 def test_break_even_rent_very_large_costs():
     """Break-even rent with very large monthly costs stays consistent."""
-    result = calculate_break_even_rent(
-        Decimal("999999"), Decimal("8"), Decimal("10")
-    )
+    result = calculate_break_even_rent(Decimal("999999"), Decimal("8"), Decimal("10"))
     assert result["monthly"] > Decimal("999999")
     assert result["annual"] > result["monthly"]
 

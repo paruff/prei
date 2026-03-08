@@ -8,8 +8,20 @@ from core.models import MarketSnapshot, Listing
 
 @pytest.mark.django_db
 def test_growth_areas_renders_with_seeded_snapshots(client):
-    MarketSnapshot.objects.create(area_type="zip", zip_code="78701", state="TX", rent_index=Decimal("1800"), price_trend=Decimal("0.14"))
-    MarketSnapshot.objects.create(area_type="zip", zip_code="80203", state="CO", rent_index=Decimal("1600"), price_trend=Decimal("0.10"))
+    MarketSnapshot.objects.create(
+        area_type="zip",
+        zip_code="78701",
+        state="TX",
+        rent_index=Decimal("1800"),
+        price_trend=Decimal("0.14"),
+    )
+    MarketSnapshot.objects.create(
+        area_type="zip",
+        zip_code="80203",
+        state="CO",
+        rent_index=Decimal("1600"),
+        price_trend=Decimal("0.10"),
+    )
     resp = client.get(reverse("growth_areas"))
     assert resp.status_code == 200
     html = resp.content.decode()

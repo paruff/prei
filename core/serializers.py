@@ -429,7 +429,11 @@ class RentalStrategyAssumptionsSerializer(serializers.Serializer):
     monthlyRent = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
     holdingPeriodYears = serializers.IntegerField(min_value=1, max_value=30, default=5)
     appreciationRate = serializers.DecimalField(
-        max_digits=5, decimal_places=2, min_value=0, max_value=20, default=3.0
+        max_digits=5,
+        decimal_places=2,
+        min_value=0,
+        max_value=20,
+        default=Decimal("3.0"),
     )
 
 
@@ -443,7 +447,7 @@ class VacationRentalStrategyAssumptionsSerializer(serializers.Serializer):
         max_digits=5, decimal_places=2, min_value=0, max_value=100
     )
     cleaningFeePerStay = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=0, default=150
+        max_digits=10, decimal_places=2, min_value=0, default=Decimal("150")
     )
 
 

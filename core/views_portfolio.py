@@ -5,7 +5,12 @@ from core.services.portfolio import aggregate_portfolio
 
 def portfolio_dashboard(request):
     if not request.user.is_authenticated:
-        return render(request, "portfolio_dashboard.html", {"error": "Please sign in to view your portfolio."}, status=403)
+        return render(
+            request,
+            "portfolio_dashboard.html",
+            {"error": "Please sign in to view your portfolio."},
+            status=403,
+        )
 
     agg = aggregate_portfolio(request.user)
     # Minimal trend placeholder; real implementation would compute series

@@ -8,12 +8,18 @@ class Command(BaseCommand):
     help = "Fetch HUD properties for a given state/zip and upsert into Listing"
 
     def add_arguments(self, parser):
-        parser.add_argument("--state", type=str, default="", help="State code, e.g., TX")
+        parser.add_argument(
+            "--state", type=str, default="", help="State code, e.g., TX"
+        )
         parser.add_argument("--zip", type=str, default="", help="ZIP code, e.g., 78701")
 
     def handle(self, *args, **options):
         if not is_enabled():
-            self.stdout.write(self.style.WARNING("HUD integration disabled. Set HUD_ENABLED=true to enable."))
+            self.stdout.write(
+                self.style.WARNING(
+                    "HUD integration disabled. Set HUD_ENABLED=true to enable."
+                )
+            )
             return
 
         state = options.get("state") or None
@@ -36,4 +42,8 @@ class Command(BaseCommand):
             )
             created += 1 if was_created else 0
             updated += 0 if was_created else 1
-        self.stdout.write(self.style.SUCCESS(f"HUD fetch complete. Created={created} Updated={updated}"))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"HUD fetch complete. Created={created} Updated={updated}"
+            )
+        )
