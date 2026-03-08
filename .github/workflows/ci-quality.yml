@@ -77,9 +77,9 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-      - run: pip install -r requirements.txt mypy django-stubs
+      - run: pip install -r requirements.txt mypy django-stubs types-requests
       - name: Mypy
-        run: mypy core/ finance/ --ignore-missing-imports
+        run: mypy core/ investor_app/finance/ --ignore-missing-imports
       - name: "job-finish"
         run: echo "job-finish:$(date -u +%Y-%m-%dT%H:%M:%SZ) ✅ TypeCheck passed"
 
@@ -106,7 +106,8 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgres://prei:prei@localhost:5432/prei_test
-      SECRET_KEY: ci-test-secret-key-not-for-production
+      # Prefer repo secret; fallback is intentional for fork/CI-only runs (non-production)
+      SECRET_KEY: ${{ secrets.SECRET_KEY || 'ci-test-secret-key-not-for-production' }}
       DEBUG: "False"
     steps:
       - name: "job-start"

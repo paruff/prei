@@ -6,7 +6,9 @@ def is_enabled() -> bool:
     return os.getenv("HUD_ENABLED", "false").lower() in {"1", "true", "yes"}
 
 
-def fetch_properties(state: Optional[str] = None, zip_code: Optional[str] = None) -> List[Dict]:
+def fetch_properties(
+    state: Optional[str] = None, zip_code: Optional[str] = None
+) -> List[Dict]:
     """Fetch HUD properties for a given area.
 
     This is a scaffold. When `HUD_ENABLED` is true, integrate real HUD API/feed.
