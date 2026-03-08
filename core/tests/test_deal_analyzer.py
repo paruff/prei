@@ -172,11 +172,11 @@ def test_irr_no_real_solution_returns_zero():
 
 
 def test_irr_all_positive_returns_zero():
-    """All-positive cash flows also have no valid IRR — safe fallback."""
+    """All-positive cash flows have no valid IRR — safe fallback must return Decimal('0')."""
     cashflows = [Decimal("1000")] * 5
     result = irr(cashflows)
-    # numpy-financial may return nan or raise; our wrapper returns 0
-    assert isinstance(result, Decimal)
+    # numpy-financial returns nan for all-positive series; our wrapper normalises to 0
+    assert result == Decimal("0")
 
 
 def test_irr_single_period():
@@ -197,6 +197,12 @@ def test_irr_very_large_cashflows():
 # ---------------------------------------------------------------------------
 # calculate_monthly_mortgage
 # ---------------------------------------------------------------------------
+
+
+def test_mortgage_known_value():
+    """$280 000 at 7.5% for 30 years should produce ~$1 958.35/month."""
+    payment = calculate_monthly_mortgage(Decimal("280000"), Decimal("7.5"), 30)
+    assert abs(payment - Decimal("1958.35")) < Decimal("1.00")
 
 
 def test_mortgage_large_loan_amount():
@@ -248,6 +254,24 @@ def test_break_even_rent_zero_vacancy_zero_management():
         Decimal("2000"), Decimal("0"), Decimal("0")
     )
     assert result["monthly"] == Decimal("2000.00")
+
+
+def test_break_even_rent_zero_denominator():
+    """100% vacancy makes divisor zero — must return Decimal('0'), not raise."""
+    result = calculate_break_even_rent(
+        Decimal("2500"), Decimal("100"), Decimal("0")
+    )
+    assert result["monthly"] == Decimal("0")
+    assert result["annual"] == Decimal("0")
+
+
+def test_break_even_rent_zero_denominator_via_management():
+    """100% management fee makes divisor zero — must return Decimal('0'), not raise."""
+    result = calculate_break_even_rent(
+        Decimal("2500"), Decimal("0"), Decimal("100")
+    )
+    assert result["monthly"] == Decimal("0")
+    assert result["annual"] == Decimal("0")
 
 
 def test_break_even_rent_very_large_costs():

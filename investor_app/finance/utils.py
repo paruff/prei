@@ -211,7 +211,13 @@ def calculate_break_even_rent(
 
     # Formula: rent * (1 - vacancy) * (1 - mgmt) = costs
     # rent = costs / ((1 - vacancy) * (1 - mgmt))
-    break_even = costs / ((Decimal(1) - vacancy) * (Decimal(1) - mgmt))
+    divisor = (Decimal(1) - vacancy) * (Decimal(1) - mgmt)
+    if divisor == 0:
+        return {
+            "monthly": Decimal("0"),
+            "annual": Decimal("0"),
+        }
+    break_even = costs / divisor
 
     return {
         "monthly": break_even.quantize(Decimal("0.01")),
