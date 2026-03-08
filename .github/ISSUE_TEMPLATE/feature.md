@@ -1,8 +1,12 @@
-## name: Feature
-about: Product feature to be implemented by a Copilot agent, directed by a PM
-title: “[FEAT] “
-labels: product, effort-medium
-assignees: ‘’
+---
+name: "Feature"
+about: "Product feature to be implemented by a Copilot agent, directed by a PM"
+title: "[FEAT] "
+labels:
+  - product
+  - effort-medium
+assignees: []
+---
 
 <!--
   DORA 2025 (PLAT-02 — Golden Path): The PM-authored issue is the spec.
@@ -36,7 +40,7 @@ assignees: ‘’
 
 <!-- What does the agent need to know that isn't in the codebase? -->
 
-<!-- Reference relevant files: src/types/index.ts, existing services, etc. -->
+<!-- Reference relevant files: core/models.py, existing services, etc. -->
 
 ## **Relevant files:**
 
@@ -58,7 +62,7 @@ assignees: ‘’
 
 - [ ] All acceptance criteria met
 - [ ] Unit tests written and passing
-- [ ] `npm run preflight` passes
+- [ ] `ruff check . && black --check . && pytest -q` passes
 - [ ] AI-Assisted Review Block completed in PR
 - [ ] No architecture boundary violations
 - [ ] `docs/API_SURFACE.md` updated if new public functions were added

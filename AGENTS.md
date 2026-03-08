@@ -36,8 +36,7 @@ AI is NOT used for: architectural decisions, database migrations without human r
 |2       |`docs/ARCHITECTURE.md`     |App/layer boundaries, allowed dependencies                |
 |3       |`docs/API_SURFACE.md`      |All public service and utility functions                  |
 |4       |`docs/KNOWN_LIMITATIONS.md`|Known issues — do not make these worse                    |
-|5       |`docs/DATA_MODEL.md`       |Database schema and Firestore-equivalent relationships    |
-|6       |`docs/CHANGE_IMPACT_MAP.md`|Which files change when models or services change         |
+|5       |`docs/CHANGE_IMPACT_MAP.md`|Which files change when models or services change         |
 
 -----
 
@@ -52,7 +51,7 @@ core/serializers.py  → DRF serializers. Validation logic lives here.
 core/integrations/   → All external API calls (ATTOM, HUD, market data).
                        Never called from views directly — always via services.
 core/tasks.py        → Celery async tasks only. Calls services.
-finance/utils.py     → Pure financial calculation functions (KPIs, projections).
+investor_app/finance/utils.py → Pure financial calculation functions (KPIs, projections).
                        No DB access. No Django imports.
 templates/           → HTML only. No business logic in templates.
 ```
@@ -61,7 +60,7 @@ templates/           → HTML only. No business logic in templates.
 
 **NEVER:**
 
-1. Put financial math directly in views or models — it goes in `finance/utils.py` or `core/services/`
+1. Put financial math directly in views or models — it goes in `investor_app/finance/utils.py` or `core/services/`
 1. Call external APIs (ATTOM, HUD) from views — always via `core/integrations/`
 1. Use `float` for currency storage or DB operations — use `Decimal` always
 1. Hardcode rates (tax, vacancy, capex) — use Django settings or environment vars
@@ -117,7 +116,7 @@ templates/           → HTML only. No business logic in templates.
 - **Boundary tests required** — every financial function must test: negative, zero, very large values
 - **Division by zero** — guard all divides, return 0 or raise `ValueError` with clear message
 - **IRR/NPV via numpy-financial** — wrap in try/except with safe fallback and logging
-- Centralize in `finance/utils.py` so every function is independently testable
+- Centralize in `investor_app/finance/utils.py` so every function is independently testable
 
 -----
 

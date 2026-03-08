@@ -13,7 +13,7 @@ core/models.py        → Django ORM models only. Field definitions, __str__, Me
 
 core/services/        → Business logic services.
                         (cma.py = Comparative Market Analysis, portfolio.py = portfolio KPIs)
-                        Calls models and finance/utils. May call integrations via adapter.
+                        Calls models and investor_app/finance/utils. May call integrations via adapter.
                         Never called from templates.
 
 core/api_views.py     → DRF API views. Calls services. Validates via serializers.
@@ -28,7 +28,7 @@ core/integrations/    → All external API adapters (ATTOM, HUD, market data).
 
 core/tasks.py         → Celery async tasks only. Calls services. Never business logic.
 
-finance/utils.py      → Pure KPI calculation functions.
+investor_app/finance/utils.py → Pure KPI calculation functions.
                         No Django imports. No DB access. No external calls.
                         Decimal in → Decimal out (float only as intermediate for numpy).
 
@@ -40,7 +40,7 @@ templates/            → HTML rendering only. No business logic. No raw queries
 ```
 api_views → serializers (validation)
 api_views → services → models
-                     → finance/utils (KPI calculations)
+                     → investor_app/finance/utils (KPI calculations)
                      → integrations/ (external data)
 tasks → services
 templates ← views (context only)
@@ -56,12 +56,12 @@ templates ← views (context only)
 |API Views   |`core/api_views.py`                         |REST endpoints for dashboard, property detail, analysis        |
 |Serializers |`core/serializers.py`                       |Request/response validation and serialization                  |
 |Integrations|`core/integrations/sources/attom_adapter.py`|ATTOM API client                                               |
-|Finance     |`finance/utils.py`                          |Cap rate, CoC, IRR, DSCR, NOI calculations                     |
+|Finance     |`investor_app/finance/utils.py`             |Cap rate, CoC, IRR, DSCR, NOI calculations                     |
 |Tasks       |`core/tasks.py`                             |Celery tasks for data fetching, alert processing               |
 
 ## What Goes Where — Decision Rules
 
-**New KPI calculation?** → `finance/utils.py` as a pure function. Test it there first.
+**New KPI calculation?** → `investor_app/finance/utils.py` as a pure function. Test it there first.
 
 **New external data source?** → New adapter in `core/integrations/sources/`. Wrap with a domain interface in `core/integrations/market/` if it’s market data.
 

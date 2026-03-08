@@ -54,7 +54,7 @@
 
 ### If Archetypes 1 or 2 (Foundational / Legacy Bottleneck)
 
-**Elevate first:** CI/CD stability, observability, error monitoring, Firestore security rules
+**Elevate first:** CI/CD stability, observability, error monitoring, Django/DRF auth & permissions, Postgres migrations, secrets management
 **Logic:** Fix stability before accelerating throughput. AI on an unstable foundation accelerates instability.
 **Defer:** Prompt library, advanced agents, feature velocity
 

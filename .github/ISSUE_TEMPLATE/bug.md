@@ -1,8 +1,12 @@
-## name: Bug Fix
-about: A defect to be investigated and fixed by a Copilot agent
-title: “[BUG] “
-labels: bug, effort-small
-assignees: ‘’
+---
+name: "Bug Fix"
+about: "A defect to be investigated and fixed by a Copilot agent"
+title: "[BUG] "
+labels:
+  - bug
+  - effort-small
+assignees: []
+---
 
 ## What Is Broken
 
@@ -58,6 +62,6 @@ assignees: ‘’
 
 - [ ] Bug is fixed and steps to reproduce pass
 - [ ] Regression test added
-- [ ] `npm run preflight` passes
+- [ ] `ruff check . && black --check . && pytest -q` passes
 - [ ] `docs/KNOWN_LIMITATIONS.md` updated to remove this limitation (if it was listed)
 - [ ] Root cause noted in PR description

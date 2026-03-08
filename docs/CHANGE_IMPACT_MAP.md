@@ -20,7 +20,7 @@
 |`portfolio.py` function signatures|`core/api_views.py` calls, `docs/API_SURFACE.md`|
 |`cma.py` function signatures      |`core/api_views.py` calls, `docs/API_SURFACE.md`|
 
-## Finance Utils Changes (finance/utils.py)
+## Finance Utils Changes (investor_app/finance/utils.py)
 
 |If you change…            |You must also update…                                  |
 |--------------------------|-------------------------------------------------------|

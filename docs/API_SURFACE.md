@@ -1,6 +1,6 @@
 # API Surface — [PROJECT NAME]
 
-> Auto-maintained by `@docs-agent`. Updated whenever `src/services/` or `src/utils/` changes.
+> Auto-maintained by `@docs-agent`. Updated whenever `core/services/` or `investor_app/finance/utils.py` changes.
 > DORA AI Cap 3: This document is loaded as context before every code generation session.
 > Last updated: [PLACEHOLDER]
 
@@ -10,7 +10,7 @@
 
 When updating this file:
 
-1. Scan all files in `src/services/` and `src/utils/` for exported functions
+1. Scan all files in `core/services/` and `investor_app/finance/` for public functions
 1. Document each using the format below
 1. Remove any entries for functions that no longer exist
 1. Add a “Last updated” timestamp at the top
@@ -19,9 +19,9 @@ When updating this file:
 
 ## Services
 
-<!-- @docs-agent: populate from src/services/ -->
+<!-- @docs-agent: populate from core/services/ -->
 
-### [serviceName].[methodName](params)
+### [service_module].[function_name](params)
 
 **Purpose:** [PLACEHOLDER]
 **Parameters:** [PLACEHOLDER]
@@ -30,17 +30,17 @@ When updating this file:
 **Error cases:** [PLACEHOLDER]
 **Example:**
 
-```typescript
-// [PLACEHOLDER]
+```python
+# [PLACEHOLDER]
 ```
 
 -----
 
-## Utilities
+## Finance Utilities
 
-<!-- @docs-agent: populate from src/utils/ -->
+<!-- @docs-agent: populate from investor_app/finance/utils.py -->
 
-### [utilName].[functionName](params)
+### [function_name](params)
 
 **Purpose:** [PLACEHOLDER]
 **Parameters:** [PLACEHOLDER]
@@ -49,6 +49,6 @@ When updating this file:
 **Error cases:** [PLACEHOLDER]
 **Example:**
 
-```typescript
-// [PLACEHOLDER]
+```python
+# [PLACEHOLDER]
 ```

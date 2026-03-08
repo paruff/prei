@@ -4,12 +4,12 @@
 
 -----
 
-## TDD — New KPI Function (finance/utils.py)
+## TDD — New KPI Function (investor_app/finance/utils.py)
 
-**Context:** `core/models.py`, `finance/utils.py`, your failing test
+**Context:** `core/models.py`, `investor_app/finance/utils.py`, your failing test
 
 ```
-Implement the KPI function {{FUNCTION_NAME}} in finance/utils.py to make this failing test pass.
+Implement the KPI function {{FUNCTION_NAME}} in investor_app/finance/utils.py to make this failing test pass.
 
 Rules:
 - Pure function — no Django ORM, no DB access, no external calls
@@ -39,7 +39,7 @@ Rules:
 - Requires authentication (IsAuthenticated permission class)
 - All queryset filtering scoped to request.user
 - Business logic delegated to core/services/ — no logic inline in view
-- Financial calculations via finance/utils.py — never inline in view
+- Financial calculations via investor_app/finance/utils.py — never inline in view
 - Input validated at serializer level before reaching view logic
 - Decimal for all currency — no float in DB operations
 
@@ -62,7 +62,7 @@ Report in five categories:
 2. SECURITY: Missing IsAuthenticated, missing user scope on querysets, hardcoded secrets, raw error responses
 3. TYPES: Missing type hints, float used for currency
 4. TESTS: Financial functions missing boundary tests (zero, negative, large values)
-5. DUPLICATION: Logic duplicating finance/utils.py or core/services/
+5. DUPLICATION: Logic duplicating investor_app/finance/utils.py or core/services/
 
 For each finding: file, line, description, corrected code.
 End with: "Ready for human review? YES / NO"

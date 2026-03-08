@@ -4,7 +4,7 @@
 > traditional four. “AI-assisted teams that don’t track rework see throughput gains
 > consumed by hidden instability.”
 >
-> Run `npm run metrics` for the weekly snapshot. Update this doc monthly.
+> Run `python manage.py check && pytest -q` for the weekly snapshot. Update this doc monthly.
 
 -----
 
@@ -12,7 +12,7 @@
 
 |Metric                        |Target  |⚠️ Warning|❌ Stop  |Tool                       |
 |------------------------------|--------|---------|--------|---------------------------|
-|**Rework rate**               |< 10%   |10–20%   |> 20%   |`scripts/weekly-metrics.sh`|
+|**Rework rate**               |< 10%   |10–20%   |> 20%   |GitHub Insights            |
 |**Change failure rate**       |< 5%    |5–15%    |> 15%   |Error monitoring           |
 |**PR revision rate**          |< 25%   |25–40%   |> 40%   |GitHub Insights            |
 |**Lead time (issue → deploy)**|< 3 days|3–7 days |> 7 days|GitHub Projects            |
@@ -37,7 +37,7 @@ or that `AGENTS.md` / `copilot-instructions.md` needs updating.
 **Measurement:**
 
 ```bash
-npm run metrics  # includes rework rate from scripts/weekly-metrics.sh
+python manage.py check && pytest -q  # check project health and run all tests
 ```
 
 -----
