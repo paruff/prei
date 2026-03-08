@@ -926,3 +926,40 @@ def calculate_vacation_rental_strategy(
             else "Moderate"
         ),
     }
+
+
+def calculate_whatif_monthly_cashflow(
+    annual_noi: Decimal,
+    taxes: Decimal = Decimal("0"),
+    insurance: Decimal = Decimal("0"),
+    maintenance: Decimal = Decimal("0"),
+    management_fees: Decimal = Decimal("0"),
+    rehab_estimate: Decimal = Decimal("0"),
+) -> Decimal:
+    """Calculate projected monthly cash flow from NOI with what-if adjustments.
+
+    Converts annual NOI to a monthly figure and subtracts additional
+    user-specified monthly cost inputs and an annualised rehab reserve.
+
+    Args:
+        annual_noi: Annual net operating income (Decimal).
+        taxes: Additional monthly property tax overrides.
+        insurance: Additional monthly insurance cost.
+        maintenance: Additional monthly maintenance cost.
+        management_fees: Additional monthly management fee.
+        rehab_estimate: One-time rehab estimate spread over 12 months.
+
+    Returns:
+        Projected monthly cash flow as Decimal.
+    """
+    monthly_income = to_decimal(annual_noi) / Decimal(12)
+    additional_monthly = (
+        to_decimal(taxes)
+        + to_decimal(insurance)
+        + to_decimal(maintenance)
+        + to_decimal(management_fees)
+    )
+    rehab_monthly = (
+        to_decimal(rehab_estimate) / Decimal(12) if rehab_estimate else Decimal("0")
+    )
+    return monthly_income - additional_monthly - rehab_monthly

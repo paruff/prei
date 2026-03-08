@@ -1,0 +1,156 @@
+name: CI Quality Gate — prei
+
+# DORA 2025 (INSTAB-01): Control systems must be proportionally stronger as AI increases change volume.
+
+# DORA METRICS: All jobs log start time, commit SHA, finish time (DORA-friendly logging).
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+
+  # ─────────────────────────────────────
+  # GATE 1: PR Size (DORA INSTAB-01)
+  # ─────────────────────────────────────
+
+  pr-size-check:
+    name: "🔢 PR Size Gate"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - name: Check PR size
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const changed = pr.additions + pr.deletions;
+            const limit = 400;
+            const hasOverride = pr.labels.some(l => l.name === 'large-pr-approved');
+            if (changed > limit && !hasOverride) {
+              core.setFailed(`❌ PR size: ${changed} lines (limit: ${limit}). Split into smaller PRs or get large-pr-approved label from a human.`);
+            } else {
+              console.log(`✅ PR size: ${changed} lines`);
+            }
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  # ─────────────────────────────────────
+  # GATE 2: Lint + Format
+  # ─────────────────────────────────────
+
+  lint:
+    name: "🔍 Lint & Format"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install ruff black
+      - name: Ruff
+        run: ruff check .
+      - name: Black
+        run: black --check .
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  # ─────────────────────────────────────
+  # GATE 3: Type Check
+  # ─────────────────────────────────────
+
+  typecheck:
+    name: "🔷 Type Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt mypy django-stubs types-requests
+      - name: Mypy
+        run: mypy core/ investor_app/finance/ --ignore-missing-imports
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  # ─────────────────────────────────────
+  # GATE 4: Tests
+  # ─────────────────────────────────────
+
+  test:
+    name: "🧪 Tests"
+    runs-on: ubuntu-latest
+    env:
+      # Tests use SQLite (pytest.ini sets DJANGO_SETTINGS_MODULE=investor_app.settings_test).
+      # No external database service needed. SECRET_KEY is set per-step below.
+      DEBUG: "False"
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt pytest pytest-django pytest-bdd coverage
+      - name: Run tests
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          coverage run -m pytest -q --tb=short
+          coverage report --fail-under=80
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  # ─────────────────────────────────────
+  # SUMMARY
+  # ─────────────────────────────────────
+
+  ci-summary:
+    name: "✅ CI Complete"
+    needs: [lint, typecheck, test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all gates
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] ||
+             [ "${{ needs.typecheck.result }}" != "success" ] ||
+             [ "${{ needs.test.result }}" != "success" ]; then
+            echo "❌ One or more CI gates failed"
+            exit 1
+          fi
+          echo "✅ All CI gates passed — ready for human review"

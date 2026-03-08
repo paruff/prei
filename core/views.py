@@ -3,7 +3,11 @@ from __future__ import annotations
 # removed unused Decimal import
 from django.shortcuts import render
 
-from investor_app.finance.utils import compute_analysis_for_property, score_listing_v1
+from investor_app.finance.utils import (
+    compute_analysis_for_property,
+    score_listing_v1,
+    calculate_whatif_monthly_cashflow,
+)
 from core.integrations.market.comps import get_comps_for_listing
 from core.integrations.market.rents import get_rent_estimate_for_listing
 from core.integrations.market.crime import get_crime_score
@@ -83,8 +87,12 @@ def search_listings(request):
             zip_code = s.zip_code or zip_code
             state = s.state or state
             # Allow saved bounds to apply unless overridden
-            min_price = min_price or (str(s.min_price) if s.min_price is not None else None)
-            max_price = max_price or (str(s.max_price) if s.max_price is not None else None)
+            min_price = min_price or (
+                str(s.min_price) if s.min_price is not None else None
+            )
+            max_price = max_price or (
+                str(s.max_price) if s.max_price is not None else None
+            )
         except (SavedSearch.DoesNotExist, ValueError):
             pass
 
@@ -128,7 +136,9 @@ def search_listings(request):
 
     saved = []
     if request.user.is_authenticated:
-        saved = list(SavedSearch.objects.filter(user=request.user).order_by("-created_at")[:10])
+        saved = list(
+            SavedSearch.objects.filter(user=request.user).order_by("-created_at")[:10]
+        )
 
     return render(
         request,
@@ -147,6 +157,8 @@ def search_listings(request):
 
 
 def analyze_property(request, property_id: int):
+    from decimal import Decimal
+
     try:
         prop = Property.objects.get(id=property_id)
     except Property.DoesNotExist:
@@ -160,11 +172,11 @@ def analyze_property(request, property_id: int):
     analysis = compute_analysis_for_property(prop)
 
     # What-if inputs for carry costs and rehab estimate
-    def num(name, default=0):
+    def num(name: str, default: str = "0") -> Decimal:
         try:
-            return float(request.POST.get(name, default))
+            return Decimal(str(request.POST.get(name, default)))
         except Exception:
-            return default
+            return Decimal("0")
 
     taxes = num("taxes")
     insurance = num("insurance")
@@ -172,10 +184,14 @@ def analyze_property(request, property_id: int):
     management_fees = num("management_fees")
     rehab_estimate = num("rehab_estimate")
 
-    monthly_income = float(analysis.noi) / 12.0  # NOI approximates net of opex, adjust via inputs
-    additional_monthly_costs = taxes + insurance + maintenance + management_fees
-    rehab_monthly = rehab_estimate / 12.0 if rehab_estimate else 0.0
-    projected_monthly_cash_flow = monthly_income - additional_monthly_costs - rehab_monthly
+    projected_monthly_cash_flow = calculate_whatif_monthly_cashflow(
+        annual_noi=analysis.noi,
+        taxes=taxes,
+        insurance=insurance,
+        maintenance=maintenance,
+        management_fees=management_fees,
+        rehab_estimate=rehab_estimate,
+    )
 
     carry_costs = {
         "taxes": taxes,
@@ -197,7 +213,9 @@ def report_listing(request, listing_id: int):
     try:
         lst = Listing.objects.get(id=listing_id)
     except Listing.DoesNotExist:
-        return render(request, "property_report.html", {"error": "Listing not found."}, status=404)
+        return render(
+            request, "property_report.html", {"error": "Listing not found."}, status=404
+        )
 
     comps = get_comps_for_listing(lst)
     rent_estimate = get_rent_estimate_for_listing(lst)
@@ -217,7 +235,12 @@ def report_property(request, property_id: int):
     try:
         prop = Property.objects.get(id=property_id)
     except Property.DoesNotExist:
-        return render(request, "property_report.html", {"error": "Property not found."}, status=404)
+        return render(
+            request,
+            "property_report.html",
+            {"error": "Property not found."},
+            status=404,
+        )
 
     analysis = compute_analysis_for_property(prop)
     context = {

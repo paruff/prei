@@ -11,13 +11,17 @@ def get_comps_for_listing(listing: Listing) -> List[Dict]:
     """
     base_ppsf = Decimal(listing.price) / Decimal(listing.sq_ft or 1)
     comps = []
-    for i, factor in enumerate([Decimal("0.9"), Decimal("1.0"), Decimal("1.1")], start=1):
+    for i, factor in enumerate(
+        [Decimal("0.9"), Decimal("1.0"), Decimal("1.1")], start=1
+    ):
         ppsf = (base_ppsf * factor).quantize(Decimal("0.01"))
         price = (ppsf * Decimal(listing.sq_ft or 1)).quantize(Decimal("0.01"))
-        comps.append({
-            "address": f"Comp {i} - {listing.city}",
-            "price": price,
-            "sq_ft": listing.sq_ft or 0,
-            "ppsf": ppsf,
-        })
+        comps.append(
+            {
+                "address": f"Comp {i} - {listing.city}",
+                "price": price,
+                "sq_ft": listing.sq_ft or 0,
+                "ppsf": ppsf,
+            }
+        )
     return comps

@@ -1,0 +1,77 @@
+name: Documentation Freshness
+
+# DORA 2025 (DOCS-02): "Documentation is the least-used AI capability despite being high-value."
+
+# This workflow posts a reminder comment when service or utility files change
+# without a corresponding update to docs/API_SURFACE.md.
+# It does not block merges — it prompts @docs-agent to run.
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'core/services/**'
+      - 'investor_app/finance/**'
+      - 'core/integrations/**'
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  doc-freshness-check:
+    name: "\U0001f4c4 Documentation Freshness"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if docs were updated alongside code
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const changedPaths = files.map(f => f.filename);
+
+            const codeChanged = changedPaths.some(f =>
+              f.startsWith('core/services/') ||
+              f.startsWith('investor_app/finance/') ||
+              f.startsWith('core/integrations/')
+            );
+
+            const docsUpdated = changedPaths.some(f =>
+              f === 'docs/API_SURFACE.md' ||
+              f === 'docs/CHANGE_IMPACT_MAP.md'
+            );
+
+            if (codeChanged && !docsUpdated) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `## \U0001f4c4 Documentation Freshness Reminder
+
+This PR changes \`core/services/\`, \`investor_app/finance/\`, or \`core/integrations/\` but does not update the living documentation.
+
+**If any public functions were added, removed, or changed:**
+Run \`@docs-agent\` with this prompt:
+\`\`\`
+@docs-agent The following files changed in this PR: ${changedPaths.filter(f => f.startsWith('core/') || f.startsWith('investor_app/')).join(', ')}
+Please update docs/API_SURFACE.md and docs/CHANGE_IMPACT_MAP.md to reflect the changes.
+\`\`\`
+
+**If no public API changed** (internal refactor only):
+Add a comment below: "No public API changes — docs freshness N/A"
+
+*DORA 2025: Undocumented APIs force every agent to reverse-engineer intent from implementation.*`
+              });
+              console.log('\U0001f4c4 Documentation reminder posted');
+            } else if (codeChanged && docsUpdated) {
+              console.log('\u2705 Documentation updated alongside code changes');
+            }
