@@ -48,3 +48,7 @@ media
 
 # Pytest
 .pytest_cache/
+
+# MkDocs build output
+site/
+test_db.sqlite3

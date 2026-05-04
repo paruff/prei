@@ -1,0 +1,156 @@
+from __future__ import annotations
+
+from pathlib import Path
+from decimal import Decimal
+
+import environ
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+env = environ.Env(
+    DEBUG=(bool, True),
+)
+
+env_file = BASE_DIR / ".env"
+if env_file.exists():
+    environ.Env.read_env(str(env_file))
+
+DEBUG = env("DEBUG")
+SECRET_KEY = env("SECRET_KEY", default="dev-secret-key-change-me")
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+
+DATABASES = {
+    "default": env.db(
+        "DATABASE_URL",
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+    )
+}
+
+TIME_ZONE = env("TIME_ZONE", default="UTC")
+USE_TZ = True
+
+LANGUAGE_CODE = "en-us"
+
+INSTALLED_APPS = [
+    "daphne",  # Should be first for async support
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "channels",
+    "core",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "investor_app.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "investor_app.wsgi.application"
+ASGI_APPLICATION = "investor_app.asgi.application"
+
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Financial defaults (do not hardcode in code; override via env)
+FINANCE_DEFAULTS = {
+    "vacancy_rate": Decimal(env("VACANCY_RATE", default="0.05")),
+    "management_fee_rate": Decimal(env("MANAGEMENT_FEE_RATE", default="0.08")),
+    "capex_reserve_rate": Decimal(env("CAPEX_RESERVE_RATE", default="0.05")),
+}
+
+# Basic logging suitable for CI and dev
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        }
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
+
+# Django REST Framework settings
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+    ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.AnonRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "user": "100/hour",
+        "anon": "100/hour",
+    },
+}
+
+# Growth areas API cache duration (in seconds)
+GROWTH_AREAS_CACHE_DURATION = 86400  # 24 hours
+
+# Redis configuration
+REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+
+# Django Channels configuration
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+        },
+    },
+}
+
+# Celery configuration
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default=REDIS_URL)
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default=REDIS_URL)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "monitor-auctions": {
+        "task": "core.tasks.monitor_auctions_task",
+        "schedule": 900.0,  # Every 15 minutes (in seconds)
+    },
+    "send-auction-reminders": {
+        "task": "core.tasks.send_auction_reminders",
+        "schedule": 1800.0,  # Every 30 minutes (in seconds)
+    },
+}

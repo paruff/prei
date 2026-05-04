@@ -1,0 +1,14 @@
+# Ruff configuration for prei
+
+# Target Python version used in CI and development
+target-version = "py311"
+
+# Preferred line length
+line-length = 88
+
+# You can explicitly select/ignore rules here if needed.
+# Example:
+# select = ["E", "F", "W", "C", "Q"]
+# ignore = ["E203"]
+
+# Per-file ignores and other fine-grained settings can be added as needed later.

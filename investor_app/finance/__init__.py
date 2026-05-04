@@ -1,1 +1,1 @@
-"""Finance module - Financial calculations for real estate investments."""
+"""Finance utilities package for investment KPIs."""
