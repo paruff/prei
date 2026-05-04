@@ -55,7 +55,16 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("description", models.CharField(max_length=255)),
-                ("amount", models.DecimalField(decimal_places=2, max_digits=14)),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=14,
+                        validators=[
+                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                        ],
+                    ),
+                ),
                 ("date", models.DateField()),
                 (
                     "property",
@@ -79,7 +88,16 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("amount", models.DecimalField(decimal_places=2, max_digits=12)),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=12,
+                        validators=[
+                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                        ],
+                    ),
+                ),
                 ("date", models.DateField()),
                 (
                     "property",
@@ -104,7 +122,16 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("category", models.CharField(max_length=100)),
-                ("amount", models.DecimalField(decimal_places=2, max_digits=12)),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=12,
+                        validators=[
+                            django.core.validators.MinValueValidator(Decimal("0.00"))
+                        ],
+                    ),
+                ),
                 ("date", models.DateField()),
                 (
                     "property",

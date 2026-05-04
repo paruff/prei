@@ -60,7 +60,9 @@ class Transaction(models.Model):
         Property, on_delete=models.CASCADE, related_name="transactions"
     )
     description = models.CharField(max_length=255)
-    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=14, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))]
+    )
     date = models.DateField()
 
     def __str__(self) -> str:
