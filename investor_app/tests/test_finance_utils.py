@@ -21,12 +21,39 @@ def test_cap_rate_and_cash_on_cash():
     assert coc == Decimal("0.1500")  # 15.0%
 
 
+def test_cap_rate_zero_price_raises():
+    with pytest.raises(ValueError):
+        utils.calculate_cap_rate(Decimal("9000.00"), Decimal("0"))
+
+
+def test_cash_on_cash_zero_invested_raises():
+    with pytest.raises(ValueError):
+        utils.calculate_cash_on_cash(Decimal("3000.00"), Decimal("0"))
+
+
 def test_irr_basic():
     # initial investment = -1000, returns 500, 600
     irr = utils.calculate_irr([-1000, 500, 600])
     # IRR should be positive and roughly in the expected range
     assert isinstance(irr, Decimal)
     assert irr > Decimal("-1")  # sanity: not nan or invalid
+
+
+def test_irr_accepts_mixed_numeric_types():
+    # Accepts int, float, and Decimal in the same sequence
+    irr_int = utils.calculate_irr([-1000, 500, 600])
+    irr_float = utils.calculate_irr([-1000.0, 500.0, 600.0])
+    irr_decimal = utils.calculate_irr(
+        [Decimal("-1000"), Decimal("500"), Decimal("600")]
+    )
+    assert isinstance(irr_int, Decimal)
+    assert isinstance(irr_float, Decimal)
+    assert isinstance(irr_decimal, Decimal)
+
+
+def test_irr_empty_raises():
+    with pytest.raises(ValueError):
+        utils.calculate_irr([])
 
 
 def test_irr_invalid_raises():
