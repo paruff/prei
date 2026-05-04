@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Sequence
 
 import numpy as np
 import numpy_financial as npf
@@ -38,7 +38,7 @@ def dscr(annual_noi: Decimal, annual_debt_service: Decimal) -> Decimal:
     return to_decimal(annual_noi) / to_decimal(annual_debt_service)
 
 
-def irr(cashflows: Iterable[Decimal]) -> Decimal:
+def irr(cashflows: Iterable[float | int | Decimal]) -> Decimal:
     cf = np.array([float(c) for c in cashflows], dtype=float)
     try:
         value = float(npf.irr(cf))
@@ -1008,7 +1008,7 @@ def calculate_cap_rate(
     pv = to_decimal(property_value)
     if pv == Decimal("0"):
         raise ValueError("Property value cannot be zero")
-    return to_decimal(annual_noi) / pv
+    return (to_decimal(annual_noi) / pv).quantize(Decimal("0.0001"))
 
 
 def calculate_cash_on_cash(
@@ -1032,15 +1032,17 @@ def calculate_cash_on_cash(
     tci = to_decimal(total_cash_invested)
     if tci == Decimal("0"):
         raise ValueError("Total cash invested cannot be zero")
-    return to_decimal(annual_cash_flow) / tci
+    return (to_decimal(annual_cash_flow) / tci).quantize(Decimal("0.0001"))
 
 
-def calculate_irr(cash_flows: list[Decimal]) -> Decimal:
+def calculate_irr(cash_flows: Sequence[float | int | Decimal]) -> Decimal:
     """Calculate Internal Rate of Return (IRR).
 
     Args:
-        cash_flows: List of cash flows, starting with the initial investment
-            (typically negative) followed by periodic returns.
+        cash_flows: Sequence of cash flows, starting with the initial investment
+            (typically negative) followed by periodic returns. Accepts int, float,
+            or Decimal values; each value is coerced to float internally for
+            numpy-financial.
 
     Returns:
         IRR as a Decimal (e.g., 0.15 for 15%).
@@ -1051,6 +1053,6 @@ def calculate_irr(cash_flows: list[Decimal]) -> Decimal:
     if len(cash_flows) < 2:
         raise ValueError("At least 2 cash flows are required to calculate IRR")
     result = irr(cash_flows)
-    if result == Decimal("0") and all(cf >= Decimal("0") for cf in cash_flows):
+    if result == Decimal("0") and all(float(cf) >= 0 for cf in cash_flows):
         raise ValueError("IRR could not be computed for the given cash flows")
     return result
