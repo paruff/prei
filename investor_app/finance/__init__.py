@@ -1,1 +1,1 @@
-"""Finance module for property investment KPIs."""
+"""Finance utilities package for investment KPIs."""

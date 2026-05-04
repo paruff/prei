@@ -1,1 +1,1 @@
-"""Tests for investor_app."""
+"""Tests package."""

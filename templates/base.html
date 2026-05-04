@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}Investor App{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+      nav a { margin-right: 1rem; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 8px; }
+      th { background: #f7f7f7; text-align: left; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="{% url 'dashboard' %}">Dashboard</a>
+      <a href="{% url 'growth_areas' %}">Economically Growing Areas</a>
+      <a href="{% url 'search_listings' %}">Find Properties</a>
+    </nav>
+    {% block content %}{% endblock %}
+  </body>
+</html>
