@@ -38,7 +38,7 @@ def dscr(annual_noi: Decimal, annual_debt_service: Decimal) -> Decimal:
     return to_decimal(annual_noi) / to_decimal(annual_debt_service)
 
 
-def irr(cashflows: Iterable[Decimal]) -> Decimal:
+def irr(cashflows: Iterable[float | int | Decimal]) -> Decimal:
     cf = np.array([float(c) for c in cashflows], dtype=float)
     try:
         value = float(npf.irr(cf))
@@ -1048,11 +1048,8 @@ def calculate_irr(cash_flows: Sequence[float | int | Decimal]) -> Decimal:
         IRR as a Decimal (e.g., 0.15 for 15%).
 
     Raises:
-        ValueError: If cash_flows is empty, fewer than 2 flows are supplied,
-            or IRR cannot be computed.
+        ValueError: If fewer than 2 cash flows are supplied or IRR cannot be computed.
     """
-    if not cash_flows:
-        raise ValueError("cash_flows must not be empty")
     if len(cash_flows) < 2:
         raise ValueError("At least 2 cash flows are required to calculate IRR")
     result = irr(cash_flows)
