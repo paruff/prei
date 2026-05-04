@@ -963,3 +963,94 @@ def calculate_whatif_monthly_cashflow(
         to_decimal(rehab_estimate) / Decimal(12) if rehab_estimate else Decimal("0")
     )
     return monthly_income - additional_monthly - rehab_monthly
+
+
+# ── Convenience aliases with calculate_ prefix ─────────────────────────────────
+# These satisfy the Jumpstart requirement for explicitly-named calculate_* functions.
+
+
+def calculate_noi(
+    gross_income: Decimal,
+    operating_expenses: Decimal,
+) -> Decimal:
+    """Calculate Net Operating Income (NOI).
+
+    NOI = Gross Income - Operating Expenses
+
+    Args:
+        gross_income: Total annual rental and other income from the property.
+        operating_expenses: Total annual operating expenses (excluding debt service).
+
+    Returns:
+        Net Operating Income as a Decimal.
+    """
+    return to_decimal(gross_income) - to_decimal(operating_expenses)
+
+
+def calculate_cap_rate(
+    annual_noi: Decimal,
+    property_value: Decimal,
+) -> Decimal:
+    """Calculate Capitalization Rate.
+
+    Cap Rate = NOI / Property Value
+
+    Args:
+        annual_noi: Net Operating Income.
+        property_value: Current market value or purchase price of the property.
+
+    Returns:
+        Capitalization rate as a Decimal (e.g., 0.08 for 8%).
+
+    Raises:
+        ValueError: If property_value is zero.
+    """
+    pv = to_decimal(property_value)
+    if pv == Decimal("0"):
+        raise ValueError("Property value cannot be zero")
+    return to_decimal(annual_noi) / pv
+
+
+def calculate_cash_on_cash(
+    annual_cash_flow: Decimal,
+    total_cash_invested: Decimal,
+) -> Decimal:
+    """Calculate Cash-on-Cash Return.
+
+    Cash-on-Cash = Annual Cash Flow / Total Cash Invested
+
+    Args:
+        annual_cash_flow: Annual pre-tax cash flow from the investment.
+        total_cash_invested: Total cash invested (down payment + closing costs).
+
+    Returns:
+        Cash-on-cash return as a Decimal (e.g., 0.10 for 10%).
+
+    Raises:
+        ValueError: If total_cash_invested is zero.
+    """
+    tci = to_decimal(total_cash_invested)
+    if tci == Decimal("0"):
+        raise ValueError("Total cash invested cannot be zero")
+    return to_decimal(annual_cash_flow) / tci
+
+
+def calculate_irr(cash_flows: list[Decimal]) -> Decimal:
+    """Calculate Internal Rate of Return (IRR).
+
+    Args:
+        cash_flows: List of cash flows, starting with the initial investment
+            (typically negative) followed by periodic returns.
+
+    Returns:
+        IRR as a Decimal (e.g., 0.15 for 15%).
+
+    Raises:
+        ValueError: If fewer than 2 cash flows are supplied or IRR cannot be computed.
+    """
+    if len(cash_flows) < 2:
+        raise ValueError("At least 2 cash flows are required to calculate IRR")
+    result = irr(cash_flows)
+    if result == Decimal("0") and all(cf >= Decimal("0") for cf in cash_flows):
+        raise ValueError("IRR could not be computed for the given cash flows")
+    return result
