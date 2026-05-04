@@ -159,3 +159,13 @@ class TestCalculateIrr:
         cash_flows = [Decimal("-100"), Decimal("110")]
         result = calculate_irr(cash_flows)
         assert isinstance(result, Decimal)
+
+    def test_all_positive_flows_raises_error(self) -> None:
+        """Test that all-positive cash flows (no sign change) raise ValueError.
+
+        numpy_financial.irr returns nan for flows with no sign change;
+        calculate_irr should surface this as a ValueError.
+        """
+        cash_flows = [Decimal("10000"), Decimal("20000"), Decimal("30000")]
+        with pytest.raises(ValueError, match="IRR could not be computed"):
+            calculate_irr(cash_flows)
