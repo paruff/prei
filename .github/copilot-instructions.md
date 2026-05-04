@@ -1,58 +1,70 @@
-# Copilot Instructions — Real Estate Investor App
+# Copilot Instructions — prei (Real Estate Investor Analytics)
 
-This repository is a Django-based web application focused on passive residential real estate investing analytics. These instructions guide GitHub Copilot-style agents when generating code, tests, and CI changes for this project.
+> This file extends the existing `.github/copilot-instructions.md`.
+> Loaded automatically for every Copilot session. Full rules in `AGENTS.md`.
 
-1) Project Overview & Context
-- Purpose: Analyze and track investment properties and compute financial KPIs (Cash-on-Cash, Cap Rate, NOI, IRR, DSCR).
-- Primary models to implement: User (Django auth), Property, InvestmentAnalysis, Transaction, RentalIncome, OperatingExpense.
-- Keep financial logic centralized and well-tested.
+## Context Files — Read These First
 
-2) Tech stack & tools
-- Python 3.11+
-- Django (default)
-- Database: PostgreSQL (psycopg2-binary)
-- Financial libs: numpy and numpy-financial for IRR/NPV where appropriate; use Decimal for currency precision in DB interactions.
-- CI: GitHub Actions — all CI templates should include DORA-friendly logging.
+1. `core/models.py` — all Django models and field constraints
+2. `docs/ARCHITECTURE.md` — app/layer boundaries
+3. `docs/API_SURFACE.md` — all public service and utility functions
+4. `docs/KNOWN_LIMITATIONS.md` — do not make these worse
+5. `finance/utils.py` — existing KPI calculation functions (check before adding new ones)
 
-3) DORA metrics & CI behavior
-- Favor small, focused commits/PRs (Deployment Frequency).
-- Add unit tests for new logic (Lead Time for Changes).
-- Add robust error handling and clear logs for financial calculations and DB transactions (reduce CFR, improve MTTR).
-- CI workflows must log start/finish timestamps and the commit SHA:
-  - echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  - echo "sha: ${{ github.sha }}"
-  - echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+## Architecture Rules — Never Violate
 
-4) Coding standards
-- Follow PEP 8. Use ruff + black for formatting.
-- Use snake_case for functions and variables.
-- Prefer absolute imports.
-- Add type hints to new functions/methods and public APIs.
-- Document modules/classes/methods with Google-style docstrings.
+1. **Financial math in `finance/utils.py`** — never in views, models, or templates
+2. **External API calls in `core/integrations/`** — never called from views directly
+3. **Views call services** — `core/api_views.py` calls `core/services/`, not models directly
+4. **`Decimal` for currency** — persist as Decimal, convert to float only for numpy, convert back before returning
+5. **No hardcoded rates** — vacancy, tax, capex from Django settings or env vars
 
-5) Financial logic practices
-- Do NOT hardcode rates (tax, vacancy, capex). Use Django settings or environment configuration.
-- Use Decimal (from decimal import Decimal) for currency math when storing/reading values from DB. Convert to float only for non-persistent numeric libraries if needed.
-- Centralize financial helpers (e.g., investor_app/finance/utils.py) so tests can target them easily.
+## Stack
 
-6) Validation & data integrity
-- Validate all user input related to property financials at both form/serializer and model levels.
-- Provide boundary tests for negative, zero, and very large values in financial calculations.
+- Python 3.11 · Django · PostgreSQL · DRF · Celery · Redis
+- numpy-financial for IRR/NPV · Decimal for currency precision
+- pytest + pytest-django + pytest-bdd
 
-7) Tests & fixtures
-- Unit tests for financial calculations are mandatory.
-- Use pytest + pytest-django. Keep tests deterministic; avoid network calls in unit tests.
-- Integration tests that require external services should be gated behind specific CI workflows or run manually.
+## Coding Standards
 
-8) Security & operations
-- Secrets must be stored in environment variables / GitHub Secrets.
-- Keep DEBUG=False in production.
-- Add logging and monitoring hooks in critical paths to enable quick incident response.
+- Type hints on all new functions and public APIs
+- Google-style docstrings on modules, classes, methods
+- Ruff + Black formatting (enforced by CI)
+- Conventional commits: `feat:`, `fix:`, `test:`, `docs:`, `chore:`
+- Failing test committed before implementation
 
-9) When modifying CI workflows
-- Ensure the workflow prints timestamps and commit SHAs (see section 3).
-- Workflows should be split so scraper tasks (if any) do not run under webapp CI by default.
-- Keep networked sample scrapes or heavy integration tests gated by workflow_dispatch or a cron schedule.
+## Financial Logic Requirements
 
-10) Migration note
-- If you are porting components from the legacy scraper, do so on a dedicated migration branch
+- Guard all divides against zero — return 0 or raise `ValueError` with a clear message
+- Boundary tests mandatory: every financial function tests negative, zero, and very large values
+- IRR/NPV: wrap numpy-financial calls in try/except with safe fallback and log
+
+## What Requires Human Approval
+
+- New `requirements.txt` dependencies
+- Database migrations (always need rollback path in PR)
+- `.github/workflows/` changes
+- Authentication or permission logic changes
+- > 5 files in one task
+
+## Golden Path
+
+See `docs/GOLDEN_PATH.md`. In brief:
+```
+Spec → Branch → Failing test (commit) → Implement → preflight → Draft PR
+```
+
+Run before every push: `ruff check . && black --check . && pytest -q`
+
+## PR Requirement
+
+Every PR needs the AI-Assisted Review Block: what it does, how tested, architecture check, failure modes, judgment calls.
+
+## DORA CI Logging
+
+All CI workflows must log:
+```bash
+echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "sha: ${{ github.sha }}"
+echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+```
