@@ -1,49 +1,20 @@
-#!/bin/bash
-# Django project initialization script
-
+#!/usr/bin/env bash
+# Usage: ./scripts/init_django.sh <project_name>
+# Initializes a minimal Django project skeleton inside the repo.
 set -e
+PROJECT_NAME=${1:-investor_app}
 
-if [ -z "$1" ]; then
-    echo "Usage: $0 <app_name>"
-    exit 1
+if [ -d "$PROJECT_NAME" ]; then
+  echo "Directory $PROJECT_NAME already exists. Aborting."
+  exit 1
 fi
 
-APP_NAME="$1"
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+django-admin startproject "$PROJECT_NAME" .
 
-cd "$PROJECT_DIR"
-
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
-    python3 -m venv venv
-fi
-
-# Activate virtual environment
-source venv/bin/activate
-
-# Install Django and dependencies
-pip install --upgrade pip
-if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
-else
-    pip install django numpy-financial pytest pytest-django
-fi
-
-# Create Django project if manage.py doesn't exist
-if [ ! -f "manage.py" ]; then
-    django-admin startproject config .
-fi
-
-# Create the app if it doesn't exist
-if [ ! -d "$APP_NAME" ]; then
-    python manage.py startapp "$APP_NAME"
-fi
-
-# Create finance module directory
-mkdir -p "$APP_NAME/finance"
-touch "$APP_NAME/finance/__init__.py"
-
-echo "Django project initialized with app: $APP_NAME"
+echo "Django project '$PROJECT_NAME' created. Next steps:"
+echo " - cp .env.example .env && edit .env"
+echo " - python manage.py migrate"
+echo " - python manage.py createsuperuser"

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Portfolio Dashboard{% endblock %}
+{% block content %}
+  <h1>Portfolio Dashboard</h1>
+  {% if error %}
+    <p style="color:red">{{ error }}</p>
+  {% else %}
+    <h2>Aggregate KPIs</h2>
+    <ul>
+      <li>Total NOI: ${{ agg.total_noi }}</li>
+      <li>Average Cap Rate: {{ agg.avg_cap_rate|floatformat:4 }}</li>
+      <li>Average Cash-on-Cash: {{ agg.avg_coc|floatformat:4 }}</li>
+    </ul>
+    <h2>NOI Trend (placeholder)</h2>
+    <table>
+      <thead><tr><th>Month</th><th>NOI</th></tr></thead>
+      <tbody>
+        {% for t in trend %}
+          <tr><td>{{ t.month }}</td><td>${{ t.noi|floatformat:2 }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

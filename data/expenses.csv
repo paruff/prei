@@ -1,0 +1,4 @@
+property_id,category,amount,frequency,effective_date
+1,Tax,300,monthly,2025-03-01
+1,Insurance,1200,annual,2025-03-01
+2,Tax,350,monthly,2025-03-01
