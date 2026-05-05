@@ -15,10 +15,12 @@
 
 ## Service Changes (core/services/)
 
-|If you change…                    |You must also update…                           |
-|----------------------------------|------------------------------------------------|
-|`portfolio.py` function signatures|`core/api_views.py` calls, `docs/API_SURFACE.md`|
-|`cma.py` function signatures      |`core/api_views.py` calls, `docs/API_SURFACE.md`|
+|If you change…                              |You must also update…                                                                          |
+|--------------------------------------------|-----------------------------------------------------------------------------------------------|
+|`portfolio.py` function signatures          |`core/api_views.py` calls, `docs/API_SURFACE.md`                                               |
+|`cma.py` function signatures                |`core/api_views.py` calls, `docs/API_SURFACE.md`                                               |
+|`market_data.refresh_market_snapshot` logic |`core/tests/test_neighborhood_insights.py`, `docs/API_SURFACE.md`                              |
+|`market_data.py` adapter imports            |`core/integrations/market/` (comps, rents, crime, schools), `core/tests/test_neighborhood_insights.py`|
 
 ## Finance Utils Changes (investor_app/finance/utils.py)
 
@@ -41,11 +43,15 @@
 
 ## Integration Changes (core/integrations/)
 
-|If you change…              |You must also update…                                                   |
-|----------------------------|------------------------------------------------------------------------|
-|ATTOM adapter response shape|`core/integrations/sources/attom_adapter.py` + any service consuming it|
-|HUD adapter                 |`core/integrations/sources/hud_scraper.py` + management commands       |
-|Market data interface       |`core/integrations/market/` wrappers + services consuming them         |
+|If you change…                    |You must also update…                                                                        |
+|----------------------------------|---------------------------------------------------------------------------------------------|
+|ATTOM adapter response shape      |`core/integrations/sources/attom_adapter.py` + any service consuming it                     |
+|HUD adapter                       |`core/integrations/sources/hud_scraper.py` + management commands                            |
+|Market data interface             |`core/integrations/market/` wrappers + services consuming them                              |
+|`market/comps.py` return shape    |`core/services/market_data.py` (price_trend calc), `core/tests/test_neighborhood_insights.py`|
+|`market/rents.py` return type     |`core/services/market_data.py` (rent_index field), `core/tests/test_neighborhood_insights.py`|
+|`market/crime.py` return type     |`core/services/market_data.py` (crime_score field), `core/tests/test_neighborhood_insights.py`|
+|`market/schools.py` return type   |`core/services/market_data.py` (school_rating field), `core/tests/test_neighborhood_insights.py`|
 
 ## Config / Environment Changes
 
