@@ -43,7 +43,7 @@ _LISTING_DEFAULTS = dict(
 )
 
 
-def _make_listing(db, *, address: str = "1 Main St", url: str = "https://example.com/1", **overrides):
+def _make_listing(*, address: str = "1 Main St", url: str = "https://example.com/1", **overrides):
     """Create and return a test Listing instance."""
     return Listing.objects.create(
         address=address,
@@ -53,23 +53,32 @@ def _make_listing(db, *, address: str = "1 Main St", url: str = "https://example
     )
 
 
+def _assert_error_logged(caplog: pytest.LogCaptureFixture, *keywords: str) -> None:
+    """Assert that at least one ERROR log record contains all *keywords* (case-insensitive)."""
+    assert any(
+        all(kw.lower() in record.message.lower() for kw in keywords)
+        for record in caplog.records
+        if record.levelno >= logging.ERROR
+    ), f"No ERROR log found containing all keywords {keywords!r}. Records: {[r.message for r in caplog.records]}"
+
+
 # ---------------------------------------------------------------------------
 # comps adapter unit tests
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_comps_returns_three_items(db):
+def test_comps_returns_three_items():
     """comps adapter returns exactly three comparable sales."""
-    listing = _make_listing(db)
+    listing = _make_listing()
     comps = get_comps_for_listing(listing)
     assert len(comps) == 3
 
 
 @pytest.mark.django_db
-def test_comps_have_required_keys(db):
+def test_comps_have_required_keys():
     """Each comp dict contains address, price, sq_ft and ppsf keys."""
-    listing = _make_listing(db)
+    listing = _make_listing()
     comps = get_comps_for_listing(listing)
     for comp in comps:
         assert "address" in comp
@@ -79,9 +88,9 @@ def test_comps_have_required_keys(db):
 
 
 @pytest.mark.django_db
-def test_comps_values_are_decimal(db):
+def test_comps_values_are_decimal():
     """comps adapter returns Decimal for price and ppsf fields."""
-    listing = _make_listing(db)
+    listing = _make_listing()
     comps = get_comps_for_listing(listing)
     for comp in comps:
         assert isinstance(comp["price"], Decimal)
@@ -89,9 +98,9 @@ def test_comps_values_are_decimal(db):
 
 
 @pytest.mark.django_db
-def test_comps_zero_sqft_does_not_raise(db):
+def test_comps_zero_sqft_does_not_raise():
     """comps adapter handles zero sq_ft without raising."""
-    listing = _make_listing(db, address="2 Zero Sq", url="https://example.com/zero", sq_ft=0)
+    listing = _make_listing(address="2 Zero Sq", url="https://example.com/zero", sq_ft=0)
     comps = get_comps_for_listing(listing)
     assert isinstance(comps, list)
 
@@ -102,27 +111,26 @@ def test_comps_zero_sqft_does_not_raise(db):
 
 
 @pytest.mark.django_db
-def test_rents_returns_positive_decimal(db):
+def test_rents_returns_positive_decimal():
     """rents adapter returns a positive Decimal rent estimate for a valid listing."""
-    listing = _make_listing(db)
+    listing = _make_listing()
     rent = get_rent_estimate_for_listing(listing)
     assert isinstance(rent, Decimal)
     assert rent > Decimal("0")
 
 
 @pytest.mark.django_db
-def test_rents_zero_sqft_returns_zero(db):
+def test_rents_zero_sqft_returns_zero():
     """rents adapter returns Decimal('0') when sq_ft is zero."""
-    listing = _make_listing(db, address="3 No Sqft", url="https://example.com/nosqft", sq_ft=0)
+    listing = _make_listing(address="3 No Sqft", url="https://example.com/nosqft", sq_ft=0)
     rent = get_rent_estimate_for_listing(listing)
     assert rent == Decimal("0")
 
 
 @pytest.mark.django_db
-def test_rents_large_listing(db):
+def test_rents_large_listing():
     """rents adapter scales correctly with a large price/sq_ft combination."""
     listing = _make_listing(
-        db,
         address="4 Large",
         url="https://example.com/large",
         price=Decimal("2000000"),
@@ -209,7 +217,7 @@ def test_school_rating_is_decimal():
 
 
 @pytest.mark.django_db
-def test_market_snapshot_str_zip_only(db):
+def test_market_snapshot_str_zip_only():
     """__str__ includes the zip_code when city/state are empty."""
     snap = MarketSnapshot.objects.create(
         area_type="zip",
@@ -223,7 +231,7 @@ def test_market_snapshot_str_zip_only(db):
 
 
 @pytest.mark.django_db
-def test_market_snapshot_str_city_state_only(db):
+def test_market_snapshot_str_city_state_only():
     """__str__ includes city and state when zip_code is empty."""
     snap = MarketSnapshot.objects.create(
         area_type="city",
@@ -252,9 +260,9 @@ _MOCK_COMPS = [
 
 
 @pytest.mark.django_db
-def test_refresh_market_snapshot_all_succeed(db):
+def test_refresh_market_snapshot_all_succeed():
     """All adapters succeed → MarketSnapshot fields are populated."""
-    _make_listing(db)
+    _make_listing()
 
     with (
         patch("core.services.market_data.get_crime_score", return_value=Decimal("2.5")) as mock_crime,
@@ -284,9 +292,9 @@ def test_refresh_market_snapshot_all_succeed(db):
 
 
 @pytest.mark.django_db
-def test_refresh_market_snapshot_upserts_existing(db):
+def test_refresh_market_snapshot_upserts_existing():
     """Calling refresh twice with the same zip_code upserts (not duplicates) the row."""
-    _make_listing(db)
+    _make_listing()
 
     with (
         patch("core.services.market_data.get_crime_score", return_value=Decimal("2.5")),
@@ -304,7 +312,7 @@ def test_refresh_market_snapshot_upserts_existing(db):
 
 
 @pytest.mark.django_db
-def test_refresh_market_snapshot_no_listing_saves_crime_and_schools(db):
+def test_refresh_market_snapshot_no_listing_saves_crime_and_schools():
     """When no Listing exists for the ZIP, crime/school fields are still saved."""
     with (
         patch("core.services.market_data.get_crime_score", return_value=Decimal("3.0")),
@@ -329,9 +337,9 @@ def test_refresh_market_snapshot_no_listing_saves_crime_and_schools(db):
 
 
 @pytest.mark.django_db
-def test_refresh_market_snapshot_crime_fails_logged(db, caplog):
+def test_refresh_market_snapshot_crime_fails_logged(caplog):
     """crime adapter raises → error is logged; other fields still saved."""
-    _make_listing(db)
+    _make_listing()
 
     with caplog.at_level(logging.ERROR, logger="core.services.market_data"):
         with (
@@ -352,13 +360,13 @@ def test_refresh_market_snapshot_crime_fails_logged(db, caplog):
     assert snap.school_rating == Decimal("8.0")
     assert snap.rent_index == Decimal("1500.00")
     assert MarketSnapshot.objects.filter(zip_code="78701").count() == 1
-    assert any("crime_score" in r.message or "get_crime_score" in r.message for r in caplog.records)
+    _assert_error_logged(caplog, "get_crime_score")
 
 
 @pytest.mark.django_db
-def test_refresh_market_snapshot_schools_fails_logged(db, caplog):
+def test_refresh_market_snapshot_schools_fails_logged(caplog):
     """schools adapter raises → error is logged; other fields still saved."""
-    _make_listing(db)
+    _make_listing()
 
     with caplog.at_level(logging.ERROR, logger="core.services.market_data"):
         with (
@@ -378,15 +386,13 @@ def test_refresh_market_snapshot_schools_fails_logged(db, caplog):
     assert snap.school_rating == Decimal("0")
     assert snap.crime_score == Decimal("2.5")
     assert MarketSnapshot.objects.filter(zip_code="78701").count() == 1
-    assert any(
-        "school_rating" in r.message or "get_school_rating" in r.message for r in caplog.records
-    )
+    _assert_error_logged(caplog, "get_school_rating")
 
 
 @pytest.mark.django_db
-def test_refresh_market_snapshot_rents_fails_logged(db, caplog):
+def test_refresh_market_snapshot_rents_fails_logged(caplog):
     """rents adapter raises → error is logged; rent_index defaults to zero."""
-    _make_listing(db)
+    _make_listing()
 
     with caplog.at_level(logging.ERROR, logger="core.services.market_data"):
         with (
@@ -403,15 +409,13 @@ def test_refresh_market_snapshot_rents_fails_logged(db, caplog):
     assert snap.rent_index == Decimal("0")
     assert snap.crime_score == Decimal("2.5")
     assert MarketSnapshot.objects.filter(zip_code="78701").count() == 1
-    assert any(
-        "rent" in r.message or "get_rent" in r.message for r in caplog.records
-    )
+    _assert_error_logged(caplog, "get_rent_estimate_for_listing")
 
 
 @pytest.mark.django_db
-def test_refresh_market_snapshot_comps_fails_logged(db, caplog):
+def test_refresh_market_snapshot_comps_fails_logged(caplog):
     """comps adapter raises → error is logged; price_trend defaults to zero."""
-    _make_listing(db)
+    _make_listing()
 
     with caplog.at_level(logging.ERROR, logger="core.services.market_data"):
         with (
@@ -431,6 +435,4 @@ def test_refresh_market_snapshot_comps_fails_logged(db, caplog):
     assert snap.price_trend == Decimal("0")
     assert snap.rent_index == Decimal("1500.00")
     assert MarketSnapshot.objects.filter(zip_code="78701").count() == 1
-    assert any(
-        "comps" in r.message or "get_comps" in r.message for r in caplog.records
-    )
+    _assert_error_logged(caplog, "get_comps_for_listing")

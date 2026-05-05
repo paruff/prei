@@ -68,8 +68,8 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
             comps = get_comps_for_listing(listing)
             if comps:
                 avg_comp_price = sum(c["price"] for c in comps) / Decimal(len(comps))
-                listing_price = Decimal(listing.price)
-                if listing_price:
+                listing_price: Decimal = listing.price
+                if listing_price != Decimal("0"):
                     price_trend = (
                         (avg_comp_price - listing_price) / listing_price
                     ).quantize(Decimal("0.0001"))
