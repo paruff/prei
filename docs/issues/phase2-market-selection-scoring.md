@@ -1,7 +1,9 @@
 ## Phase 2 — Market Selection Scoring (`core/services/market_scoring.py`)
 
 > **Revised Phase:** 2 (promoted from "not in plan")
-> **Strategy context:** [`docs/PRODUCT_STRATEGY.md`](../PRODUCT_STRATEGY.md) · Tracking issue: #TRACKING
+> **Strategy context:** [`docs/PRODUCT_STRATEGY.md`](../PRODUCT_STRATEGY.md)
+> · Tracking issue: open `docs/issues/tracking-product-strategy-pivot.md` as a GitHub issue
+> and replace this line with the actual issue number once created.
 >
 > Top passive investors select markets *before* properties. Market selection intelligence is
 > a Phase 2 prerequisite to meaningful deal scoring. See §6 of the product strategy doc.
@@ -30,7 +32,8 @@ landlords to operate profitably.
 
 **Current state:**
 - `MarketSnapshot` model: `zip_code`, `rent_index`, `price_trend`, `crime_score`, `school_rating`
-- `refresh_market_snapshot()` service exists (calls 4 market adapters)
+- `core/integrations/market/` — four market adapters (`comps.py`, `rent.py`, `crime.py`, `schools.py`)
+- No service that aggregates the four adapters into a `MarketSnapshot` yet (that integration point is the prerequisite for `update_market_scores()`)
 - No investor-viability scoring exists
 
 ### Acceptance Criteria
@@ -58,6 +61,8 @@ landlords to operate profitably.
   - Calls `score_market()` for each snapshot and saves `market_score` field
   - Returns count of updated records
   - Designed to be called from a Celery task in a future issue
+  - Note: snapshots must already exist in the DB; creating/refreshing snapshots from the
+    market adapters is a separate concern (Phase 2 market data integration prerequisite)
 
 #### `investor_app/finance/utils.py` (if needed)
 

@@ -1,7 +1,9 @@
 ## Phase 1 — Underwriting Score v2: Replace `score_listing_v1`
 
 > **Revised Phase:** 1 (replace placeholder with investor-grade scoring)
-> **Strategy context:** [`docs/PRODUCT_STRATEGY.md`](../PRODUCT_STRATEGY.md) · Tracking issue: #TRACKING
+> **Strategy context:** [`docs/PRODUCT_STRATEGY.md`](../PRODUCT_STRATEGY.md)
+> · Tracking issue: open `docs/issues/tracking-product-strategy-pivot.md` as a GitHub issue
+> and replace this line with the actual issue number once created.
 >
 > `score_listing_v1` (PPSF + freshness) is a placeholder. This issue replaces it with a
 > multi-signal underwriting score that reflects how passive investors actually evaluate deals.
@@ -35,7 +37,7 @@ deal-sourcing signals (useful for finding underpriced listings), not underwritin
 
 **Current state:**
 - `score_listing_v1(listing)` exists with Django model dependency
-- `cap_rate()`, `cash_on_cash_return()`, `calculate_monthly_mortgage()` all exist in `finance/utils.py`
+- `cap_rate()`, `cash_on_cash()`, `calculate_monthly_mortgage()` all exist in `finance/utils.py`
 
 ### Acceptance Criteria
 

@@ -49,11 +49,8 @@ of the GitHub issue body (before `## Phase X`):
 | Issue | Title | Status | Notes |
 |---|---|---|---|
 | #28 | Phase 2.4 — Property Report Detail View | ⚠️ Promoted to Phase 1 | Core underwriting display; do first |
-| #27 | Phase 2.3 — CMA Engine Tests | ⚠️ Moved to Phase 2 | Supports market intelligence; correct priority |
 
 **Update for #28:** Add strategy note — `New phase: Phase 1. Previous phase: Phase 2.4.`
-
-**Update for #27:** Add strategy note — `New phase: Phase 2. Previous phase: Phase 2.3.`
 
 ---
 
@@ -61,10 +58,9 @@ of the GitHub issue body (before `## Phase X`):
 
 | Issue | Title | Status | Notes |
 |---|---|---|---|
-| #27 | CMA Engine Tests | ✅ Confirmed Phase 2 | Undervalued property detection is core |
-| #29 | Phase 2.5 — Monthly Trend Time-Series | ⚠️ Moved to Phase 3 | Portfolio tracking, not market intelligence |
+| #27 | Phase 2.3 — CMA Engine Tests | ✅ Confirmed Phase 2 | Undervalued property detection is core market intelligence |
 
-**Update for #29:** Add strategy note — `New phase: Phase 3 (Portfolio Tracking). Previous phase: Phase 2.5.`
+**Update for #27:** Add strategy note — `New phase: Phase 2 (confirmed). Previous phase: Phase 2.3.`
 
 ---
 
@@ -73,9 +69,11 @@ of the GitHub issue body (before `## Phase X`):
 | Issue | Title | Status | Notes |
 |---|---|---|---|
 | #35 | Phase 4.1 — Portfolio What-If Scenario Modeling | ⚠️ Promoted to Phase 3 | High value; move up from Phase 4 |
-| #29 | Phase 2.5 — Monthly Trend Time-Series | ⚠️ Moved here from Phase 2 | Time-series is portfolio, not market intelligence |
+| #29 | Phase 2.5 — Monthly Trend Time-Series | ⚠️ Moved to Phase 3 | Time-series is portfolio tracking, not market intelligence |
 
 **Update for #35:** Add strategy note — `New phase: Phase 3. Previous phase: Phase 4.1. Rationale: portfolio what-if is a core portfolio tracking feature, not Phase 4 automation.`
+
+**Update for #29:** Add strategy note — `New phase: Phase 3 (Portfolio Tracking). Previous phase: Phase 2.5.`
 
 ---
 
@@ -89,6 +87,7 @@ of the GitHub issue body (before `## Phase X`):
 | #38 | Phase 5.1 — Premium Data Adapters | ⚠️ Moved to Phase 4 | Data sourcing comes after engine; before Phase 5 collab |
 | #19 | Government Property Lists | ⚠️ Moved to Phase 4 | Data sourcing; correct phase after engine |
 | #13 | More Foreclosure Data | ⚠️ De-prioritized | Foreclosure monitoring is active investing; revisit only after passive use case is proven |
+| #30 | Phase 2.6 — Structured Logging | ✅ Cross-cutting | Implement any time; required before first real users |
 
 **Update for #31:** Add strategy note — `New phase: Phase 4. Previous phase: Phase 3.2. Also update acceptance criteria: scoring criteria must use score_listing_v2 (not score_listing_v1) once the underwriting score v2 issue is complete.`
 
@@ -102,19 +101,18 @@ of the GitHub issue body (before `## Phase X`):
 
 **Update for #13:** Add strategy note — `De-prioritized: foreclosure/auction monitoring is an active investing strategy, which is out of scope for prei's passive investing focus. Revisit in Phase 4 only after the passive underwriting engine is proven and user-validated.`
 
+**Update for #30:** No phase change. Add strategy note — `Cross-cutting: structured logging is an operational requirement that can be implemented at any time without blocking the underwriting engine. Must be in place before first real users.`
+
 ---
 
 ### 🟣 Phase 5 — Collaboration & Integration
 
 | Issue | Title | Status | Notes |
 |---|---|---|---|
-| #30 | Phase 2.6 — Structured Logging | ✅ Confirmed | Cross-cutting ops prerequisite; implement any time |
 | #33 | Phase 3.4 — CRM Workflow Adapters | ⚠️ Moved to Phase 5 | Integration concern; correct in Phase 5 |
 | #36 | Phase 4.3 — Team Collaboration | ✅ Confirmed Phase 5 | Real workflow; correctly placed |
 | #37 | Phase 4.5 — Production Security Hardening | ✅ Confirmed | Cross-cutting; implement before first real users |
 | #40 | Phase 5.3 — DRF REST API | ✅ Confirmed Phase 5 | Collaboration & integration |
-
-**Update for #30:** No phase change. Add strategy note confirming it's on-track: `Confirmed: structured logging is a cross-cutting operational requirement. Can be implemented at any time without blocking the underwriting engine.`
 
 **Update for #33:** Add strategy note — `New phase: Phase 5. Previous phase: Phase 3.4. CRM is an integration concern; defer until the core engine and automation phases are complete.`
 
@@ -152,6 +150,7 @@ Phase 3 — Portfolio Tracking
   └── #29  Monthly Trend Time-Series            [moved from P2]
 
 Phase 4 — Automation & Scale
+  ├── #30  Structured Logging                   [cross-cutting; any time]
   ├── #31  Lead Ranking Service                 [moved from P3]
   ├── #32  Recommendations Service              [moved from P3]
   ├── #34  Saved Search Nightly Tuning          [moved from P3]
@@ -160,7 +159,6 @@ Phase 4 — Automation & Scale
   └── #13  More Foreclosure Data                [de-prioritized]
 
 Phase 5 — Collaboration & Integration
-  ├── #30  Structured Logging                   [confirmed; any time]
   ├── #33  CRM Workflow Adapters                [moved from P3]
   ├── #36  Team Collaboration                   [confirmed]
   ├── #37  Production Security Hardening        [confirmed]

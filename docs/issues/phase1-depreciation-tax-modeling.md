@@ -1,7 +1,9 @@
 ## Phase 1 — Depreciation & Tax Modeling (`finance/utils.py`)
 
 > **Revised Phase:** 1 (promoted from "not in plan")
-> **Strategy context:** [`docs/PRODUCT_STRATEGY.md`](../PRODUCT_STRATEGY.md) · Tracking issue: #TRACKING
+> **Strategy context:** [`docs/PRODUCT_STRATEGY.md`](../PRODUCT_STRATEGY.md)
+> · Tracking issue: open `docs/issues/tracking-product-strategy-pivot.md` as a GitHub issue
+> and replace this line with the actual issue number once created.
 >
 > This is the single biggest missing feature for sophisticated passive investors.
 > See §3 of the product strategy doc.
@@ -36,11 +38,13 @@ taxpayers.
 
 ### Acceptance Criteria
 
-- [ ] `annual_depreciation(purchase_price: Decimal, land_value: Decimal, holding_years: int = 27) -> Decimal`
-  - Uses 27.5-year straight-line: `(purchase_price - land_value) / Decimal("27.5")`
+- [ ] `annual_depreciation(purchase_price: Decimal, land_value: Decimal) -> Decimal`
+  - Returns the fixed annual deduction using 27.5-year straight-line: `(purchase_price - land_value) / Decimal("27.5")`
   - Raises `ValueError` if `land_value >= purchase_price`
   - Raises `ValueError` if `purchase_price <= 0` or `land_value < 0`
-  - Returns `Decimal("0")` for years beyond the schedule
+  - Note: the result is constant for each full year of the 27.5-year schedule. Callers should
+    apply it for years 1–27 (full deduction) and year 28 at the remaining half-year fraction
+    (`0.5 × annual_depreciation`). No deduction for years beyond year 28.
 
 - [ ] `after_tax_cash_flow(noi: Decimal, annual_debt_service: Decimal, annual_depreciation: Decimal, marginal_tax_rate: Decimal) -> Decimal`
   - Formula: `(NOI - debt_service) + (depreciation × tax_rate)`

@@ -10,6 +10,7 @@
 3. `docs/API_SURFACE.md` — all public service and utility functions
 4. `docs/KNOWN_LIMITATIONS.md` — do not make these worse
 5. `finance/utils.py` — existing KPI calculation functions (check before adding new ones)
+6. `docs/PRODUCT_STRATEGY.md` — adopted roadmap pivot; read before generating any feature work
 
 ## Architecture Rules — Never Violate
 

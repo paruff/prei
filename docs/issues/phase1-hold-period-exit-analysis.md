@@ -1,7 +1,9 @@
 ## Phase 1 — Hold Period & Exit Analysis (`finance/utils.py`)
 
 > **Revised Phase:** 1 (promoted from "not in plan")
-> **Strategy context:** [`docs/PRODUCT_STRATEGY.md`](../PRODUCT_STRATEGY.md) · Tracking issue: #TRACKING
+> **Strategy context:** [`docs/PRODUCT_STRATEGY.md`](../PRODUCT_STRATEGY.md)
+> · Tracking issue: open `docs/issues/tracking-product-strategy-pivot.md` as a GitHub issue
+> and replace this line with the actual issue number once created.
 >
 > Every passive investor thinks in 5/7/10-year windows. The current model is static.
 > See §4 of the product strategy doc.
@@ -36,10 +38,12 @@ calculations currently exist in `finance/utils.py`.
 
 ### Acceptance Criteria
 
-- [ ] `project_annual_cash_flows(noi_year1: Decimal, annual_debt_service: Decimal, rent_growth_rate: Decimal, expense_growth_rate: Decimal, hold_years: int) -> list[Decimal]`
+- [ ] `project_annual_cash_flows(gross_rent_year1: Decimal, operating_expense_year1: Decimal, annual_debt_service: Decimal, rent_growth_rate: Decimal, expense_growth_rate: Decimal, hold_years: int) -> list[Decimal]`
   - Returns list of annual after-debt-service cash flows for each year of hold period
-  - `noi_year1` grows at `rent_growth_rate` annually
-  - Operating expenses grow at `expense_growth_rate` (applied to expense component separately)
+  - `gross_rent_year1` grows at `rent_growth_rate` each year: `gross_rent_year1 × (1 + rent_growth_rate)^year`
+  - `operating_expense_year1` grows at `expense_growth_rate` each year: `operating_expense_year1 × (1 + expense_growth_rate)^year`
+  - Annual NOI per year = `gross_rent × (1 + rent_growth_rate)^year - operating_expense × (1 + expense_growth_rate)^year`
+  - Annual cash flow = NOI − `annual_debt_service` (debt service is constant for fixed-rate loans)
   - Raises `ValueError` if `hold_years < 1` or `hold_years > 50`
   - Raises `ValueError` if any rate is outside `[-0.5, 0.5]` (sanity guard)
 

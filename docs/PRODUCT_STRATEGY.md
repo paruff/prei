@@ -2,8 +2,8 @@
 
 > **Source:** Senior PM critique of the original roadmap, May 2026.
 > **Status:** Adopted. All new issues and roadmap decisions should align with this document.
-> This file is loaded as context for every Copilot/AI agent session. Read it before generating
-> any feature work.
+> This file is listed in `.github/copilot-instructions.md` as a required context file.
+> Read it before generating any feature work.
 
 ---
 
