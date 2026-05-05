@@ -43,7 +43,9 @@ _LISTING_DEFAULTS = dict(
 )
 
 
-def _make_listing(*, address: str = "1 Main St", url: str = "https://example.com/1", **overrides):
+def _make_listing(
+    *, address: str = "1 Main St", url: str = "https://example.com/1", **overrides
+):
     """Create and return a test Listing instance."""
     return Listing.objects.create(
         address=address,
@@ -100,7 +102,9 @@ def test_comps_values_are_decimal():
 @pytest.mark.django_db
 def test_comps_zero_sqft_does_not_raise():
     """comps adapter handles zero sq_ft without raising."""
-    listing = _make_listing(address="2 Zero Sq", url="https://example.com/zero", sq_ft=0)
+    listing = _make_listing(
+        address="2 Zero Sq", url="https://example.com/zero", sq_ft=0
+    )
     comps = get_comps_for_listing(listing)
     assert isinstance(comps, list)
 
@@ -122,7 +126,9 @@ def test_rents_returns_positive_decimal():
 @pytest.mark.django_db
 def test_rents_zero_sqft_returns_zero():
     """rents adapter returns Decimal('0') when sq_ft is zero."""
-    listing = _make_listing(address="3 No Sqft", url="https://example.com/nosqft", sq_ft=0)
+    listing = _make_listing(
+        address="3 No Sqft", url="https://example.com/nosqft", sq_ft=0
+    )
     rent = get_rent_estimate_for_listing(listing)
     assert rent == Decimal("0")
 
@@ -253,9 +259,24 @@ def test_market_snapshot_str_city_state_only():
 # ---------------------------------------------------------------------------
 
 _MOCK_COMPS = [
-    {"address": "Comp 1", "price": Decimal("270000"), "sq_ft": 1500, "ppsf": Decimal("180.00")},
-    {"address": "Comp 2", "price": Decimal("300000"), "sq_ft": 1500, "ppsf": Decimal("200.00")},
-    {"address": "Comp 3", "price": Decimal("330000"), "sq_ft": 1500, "ppsf": Decimal("220.00")},
+    {
+        "address": "Comp 1",
+        "price": Decimal("270000"),
+        "sq_ft": 1500,
+        "ppsf": Decimal("180.00"),
+    },
+    {
+        "address": "Comp 2",
+        "price": Decimal("300000"),
+        "sq_ft": 1500,
+        "ppsf": Decimal("200.00"),
+    },
+    {
+        "address": "Comp 3",
+        "price": Decimal("330000"),
+        "sq_ft": 1500,
+        "ppsf": Decimal("220.00"),
+    },
 ]
 
 
@@ -265,8 +286,12 @@ def test_refresh_market_snapshot_all_succeed():
     _make_listing()
 
     with (
-        patch("core.services.market_data.get_crime_score", return_value=Decimal("2.5")) as mock_crime,
-        patch("core.services.market_data.get_school_rating", return_value=Decimal("8.0")) as mock_schools,
+        patch(
+            "core.services.market_data.get_crime_score", return_value=Decimal("2.5")
+        ) as mock_crime,
+        patch(
+            "core.services.market_data.get_school_rating", return_value=Decimal("8.0")
+        ) as mock_schools,
         patch(
             "core.services.market_data.get_rent_estimate_for_listing",
             return_value=Decimal("1500.00"),
@@ -298,12 +323,16 @@ def test_refresh_market_snapshot_upserts_existing():
 
     with (
         patch("core.services.market_data.get_crime_score", return_value=Decimal("2.5")),
-        patch("core.services.market_data.get_school_rating", return_value=Decimal("8.0")),
+        patch(
+            "core.services.market_data.get_school_rating", return_value=Decimal("8.0")
+        ),
         patch(
             "core.services.market_data.get_rent_estimate_for_listing",
             return_value=Decimal("1500.00"),
         ),
-        patch("core.services.market_data.get_comps_for_listing", return_value=_MOCK_COMPS),
+        patch(
+            "core.services.market_data.get_comps_for_listing", return_value=_MOCK_COMPS
+        ),
     ):
         refresh_market_snapshot("78701")
         refresh_market_snapshot("78701")
@@ -316,7 +345,9 @@ def test_refresh_market_snapshot_no_listing_saves_crime_and_schools():
     """When no Listing exists for the ZIP, crime/school fields are still saved."""
     with (
         patch("core.services.market_data.get_crime_score", return_value=Decimal("3.0")),
-        patch("core.services.market_data.get_school_rating", return_value=Decimal("6.5")),
+        patch(
+            "core.services.market_data.get_school_rating", return_value=Decimal("6.5")
+        ),
         patch("core.services.market_data.get_rent_estimate_for_listing") as mock_rents,
         patch("core.services.market_data.get_comps_for_listing") as mock_comps,
     ):
@@ -347,12 +378,18 @@ def test_refresh_market_snapshot_crime_fails_logged(caplog):
                 "core.services.market_data.get_crime_score",
                 side_effect=Exception("network error"),
             ),
-            patch("core.services.market_data.get_school_rating", return_value=Decimal("8.0")),
+            patch(
+                "core.services.market_data.get_school_rating",
+                return_value=Decimal("8.0"),
+            ),
             patch(
                 "core.services.market_data.get_rent_estimate_for_listing",
                 return_value=Decimal("1500.00"),
             ),
-            patch("core.services.market_data.get_comps_for_listing", return_value=_MOCK_COMPS),
+            patch(
+                "core.services.market_data.get_comps_for_listing",
+                return_value=_MOCK_COMPS,
+            ),
         ):
             snap = refresh_market_snapshot("78701")
 
@@ -370,7 +407,9 @@ def test_refresh_market_snapshot_schools_fails_logged(caplog):
 
     with caplog.at_level(logging.ERROR, logger="core.services.market_data"):
         with (
-            patch("core.services.market_data.get_crime_score", return_value=Decimal("2.5")),
+            patch(
+                "core.services.market_data.get_crime_score", return_value=Decimal("2.5")
+            ),
             patch(
                 "core.services.market_data.get_school_rating",
                 side_effect=Exception("timeout"),
@@ -379,7 +418,10 @@ def test_refresh_market_snapshot_schools_fails_logged(caplog):
                 "core.services.market_data.get_rent_estimate_for_listing",
                 return_value=Decimal("1500.00"),
             ),
-            patch("core.services.market_data.get_comps_for_listing", return_value=_MOCK_COMPS),
+            patch(
+                "core.services.market_data.get_comps_for_listing",
+                return_value=_MOCK_COMPS,
+            ),
         ):
             snap = refresh_market_snapshot("78701")
 
@@ -396,13 +438,21 @@ def test_refresh_market_snapshot_rents_fails_logged(caplog):
 
     with caplog.at_level(logging.ERROR, logger="core.services.market_data"):
         with (
-            patch("core.services.market_data.get_crime_score", return_value=Decimal("2.5")),
-            patch("core.services.market_data.get_school_rating", return_value=Decimal("8.0")),
+            patch(
+                "core.services.market_data.get_crime_score", return_value=Decimal("2.5")
+            ),
+            patch(
+                "core.services.market_data.get_school_rating",
+                return_value=Decimal("8.0"),
+            ),
             patch(
                 "core.services.market_data.get_rent_estimate_for_listing",
                 side_effect=Exception("API down"),
             ),
-            patch("core.services.market_data.get_comps_for_listing", return_value=_MOCK_COMPS),
+            patch(
+                "core.services.market_data.get_comps_for_listing",
+                return_value=_MOCK_COMPS,
+            ),
         ):
             snap = refresh_market_snapshot("78701")
 
@@ -419,8 +469,13 @@ def test_refresh_market_snapshot_comps_fails_logged(caplog):
 
     with caplog.at_level(logging.ERROR, logger="core.services.market_data"):
         with (
-            patch("core.services.market_data.get_crime_score", return_value=Decimal("2.5")),
-            patch("core.services.market_data.get_school_rating", return_value=Decimal("8.0")),
+            patch(
+                "core.services.market_data.get_crime_score", return_value=Decimal("2.5")
+            ),
+            patch(
+                "core.services.market_data.get_school_rating",
+                return_value=Decimal("8.0"),
+            ),
             patch(
                 "core.services.market_data.get_rent_estimate_for_listing",
                 return_value=Decimal("1500.00"),

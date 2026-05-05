@@ -41,7 +41,9 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
         crime_score = get_crime_score(zip_code=zip_code)
     except Exception:
         logger.error(
-            "market_data: get_crime_score failed for zip_code=%s", zip_code, exc_info=True
+            "market_data: get_crime_score failed for zip_code=%s",
+            zip_code,
+            exc_info=True,
         )
 
     # --- school rating ---
@@ -49,7 +51,9 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
         school_rating = get_school_rating(zip_code=zip_code)
     except Exception:
         logger.error(
-            "market_data: get_school_rating failed for zip_code=%s", zip_code, exc_info=True
+            "market_data: get_school_rating failed for zip_code=%s",
+            zip_code,
+            exc_info=True,
         )
 
     # --- rent index and price trend (require a representative listing) ---
