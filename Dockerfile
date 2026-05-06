@@ -15,6 +15,7 @@ FROM base AS deps
 ENV PIP_NO_CACHE_DIR=0
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip "setuptools>=82" "wheel>=0.46.2" && \
     pip install -r requirements.txt
 
 # --- final image ---
@@ -22,6 +23,11 @@ FROM base AS runtime
 ARG PYTHON_VERSION
 COPY --from=deps /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python${PYTHON_VERSION}
 COPY --from=deps /usr/local/bin /usr/local/bin
+# Re-upgrade pip, setuptools, and wheel so the base image's stale dist-info is replaced.
+# setuptools 79.x vendors jaraco.context 5.3.0 (CVE-2026-23949) and wheel 0.45.1
+# (CVE-2026-24049); upgrading brings the patched vendored versions.
+# wheel 0.45.1 (standalone) also carries CVE-2026-24049; upgrade to 0.46.2+.
+RUN pip install --upgrade pip "setuptools>=82" "wheel>=0.46.2"
 COPY . .
 
 # Never run as root
