@@ -31,6 +31,10 @@
 |`calculate_cash_on_cash` signature or logic          |`investor_app/tests/test_finance_utils.py`, `tests/test_finance_utils.py`, `docs/API_SURFACE.md`               |
 |`calculate_irr` signature, logic, or accepted types  |`investor_app/tests/test_finance_utils.py`, `tests/test_finance_utils.py`, `docs/API_SURFACE.md`               |
 |Internal `irr()` helper                              |`calculate_irr` (its only caller), `tests/test_finance_utils.py`                                               |
+|`project_annual_cash_flows` signature or logic       |`tests/test_hold_period.py`, `docs/API_SURFACE.md`                                                             |
+|`project_property_value` signature or logic          |`tests/test_hold_period.py`, `docs/API_SURFACE.md`                                                             |
+|`net_sale_proceeds` signature or logic               |`tests/test_hold_period.py`, `docs/API_SURFACE.md`                                                             |
+|`total_return_summary` signature or logic            |`tests/test_hold_period.py`, `docs/API_SURFACE.md`                                                             |
 |Any KPI function signature                           |`core/services/` callers, `docs/API_SURFACE.md`                                                                |
 |KPI formula/logic                                    |All tests for that function — especially boundary tests                                                        |
 

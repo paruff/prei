@@ -2,7 +2,7 @@
 
 > Auto-maintained by `@docs-agent`. Updated whenever `core/services/` or `investor_app/finance/utils.py` changes.
 > DORA AI Cap 3: This document is loaded as context before every code generation session.
-> Last updated: 2026-05-05
+> Last updated: 2026-05-06
 
 -----
 
@@ -187,4 +187,145 @@ from investor_app.finance.utils import calculate_irr
 
 irr = calculate_irr([-1000, 500, 600])
 # → Decimal("0.0699")  (approximately)
+```
+
+---
+
+### `project_annual_cash_flows(gross_rent_year1, operating_expense_year1, annual_debt_service, rent_growth_rate, expense_growth_rate, hold_years)`
+
+**Purpose:** Project year-by-year after-debt-service cash flows over a hold period using compound growth rates for rent and expenses. Debt service is constant (fixed-rate mortgage assumption).
+
+**Parameters:**
+- `gross_rent_year1: Decimal` — Gross rental income in year 1.
+- `operating_expense_year1: Decimal` — Operating expenses in year 1.
+- `annual_debt_service: Decimal` — Fixed annual mortgage payment (principal + interest).
+- `rent_growth_rate: Decimal` — Annual rent growth rate as a decimal (e.g., `Decimal("0.03")` for 3%). Must be in `[-0.5, 0.5]`.
+- `expense_growth_rate: Decimal` — Annual expense growth rate as a decimal. Must be in `[-0.5, 0.5]`.
+- `hold_years: int` — Number of years in the hold period. Must be in `[1, 50]`.
+
+**Returns:** `list[Decimal]` — Annual after-debt-service cash flows, one entry per year (`len == hold_years`). Negative values indicate years where debt service exceeds NOI.
+**Side effects:** None (pure function)
+**Error cases:**
+- Raises `ValueError` if `hold_years` is outside `[1, 50]`.
+- Raises `ValueError` if `rent_growth_rate` or `expense_growth_rate` is outside `[-0.5, 0.5]`.
+
+**Example:**
+
+```python
+from decimal import Decimal
+from investor_app.finance.utils import project_annual_cash_flows
+
+flows = project_annual_cash_flows(
+    Decimal("36000"), Decimal("12000"), Decimal("18000"),
+    rent_growth_rate=Decimal("0.03"), expense_growth_rate=Decimal("0.02"),
+    hold_years=5,
+)
+# → [Decimal("6000"), Decimal("6760.00"), ...]  (5 entries)
+```
+
+---
+
+### `project_property_value(purchase_price, appreciation_rate, hold_years)`
+
+**Purpose:** Project the market value of a property at the end of a hold period using compound annual appreciation. Supports conservative / base / optimistic scenarios by varying `appreciation_rate`.
+
+**Parameters:**
+- `purchase_price: Decimal` — Original purchase price of the property (must be > 0).
+- `appreciation_rate: Decimal` — Expected annual appreciation rate as a decimal (e.g., `Decimal("0.03")` for 3%). Must be > `-1`.
+- `hold_years: int` — Number of years to project forward. Must be in `[1, 50]`.
+
+**Returns:** `Decimal` — Projected property value at end of hold period.
+**Side effects:** None (pure function)
+**Error cases:**
+- Raises `ValueError` if `purchase_price` ≤ 0.
+- Raises `ValueError` if `appreciation_rate` < -1.
+- Raises `ValueError` if `hold_years` is outside `[1, 50]`.
+
+**Example:**
+
+```python
+from decimal import Decimal
+from investor_app.finance.utils import project_property_value
+
+value = project_property_value(Decimal("300000"), Decimal("0.03"), 10)
+# → Decimal("403175....")  (approximately $403,176)
+```
+
+---
+
+### `net_sale_proceeds(sale_price, original_purchase_price, outstanding_loan_balance, accumulated_depreciation, agent_commission_rate, closing_cost_rate, long_term_cg_rate, depreciation_recapture_rate)`
+
+**Purpose:** Calculate net cash to investor after agent commissions, closing costs, loan payoff, long-term capital gains tax (clamped to zero on a loss sale), and IRS Section 1250 depreciation recapture.
+
+**Parameters:**
+- `sale_price: Decimal` — Gross sale price of the property.
+- `original_purchase_price: Decimal` — Price paid at acquisition.
+- `outstanding_loan_balance: Decimal` — Remaining mortgage balance at time of sale (must be ≥ 0).
+- `accumulated_depreciation: Decimal` — Total depreciation taken over the holding period (must be ≥ 0).
+- `agent_commission_rate: Decimal` — Broker commission as a decimal (default `Decimal("0.06")` = 6%).
+- `closing_cost_rate: Decimal` — Seller's closing costs as a decimal (default `Decimal("0.01")` = 1%).
+- `long_term_cg_rate: Decimal` — Federal long-term capital gains tax rate (default `Decimal("0.15")` = 15%).
+- `depreciation_recapture_rate: Decimal` — IRS Section 1250 recapture rate (default `Decimal("0.25")` = 25%).
+
+**Returns:** `Decimal` — Net cash proceeds to investor (may be negative if costs exceed gross proceeds).
+**Side effects:** None (pure function)
+**Error cases:**
+- Raises `ValueError` if `outstanding_loan_balance` < 0.
+- Raises `ValueError` if `accumulated_depreciation` < 0.
+- Raises `ValueError` if any rate parameter is outside `[0, 1]`.
+
+**Example:**
+
+```python
+from decimal import Decimal
+from investor_app.finance.utils import net_sale_proceeds
+
+proceeds = net_sale_proceeds(
+    sale_price=Decimal("400000"),
+    original_purchase_price=Decimal("300000"),
+    outstanding_loan_balance=Decimal("200000"),
+    accumulated_depreciation=Decimal("45000"),
+)
+# → Decimal("145750")
+```
+
+---
+
+### `total_return_summary(purchase_price, down_payment, annual_cash_flows, net_sale_proceeds_amount)`
+
+**Purpose:** Aggregate hold-period results into a total-return summary dict. IRR is computed over the full cash-flow series (year-0 equity outflow, annual flows, exit-year flows + net sale proceeds).
+
+**Parameters:**
+- `purchase_price: Decimal` — Original acquisition price (included for caller convenience; not used in internal calculations).
+- `down_payment: Decimal` — Equity invested at purchase; used as the year-0 outflow in the IRR calculation (must be ≥ 0).
+- `annual_cash_flows: list[Decimal]` — Year-by-year cash flows from `project_annual_cash_flows()` (must be non-empty).
+- `net_sale_proceeds_amount: Decimal` — Net sale proceeds from `net_sale_proceeds()`.
+
+**Returns:** `dict` with keys:
+- `total_cash_flow` (`Decimal`): Sum of `annual_cash_flows`.
+- `net_sale_proceeds` (`Decimal`): The `net_sale_proceeds_amount` argument.
+- `total_return` (`Decimal`): `total_cash_flow + net_sale_proceeds`.
+- `total_return_on_equity` (`Decimal`): `total_return / down_payment`, or `Decimal("0")` if `down_payment` is zero.
+- `annualized_irr` (`Decimal`): IRR over the full cash-flow series.
+
+**Side effects:** None (pure function)
+**Error cases:**
+- Raises `ValueError` if `annual_cash_flows` is empty.
+- Raises `ValueError` if `down_payment` < 0.
+
+**Example:**
+
+```python
+from decimal import Decimal
+from investor_app.finance.utils import total_return_summary
+
+summary = total_return_summary(
+    purchase_price=Decimal("300000"),
+    down_payment=Decimal("60000"),
+    annual_cash_flows=[Decimal("6000")] * 10,
+    net_sale_proceeds_amount=Decimal("120000"),
+)
+# → {"total_cash_flow": Decimal("60000"), "net_sale_proceeds": Decimal("120000"),
+#    "total_return": Decimal("180000"), "total_return_on_equity": Decimal("3"),
+#    "annualized_irr": Decimal("...")}
 ```
