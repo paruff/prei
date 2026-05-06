@@ -61,7 +61,7 @@ jobs:
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -89,7 +89,7 @@ jobs:
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -119,7 +119,7 @@ jobs:
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -150,7 +150,7 @@ jobs:
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
