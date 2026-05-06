@@ -1056,3 +1056,206 @@ def calculate_irr(cash_flows: Sequence[float | int | Decimal]) -> Decimal:
     if result == Decimal("0") and all(float(cf) >= 0 for cf in cash_flows):
         raise ValueError("IRR could not be computed for the given cash flows")
     return result
+
+
+# ── Depreciation & Tax Modeling ────────────────────────────────────────────────
+
+
+def annual_depreciation(purchase_price: Decimal, land_value: Decimal) -> Decimal:
+    """Calculate the annual straight-line depreciation for a residential rental property.
+
+    The IRS allows 27.5-year straight-line depreciation on the building portion
+    (purchase price minus land value) of residential rental property.
+
+    Args:
+        purchase_price: Total purchase price of the property (must be > 0).
+        land_value: Estimated value of the land component (must be >= 0 and
+            < purchase_price). Land is not depreciable.
+
+    Returns:
+        Annual depreciation deduction as a Decimal representing the fixed deduction
+        for a full year. Year-by-year schedule handling is the caller's responsibility:
+        apply this amount for years 1–27 (full deduction), half this amount for year 28
+        (remaining half-year fraction), and no deduction for years beyond year 28.
+
+    Raises:
+        ValueError: If purchase_price <= 0.
+        ValueError: If land_value < 0.
+        ValueError: If land_value >= purchase_price (no depreciable basis).
+
+    Example:
+        >>> annual_depreciation(Decimal("300000"), Decimal("50000"))
+        Decimal("9090.909090909090909090909091")
+    """
+    pp = to_decimal(purchase_price)
+    lv = to_decimal(land_value)
+
+    if pp <= Decimal("0"):
+        raise ValueError("purchase_price must be greater than zero")
+    if lv < Decimal("0"):
+        raise ValueError("land_value must be zero or greater")
+    if lv >= pp:
+        raise ValueError(
+            "land_value must be less than purchase_price; land is not depreciable"
+        )
+
+    depreciable_basis = pp - lv
+    return depreciable_basis / Decimal("27.5")
+
+
+def after_tax_cash_flow(
+    noi: Decimal,
+    annual_debt_service: Decimal,
+    depreciation_deduction: Decimal,
+    marginal_tax_rate: Decimal,
+) -> Decimal:
+    """Calculate after-tax cash flow including the depreciation tax shield.
+
+    Formula: (NOI - debt_service) + (depreciation × tax_rate)
+
+    The depreciation tax shield represents the tax savings from the paper loss of
+    depreciation, which reduces taxable income without a cash outflow.
+
+    Args:
+        noi: Net Operating Income (annual).
+        annual_debt_service: Total annual mortgage payments (principal + interest).
+        depreciation_deduction: Annual depreciation deduction (e.g., from
+            ``annual_depreciation()``).
+        marginal_tax_rate: Investor's marginal income tax rate as a decimal in [0, 1]
+            (e.g., 0.24 for 24%).
+
+    Returns:
+        After-tax cash flow as a Decimal. A positive value indicates net cash benefit.
+
+    Raises:
+        ValueError: If marginal_tax_rate is outside the range [0, 1].
+
+    Example:
+        >>> after_tax_cash_flow(
+        ...     Decimal("24000"), Decimal("18000"), Decimal("9091"), Decimal("0.24")
+        ... )
+        Decimal("8181.84")
+    """
+    rate = to_decimal(marginal_tax_rate)
+    if rate < Decimal("0") or rate > Decimal("1"):
+        raise ValueError(
+            "marginal_tax_rate must be between 0 and 1 inclusive "
+            f"(received {marginal_tax_rate})"
+        )
+
+    pre_tax_cf = to_decimal(noi) - to_decimal(annual_debt_service)
+    tax_shield = to_decimal(depreciation_deduction) * rate
+    return pre_tax_cf + tax_shield
+
+
+def after_tax_irr(
+    cash_flows: Sequence[Decimal],
+    depreciation_schedule: Sequence[Decimal],
+    marginal_tax_rate: Decimal,
+) -> Decimal:
+    """Calculate after-tax IRR by adjusting each period's cash flow by the depreciation tax shield.
+
+    Each period's cash flow is increased by ``depreciation × marginal_tax_rate``.
+    The first cash flow (index 0) is assumed to be the initial investment (negative)
+    and is not adjusted — depreciation tax shields begin in period 1.
+
+    Args:
+        cash_flows: List of periodic cash flows. Index 0 is typically the initial
+            investment (negative). Must have at least 2 elements.
+        depreciation_schedule: List of annual depreciation amounts aligned to
+            cash_flows[1:]. If shorter than cash_flows[1:], missing periods are
+            treated as zero depreciation.
+        marginal_tax_rate: Investor's marginal income tax rate as a decimal in [0, 1].
+
+    Returns:
+        After-tax IRR as a Decimal. Returns Decimal("0") if numpy-financial cannot
+        converge (e.g., all non-negative flows or no sign change).
+
+    Raises:
+        ValueError: If fewer than 2 cash flows are supplied.
+        ValueError: If marginal_tax_rate is outside the range [0, 1].
+
+    Example:
+        >>> after_tax_irr(
+        ...     [Decimal("-100000"), Decimal("6000"), Decimal("106000")],
+        ...     [Decimal("9091"), Decimal("9091")],
+        ...     Decimal("0.24"),
+        ... )
+        Decimal("0.0718")
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if len(cash_flows) < 2:
+        raise ValueError("At least 2 cash flows are required to calculate IRR")
+
+    rate = to_decimal(marginal_tax_rate)
+    if rate < Decimal("0") or rate > Decimal("1"):
+        raise ValueError(
+            "marginal_tax_rate must be between 0 and 1 inclusive "
+            f"(received {marginal_tax_rate})"
+        )
+
+    # Build adjusted cash flows: index 0 (initial investment) is not adjusted.
+    adjusted: list[float] = [float(cash_flows[0])]
+    for i, cf in enumerate(cash_flows[1:]):
+        dep = (
+            depreciation_schedule[i] if i < len(depreciation_schedule) else Decimal("0")
+        )
+        shield = to_decimal(dep) * rate
+        adjusted.append(float(to_decimal(cf) + shield))
+
+    cf_array = np.array(adjusted, dtype=float)
+    try:
+        value = float(npf.irr(cf_array))
+        if np.isnan(value) or np.isinf(value):
+            logger.warning(
+                "after_tax_irr: numpy_financial.irr returned non-finite value; returning 0"
+            )
+            return Decimal("0")
+        return to_decimal(value)
+    except Exception as exc:
+        logger.warning("after_tax_irr: numpy_financial.irr raised %s; returning 0", exc)
+        return Decimal("0")
+
+
+def depreciation_recapture_tax(
+    accumulated_depreciation: Decimal,
+    recapture_rate: Decimal = Decimal("0.25"),
+) -> Decimal:
+    """Calculate the depreciation recapture tax owed upon sale of the property.
+
+    Under IRS Section 1250, accumulated depreciation is recaptured at a maximum
+    rate of 25% when the property is sold. This tax is owed regardless of whether
+    the property sold at a gain or loss on paper.
+
+    Args:
+        accumulated_depreciation: Total depreciation taken over the holding period
+            (sum of annual deductions). Must be >= 0.
+        recapture_rate: IRS Section 1250 recapture rate as a decimal in [0, 1].
+            Defaults to 0.25 (25%).
+
+    Returns:
+        Depreciation recapture tax owed as a Decimal.
+
+    Raises:
+        ValueError: If accumulated_depreciation < 0.
+        ValueError: If recapture_rate is outside [0, 1].
+
+    Example:
+        >>> depreciation_recapture_tax(Decimal("45000"))
+        Decimal("11250.00")
+    """
+    acc_dep = to_decimal(accumulated_depreciation)
+    rate = to_decimal(recapture_rate)
+
+    if acc_dep < Decimal("0"):
+        raise ValueError("accumulated_depreciation must be zero or greater")
+    if rate < Decimal("0") or rate > Decimal("1"):
+        raise ValueError(
+            "recapture_rate must be between 0 and 1 inclusive "
+            f"(received {recapture_rate})"
+        )
+
+    return acc_dep * rate
