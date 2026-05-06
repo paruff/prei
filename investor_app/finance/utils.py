@@ -1754,19 +1754,12 @@ def score_listing_v2(
 
     # Cap rate vs market: scale so +5 pp above market = 100, -5 pp = 0
     # cap_rate_vs_market is a raw decimal difference (e.g. 0.02 = 2 pp above)
-    cap_vs_market_sub = min(
-        Decimal("100"),
-        max(
-            Decimal("0"),
-            (cap_rate_vs_market / _CAP_RATE_SCALE_THRESHOLD) * Decimal("100"),
-        ),
-    )
+    raw_cap_score = (cap_rate_vs_market / _CAP_RATE_SCALE_THRESHOLD) * Decimal("100")
+    cap_vs_market_sub = max(Decimal("0"), min(Decimal("100"), raw_cap_score))
 
     # CoC Year 1: scale so 20% CoC = 100 points, 0% CoC = 0 points
-    coc_sub = min(
-        Decimal("100"),
-        max(Decimal("0"), coc_year1 / _COC_SCALE_THRESHOLD * Decimal("100")),
-    )
+    raw_coc_score = coc_year1 / _COC_SCALE_THRESHOLD * Decimal("100")
+    coc_sub = max(Decimal("0"), min(Decimal("100"), raw_coc_score))
 
     # GRM heuristic sub-score
     grm_sub = _grm_score(grm)
@@ -1784,7 +1777,7 @@ def score_listing_v2(
     if not one_pct_pass:
         composite = min(Decimal("40"), composite)
 
-    composite = min(Decimal("100"), max(Decimal("0"), composite))
+    composite = max(Decimal("0"), min(Decimal("100"), composite))
 
     return {
         "one_percent_rule_pass": one_pct_pass,
