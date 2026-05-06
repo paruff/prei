@@ -199,9 +199,7 @@ class TestProjectPropertyValue:
 
     def test_appreciation_rate_below_minus_one_raises(self) -> None:
         """appreciation_rate < -1 should raise ValueError."""
-        with pytest.raises(
-            ValueError, match="appreciation_rate must be >= -1"
-        ):
+        with pytest.raises(ValueError, match="appreciation_rate must be >= -1"):
             project_property_value(Decimal("300000"), Decimal("-1.1"), 10)
 
     def test_appreciation_rate_exactly_minus_one_allowed(self) -> None:
