@@ -1199,7 +1199,9 @@ def after_tax_irr(
     # Build adjusted cash flows: index 0 (initial investment) is not adjusted.
     adjusted: list[float] = [float(cash_flows[0])]
     for i, cf in enumerate(cash_flows[1:]):
-        dep = depreciation_schedule[i] if i < len(depreciation_schedule) else Decimal("0")
+        dep = (
+            depreciation_schedule[i] if i < len(depreciation_schedule) else Decimal("0")
+        )
         shield = to_decimal(dep) * rate
         adjusted.append(float(to_decimal(cf) + shield))
 
@@ -1207,7 +1209,9 @@ def after_tax_irr(
     try:
         value = float(npf.irr(cf_array))
         if np.isnan(value) or np.isinf(value):
-            logger.warning("after_tax_irr: numpy_financial.irr returned non-finite value; returning 0")
+            logger.warning(
+                "after_tax_irr: numpy_financial.irr returned non-finite value; returning 0"
+            )
             return Decimal("0")
         return to_decimal(value)
     except Exception as exc:

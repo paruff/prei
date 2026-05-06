@@ -31,22 +31,30 @@ class TestAnnualDepreciation:
 
     def test_land_value_equals_purchase_price_raises(self) -> None:
         """Test that land_value == purchase_price raises ValueError."""
-        with pytest.raises(ValueError, match="land_value must be less than purchase_price"):
+        with pytest.raises(
+            ValueError, match="land_value must be less than purchase_price"
+        ):
             annual_depreciation(Decimal("300000"), Decimal("300000"))
 
     def test_land_value_exceeds_purchase_price_raises(self) -> None:
         """Test that land_value > purchase_price raises ValueError."""
-        with pytest.raises(ValueError, match="land_value must be less than purchase_price"):
+        with pytest.raises(
+            ValueError, match="land_value must be less than purchase_price"
+        ):
             annual_depreciation(Decimal("300000"), Decimal("350000"))
 
     def test_purchase_price_zero_raises(self) -> None:
         """Test that purchase_price == 0 raises ValueError."""
-        with pytest.raises(ValueError, match="purchase_price must be greater than zero"):
+        with pytest.raises(
+            ValueError, match="purchase_price must be greater than zero"
+        ):
             annual_depreciation(Decimal("0"), Decimal("0"))
 
     def test_purchase_price_negative_raises(self) -> None:
         """Test that negative purchase_price raises ValueError."""
-        with pytest.raises(ValueError, match="purchase_price must be greater than zero"):
+        with pytest.raises(
+            ValueError, match="purchase_price must be greater than zero"
+        ):
             annual_depreciation(Decimal("-100000"), Decimal("0"))
 
     def test_negative_land_value_raises(self) -> None:
@@ -109,7 +117,9 @@ class TestAfterTaxCashFlow:
 
     def test_negative_tax_rate_raises(self) -> None:
         """Test that marginal_tax_rate < 0 raises ValueError."""
-        with pytest.raises(ValueError, match="marginal_tax_rate must be between 0 and 1"):
+        with pytest.raises(
+            ValueError, match="marginal_tax_rate must be between 0 and 1"
+        ):
             after_tax_cash_flow(
                 noi=Decimal("10000"),
                 annual_debt_service=Decimal("8000"),
@@ -119,7 +129,9 @@ class TestAfterTaxCashFlow:
 
     def test_tax_rate_above_one_raises(self) -> None:
         """Test that marginal_tax_rate > 1 raises ValueError."""
-        with pytest.raises(ValueError, match="marginal_tax_rate must be between 0 and 1"):
+        with pytest.raises(
+            ValueError, match="marginal_tax_rate must be between 0 and 1"
+        ):
             after_tax_cash_flow(
                 noi=Decimal("10000"),
                 annual_debt_service=Decimal("8000"),
@@ -176,7 +188,9 @@ class TestAfterTaxIrr:
 
     def test_negative_tax_rate_raises(self) -> None:
         """Test that negative tax rate raises ValueError."""
-        with pytest.raises(ValueError, match="marginal_tax_rate must be between 0 and 1"):
+        with pytest.raises(
+            ValueError, match="marginal_tax_rate must be between 0 and 1"
+        ):
             after_tax_irr(
                 [Decimal("-100000"), Decimal("110000")],
                 [Decimal("9091")],
@@ -185,7 +199,9 @@ class TestAfterTaxIrr:
 
     def test_tax_rate_above_one_raises(self) -> None:
         """Test that tax rate > 1 raises ValueError."""
-        with pytest.raises(ValueError, match="marginal_tax_rate must be between 0 and 1"):
+        with pytest.raises(
+            ValueError, match="marginal_tax_rate must be between 0 and 1"
+        ):
             after_tax_irr(
                 [Decimal("-100000"), Decimal("110000")],
                 [Decimal("9091")],
@@ -194,7 +210,12 @@ class TestAfterTaxIrr:
 
     def test_short_depreciation_schedule(self) -> None:
         """Test that missing depreciation periods default to zero."""
-        cash_flows = [Decimal("-100000"), Decimal("40000"), Decimal("40000"), Decimal("40000")]
+        cash_flows = [
+            Decimal("-100000"),
+            Decimal("40000"),
+            Decimal("40000"),
+            Decimal("40000"),
+        ]
         # Only 1 year of depreciation provided; years 2 and 3 should use 0
         dep_schedule = [Decimal("9091")]
         result = after_tax_irr(cash_flows, dep_schedule, Decimal("0.24"))
@@ -247,7 +268,9 @@ class TestDepreciationRecaptureTax:
 
     def test_negative_accumulated_depreciation_raises(self) -> None:
         """Test that negative accumulated depreciation raises ValueError."""
-        with pytest.raises(ValueError, match="accumulated_depreciation must be zero or greater"):
+        with pytest.raises(
+            ValueError, match="accumulated_depreciation must be zero or greater"
+        ):
             depreciation_recapture_tax(Decimal("-1000"))
 
     def test_negative_recapture_rate_raises(self) -> None:
