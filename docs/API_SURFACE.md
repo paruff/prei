@@ -2,7 +2,7 @@
 
 > Auto-maintained by `@docs-agent`. Updated whenever `core/services/` or `investor_app/finance/utils.py` changes.
 > DORA AI Cap 3: This document is loaded as context before every code generation session.
-> Last updated: 2026-05-06
+> Last updated: 2026-05-06 (added one_percent_rule, gross_rent_multiplier, score_listing_v2)
 
 -----
 
@@ -292,7 +292,90 @@ proceeds = net_sale_proceeds(
 
 ---
 
-### `total_return_summary(purchase_price, down_payment, annual_cash_flows, net_sale_proceeds_amount)`
+### `one_percent_rule(monthly_rent, purchase_price)`
+
+**Purpose:** Quick pass/fail filter — returns `True` if monthly rent is ≥ 1% of purchase price.
+**Parameters:**
+- `monthly_rent: Decimal` — Expected gross monthly rental income.
+- `purchase_price: Decimal` — Total purchase price of the property. Must be > 0.
+
+**Returns:** `bool` — `True` when `monthly_rent / purchase_price >= 0.01`.
+**Side effects:** None (pure function)
+**Error cases:** Raises `ValueError` if `purchase_price` ≤ 0.
+**Example:**
+
+```python
+from decimal import Decimal
+from investor_app.finance.utils import one_percent_rule
+
+passes = one_percent_rule(Decimal("2500"), Decimal("250000"))
+# → True  (2500 / 250000 == 0.01, exactly at threshold)
+```
+
+---
+
+### `gross_rent_multiplier(purchase_price, annual_rent)`
+
+**Purpose:** Calculate the Gross Rent Multiplier (GRM = Purchase Price / Annual Rent). Lower is better. Benchmark: < 10 excellent, 10–15 good, 15–20 fair, > 20 poor.
+**Parameters:**
+- `purchase_price: Decimal` — Total purchase price of the property.
+- `annual_rent: Decimal` — Expected gross annual rental income. Must be > 0.
+
+**Returns:** `Decimal` — GRM value.
+**Side effects:** None (pure function)
+**Error cases:** Raises `ValueError` if `annual_rent` ≤ 0.
+**Example:**
+
+```python
+from decimal import Decimal
+from investor_app.finance.utils import gross_rent_multiplier
+
+grm = gross_rent_multiplier(Decimal("200000"), Decimal("20000"))
+# → Decimal("10")
+```
+
+---
+
+### `score_listing_v2(purchase_price, monthly_rent, annual_noi, local_market_cap_rate, down_payment, annual_debt_service)`
+
+**Purpose:** Compute an investor-grade multi-signal underwriting composite score (0–100) from four weighted signals: 1% Rule (20%), cap rate vs. local market (30%), Cash-on-Cash Year 1 (30%), GRM heuristic (20%). A deal failing the 1% Rule has its score capped at 40.
+**Parameters:**
+- `purchase_price: Decimal` — Total purchase price. Must be > 0.
+- `monthly_rent: Decimal` — Expected gross monthly rental income. Must be > 0.
+- `annual_noi: Decimal` — Net Operating Income for Year 1. Must be > 0.
+- `local_market_cap_rate: Decimal` — Prevailing local market cap rate as a decimal (e.g., `Decimal("0.06")` for 6%). Sourced from `MarketSnapshot` at the service layer. Must be > 0.
+- `down_payment: Decimal` — Cash down payment (total cash invested). Must be > 0.
+- `annual_debt_service: Decimal` — Total annual principal + interest payments. Must be > 0.
+
+**Returns:** `ScoreV2Result` (TypedDict) with keys:
+- `one_percent_rule_pass` (`bool`): `True` if `monthly_rent / purchase_price >= 0.01`.
+- `grm` (`Decimal`): Gross Rent Multiplier.
+- `cap_rate` (`Decimal`): `annual_noi / purchase_price`.
+- `cap_rate_vs_market` (`Decimal`): `cap_rate − local_market_cap_rate`; positive = above market.
+- `coc_year1` (`Decimal`): `(annual_noi − annual_debt_service) / down_payment`.
+- `composite_score` (`Decimal`): Weighted composite in [0, 100]; capped at 40 when 1% rule fails.
+
+**Side effects:** None (pure function)
+**Error cases:** Raises `ValueError` if any input is ≤ 0.
+**Example:**
+
+```python
+from decimal import Decimal
+from investor_app.finance.utils import score_listing_v2
+
+result = score_listing_v2(
+    purchase_price=Decimal("250000"),
+    monthly_rent=Decimal("2500"),
+    annual_noi=Decimal("18000"),
+    local_market_cap_rate=Decimal("0.06"),
+    down_payment=Decimal("62500"),
+    annual_debt_service=Decimal("14400"),
+)
+# → {"one_percent_rule_pass": True, "grm": Decimal("8.33..."), "cap_rate": Decimal("0.072"),
+#    "cap_rate_vs_market": Decimal("0.012"), "coc_year1": Decimal("0.0576"),
+#    "composite_score": Decimal("55.84...")}
+```
+
 
 **Purpose:** Aggregate hold-period results into a total-return summary dict. IRR is computed over the full cash-flow series (year-0 equity outflow, annual flows, exit-year flows + net sale proceeds).
 
