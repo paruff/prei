@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  web:
+    image: mcr.microsoft.com/devcontainers/python:1-3.11-bookworm
+    working_dir: /workspaces/prei
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/prei:cached
+    environment:
+      DJANGO_SETTINGS_MODULE: investor_app.settings
+      DATABASE_URL: postgres://prei:prei@db:5432/prei
+      POSTGRES_DB: prei
+      POSTGRES_USER: prei
+      POSTGRES_PASSWORD: prei
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: prei
+      POSTGRES_USER: prei
+      POSTGRES_PASSWORD: prei
+    volumes:
+      - devcontainer-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prei -d prei"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  devcontainer-postgres-data:

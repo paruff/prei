@@ -1,0 +1,51 @@
+{
+  "name": "prei Django 4.2 LTS",
+  "dockerComposeFile": [
+    "docker-compose.yml"
+  ],
+  "service": "web",
+  "runServices": [
+    "web",
+    "db"
+  ],
+  "workspaceFolder": "/workspaces/prei",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [
+    8000,
+    5432
+  ],
+  "portsAttributes": {
+    "8000": {
+      "label": "Django app",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL"
+    }
+  },
+  "containerEnv": {
+    "DJANGO_SETTINGS_MODULE": "investor_app.settings"
+  },
+  "postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt",
+  "postStartCommand": "python manage.py check",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": [
+          "-q"
+        ],
+        "editor.formatOnSave": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}
