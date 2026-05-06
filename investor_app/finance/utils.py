@@ -1220,6 +1220,311 @@ def after_tax_irr(
         return Decimal("0")
 
 
+# ── Hold Period & Exit Analysis ────────────────────────────────────────────────
+
+
+def project_annual_cash_flows(
+    gross_rent_year1: Decimal,
+    operating_expense_year1: Decimal,
+    annual_debt_service: Decimal,
+    rent_growth_rate: Decimal,
+    expense_growth_rate: Decimal,
+    hold_years: int,
+) -> list[Decimal]:
+    """Project year-by-year after-debt-service cash flows over a hold period.
+
+    Each year's gross rent and operating expenses grow independently at their
+    respective compound annual growth rates.  Annual debt service is assumed
+    constant (fixed-rate mortgage).
+
+    Formula per year ``n`` (1-indexed):
+        gross_rent(n)    = gross_rent_year1 × (1 + rent_growth_rate)^(n-1)
+        oper_expense(n)  = operating_expense_year1 × (1 + expense_growth_rate)^(n-1)
+        NOI(n)           = gross_rent(n) - oper_expense(n)
+        cash_flow(n)     = NOI(n) - annual_debt_service
+
+    Args:
+        gross_rent_year1: Gross rental income in year 1 (must be >= 0).
+        operating_expense_year1: Operating expenses in year 1 (must be >= 0).
+        annual_debt_service: Fixed annual mortgage payment (principal + interest).
+        rent_growth_rate: Annual rent growth rate as a decimal (e.g., 0.03 for 3%).
+            Must be in the range [-0.5, 0.5].
+        expense_growth_rate: Annual expense growth rate as a decimal.
+            Must be in the range [-0.5, 0.5].
+        hold_years: Number of years in the hold period.  Must be in [1, 50].
+
+    Returns:
+        List of annual cash-flow Decimals, one entry per year (length == hold_years).
+        Negative values indicate years where debt service exceeds NOI.
+
+    Raises:
+        ValueError: If ``hold_years`` is outside [1, 50].
+        ValueError: If ``rent_growth_rate`` or ``expense_growth_rate`` is outside
+            [-0.5, 0.5].
+
+    Example:
+        >>> flows = project_annual_cash_flows(
+        ...     Decimal("36000"), Decimal("12000"), Decimal("18000"),
+        ...     Decimal("0.03"), Decimal("0.02"), 5,
+        ... )
+        >>> len(flows)
+        5
+    """
+    if hold_years < 1 or hold_years > 50:
+        raise ValueError(
+            f"hold_years must be between 1 and 50 inclusive (received {hold_years})"
+        )
+
+    r_rate = to_decimal(rent_growth_rate)
+    e_rate = to_decimal(expense_growth_rate)
+    rate_limit = Decimal("0.5")
+    if r_rate < -rate_limit or r_rate > rate_limit:
+        raise ValueError(
+            f"rent_growth_rate must be in [-0.5, 0.5] (received {rent_growth_rate})"
+        )
+    if e_rate < -rate_limit or e_rate > rate_limit:
+        raise ValueError(
+            f"expense_growth_rate must be in [-0.5, 0.5] (received {expense_growth_rate})"
+        )
+
+    rent = to_decimal(gross_rent_year1)
+    expense = to_decimal(operating_expense_year1)
+    debt = to_decimal(annual_debt_service)
+
+    cash_flows: list[Decimal] = []
+    one = Decimal("1")
+    for year in range(1, hold_years + 1):
+        exponent = year - 1
+        gross = rent * (one + r_rate) ** exponent
+        opex = expense * (one + e_rate) ** exponent
+        annual_noi = gross - opex
+        cash_flows.append(annual_noi - debt)
+
+    return cash_flows
+
+
+def project_property_value(
+    purchase_price: Decimal,
+    appreciation_rate: Decimal,
+    hold_years: int,
+) -> Decimal:
+    """Project the market value of a property at the end of a hold period.
+
+    Uses compound annual growth:
+        value = purchase_price × (1 + appreciation_rate)^hold_years
+
+    Supports conservative / base / optimistic scenarios by varying
+    ``appreciation_rate`` (e.g., 0%, 3%, 5% for US residential).
+
+    Args:
+        purchase_price: Original purchase price of the property (must be > 0).
+        appreciation_rate: Expected annual appreciation rate as a decimal.
+            Must be > -1 (a rate of -1 would imply a total loss of value).
+        hold_years: Number of years to project forward (must be in [1, 50]).
+
+    Returns:
+        Projected property value as a Decimal.
+
+    Raises:
+        ValueError: If ``purchase_price`` <= 0.
+        ValueError: If ``appreciation_rate`` < -1.
+        ValueError: If ``hold_years`` is outside [1, 50].
+
+    Example:
+        >>> project_property_value(Decimal("300000"), Decimal("0.03"), 10)
+        Decimal("403175....")
+    """
+    pp = to_decimal(purchase_price)
+    rate = to_decimal(appreciation_rate)
+
+    if pp <= Decimal("0"):
+        raise ValueError(
+            f"purchase_price must be greater than zero (received {purchase_price})"
+        )
+    if rate < Decimal("-1"):
+        raise ValueError(
+            f"appreciation_rate must be greater than -1 (received {appreciation_rate})"
+        )
+    if hold_years < 1 or hold_years > 50:
+        raise ValueError(
+            f"hold_years must be between 1 and 50 inclusive (received {hold_years})"
+        )
+
+    return pp * (Decimal("1") + rate) ** hold_years
+
+
+def net_sale_proceeds(
+    sale_price: Decimal,
+    original_purchase_price: Decimal,
+    outstanding_loan_balance: Decimal,
+    accumulated_depreciation: Decimal,
+    agent_commission_rate: Decimal = Decimal("0.06"),
+    closing_cost_rate: Decimal = Decimal("0.01"),
+    long_term_cg_rate: Decimal = Decimal("0.15"),
+    depreciation_recapture_rate: Decimal = Decimal("0.25"),
+) -> Decimal:
+    """Calculate net cash to investor after costs and taxes upon property sale.
+
+    Deductions applied in order:
+    1. Agent commissions: ``sale_price × agent_commission_rate``
+    2. Closing costs: ``sale_price × closing_cost_rate``
+    3. Loan payoff: ``outstanding_loan_balance``
+    4. Capital gains tax: max(``sale_price - original_purchase_price``, 0) × ``long_term_cg_rate``
+       (no capital gains tax if property sold at a loss)
+    5. Depreciation recapture: ``accumulated_depreciation × depreciation_recapture_rate``
+
+    Args:
+        sale_price: Gross sale price of the property.
+        original_purchase_price: Price paid for the property at acquisition.
+        outstanding_loan_balance: Remaining mortgage balance at time of sale
+            (must be >= 0).
+        accumulated_depreciation: Total depreciation taken over the holding period
+            (must be >= 0).
+        agent_commission_rate: Broker commission as a decimal (default 0.06 = 6%).
+        closing_cost_rate: Seller's closing costs as a decimal (default 0.01 = 1%).
+        long_term_cg_rate: Federal long-term capital gains tax rate as a decimal
+            (default 0.15 = 15%).
+        depreciation_recapture_rate: IRS Section 1250 recapture rate as a decimal
+            (default 0.25 = 25%).
+
+    Returns:
+        Net cash proceeds to investor as a Decimal (may be negative if costs exceed
+        gross proceeds).
+
+    Raises:
+        ValueError: If ``outstanding_loan_balance`` < 0.
+        ValueError: If ``accumulated_depreciation`` < 0.
+        ValueError: If any rate parameter is outside [0, 1].
+
+    Example:
+        >>> net_sale_proceeds(
+        ...     Decimal("400000"), Decimal("300000"), Decimal("200000"),
+        ...     Decimal("45000"),
+        ... )
+        Decimal("...")
+    """
+    sp = to_decimal(sale_price)
+    opp = to_decimal(original_purchase_price)
+    loan_bal = to_decimal(outstanding_loan_balance)
+    acc_dep = to_decimal(accumulated_depreciation)
+    commission_rate = to_decimal(agent_commission_rate)
+    cc_rate = to_decimal(closing_cost_rate)
+    cg_rate = to_decimal(long_term_cg_rate)
+    recapture_rate = to_decimal(depreciation_recapture_rate)
+
+    if loan_bal < Decimal("0"):
+        raise ValueError(
+            f"outstanding_loan_balance must be zero or greater (received {outstanding_loan_balance})"
+        )
+    if acc_dep < Decimal("0"):
+        raise ValueError(
+            f"accumulated_depreciation must be zero or greater (received {accumulated_depreciation})"
+        )
+    for name, val in [
+        ("agent_commission_rate", commission_rate),
+        ("closing_cost_rate", cc_rate),
+        ("long_term_cg_rate", cg_rate),
+        ("depreciation_recapture_rate", recapture_rate),
+    ]:
+        if val < Decimal("0") or val > Decimal("1"):
+            raise ValueError(
+                f"{name} must be between 0 and 1 inclusive (received {val})"
+            )
+
+    gross_proceeds = sp - sp * commission_rate - sp * cc_rate - loan_bal
+
+    capital_gain = sp - opp
+    cg_tax = max(capital_gain, Decimal("0")) * cg_rate
+
+    recapture_tax = acc_dep * recapture_rate
+
+    return gross_proceeds - cg_tax - recapture_tax
+
+
+def total_return_summary(
+    purchase_price: Decimal,
+    down_payment: Decimal,
+    annual_cash_flows: list[Decimal],
+    net_sale_proceeds_amount: Decimal,
+) -> dict:
+    """Summarise total investment return over the hold period.
+
+    Combines cumulative cash flows and net sale proceeds to compute total return
+    metrics.  IRR is computed using the full cash-flow series:
+      - Year 0: ``-down_payment`` (initial equity outlay)
+      - Years 1…N: ``annual_cash_flows``
+      - Year N: ``annual_cash_flows[-1] + net_sale_proceeds_amount`` (exit year)
+
+    Args:
+        purchase_price: Original acquisition price of the property (for reference;
+            not used in IRR computation directly).
+        down_payment: Equity invested at purchase (positive value; used as the
+            year-0 outflow).
+        annual_cash_flows: List of annual after-debt-service cash flows from
+            ``project_annual_cash_flows()``.  Must have at least 1 element.
+        net_sale_proceeds_amount: Net cash to investor upon sale from
+            ``net_sale_proceeds()``.
+
+    Returns:
+        Dictionary with the following keys:
+
+        - ``total_cash_flow`` (Decimal): Sum of ``annual_cash_flows``.
+        - ``net_sale_proceeds`` (Decimal): The ``net_sale_proceeds_amount`` argument.
+        - ``total_return`` (Decimal): ``total_cash_flow + net_sale_proceeds``.
+        - ``total_return_on_equity`` (Decimal): ``total_return / down_payment``, or
+          ``Decimal("0")`` if ``down_payment`` is zero.
+        - ``annualized_irr`` (Decimal): IRR computed via ``irr()`` over the full
+          cash-flow series.
+
+    Raises:
+        ValueError: If ``annual_cash_flows`` is empty.
+        ValueError: If ``down_payment`` < 0.
+
+    Example:
+        >>> summary = total_return_summary(
+        ...     Decimal("300000"), Decimal("60000"),
+        ...     [Decimal("6000")] * 10, Decimal("120000"),
+        ... )
+        >>> summary["total_cash_flow"]
+        Decimal("60000")
+    """
+    if not annual_cash_flows:
+        raise ValueError("annual_cash_flows must contain at least one element")
+
+    dp = to_decimal(down_payment)
+    if dp < Decimal("0"):
+        raise ValueError(
+            f"down_payment must be zero or greater (received {down_payment})"
+        )
+
+    total_cf = sum(annual_cash_flows, Decimal("0"))
+    nsp = to_decimal(net_sale_proceeds_amount)
+    total_ret = total_cf + nsp
+
+    if dp == Decimal("0"):
+        roe = Decimal("0")
+    else:
+        roe = total_ret / dp
+
+    # Build IRR cash-flow series: year-0 outflow, annual CFs, exit-year bump
+    irr_flows: list[Decimal] = [-dp]
+    for i, cf in enumerate(annual_cash_flows):
+        if i == len(annual_cash_flows) - 1:
+            irr_flows.append(cf + nsp)
+        else:
+            irr_flows.append(cf)
+
+    annualized = irr(irr_flows)
+
+    return {
+        "total_cash_flow": total_cf,
+        "net_sale_proceeds": nsp,
+        "total_return": total_ret,
+        "total_return_on_equity": roe,
+        "annualized_irr": annualized,
+    }
+
+
 def depreciation_recapture_tax(
     accumulated_depreciation: Decimal,
     recapture_rate: Decimal = Decimal("0.25"),
