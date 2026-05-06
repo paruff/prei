@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check if docs were updated alongside code
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { data: files } = await github.rest.pulls.listFiles({
