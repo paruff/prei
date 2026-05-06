@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Iterable, Sequence
+from typing import Any, Dict, Iterable, Sequence, TypedDict
 
 import numpy as np
 import numpy_financial as npf
@@ -1595,6 +1595,18 @@ _CAP_RATE_SCALE_THRESHOLD = Decimal("0.05")
 # 20% is a well-established benchmark for strong passive income investments.
 _COC_SCALE_THRESHOLD = Decimal("0.20")
 
+
+class ScoreV2Result(TypedDict):
+    """Return type for :func:`score_listing_v2`."""
+
+    one_percent_rule_pass: bool
+    grm: Decimal
+    cap_rate: Decimal
+    cap_rate_vs_market: Decimal
+    coc_year1: Decimal
+    composite_score: Decimal
+
+
 def one_percent_rule(monthly_rent: Decimal, purchase_price: Decimal) -> bool:
     """Evaluate the 1% Rule for a rental property.
 
@@ -1673,7 +1685,7 @@ def score_listing_v2(
     local_market_cap_rate: Decimal,
     down_payment: Decimal,
     annual_debt_service: Decimal,
-) -> dict:
+) -> ScoreV2Result:
     """Compute an investor-grade multi-signal underwriting score for a rental listing.
 
     Signals and weights (hardcoded; future versions should read from
@@ -1742,13 +1754,18 @@ def score_listing_v2(
 
     # Cap rate vs market: scale so +5 pp above market = 100, -5 pp = 0
     # cap_rate_vs_market is a raw decimal difference (e.g. 0.02 = 2 pp above)
-    cap_vs_market_sub = (
-        (cap_rate_vs_market / _CAP_RATE_SCALE_THRESHOLD) * Decimal("100")
-    ).max(Decimal("0")).min(Decimal("100"))
+    cap_vs_market_sub = min(
+        Decimal("100"),
+        max(
+            Decimal("0"),
+            (cap_rate_vs_market / _CAP_RATE_SCALE_THRESHOLD) * Decimal("100"),
+        ),
+    )
 
     # CoC Year 1: scale so 20% CoC = 100 points, 0% CoC = 0 points
-    coc_sub = (coc_year1 / _COC_SCALE_THRESHOLD * Decimal("100")).max(Decimal("0")).min(
-        Decimal("100")
+    coc_sub = min(
+        Decimal("100"),
+        max(Decimal("0"), coc_year1 / _COC_SCALE_THRESHOLD * Decimal("100")),
     )
 
     # GRM heuristic sub-score
@@ -1765,9 +1782,9 @@ def score_listing_v2(
 
     # Cap at 40 if 1% rule fails
     if not one_pct_pass:
-        composite = composite.min(Decimal("40"))
+        composite = min(Decimal("40"), composite)
 
-    composite = composite.max(Decimal("0")).min(Decimal("100"))
+    composite = min(Decimal("100"), max(Decimal("0"), composite))
 
     return {
         "one_percent_rule_pass": one_pct_pass,

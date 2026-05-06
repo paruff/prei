@@ -247,7 +247,31 @@ class TestScoreListingV2:
                 **self._realistic_inputs(annual_debt_service=Decimal("0"))
             )
 
-    # -- Computed values sanity checks -----------------------------------------
+    def test_negative_monthly_rent_raises(self) -> None:
+        with pytest.raises(ValueError, match="monthly_rent"):
+            score_listing_v2(**self._realistic_inputs(monthly_rent=Decimal("-500")))
+
+    def test_negative_annual_noi_raises(self) -> None:
+        with pytest.raises(ValueError, match="annual_noi"):
+            score_listing_v2(**self._realistic_inputs(annual_noi=Decimal("-1000")))
+
+    def test_negative_local_market_cap_rate_raises(self) -> None:
+        with pytest.raises(ValueError, match="local_market_cap_rate"):
+            score_listing_v2(
+                **self._realistic_inputs(local_market_cap_rate=Decimal("-0.05"))
+            )
+
+    def test_negative_down_payment_raises(self) -> None:
+        with pytest.raises(ValueError, match="down_payment"):
+            score_listing_v2(**self._realistic_inputs(down_payment=Decimal("-1000")))
+
+    def test_negative_annual_debt_service_raises(self) -> None:
+        with pytest.raises(ValueError, match="annual_debt_service"):
+            score_listing_v2(
+                **self._realistic_inputs(annual_debt_service=Decimal("-1000"))
+            )
+
+
 
     def test_grm_matches_expected(self) -> None:
         """GRM should be purchase_price / annual_rent."""
