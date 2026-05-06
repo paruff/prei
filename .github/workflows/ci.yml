@@ -43,7 +43,7 @@ jobs:
           ruff check --fix . || true
 
       - name: Commit and push ruff fixes (if any)
-        uses: EndBug/add-and-commit@v9
+        uses: EndBug/add-and-commit@v10
         with:
           message: "ci: apply ruff --fix fixes"
           author_name: "github-actions[bot]"
