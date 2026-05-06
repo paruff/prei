@@ -11,7 +11,8 @@ WORKDIR /app
 # --- deps layer (cached unless requirements.txt changes) ---
 FROM base AS deps
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \   # BuildKit cache mount
+# BuildKit cache mount
+RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
 
 # --- final image ---
