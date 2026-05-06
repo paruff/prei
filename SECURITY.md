@@ -290,9 +290,9 @@ Note: If the app sits behind a TLS-terminating proxy (e.g., Render, Fly.io), set
 
 **Location:** `Dockerfile` line 4: `ARG PYTHON_VERSION=3.14`.
 
-**Risk:** Python 3.14 is not yet released as stable (as of the time of writing). Using a pre-release Python version in production containers can introduce undiscovered security vulnerabilities and unpredictable behaviour.
+**Risk:** Python 3.14 is not yet released as stable (as of the time of writing). Using a pre-release Python version in production containers can introduce undiscovered security vulnerabilities and unpredictable behavior.
 
-**Required fix:** Pin to `python:3.11-slim` (or `3.12-slim`) which aligns with the project's stated Python 3.11 requirement.
+**Required fix:** Pin to `python:3.11-slim`, which aligns with the project's stated Python 3.11 requirement.
 
 ---
 
