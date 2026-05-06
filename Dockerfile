@@ -30,8 +30,5 @@ USER app
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD python -c "\
-import sys, urllib.request; \
-try: urllib.request.urlopen('http://localhost:8000/api/health/'); sys.exit(0) \
-except Exception as e: print(f'health check failed: {e}', file=sys.stderr); sys.exit(1)"
+    CMD python -c "import sys, urllib.request\ntry:\n  urllib.request.urlopen('http://localhost:8000/api/health/')\nexcept Exception as e:\n  print(f'health check failed: {e}', file=sys.stderr)\n  sys.exit(1)"
 CMD ["gunicorn", "investor_app.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
