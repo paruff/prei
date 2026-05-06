@@ -3,18 +3,6 @@ services:
     image: ghcr.io/paruff/prei:latest
     env_file: .env
     ports: ["8000:8000"]
-    depends_on: [db, redis]
+    depends_on: [db]
   db:
     image: postgres:16-alpine
-  redis:
-    image: redis:7-alpine
-  celery_worker:
-    image: ghcr.io/paruff/prei:latest   # same image, different CMD
-    command: celery -A core worker -l info
-    env_file: .env
-    depends_on: [db, redis]
-  celery_beat:
-    image: ghcr.io/paruff/prei:latest
-    command: celery -A core beat -l info
-    env_file: .env
-    depends_on: [db, redis]

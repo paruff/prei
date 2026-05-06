@@ -85,4 +85,9 @@ urlpatterns = [
         api_views.export_property_analysis_pdf,
         name="export-property-pdf",
     ),
+    path(
+        "health/",
+        api_views.health_check,
+        name="health-check",
+    ),
 ]

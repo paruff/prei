@@ -136,12 +136,41 @@ jobs:
           echo "sha: ${{ github.sha }}"
 
   # ─────────────────────────────────────
+  # GATE 5: Dependency CVE Scan
+  # ─────────────────────────────────────
+
+  pip-audit:
+    name: "🔒 pip-audit (app dependency CVE scan)"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: pip-audit (app dependency CVE scan)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  # ─────────────────────────────────────
   # SUMMARY
   # ─────────────────────────────────────
 
   ci-summary:
     name: "✅ CI Complete"
-    needs: [lint, typecheck, test]
+    needs: [lint, typecheck, test, pip-audit]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -149,7 +178,8 @@ jobs:
         run: |
           if [ "${{ needs.lint.result }}" != "success" ] ||
              [ "${{ needs.typecheck.result }}" != "success" ] ||
-             [ "${{ needs.test.result }}" != "success" ]; then
+             [ "${{ needs.test.result }}" != "success" ] ||
+             [ "${{ needs.pip-audit.result }}" != "success" ]; then
             echo "❌ One or more CI gates failed"
             exit 1
           fi
