@@ -275,7 +275,7 @@ jobs:
       # Auto-open a deduped GitHub Issue when CRITICAL CVEs are found
       - name: Open GitHub Issue for CRITICAL CVEs
         if: steps.critical-check.outcome == 'failure'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const today = new Date().toISOString().split('T')[0];
