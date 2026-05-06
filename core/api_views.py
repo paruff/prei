@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import connection as db_connection
 from django.db import DatabaseError
 from django.db.models import Q
 from django.http import HttpResponse
@@ -1881,16 +1882,14 @@ def compare_investment_strategies(request):
 
 
 @api_view(["GET"])
-def health_check(request):
+def health_check(request: Any) -> Response:
     """
     Health check endpoint for deployment platforms.
 
     Returns HTTP 200 when the application and database are reachable.
     """
     try:
-        from django.db import connection
-
-        connection.ensure_connection()
+        db_connection.ensure_connection()
     except DatabaseError as e:
         logger.error(f"Health check DB error: {e}")
         return Response(

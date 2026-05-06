@@ -142,6 +142,8 @@ jobs:
   pip-audit:
     name: "🔒 pip-audit (app dependency CVE scan)"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "job-start"
         run: |
@@ -155,7 +157,7 @@ jobs:
       - name: pip-audit (app dependency CVE scan)
         run: |
           pip install pip-audit
-          pip-audit -r requirements.txt --fix --dry-run
+          pip-audit -r requirements.txt
       - name: "job-finish"
         if: always()
         run: |
