@@ -84,7 +84,7 @@ class TestAfterTaxCashFlow:
         result = after_tax_cash_flow(
             noi=Decimal("24000"),
             annual_debt_service=Decimal("18000"),
-            annual_depreciation=Decimal("9091"),
+            depreciation_deduction=Decimal("9091"),
             marginal_tax_rate=Decimal("0.24"),
         )
         expected = Decimal("6000") + Decimal("9091") * Decimal("0.24")
@@ -98,7 +98,7 @@ class TestAfterTaxCashFlow:
         result = after_tax_cash_flow(
             noi=noi_val,
             annual_debt_service=debt,
-            annual_depreciation=dep,
+            depreciation_deduction=dep,
             marginal_tax_rate=Decimal("0"),
         )
         # With 0% tax rate, shield = 0, so result = NOI - debt_service
@@ -109,7 +109,7 @@ class TestAfterTaxCashFlow:
         result = after_tax_cash_flow(
             noi=Decimal("10000"),
             annual_debt_service=Decimal("8000"),
-            annual_depreciation=Decimal("5000"),
+            depreciation_deduction=Decimal("5000"),
             marginal_tax_rate=Decimal("1"),
         )
         # shield = 5000 * 1.0 = 5000; pre-tax CF = 2000; total = 7000
@@ -123,7 +123,7 @@ class TestAfterTaxCashFlow:
             after_tax_cash_flow(
                 noi=Decimal("10000"),
                 annual_debt_service=Decimal("8000"),
-                annual_depreciation=Decimal("5000"),
+                depreciation_deduction=Decimal("5000"),
                 marginal_tax_rate=Decimal("-0.1"),
             )
 
@@ -135,7 +135,7 @@ class TestAfterTaxCashFlow:
             after_tax_cash_flow(
                 noi=Decimal("10000"),
                 annual_debt_service=Decimal("8000"),
-                annual_depreciation=Decimal("5000"),
+                depreciation_deduction=Decimal("5000"),
                 marginal_tax_rate=Decimal("1.5"),
             )
 
@@ -144,7 +144,7 @@ class TestAfterTaxCashFlow:
         result = after_tax_cash_flow(
             noi=Decimal("-5000"),
             annual_debt_service=Decimal("12000"),
-            annual_depreciation=Decimal("9091"),
+            depreciation_deduction=Decimal("9091"),
             marginal_tax_rate=Decimal("0.22"),
         )
         # pre-tax CF = -5000 - 12000 = -17000; shield = 9091 * 0.22 ≈ 2000.02

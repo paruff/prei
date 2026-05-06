@@ -1106,7 +1106,7 @@ def annual_depreciation(purchase_price: Decimal, land_value: Decimal) -> Decimal
 def after_tax_cash_flow(
     noi: Decimal,
     annual_debt_service: Decimal,
-    annual_depreciation: Decimal,
+    depreciation_deduction: Decimal,
     marginal_tax_rate: Decimal,
 ) -> Decimal:
     """Calculate after-tax cash flow including the depreciation tax shield.
@@ -1119,7 +1119,8 @@ def after_tax_cash_flow(
     Args:
         noi: Net Operating Income (annual).
         annual_debt_service: Total annual mortgage payments (principal + interest).
-        annual_depreciation: Annual depreciation deduction (from annual_depreciation()).
+        depreciation_deduction: Annual depreciation deduction (e.g., from
+            ``annual_depreciation()``).
         marginal_tax_rate: Investor's marginal income tax rate as a decimal in [0, 1]
             (e.g., 0.24 for 24%).
 
@@ -1133,7 +1134,7 @@ def after_tax_cash_flow(
         >>> after_tax_cash_flow(
         ...     Decimal("24000"), Decimal("18000"), Decimal("9091"), Decimal("0.24")
         ... )
-        Decimal("7781.84")
+        Decimal("8181.84")
     """
     rate = to_decimal(marginal_tax_rate)
     if rate < Decimal("0") or rate > Decimal("1"):
@@ -1143,13 +1144,13 @@ def after_tax_cash_flow(
         )
 
     pre_tax_cf = to_decimal(noi) - to_decimal(annual_debt_service)
-    tax_shield = to_decimal(annual_depreciation) * rate
+    tax_shield = to_decimal(depreciation_deduction) * rate
     return pre_tax_cf + tax_shield
 
 
 def after_tax_irr(
-    cash_flows: list[Decimal],
-    depreciation_schedule: list[Decimal],
+    cash_flows: Sequence[Decimal],
+    depreciation_schedule: Sequence[Decimal],
     marginal_tax_rate: Decimal,
 ) -> Decimal:
     """Calculate after-tax IRR by adjusting each period's cash flow by the depreciation tax shield.
