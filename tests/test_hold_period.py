@@ -200,7 +200,7 @@ class TestProjectPropertyValue:
     def test_appreciation_rate_below_minus_one_raises(self) -> None:
         """appreciation_rate < -1 should raise ValueError."""
         with pytest.raises(
-            ValueError, match="appreciation_rate must be greater than -1"
+            ValueError, match="appreciation_rate must be >= -1"
         ):
             project_property_value(Decimal("300000"), Decimal("-1.1"), 10)
 
@@ -443,6 +443,7 @@ class TestTotalReturnSummary:
             Decimal("60000"),
         )
         expected_keys = {
+            "purchase_price",
             "total_cash_flow",
             "net_sale_proceeds",
             "total_return",

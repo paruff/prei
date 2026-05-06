@@ -196,9 +196,9 @@ irr = calculate_irr([-1000, 500, 600])
 **Purpose:** Project year-by-year after-debt-service cash flows over a hold period using compound growth rates for rent and expenses. Debt service is constant (fixed-rate mortgage assumption).
 
 **Parameters:**
-- `gross_rent_year1: Decimal` — Gross rental income in year 1.
-- `operating_expense_year1: Decimal` — Operating expenses in year 1.
-- `annual_debt_service: Decimal` — Fixed annual mortgage payment (principal + interest).
+- `gross_rent_year1: Decimal` — Gross rental income in year 1 (must be ≥ 0).
+- `operating_expense_year1: Decimal` — Operating expenses in year 1 (must be ≥ 0).
+- `annual_debt_service: Decimal` — Fixed annual mortgage payment (principal + interest; must be ≥ 0).
 - `rent_growth_rate: Decimal` — Annual rent growth rate as a decimal (e.g., `Decimal("0.03")` for 3%). Must be in `[-0.5, 0.5]`.
 - `expense_growth_rate: Decimal` — Annual expense growth rate as a decimal. Must be in `[-0.5, 0.5]`.
 - `hold_years: int` — Number of years in the hold period. Must be in `[1, 50]`.
@@ -206,6 +206,7 @@ irr = calculate_irr([-1000, 500, 600])
 **Returns:** `list[Decimal]` — Annual after-debt-service cash flows, one entry per year (`len == hold_years`). Negative values indicate years where debt service exceeds NOI.
 **Side effects:** None (pure function)
 **Error cases:**
+- Raises `ValueError` if `gross_rent_year1`, `operating_expense_year1`, or `annual_debt_service` is negative.
 - Raises `ValueError` if `hold_years` is outside `[1, 50]`.
 - Raises `ValueError` if `rent_growth_rate` or `expense_growth_rate` is outside `[-0.5, 0.5]`.
 
@@ -231,7 +232,7 @@ flows = project_annual_cash_flows(
 
 **Parameters:**
 - `purchase_price: Decimal` — Original purchase price of the property (must be > 0).
-- `appreciation_rate: Decimal` — Expected annual appreciation rate as a decimal (e.g., `Decimal("0.03")` for 3%). Must be > `-1`.
+- `appreciation_rate: Decimal` — Expected annual appreciation rate as a decimal (e.g., `Decimal("0.03")` for 3%). Must be >= `-1`.
 - `hold_years: int` — Number of years to project forward. Must be in `[1, 50]`.
 
 **Returns:** `Decimal` — Projected property value at end of hold period.
@@ -296,12 +297,13 @@ proceeds = net_sale_proceeds(
 **Purpose:** Aggregate hold-period results into a total-return summary dict. IRR is computed over the full cash-flow series (year-0 equity outflow, annual flows, exit-year flows + net sale proceeds).
 
 **Parameters:**
-- `purchase_price: Decimal` — Original acquisition price (included for caller convenience; not used in internal calculations).
+- `purchase_price: Decimal` — Original acquisition price. Included in the returned summary as `"purchase_price"` for caller convenience.
 - `down_payment: Decimal` — Equity invested at purchase; used as the year-0 outflow in the IRR calculation (must be ≥ 0).
 - `annual_cash_flows: list[Decimal]` — Year-by-year cash flows from `project_annual_cash_flows()` (must be non-empty).
 - `net_sale_proceeds_amount: Decimal` — Net sale proceeds from `net_sale_proceeds()`.
 
-**Returns:** `dict` with keys:
+**Returns:** `dict[str, Decimal]` with keys:
+- `purchase_price` (`Decimal`): The `purchase_price` argument.
 - `total_cash_flow` (`Decimal`): Sum of `annual_cash_flows`.
 - `net_sale_proceeds` (`Decimal`): The `net_sale_proceeds_amount` argument.
 - `total_return` (`Decimal`): `total_cash_flow + net_sale_proceeds`.
@@ -325,7 +327,7 @@ summary = total_return_summary(
     annual_cash_flows=[Decimal("6000")] * 10,
     net_sale_proceeds_amount=Decimal("120000"),
 )
-# → {"total_cash_flow": Decimal("60000"), "net_sale_proceeds": Decimal("120000"),
-#    "total_return": Decimal("180000"), "total_return_on_equity": Decimal("3"),
-#    "annualized_irr": Decimal("...")}
+# → {"purchase_price": Decimal("300000"), "total_cash_flow": Decimal("60000"),
+#    "net_sale_proceeds": Decimal("120000"), "total_return": Decimal("180000"),
+#    "total_return_on_equity": Decimal("3"), "annualized_irr": Decimal("...")}
 ```

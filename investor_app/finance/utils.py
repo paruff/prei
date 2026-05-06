@@ -1246,7 +1246,8 @@ def project_annual_cash_flows(
     Args:
         gross_rent_year1: Gross rental income in year 1 (must be >= 0).
         operating_expense_year1: Operating expenses in year 1 (must be >= 0).
-        annual_debt_service: Fixed annual mortgage payment (principal + interest).
+        annual_debt_service: Fixed annual mortgage payment (principal + interest;
+            must be >= 0).
         rent_growth_rate: Annual rent growth rate as a decimal (e.g., 0.03 for 3%).
             Must be in the range [-0.5, 0.5].
         expense_growth_rate: Annual expense growth rate as a decimal.
@@ -1258,6 +1259,8 @@ def project_annual_cash_flows(
         Negative values indicate years where debt service exceeds NOI.
 
     Raises:
+        ValueError: If ``gross_rent_year1`` or ``operating_expense_year1`` or
+            ``annual_debt_service`` is negative.
         ValueError: If ``hold_years`` is outside [1, 50].
         ValueError: If ``rent_growth_rate`` or ``expense_growth_rate`` is outside
             [-0.5, 0.5].
@@ -1289,6 +1292,19 @@ def project_annual_cash_flows(
     expense = to_decimal(operating_expense_year1)
     debt = to_decimal(annual_debt_service)
 
+    if rent < Decimal("0"):
+        raise ValueError(
+            f"gross_rent_year1 must be zero or greater (received {gross_rent_year1})"
+        )
+    if expense < Decimal("0"):
+        raise ValueError(
+            f"operating_expense_year1 must be zero or greater (received {operating_expense_year1})"
+        )
+    if debt < Decimal("0"):
+        raise ValueError(
+            f"annual_debt_service must be zero or greater (received {annual_debt_service})"
+        )
+
     cash_flows: list[Decimal] = []
     one = Decimal("1")
     for year in range(1, hold_years + 1):
@@ -1317,7 +1333,8 @@ def project_property_value(
     Args:
         purchase_price: Original purchase price of the property (must be > 0).
         appreciation_rate: Expected annual appreciation rate as a decimal.
-            Must be > -1 (a rate of -1 would imply a total loss of value).
+            Must be >= -1 (a rate of -1 implies a total loss of value; rates
+            below -1 are mathematically undefined for this formula).
         hold_years: Number of years to project forward (must be in [1, 50]).
 
     Returns:
@@ -1341,7 +1358,7 @@ def project_property_value(
         )
     if rate < Decimal("-1"):
         raise ValueError(
-            f"appreciation_rate must be greater than -1 (received {appreciation_rate})"
+            f"appreciation_rate must be >= -1 (received {appreciation_rate})"
         )
     if hold_years < 1 or hold_years > 50:
         raise ValueError(f"hold_years must be between 1 and 50 (received {hold_years})")
@@ -1442,7 +1459,7 @@ def total_return_summary(
     down_payment: Decimal,
     annual_cash_flows: list[Decimal],
     net_sale_proceeds_amount: Decimal,
-) -> dict:
+) -> Dict[str, Decimal]:
     """Summarise total investment return over the hold period.
 
     Combines cumulative cash flows and net sale proceeds to compute total return
@@ -1452,9 +1469,8 @@ def total_return_summary(
       - Year N: ``annual_cash_flows[-1] + net_sale_proceeds_amount`` (exit year)
 
     Args:
-        purchase_price: Original acquisition price of the property.  Included for
-            API completeness and caller convenience (e.g., to display alongside
-            the summary); not used directly in any internal calculation.
+        purchase_price: Original acquisition price of the property.  Included in
+            the returned summary dict as ``"purchase_price"`` for caller convenience.
         down_payment: Equity invested at purchase (positive value; used as the
             year-0 outflow).
         annual_cash_flows: List of annual after-debt-service cash flows from
@@ -1465,6 +1481,7 @@ def total_return_summary(
     Returns:
         Dictionary with the following keys:
 
+        - ``purchase_price`` (Decimal): The ``purchase_price`` argument.
         - ``total_cash_flow`` (Decimal): Sum of ``annual_cash_flows``.
         - ``net_sale_proceeds`` (Decimal): The ``net_sale_proceeds_amount`` argument.
         - ``total_return`` (Decimal): ``total_cash_flow + net_sale_proceeds``.
@@ -1514,6 +1531,7 @@ def total_return_summary(
     annualized = irr(irr_flows)
 
     return {
+        "purchase_price": to_decimal(purchase_price),
         "total_cash_flow": total_cf,
         "net_sale_proceeds": nsp,
         "total_return": total_ret,
