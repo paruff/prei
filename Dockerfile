@@ -29,4 +29,4 @@ RUN addgroup --system app && adduser --system --group app
 USER app
 
 EXPOSE 8000
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "core.asgi:application"]
+CMD ["gunicorn", "investor_app.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]

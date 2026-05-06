@@ -1878,3 +1878,23 @@ def compare_investment_strategies(request):
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+
+
+@api_view(["GET"])
+def health_check(request):
+    """
+    Health check endpoint for deployment platforms.
+
+    Returns HTTP 200 when the application and database are reachable.
+    """
+    try:
+        from django.db import connection
+
+        connection.ensure_connection()
+    except DatabaseError as e:
+        logger.error(f"Health check DB error: {e}")
+        return Response(
+            {"status": "error", "detail": "database unavailable"},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    return Response({"status": "ok"}, status=status.HTTP_200_OK)
