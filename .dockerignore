@@ -1,0 +1,74 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Tests and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+tests/
+tests_bdd/
+features/
+
+# Development tools
+.ruff_cache/
+.mypy_cache/
+.black
+
+# Docs
+docs/
+site/
+mkdocs.yml
+docs-requirements.txt
+*.md
+
+# Secrets and environment
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local data
+data/
+db.sqlite3
+test_db.sqlite3
+media/
+
+# Static files (collected in CI/CD or at startup)
+staticfiles/
+
+# GitHub Actions / CI config (not needed in image)
+.github/
+
+# Fly / Render / Railway deploy config
+fly.toml
+render.yaml
+railway.toml

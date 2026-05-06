@@ -30,6 +30,11 @@ jobs:
       id-token: write
 
     steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -121,6 +126,12 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy-image-scan
 
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
   # ─────────────────────────────────────────────────────────────────
   # JOB 2: Publish — only runs if scan passed, only on push (not PR)
   # ─────────────────────────────────────────────────────────────────
@@ -136,6 +147,11 @@ jobs:
       id-token: write
 
     steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -175,6 +191,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha         # reuses layers from job 1 — no rebuild
+          cache-to: type=gha,mode=max  # refreshes multi-arch cache for future runs
           provenance: true             # SLSA provenance attestation
           sbom: true                   # Software Bill of Materials
 
@@ -186,6 +203,12 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
 
   # ─────────────────────────────────────────────────────────────────
   # JOB 3: Scheduled weekly re-scan of published :latest image.
@@ -203,6 +226,11 @@ jobs:
       issues: write                    # needed to auto-open issues
 
     steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -291,3 +319,9 @@ jobs:
         env:
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
+
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"

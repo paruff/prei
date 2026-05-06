@@ -9,3 +9,7 @@ updates:
     directory: "/"
     schedule:
       interval: weekly    # bumps FROM python:3.11-slim automatically
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly    # keeps actions/checkout, docker/build-push-action, etc. up to date
