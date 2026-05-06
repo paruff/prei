@@ -10,8 +10,9 @@ WORKDIR /app
 
 # --- deps layer (cached unless requirements.txt changes) ---
 FROM base AS deps
+# Allow pip to write to /root/.cache/pip so the BuildKit cache mount is effective
+ENV PIP_NO_CACHE_DIR=0
 COPY requirements.txt .
-# BuildKit cache mount
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
 
