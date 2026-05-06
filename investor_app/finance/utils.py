@@ -1271,9 +1271,7 @@ def project_annual_cash_flows(
         5
     """
     if hold_years < 1 or hold_years > 50:
-        raise ValueError(
-            f"hold_years must be between 1 and 50 inclusive (received {hold_years})"
-        )
+        raise ValueError(f"hold_years must be between 1 and 50 (received {hold_years})")
 
     r_rate = to_decimal(rent_growth_rate)
     e_rate = to_decimal(expense_growth_rate)
@@ -1346,9 +1344,7 @@ def project_property_value(
             f"appreciation_rate must be greater than -1 (received {appreciation_rate})"
         )
     if hold_years < 1 or hold_years > 50:
-        raise ValueError(
-            f"hold_years must be between 1 and 50 inclusive (received {hold_years})"
-        )
+        raise ValueError(f"hold_years must be between 1 and 50 (received {hold_years})")
 
     return pp * (Decimal("1") + rate) ** hold_years
 
@@ -1456,8 +1452,9 @@ def total_return_summary(
       - Year N: ``annual_cash_flows[-1] + net_sale_proceeds_amount`` (exit year)
 
     Args:
-        purchase_price: Original acquisition price of the property (for reference;
-            not used in IRR computation directly).
+        purchase_price: Original acquisition price of the property.  Included for
+            API completeness and caller convenience (e.g., to display alongside
+            the summary); not used directly in any internal calculation.
         down_payment: Equity invested at purchase (positive value; used as the
             year-0 outflow).
         annual_cash_flows: List of annual after-debt-service cash flows from

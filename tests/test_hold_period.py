@@ -375,7 +375,7 @@ class TestNetSaleProceeds:
             )
 
     def test_custom_rates(self) -> None:
-        """Custom rate parameters should be honoured."""
+        """Custom rate parameters should be honored."""
         result = net_sale_proceeds(
             sale_price=Decimal("500000"),
             original_purchase_price=Decimal("400000"),
