@@ -13,7 +13,6 @@ from investor_app.finance.utils import (
     score_listing_v2,
 )
 
-
 # ── one_percent_rule ───────────────────────────────────────────────────────────
 
 
@@ -136,10 +135,10 @@ class TestScoreListingV2:
         """Return a baseline set of realistic inputs for score_listing_v2."""
         base = dict(
             purchase_price=Decimal("250000"),
-            monthly_rent=Decimal("2500"),    # 1% rule: 2500/250000 = 1.0% → pass
-            annual_noi=Decimal("18000"),     # cap rate 7.2%
+            monthly_rent=Decimal("2500"),  # 1% rule: 2500/250000 = 1.0% → pass
+            annual_noi=Decimal("18000"),  # cap rate 7.2%
             local_market_cap_rate=Decimal("0.06"),
-            down_payment=Decimal("62500"),   # 25% down
+            down_payment=Decimal("62500"),  # 25% down
             annual_debt_service=Decimal("14400"),
         )
         base.update(overrides)
@@ -181,9 +180,7 @@ class TestScoreListingV2:
     def test_failing_one_percent_rule_caps_score_at_40(self) -> None:
         """A deal that fails the 1% rule must have composite_score <= 40."""
         # monthly_rent = 800 on a 250k property → 0.32% → fails
-        result = score_listing_v2(
-            **self._realistic_inputs(monthly_rent=Decimal("800"))
-        )
+        result = score_listing_v2(**self._realistic_inputs(monthly_rent=Decimal("800")))
         assert result["one_percent_rule_pass"] is False
         assert result["composite_score"] <= Decimal("40")
 
@@ -205,8 +202,8 @@ class TestScoreListingV2:
         """score_listing_v2 must handle a $10M property without raising."""
         result = score_listing_v2(
             purchase_price=Decimal("10000000"),
-            monthly_rent=Decimal("100000"),   # 1% of 10M → pass
-            annual_noi=Decimal("720000"),     # 7.2% cap rate
+            monthly_rent=Decimal("100000"),  # 1% of 10M → pass
+            annual_noi=Decimal("720000"),  # 7.2% cap rate
             local_market_cap_rate=Decimal("0.06"),
             down_payment=Decimal("2500000"),
             annual_debt_service=Decimal("576000"),
@@ -243,9 +240,7 @@ class TestScoreListingV2:
 
     def test_zero_annual_debt_service_raises(self) -> None:
         with pytest.raises(ValueError, match="annual_debt_service"):
-            score_listing_v2(
-                **self._realistic_inputs(annual_debt_service=Decimal("0"))
-            )
+            score_listing_v2(**self._realistic_inputs(annual_debt_service=Decimal("0")))
 
     def test_negative_monthly_rent_raises(self) -> None:
         with pytest.raises(ValueError, match="monthly_rent"):
@@ -270,8 +265,6 @@ class TestScoreListingV2:
             score_listing_v2(
                 **self._realistic_inputs(annual_debt_service=Decimal("-1000"))
             )
-
-
 
     def test_grm_matches_expected(self) -> None:
         """GRM should be purchase_price / annual_rent."""
