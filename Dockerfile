@@ -1,20 +1,28 @@
-FROM python:3.11-slim
+# syntax=docker/dockerfile:1.7
+# ↑ enables BuildKit features — put this as line 1
 
+FROM python:3.11-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-# System deps
-RUN apt-get update && apt-get install -y build-essential libpq-dev && rm -rf /var/lib/apt/lists/*
+# --- deps layer (cached unless requirements.txt changes) ---
+FROM base AS deps
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \   # BuildKit cache mount
+    pip install -r requirements.txt
 
-# Install Python deps
-COPY requirements.txt /app/requirements.txt
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# --- final image ---
+FROM base AS runtime
+COPY --from=deps /usr/local/lib/python3.11 /usr/local/lib/python3.11
+COPY --from=deps /usr/local/bin /usr/local/bin
+COPY . .
 
-# Copy project
-COPY . /app
+# Never run as root
+RUN addgroup --system app && adduser --system --group app
+USER app
 
 EXPOSE 8000
-
-CMD ["/app/scripts/entrypoint.sh"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "core.asgi:application"]
