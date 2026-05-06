@@ -1586,6 +1586,14 @@ def depreciation_recapture_tax(
 
 # ── Underwriting Score v2 ──────────────────────────────────────────────────────
 
+# Scoring thresholds for composite score sub-components.
+# Cap rate is scaled so that a deal exactly 5 pp above market scores 100;
+# 5 pp was chosen as a practical "outstanding" cap-rate premium for US rental markets.
+_CAP_RATE_SCALE_THRESHOLD = Decimal("0.05")
+
+# CoC is scaled so that a 20% year-1 cash-on-cash return scores 100;
+# 20% is a well-established benchmark for strong passive income investments.
+_COC_SCALE_THRESHOLD = Decimal("0.20")
 
 def one_percent_rule(monthly_rent: Decimal, purchase_price: Decimal) -> bool:
     """Evaluate the 1% Rule for a rental property.
@@ -1735,11 +1743,11 @@ def score_listing_v2(
     # Cap rate vs market: scale so +5 pp above market = 100, -5 pp = 0
     # cap_rate_vs_market is a raw decimal difference (e.g. 0.02 = 2 pp above)
     cap_vs_market_sub = (
-        (cap_rate_vs_market / Decimal("0.05")) * Decimal("100")
+        (cap_rate_vs_market / _CAP_RATE_SCALE_THRESHOLD) * Decimal("100")
     ).max(Decimal("0")).min(Decimal("100"))
 
     # CoC Year 1: scale so 20% CoC = 100 points, 0% CoC = 0 points
-    coc_sub = (coc_year1 / Decimal("0.20") * Decimal("100")).max(Decimal("0")).min(
+    coc_sub = (coc_year1 / _COC_SCALE_THRESHOLD * Decimal("100")).max(Decimal("0")).min(
         Decimal("100")
     )
 
