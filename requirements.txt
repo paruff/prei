@@ -24,6 +24,7 @@ redis>=5.0.0
 django-redis>=6.0.0
 channels>=4.0.0
 channels-redis>=4.2.0
+Twisted>=26.4.0rc2              # CVE-2026-42304 fix (DoS via crafted DNS); rc2 is earliest patched release
 daphne>=4.1.0
 cffi>=1.0.0
 reportlab>=4.0.0
