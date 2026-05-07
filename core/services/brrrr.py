@@ -41,6 +41,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_LTV = Decimal("0.75")
 
 # DSCR threshold used by most lenders for investment-property refinancing.
+# Configurable via settings.FINANCE_DEFAULTS["brrrr_dscr_threshold"] (env: BRRRR_DSCR_THRESHOLD).
+# Fannie Mae / conventional lenders typically require >= 1.25; some require 1.15–1.30.
 DSCR_LENDER_THRESHOLD = Decimal("1.25")
 
 
@@ -128,13 +130,17 @@ def analyze_brrrr_deal(
     vacancy_rate = Decimal(str(defaults["vacancy_rate"]))
     management_fee_rate = Decimal(str(defaults["management_fee_rate"]))
     capex_reserve_rate = Decimal(str(defaults["capex_reserve_rate"]))
+    dscr_threshold = Decimal(str(defaults.get("brrrr_dscr_threshold", "1.25")))
 
     monthly_mortgage_post_refi = calculate_monthly_mortgage(
         max_refi, loan_interest_rate_pct, loan_term_years
     )
     annual_debt_service_post_refi = monthly_mortgage_post_refi * Decimal("12")
 
-    # Estimate monthly rent using the 1 % rule on ARV as a conservative proxy
+    # Estimate monthly rent using the 1 % rule on ARV as a conservative proxy.
+    # This is a rough heuristic (typical range: 0.5 %–2 % depending on market
+    # and property value). Actual rent should be verified against market data
+    # before relying on this figure for underwriting decisions.
     monthly_rent = arv * Decimal("0.01")
     effective_monthly_income = monthly_rent * (Decimal("1") - vacancy_rate)
     monthly_expenses = monthly_rent * (management_fee_rate + capex_reserve_rate)
@@ -155,7 +161,7 @@ def analyze_brrrr_deal(
         "cash_left_in_deal": cash_left,
         "infinite_coc": infinite_coc,
         "post_refi_dscr": post_refi_dscr,
-        "post_refi_dscr_passes": post_refi_dscr >= DSCR_LENDER_THRESHOLD,
+        "post_refi_dscr_passes": post_refi_dscr >= dscr_threshold,
         "monthly_cash_flow_post_refi": monthly_cash_flow_post_refi,
         "coc_return": coc,
     }
