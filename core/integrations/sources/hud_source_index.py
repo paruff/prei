@@ -10,6 +10,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 HUD_HOMES_FOR_SALE_URL = "https://www.hud.gov/topics/homes_for_sale"
 logger = logging.getLogger(__name__)
@@ -39,7 +40,11 @@ def compute_content_hash(content: bytes) -> str:
 def canonicalize_url(url: str) -> str:
     """Normalize URL for stable comparisons.
 
-    Returns an empty string for invalid or unsupported URLs.
+    Normalizations: lowercase scheme/netloc, strip trailing slash from path, and
+    remove query string and fragment.
+
+    Returns an empty string for invalid or unsupported URLs (non-http(s) schemes
+    or missing netloc).
     """
     parsed = urlsplit(url.strip())
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -112,7 +117,7 @@ def diff_source_indexes(
     }
 
 
-def _find_closest_heading(anchor: Any) -> str:
+def _find_closest_heading(anchor: Tag) -> str:
     """Find nearest heading text preceding an anchor."""
     for element in anchor.previous_elements:
         name = getattr(element, "name", None)

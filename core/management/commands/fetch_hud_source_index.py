@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from django.core.management.base import BaseCommand
 
@@ -21,7 +23,7 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = "Fetch HUD Homes for Sale source index and persist versioned snapshot + daily diff"
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--output-dir",
             type=str,
@@ -35,7 +37,7 @@ class Command(BaseCommand):
             help="Optional local HTML file for deterministic runs/testing",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         output_dir = Path(options["output_dir"]).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
         (output_dir / "diffs").mkdir(parents=True, exist_ok=True)
