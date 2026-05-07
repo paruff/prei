@@ -3,10 +3,16 @@
 from decimal import Decimal
 
 import pytest
+from django.test import override_settings
 
 from core.models import MarketSnapshot
 from core.services.market_scoring import score_market, update_market_scores
-from investor_app.finance.utils import price_to_rent_ratio
+from investor_app.finance.utils import (
+    clamp_market_score,
+    normalize_market_growth_rate_score,
+    normalize_market_price_to_rent_score,
+    price_to_rent_ratio,
+)
 
 
 class TestScoreMarket:
@@ -34,6 +40,11 @@ class TestScoreMarket:
 
         assert score == Decimal("0")
 
+    def test_none_snapshot_raises_value_error(self) -> None:
+        """None snapshot should raise ValueError per public contract."""
+        with pytest.raises(ValueError, match="snapshot cannot be None"):
+            score_market(None)
+
     def test_partial_signals_returns_proportional_score(self) -> None:
         """Partial signal availability should not crash and should score proportionally."""
         snapshot = MarketSnapshot(landlord_friendliness_score=Decimal("80"))
@@ -54,6 +65,25 @@ class TestScoreMarket:
         # (100*0.25 + 50*0.20) / (0.25 + 0.20) = 35 / 0.45 = 77.777...
         assert score == Decimal("77.78")
 
+    @override_settings(
+        MARKET_SCORE_WEIGHTS={
+            "price_to_rent": "not-a-number",
+            "landlord_friendliness": Decimal("0.75"),
+        }
+    )
+    def test_invalid_market_score_weight_falls_back_to_default(self) -> None:
+        """Invalid configured weight should fall back to default weight."""
+        snapshot = MarketSnapshot(
+            price_to_rent_ratio=Decimal("12"),
+            landlord_friendliness_score=Decimal("50"),
+        )
+
+        score = score_market(snapshot)
+
+        # Price-to-rent uses default fallback weight 0.25:
+        # (100*0.25 + 50*0.75) / (0.25 + 0.75) = 62.5
+        assert score == Decimal("62.50")
+
 
 class TestPriceToRentRatio:
     """Tests for price_to_rent_ratio."""
@@ -71,6 +101,33 @@ class TestPriceToRentRatio:
         assert ratio.quantize(Decimal("0.0001")) == Decimal("20.8333")
 
 
+class TestMarketScoreMathHelpers:
+    """Tests for market-score math helpers in finance utils."""
+
+    def test_normalize_market_price_to_rent_score_boundaries(self) -> None:
+        """Price-to-rent normalization should respect threshold boundaries."""
+        assert normalize_market_price_to_rent_score(Decimal("-1")) == Decimal("0")
+        assert normalize_market_price_to_rent_score(Decimal("0")) == Decimal("0")
+        assert normalize_market_price_to_rent_score(Decimal("14.99")) == Decimal("100")
+        assert normalize_market_price_to_rent_score(Decimal("15")) == Decimal("100")
+        assert normalize_market_price_to_rent_score(Decimal("20")) == Decimal("60")
+        assert normalize_market_price_to_rent_score(Decimal("30")) == Decimal("0")
+
+    def test_normalize_market_growth_rate_score_boundaries(self) -> None:
+        """Growth-rate normalization should clamp to expected min/max range."""
+        assert normalize_market_growth_rate_score(Decimal("-10")) == Decimal("0")
+        assert normalize_market_growth_rate_score(Decimal("-5")) == Decimal("0")
+        assert normalize_market_growth_rate_score(Decimal("10")) == Decimal("100")
+        assert normalize_market_growth_rate_score(Decimal("12")) == Decimal("100")
+
+    def test_clamp_market_score_boundaries(self) -> None:
+        """Clamp helper should always return score in [0, 100]."""
+        assert clamp_market_score(Decimal("-1")) == Decimal("0")
+        assert clamp_market_score(Decimal("0")) == Decimal("0")
+        assert clamp_market_score(Decimal("100")) == Decimal("100")
+        assert clamp_market_score(Decimal("101")) == Decimal("100")
+
+
 @pytest.mark.django_db
 class TestUpdateMarketScores:
     """Tests for update_market_scores."""
@@ -80,3 +137,16 @@ class TestUpdateMarketScores:
         updated = update_market_scores([])
 
         assert updated == 0
+
+    def test_updates_market_score_and_returns_count(self) -> None:
+        """Should persist market_score updates and report updated row count."""
+        snapshot = MarketSnapshot.objects.create(
+            zip_code="33101",
+            landlord_friendliness_score=Decimal("80"),
+        )
+
+        updated = update_market_scores(["33101"])
+        snapshot.refresh_from_db()
+
+        assert updated == 1
+        assert snapshot.market_score == Decimal("80.00")

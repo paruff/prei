@@ -1681,6 +1681,78 @@ def price_to_rent_ratio(
     return to_decimal(median_home_price) / annual_rent
 
 
+_EXCELLENT_PRICE_TO_RENT_THRESHOLD = Decimal("15")
+_NEUTRAL_PRICE_TO_RENT_THRESHOLD = Decimal("20")
+_MAX_PRICE_TO_RENT_THRESHOLD = Decimal("30")
+_HIGH_SCORE_FLOOR = Decimal("60")
+_HIGH_SCORE_RANGE = Decimal("40")
+_LOW_SCORE_RANGE = Decimal("60")
+
+_MIN_GROWTH_RATE_PERCENT = Decimal("-5")
+_MAX_GROWTH_RATE_PERCENT = Decimal("10")
+_GROWTH_RATE_RANGE = _MAX_GROWTH_RATE_PERCENT - _MIN_GROWTH_RATE_PERCENT
+
+
+def normalize_market_price_to_rent_score(price_to_rent: Decimal) -> Decimal:
+    """Convert price-to-rent ratio into a 0-100 market sub-score.
+
+    Args:
+        price_to_rent: Price-to-rent ratio for a market.
+
+    Returns:
+        Market sub-score in [0, 100], where higher is better.
+
+        Scoring logic:
+        - ``price_to_rent < 15`` -> ``100``
+        - ``15 <= price_to_rent <= 20`` -> linearly mapped from ``100`` down to ``60``
+        - ``20 < price_to_rent <= 30`` -> linearly mapped from ``60`` down to ``0``
+        - ``price_to_rent > 30`` -> ``0``
+    """
+    if price_to_rent <= Decimal("0"):
+        return Decimal("0")
+    if price_to_rent < _EXCELLENT_PRICE_TO_RENT_THRESHOLD:
+        return Decimal("100")
+    if price_to_rent <= _NEUTRAL_PRICE_TO_RENT_THRESHOLD:
+        return (_NEUTRAL_PRICE_TO_RENT_THRESHOLD - price_to_rent) / (
+            _NEUTRAL_PRICE_TO_RENT_THRESHOLD - _EXCELLENT_PRICE_TO_RENT_THRESHOLD
+        ) * _HIGH_SCORE_RANGE + _HIGH_SCORE_FLOOR
+    if price_to_rent <= _MAX_PRICE_TO_RENT_THRESHOLD:
+        return (
+            (_MAX_PRICE_TO_RENT_THRESHOLD - price_to_rent)
+            / (_MAX_PRICE_TO_RENT_THRESHOLD - _NEUTRAL_PRICE_TO_RENT_THRESHOLD)
+            * _LOW_SCORE_RANGE
+        )
+    return Decimal("0")
+
+
+def normalize_market_growth_rate_score(growth_rate: Decimal) -> Decimal:
+    """Convert annual growth rate percent into a 0-100 market sub-score.
+
+    Args:
+        growth_rate: Annual growth rate as a percent value.
+
+    Returns:
+        Market sub-score in [0, 100], where higher is better.
+
+        Growth values are clamped to ``[-5, 10]`` percent and then linearly
+        mapped to ``[0, 100]``.
+    """
+    clamped = max(_MIN_GROWTH_RATE_PERCENT, min(_MAX_GROWTH_RATE_PERCENT, growth_rate))
+    return (clamped - _MIN_GROWTH_RATE_PERCENT) / _GROWTH_RATE_RANGE * Decimal("100")
+
+
+def clamp_market_score(value: Decimal) -> Decimal:
+    """Clamp a market score to the valid 0-100 range.
+
+    Args:
+        value: Raw market score value.
+
+    Returns:
+        Score clamped to [0, 100].
+    """
+    return max(Decimal("0"), min(Decimal("100"), value))
+
+
 def _grm_score(grm: Decimal) -> Decimal:
     """Map a GRM value to a 0–100 sub-score using published heuristics.
 
