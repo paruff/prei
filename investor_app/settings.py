@@ -83,6 +83,9 @@ FINANCE_DEFAULTS = {
     "vacancy_rate": Decimal(env("VACANCY_RATE", default="0.05")),
     "management_fee_rate": Decimal(env("MANAGEMENT_FEE_RATE", default="0.08")),
     "capex_reserve_rate": Decimal(env("CAPEX_RESERVE_RATE", default="0.05")),
+    "down_payment_rate": Decimal(env("DOWN_PAYMENT_RATE", default="0.20")),
+    "loan_interest_rate_pct": Decimal(env("LOAN_INTEREST_RATE_PCT", default="7.5")),
+    "loan_term_years": int(env("LOAN_TERM_YEARS", default="30")),
 }
 
 # Basic logging suitable for CI and dev

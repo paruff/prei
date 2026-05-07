@@ -1,21 +1,27 @@
 from __future__ import annotations
 
-# removed unused Decimal import
+import logging
+from decimal import Decimal
+
+from django.conf import settings
 from django.shortcuts import render
 
 from investor_app.finance.utils import (
+    calculate_monthly_mortgage,
+    cap_rate,
+    cash_on_cash,
     compute_analysis_for_property,
+    dscr,
+    noi,
     score_listing_v1,
     calculate_whatif_monthly_cashflow,
 )
-from core.integrations.market.comps import get_comps_for_listing
-from core.integrations.market.rents import get_rent_estimate_for_listing
-from core.integrations.market.crime import get_crime_score
-from core.integrations.market.schools import get_school_rating
 
 # keep only the models that are actually used
 from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot, SavedSearch
-from core.services.cma import find_undervalued
+from core.services.cma import find_undervalued, price_per_sqft
+
+logger = logging.getLogger(__name__)
 
 
 def dashboard(request):
@@ -217,16 +223,64 @@ def report_listing(request, listing_id: int):
             request, "property_report.html", {"error": "Listing not found."}, status=404
         )
 
-    comps = get_comps_for_listing(lst)
-    rent_estimate = get_rent_estimate_for_listing(lst)
-    crime = get_crime_score(lst.zip_code, lst.city, lst.state)
-    schools = get_school_rating(lst.zip_code, lst.city, lst.state)
+    score = score_listing_v1(lst)
+    ppsf = price_per_sqft(lst)
+
+    market_snapshot = MarketSnapshot.objects.filter(zip_code=lst.zip_code).first()
+
+    kpis: dict[str, Decimal] = {
+        "cap_rate": Decimal("0"),
+        "cash_on_cash": Decimal("0"),
+        "dscr": Decimal("0"),
+        "noi": Decimal("0"),
+    }
+    try:
+        defaults = settings.FINANCE_DEFAULTS
+        price = Decimal(str(lst.price)) if lst.price else Decimal("0")
+        if price > 0:
+            vacancy_rate = defaults["vacancy_rate"]
+            management_fee_rate = defaults["management_fee_rate"]
+            capex_reserve_rate = defaults["capex_reserve_rate"]
+            down_payment_rate = defaults["down_payment_rate"]
+            loan_interest_rate_pct = defaults["loan_interest_rate_pct"]
+            loan_term_years = int(defaults["loan_term_years"])
+
+            # Estimate monthly rent from MarketSnapshot or via 1% rule
+            if market_snapshot and market_snapshot.rent_index > 0:
+                monthly_rent = Decimal(str(market_snapshot.rent_index))
+            else:
+                monthly_rent = price * Decimal("0.01")
+
+            effective_monthly_income = monthly_rent * (1 - vacancy_rate)
+            monthly_expenses = monthly_rent * (management_fee_rate + capex_reserve_rate)
+            annual_noi = noi(effective_monthly_income, monthly_expenses)
+            cap_rate_val = cap_rate(annual_noi, price)
+
+            down_payment = price * down_payment_rate
+            loan_amount = price - down_payment
+            monthly_mortgage = calculate_monthly_mortgage(
+                loan_amount, loan_interest_rate_pct, loan_term_years
+            )
+            annual_debt_service = monthly_mortgage * Decimal("12")
+            annual_cash_flow = annual_noi - annual_debt_service
+            coc_val = cash_on_cash(annual_cash_flow, down_payment)
+            dscr_val = dscr(annual_noi, annual_debt_service)
+
+            kpis = {
+                "cap_rate": cap_rate_val,
+                "cash_on_cash": coc_val,
+                "dscr": dscr_val,
+                "noi": annual_noi,
+            }
+    except Exception:
+        logger.exception("report_listing: KPI computation failed for listing_id=%s", listing_id)
+
     context = {
         "listing": lst,
-        "comps": comps,
-        "rent_estimate": rent_estimate,
-        "crime": crime,
-        "schools": schools,
+        "score": score,
+        "ppsf": ppsf,
+        "market_snapshot": market_snapshot,
+        "kpis": kpis,
     }
     return render(request, "property_report.html", context)
 
