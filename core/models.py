@@ -147,6 +147,24 @@ class MarketSnapshot(models.Model):
     school_rating = models.DecimalField(
         max_digits=6, decimal_places=2, default=Decimal("0")
     )
+    price_to_rent_ratio = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True
+    )
+    population_growth_rate = models.DecimalField(
+        max_digits=7, decimal_places=4, null=True, blank=True
+    )
+    employment_diversity_score = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    landlord_friendliness_score = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    rent_growth_rate = models.DecimalField(
+        max_digits=7, decimal_places=4, null=True, blank=True
+    )
+    market_score = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
 
     updated_at = models.DateTimeField(auto_now=True)
 
