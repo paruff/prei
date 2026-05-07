@@ -60,7 +60,8 @@ The HUD scraper provides:
 - **Address Parsing** - Intelligent parsing of various address formats
 - **Property ID Generation** - Deterministic IDs from addresses for deduplication
 - **Error Resilience** - Continues processing even with malformed listings
-- **Rate Limiting** - Built-in delays between requests
+- **Rate Limiting** - Built-in delays between paginated requests
+- **Pagination Support** - Follows next-page links while staying on HUD domain
 
 #### Usage Example
 
@@ -78,7 +79,8 @@ html = fetch_hud_page_html()
 properties = scraper.extract_properties_from_html(html)
 ```
 
-**Note:** The current implementation is a placeholder. For production use, implement with Playwright to handle JavaScript-rendered content. See the TODO in `scrape_state()` method for requirements.
+**Note:** The current implementation supports HTML page fetch + parsing + pagination.
+For complex JavaScript-rendered flows, a Playwright-based implementation may still be needed.
 
 ### Health Monitoring (`health_monitor.py`)
 

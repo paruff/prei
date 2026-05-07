@@ -2,7 +2,7 @@
 
 > Auto-maintained by `@docs-agent`. Updated whenever `core/services/` or `investor_app/finance/utils.py` changes.
 > DORA AI Cap 3: This document is loaded as context before every code generation session.
-> Last updated: 2026-05-07 (added recommendations service APIs)
+> Last updated: 2026-05-07 (added foreclosure integration adapter APIs)
 
 -----
 
@@ -170,6 +170,93 @@ items = recommend_listings(request.user, limit=5)
 **Error cases:** None.
 
 -----
+
+## Integration Adapters
+
+> Module: `core/integrations/sources/attom_adapter.py`
+> Module: `core/integrations/sources/hud_scraper.py`
+
+### `ATTOMAdapter.fetch_property_detail(address, address2=None)`
+
+**Purpose:** Fetch ATTOM property details for one address.
+**Parameters:**
+- `address: str` — Street address.
+- `address2: str | None` — City/state/ZIP component.
+**Returns:** `dict[str, Any]` raw ATTOM API payload.
+**Error cases:** Raises `ATTOMAuthenticationError`, `ATTOMRateLimitError`, `ATTOMAPIError`.
+
+---
+
+### `ATTOMAdapter.fetch_foreclosure_data(geoid=None, radius=None)`
+
+**Purpose:** Fetch ATTOM preforeclosure records for a geography.
+**Parameters:**
+- `geoid: str | None` — Geography identifier.
+- `radius: int | None` — Positive search radius in miles.
+**Returns:** `dict[str, Any]` raw ATTOM foreclosure payload.
+**Error cases:** Raises `ValueError` when `radius` is not a positive integer; otherwise ATTOM API exceptions above.
+
+---
+
+### `ATTOMAdapter.fetch_avm_detail(address)`
+
+**Purpose:** Fetch ATTOM AVM details for one address.
+**Parameters:**
+- `address: str` — Full property address.
+**Returns:** `dict[str, Any]` raw ATTOM AVM payload.
+**Error cases:** Raises ATTOM API exceptions (`ATTOMAuthenticationError`, `ATTOMRateLimitError`, `ATTOMAPIError`).
+
+---
+
+### `ATTOMAdapter.fetch_sales_history(address)`
+
+**Purpose:** Fetch ATTOM sales snapshot history for one address.
+**Parameters:**
+- `address: str` — Full property address.
+**Returns:** `dict[str, Any]` raw ATTOM sales snapshot payload.
+**Error cases:** Raises ATTOM API exceptions (`ATTOMAuthenticationError`, `ATTOMRateLimitError`, `ATTOMAPIError`).
+
+---
+
+### `ATTOMAdapter.normalize_property(attom_data)`
+
+**Purpose:** Normalize ATTOM payloads to `ForeclosureProperty`-compatible dicts.
+**Parameters:**
+- `attom_data: dict[str, Any]` — Raw ATTOM property payload.
+**Returns:** `dict[str, Any]` normalized foreclosure property data.
+**Error cases:** Missing fields are defaulted where possible.
+
+---
+
+### `attom_adapter.fetch(location=None)`
+
+**Purpose:** Convenience wrapper for geoid-based ATTOM foreclosure fetch + normalization.
+**Parameters:**
+- `location: str | None` — GEOID/location string.
+**Returns:** `list[dict[str, Any]]` normalized properties; returns empty list and logs when location is missing/blank or ATTOM fetch fails.
+**Error cases:** Handles ATTOM exceptions internally, logs failures, and returns `[]`.
+
+---
+
+### `HUDHomeScraper.scrape_state(state_code)`
+
+**Purpose:** Scrape HUD Home Store listings for a state with pagination.
+**Parameters:**
+- `state_code: str` — Valid 2-letter US state code.
+**Returns:** `list[dict[str, Any]]` extracted/normalized HUD listings.
+**Error cases:** Raises `HUDScraperError` on invalid state code or fetch failures.
+
+---
+
+### `HUDHomeScraper.extract_properties_from_html(html)`
+
+**Purpose:** Parse HUD HTML into listing dictionaries.
+**Parameters:**
+- `html: str` — HUD page HTML.
+**Returns:** `list[dict[str, Any]]` parsed listing records.
+**Error cases:** Raises `HUDWebsiteChangeError` when listing containers cannot be found.
+
+---
 
 ## Finance Utilities
 

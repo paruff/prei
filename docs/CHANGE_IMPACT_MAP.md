@@ -52,8 +52,8 @@
 
 |If you change…                    |You must also update…                                                                        |
 |----------------------------------|---------------------------------------------------------------------------------------------|
-|ATTOM adapter response shape      |`core/integrations/sources/attom_adapter.py` + any service consuming it                     |
-|HUD adapter                       |`core/integrations/sources/hud_scraper.py` + management commands                            |
+|ATTOM adapter response shape or public methods|`core/integrations/sources/attom_adapter.py`, `core/tests/test_attom_adapter.py`, `docs/API_SURFACE.md`, and any service consuming it |
+|HUD adapter scrape/parsing logic  |`core/integrations/sources/hud_scraper.py`, `core/tests/test_hud_scraper.py`, management commands, `docs/API_SURFACE.md` |
 |Market data interface             |`core/integrations/market/` wrappers + services consuming them                              |
 |`market/comps.py` return shape    |`core/services/market_data.py` (price_trend calc), `core/tests/test_neighborhood_insights.py`|
 |`market/rents.py` return type     |`core/services/market_data.py` (rent_index field), `core/tests/test_neighborhood_insights.py`|
@@ -67,4 +67,3 @@
 |Environment variable names|`.env.example`, `docs/RUNBOOKS.md`, CI workflows|
 |Django settings keys      |All code reading them, `.env.example`           |
 |Celery task names         |Any callers using `.delay()` or `.apply_async()`|
-

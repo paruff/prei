@@ -9,8 +9,11 @@ import random
 import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
+from urllib.parse import urljoin, urlparse
 
+import requests
+from requests import Response
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -37,6 +40,60 @@ class HUDHomeScraper:
     """
 
     BASE_URL = "https://www.hudhomestore.gov"
+    BASE_DOMAIN = "www.hudhomestore.gov"
+    VALID_STATE_CODES = {
+        "AL",
+        "AK",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "FL",
+        "GA",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "OH",
+        "OK",
+        "OR",
+        "PA",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY",
+        "DC",
+    }
 
     # User agents for rotation
     USER_AGENTS = [
@@ -112,28 +169,75 @@ class HUDHomeScraper:
         logger.info(f"Starting HUD scrape for state: {state_code}")
 
         properties: List[Dict[str, Any]] = []
-
-        try:
-            # Production implementation would use Playwright here
-            logger.warning(
-                f"HUD scraper for {state_code} is a placeholder - "
-                "requires Playwright for production use"
+        state_code_normalized = state_code.strip().upper()
+        if state_code_normalized not in self.VALID_STATE_CODES:
+            raise HUDScraperError(
+                f"state_code must be a valid 2-letter state code, got: {state_code}"
             )
 
-            # Simulate scraping delay
-            await asyncio.sleep(random.uniform(2, 5))
+        try:
+            next_url: Optional[str] = (
+                f"{self.BASE_URL}/Home/Index?state={state_code_normalized}"
+            )
+            while next_url:
+                html = await self._fetch_page_html(next_url)
+                properties.extend(self.extract_properties_from_html(html))
+                next_url = self._extract_next_page_url(html)
+                if next_url:
+                    await asyncio.sleep(random.uniform(2, 5))
 
             self.scraped_count = len(properties)
             logger.info(
-                f"Completed HUD scrape for {state_code}: {len(properties)} properties"
+                f"Completed HUD scrape for {state_code_normalized}: {len(properties)} properties"
             )
 
             return properties
 
         except Exception as e:
             self.error_count += 1
-            logger.error(f"Error scraping HUD for {state_code}: {str(e)}")
-            raise HUDScraperError(f"Failed to scrape {state_code}: {str(e)}")
+            logger.error(f"Error scraping HUD for {state_code_normalized}: {str(e)}")
+            raise HUDScraperError(f"Failed to scrape {state_code_normalized}: {str(e)}")
+
+    async def _fetch_page_html(self, url: str) -> str:
+        """Fetch HTML for one HUD page URL."""
+        headers = {"User-Agent": random.choice(self.USER_AGENTS)}
+        try:
+            response = cast(
+                Response,
+                await asyncio.to_thread(
+                    requests.get,
+                    url,
+                    headers=headers,
+                    timeout=20,
+                ),
+            )
+            response.raise_for_status()
+            return str(response.text)
+        except requests.exceptions.HTTPError as exc:
+            status_code = exc.response.status_code if exc.response else "unknown"
+            raise HUDScraperError(
+                f"HUD request failed for URL {url} with status {status_code}"
+            ) from exc
+
+    def _extract_next_page_url(self, html: str) -> Optional[str]:
+        """Extract a next-page URL from page HTML."""
+        soup = BeautifulSoup(html, "html.parser")
+        next_link = soup.select_one(self.SELECTORS["next_page"])
+        if not next_link:
+            return None
+
+        href = next_link.get("href")
+        if not isinstance(href, str) or not href:
+            return None
+
+        if href.startswith("http"):
+            parsed_href = urlparse(href)
+            if parsed_href.netloc != self.BASE_DOMAIN:
+                logger.warning("Skipping non-HUD pagination URL")
+                return None
+            return href
+
+        return urljoin(f"{self.BASE_URL}/", href)
 
     def extract_properties_from_html(self, html: str) -> List[Dict[str, Any]]:
         """
