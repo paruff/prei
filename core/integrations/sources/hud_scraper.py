@@ -11,6 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
+import requests
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -112,28 +113,63 @@ class HUDHomeScraper:
         logger.info(f"Starting HUD scrape for state: {state_code}")
 
         properties: List[Dict[str, Any]] = []
+        state_code_normalized = state_code.strip().upper()
+        if not re.match(r"^[A-Z]{2}$", state_code_normalized):
+            raise HUDScraperError("state_code must be a valid 2-letter state code")
 
         try:
-            # Production implementation would use Playwright here
-            logger.warning(
-                f"HUD scraper for {state_code} is a placeholder - "
-                "requires Playwright for production use"
+            next_url: Optional[str] = (
+                f"{self.BASE_URL}/Home/Index?state={state_code_normalized}"
             )
-
-            # Simulate scraping delay
-            await asyncio.sleep(random.uniform(2, 5))
+            while next_url:
+                html = await self._fetch_page_html(next_url)
+                properties.extend(self.extract_properties_from_html(html))
+                next_url = self._extract_next_page_url(html)
+                if next_url:
+                    await asyncio.sleep(random.uniform(2, 5))
 
             self.scraped_count = len(properties)
             logger.info(
-                f"Completed HUD scrape for {state_code}: {len(properties)} properties"
+                f"Completed HUD scrape for {state_code_normalized}: {len(properties)} properties"
             )
 
             return properties
 
         except Exception as e:
             self.error_count += 1
-            logger.error(f"Error scraping HUD for {state_code}: {str(e)}")
-            raise HUDScraperError(f"Failed to scrape {state_code}: {str(e)}")
+            logger.error(f"Error scraping HUD for {state_code_normalized}: {str(e)}")
+            raise HUDScraperError(f"Failed to scrape {state_code_normalized}: {str(e)}")
+
+    async def _fetch_page_html(self, url: str) -> str:
+        """Fetch HTML for one HUD page URL."""
+        headers = {"User-Agent": random.choice(self.USER_AGENTS)}
+        response = await asyncio.to_thread(
+            requests.get,
+            url,
+            headers=headers,
+            timeout=20,
+        )
+        response.raise_for_status()
+        return response.text
+
+    def _extract_next_page_url(self, html: str) -> Optional[str]:
+        """Extract a next-page URL from page HTML."""
+        soup = BeautifulSoup(html, "html.parser")
+        next_link = soup.select_one(self.SELECTORS["next_page"])
+        if not next_link:
+            return None
+
+        href = next_link.get("href")
+        if not href:
+            return None
+
+        if href.startswith("http"):
+            if not href.startswith(self.BASE_URL):
+                logger.warning("Skipping non-HUD pagination URL")
+                return None
+            return href
+
+        return f"{self.BASE_URL}{href if href.startswith('/') else f'/{href}'}"
 
     def extract_properties_from_html(self, html: str) -> List[Dict[str, Any]]:
         """

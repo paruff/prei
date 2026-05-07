@@ -86,40 +86,11 @@ class ATTOMAdapter:
         if address2:
             params["address2"] = address2
 
-        try:
-            response = self.session.get(endpoint, params=params, timeout=10)
-
-            # Track API usage
-            self._track_api_call(endpoint, response.status_code)
-
-            if response.status_code == 401:
-                logger.error("ATTOM API authentication failed")
-                raise ATTOMAuthenticationError("Invalid or expired API credentials")
-
-            if response.status_code == 429:
-                logger.warning("ATTOM API rate limit exceeded")
-                rate_limit_reset = response.headers.get("X-RateLimit-Reset")
-                raise ATTOMRateLimitError(
-                    f"Rate limit exceeded. Resets at: {rate_limit_reset}"
-                )
-
-            if response.status_code != 200:
-                logger.error(
-                    f"ATTOM API error: {response.status_code} - {response.text}"
-                )
-                raise ATTOMAPIError(
-                    f"API request failed with status {response.status_code}"
-                )
-
-            result: Dict[str, Any] = response.json()
-            return result
-
-        except requests.exceptions.Timeout:
-            logger.error(f"ATTOM API request timeout for {address}")
-            raise ATTOMAPIError("Request timeout")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"ATTOM API request error: {str(e)}")
-            raise ATTOMAPIError(f"Request failed: {str(e)}")
+        return self._execute_get_request(
+            endpoint=endpoint,
+            params=params,
+            log_context=f"address={address}",
+        )
 
     def fetch_foreclosure_data(
         self, geoid: Optional[str] = None, radius: Optional[int] = None
@@ -144,43 +115,50 @@ class ATTOMAdapter:
 
         if geoid:
             params["geoid"] = geoid
-        if radius:
+        if radius is not None:
+            if radius <= 0:
+                raise ValueError("radius must be a positive integer")
             params["radius"] = radius
 
-        try:
-            response = self.session.get(endpoint, params=params, timeout=10)
+        return self._execute_get_request(
+            endpoint=endpoint,
+            params=params,
+            log_context=f"geoid={geoid}",
+        )
 
-            # Track API usage
-            self._track_api_call(endpoint, response.status_code)
+    def fetch_avm_detail(self, address: str) -> Dict[str, Any]:
+        """
+        Fetch AVM (Automated Valuation Model) details from ATTOM API.
 
-            if response.status_code == 401:
-                logger.error("ATTOM API authentication failed")
-                raise ATTOMAuthenticationError("Invalid or expired API credentials")
+        Args:
+            address: Full property address
 
-            if response.status_code == 429:
-                logger.warning("ATTOM API rate limit exceeded")
-                rate_limit_reset = response.headers.get("X-RateLimit-Reset")
-                raise ATTOMRateLimitError(
-                    f"Rate limit exceeded. Resets at: {rate_limit_reset}"
-                )
+        Returns:
+            AVM data from ATTOM API
+        """
+        endpoint = f"{self.BASE_URL}/avm/detail"
+        return self._execute_get_request(
+            endpoint=endpoint,
+            params={"address": address},
+            log_context=f"address={address}",
+        )
 
-            if response.status_code != 200:
-                logger.error(
-                    f"ATTOM API error: {response.status_code} - {response.text}"
-                )
-                raise ATTOMAPIError(
-                    f"API request failed with status {response.status_code}"
-                )
+    def fetch_sales_history(self, address: str) -> Dict[str, Any]:
+        """
+        Fetch sales history snapshot from ATTOM API.
 
-            result: Dict[str, Any] = response.json()
-            return result
+        Args:
+            address: Full property address
 
-        except requests.exceptions.Timeout:
-            logger.error(f"ATTOM API request timeout for geoid {geoid}")
-            raise ATTOMAPIError("Request timeout")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"ATTOM API request error: {str(e)}")
-            raise ATTOMAPIError(f"Request failed: {str(e)}")
+        Returns:
+            Sales history data from ATTOM API
+        """
+        endpoint = f"{self.BASE_URL}/sale/snapshot"
+        return self._execute_get_request(
+            endpoint=endpoint,
+            params={"address": address},
+            log_context=f"address={address}",
+        )
 
     def fetch_with_cache(
         self, address: str, address2: Optional[str] = None
@@ -200,7 +178,7 @@ class ATTOMAdapter:
 
         if cached_data:
             logger.info(f"Returning cached data for {address}")
-            result_cached: Dict[str, Any] = cached_data
+            result_cached: Dict[str, Any] = dict(cached_data)
             result_cached["_from_cache"] = True
             return result_cached
 
@@ -214,6 +192,41 @@ class ATTOMAdapter:
             # If rate limited and no cache available, raise error
             logger.error(f"Rate limit exceeded and no cached data for {address}")
             raise
+
+    def _execute_get_request(
+        self, endpoint: str, params: Dict[str, Any], log_context: str
+    ) -> Dict[str, Any]:
+        """Execute ATTOM GET request with standard error handling."""
+        try:
+            response = self.session.get(endpoint, params=params, timeout=10)
+            self._track_api_call(endpoint, response.status_code)
+
+            if response.status_code == 401:
+                logger.error("ATTOM API authentication failed")
+                raise ATTOMAuthenticationError("Invalid or expired API credentials")
+
+            if response.status_code == 429:
+                logger.warning("ATTOM API rate limit exceeded")
+                rate_limit_reset = response.headers.get("X-RateLimit-Reset")
+                raise ATTOMRateLimitError(
+                    f"Rate limit exceeded. Resets at: {rate_limit_reset}"
+                )
+
+            if response.status_code != 200:
+                logger.error("ATTOM API error: %s", response.status_code)
+                raise ATTOMAPIError(
+                    f"API request failed with status {response.status_code}"
+                )
+
+            result: Dict[str, Any] = response.json()
+            return result
+
+        except requests.exceptions.Timeout:
+            logger.error("ATTOM API request timeout for %s", log_context)
+            raise ATTOMAPIError("Request timeout")
+        except requests.exceptions.RequestException as e:
+            logger.error("ATTOM API request error for %s: %s", log_context, str(e))
+            raise ATTOMAPIError(f"Request failed: {str(e)}")
 
     def normalize_property(self, attom_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -494,5 +507,35 @@ def fetch(location: Optional[str] = None) -> List[Dict[str, Any]]:
     Returns:
         List of normalized property dictionaries
     """
-    logger.info("ATTOM fetch called - requires geoid/radius parameters for production")
-    return []
+    if not location:
+        logger.warning("ATTOM fetch called without location/geoid")
+        return []
+
+    adapter = ATTOMAdapter()
+
+    try:
+        foreclosure_data = adapter.fetch_foreclosure_data(geoid=location, radius=25)
+    except ATTOMAPIError:
+        logger.exception(
+            "Failed to fetch ATTOM foreclosure data for location=%s", location
+        )
+        return []
+
+    properties_raw = foreclosure_data.get(
+        "property", foreclosure_data.get("properties", [])
+    )
+    if not isinstance(properties_raw, list):
+        properties_raw = [properties_raw] if properties_raw else []
+
+    normalized_properties: List[Dict[str, Any]] = []
+    for property_data in properties_raw:
+        if not isinstance(property_data, dict):
+            continue
+        try:
+            normalized_properties.append(adapter.normalize_property(property_data))
+        except Exception:
+            logger.exception(
+                "Failed to normalize ATTOM property for location=%s", location
+            )
+
+    return normalized_properties

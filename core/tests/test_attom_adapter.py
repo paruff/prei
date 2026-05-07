@@ -123,6 +123,49 @@ class TestATTOMAdapter:
 
         assert "timeout" in str(exc_info.value).lower()
 
+    @patch("core.integrations.sources.attom_adapter.requests.Session.get")
+    def test_fetch_avm_detail_success(self, mock_get, attom_adapter):
+        """Test AVM detail endpoint call."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"avm": {"amount": {"value": 500000}}}
+        mock_response.headers = {}
+        mock_get.return_value = mock_response
+
+        result = attom_adapter.fetch_avm_detail("123 Main St")
+
+        assert result["avm"]["amount"]["value"] == 500000
+        called_endpoint = (
+            mock_get.call_args.kwargs["url"]
+            if "url" in mock_get.call_args.kwargs
+            else mock_get.call_args.args[0]
+        )
+        assert called_endpoint.endswith("/avm/detail")
+
+    @patch("core.integrations.sources.attom_adapter.requests.Session.get")
+    def test_fetch_sales_history_success(self, mock_get, attom_adapter):
+        """Test sales history endpoint call."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"sales": []}
+        mock_response.headers = {}
+        mock_get.return_value = mock_response
+
+        result = attom_adapter.fetch_sales_history("123 Main St")
+
+        assert result == {"sales": []}
+        called_endpoint = (
+            mock_get.call_args.kwargs["url"]
+            if "url" in mock_get.call_args.kwargs
+            else mock_get.call_args.args[0]
+        )
+        assert called_endpoint.endswith("/sale/snapshot")
+
+    def test_fetch_foreclosure_data_invalid_radius(self, attom_adapter):
+        """Test that invalid radius is rejected."""
+        with pytest.raises(ValueError):
+            attom_adapter.fetch_foreclosure_data(geoid="12345", radius=0)
+
     @patch("core.integrations.sources.attom_adapter.cache")
     @patch("core.integrations.sources.attom_adapter.requests.Session.get")
     def test_fetch_with_cache_returns_cached_data(
@@ -279,3 +322,21 @@ class TestATTOMAdapter:
         assert normalized["bedrooms"] == 0
         assert normalized["bathrooms"] == Decimal("0")
         assert normalized["square_footage"] == 0
+
+
+@patch("core.integrations.sources.attom_adapter.ATTOMAdapter.normalize_property")
+@patch("core.integrations.sources.attom_adapter.ATTOMAdapter.fetch_foreclosure_data")
+def test_fetch_convenience_function(fetch_mock, normalize_mock):
+    """Test convenience fetch() returns normalized list for location/geoid."""
+    from core.integrations.sources.attom_adapter import fetch
+
+    fetch_mock.return_value = {
+        "property": [{"property": {"address": {"line1": "123 Main St"}}}]
+    }
+    normalize_mock.return_value = {"street": "123 Main St"}
+
+    results = fetch("06037")
+
+    assert len(results) == 1
+    assert results[0]["street"] == "123 Main St"
+    fetch_mock.assert_called_once_with(geoid="06037", radius=25)

@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import asyncio
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from bs4 import BeautifulSoup
 
-from core.integrations.sources.hud_scraper import HUDHomeScraper, HUDWebsiteChangeError
+from core.integrations.sources.hud_scraper import (
+    HUDHomeScraper,
+    HUDScraperError,
+    HUDWebsiteChangeError,
+)
 
 
 @pytest.fixture
@@ -228,14 +233,45 @@ class TestHUDHomeScraper:
 
         assert id1 == id2
 
-    def test_scrape_state_placeholder_sync(self, hud_scraper):
-        """Test scrape_state returns empty list (placeholder - synchronous version)."""
+    def test_scrape_state_fetches_and_paginates(self, hud_scraper):
+        """Test scrape_state fetches pages and follows pagination."""
+        html_page_1 = """
+        <html><body>
+            <div class="property-listing"><div class="address">123 Main St, Miami, FL 33139</div></div>
+            <a class="pagination-next" href="/Home/Index?page=2"></a>
+        </body></html>
+        """
+        html_page_2 = """
+        <html><body>
+            <div class="property-listing"><div class="address">456 Oak St, Miami, FL 33139</div></div>
+        </body></html>
+        """
 
-        properties = asyncio.run(hud_scraper.scrape_state("FL"))
+        with patch.object(
+            hud_scraper, "_fetch_page_html", side_effect=[html_page_1, html_page_2]
+        ):
+            with patch.object(asyncio, "sleep"):
+                properties = asyncio.run(hud_scraper.scrape_state("FL"))
 
-        # Placeholder implementation returns empty list
-        assert properties == []
-        assert hud_scraper.scraped_count == 0
+        assert len(properties) == 2
+        assert hud_scraper.scraped_count == 2
+
+    def test_scrape_state_rejects_invalid_state_code(self, hud_scraper):
+        """Test scrape_state rejects invalid state codes."""
+        with pytest.raises(HUDScraperError):
+            asyncio.run(hud_scraper.scrape_state("florida"))
+
+    def test_extract_next_page_url_relative(self, hud_scraper):
+        """Test extraction of next page URL with relative href."""
+        html = '<a class="pagination-next" href="/Home/Index?page=2"></a>'
+        next_url = hud_scraper._extract_next_page_url(html)
+        assert next_url == "https://www.hudhomestore.gov/Home/Index?page=2"
+
+    def test_extract_next_page_url_blocks_external(self, hud_scraper):
+        """Test extraction blocks non-HUD absolute URLs."""
+        html = '<a class="pagination-next" href="https://example.com/next"></a>'
+        next_url = hud_scraper._extract_next_page_url(html)
+        assert next_url is None
 
     def test_safe_extract_text(self, hud_scraper):
         """Test safe text extraction."""
