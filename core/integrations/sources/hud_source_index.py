@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
@@ -12,11 +13,20 @@ from bs4 import BeautifulSoup
 HUD_HOMES_FOR_SALE_URL = "https://www.hud.gov/topics/homes_for_sale"
 
 
+class HUDSourceIndexFetchError(Exception):
+    """Raised when HUD source index content cannot be fetched."""
+
+
 def fetch_hud_homes_for_sale_html(page_url: str = HUD_HOMES_FOR_SALE_URL) -> bytes:
     """Fetch raw HTML for HUD Homes for Sale index page."""
     request = Request(page_url, headers={"User-Agent": "prei-hud-source-index/1.0"})
-    with urlopen(request, timeout=20) as response:
-        return response.read()
+    try:
+        with urlopen(request, timeout=20) as response:
+            return response.read()
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise HUDSourceIndexFetchError(
+            f"Failed to fetch HUD source index page: {page_url}"
+        ) from exc
 
 
 def compute_content_hash(content: bytes) -> str:
@@ -57,7 +67,10 @@ def discover_hud_homes_for_sale_sources(
         title = anchor.get_text(strip=True)
         if not title:
             continue
-        source_url = canonicalize_url(urljoin(page_url, anchor.get("href", "").strip()))
+        href = str(anchor.get("href", "")).strip()
+        if not href:
+            continue
+        source_url = canonicalize_url(urljoin(page_url, href))
         if not source_url or source_url in seen_urls:
             continue
 

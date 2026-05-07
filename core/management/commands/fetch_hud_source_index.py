@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from core.integrations.sources.hud_source_index import (
     discover_hud_homes_for_sale_sources,
     fetch_hud_homes_for_sale_html,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -59,7 +62,8 @@ class Command(BaseCommand):
             "total_sources": len(sources),
             "sources": sources,
         }
-        version_name = f"{retrieved_at.replace(':', '').replace('+00:00', 'Z')}-{content_hash[:8]}.json"
+        safe_timestamp = self._format_timestamp_for_filename(retrieved_at)
+        version_name = f"{safe_timestamp}-{content_hash[:8]}.json"
         (output_dir / version_name).write_text(
             json.dumps(payload, indent=2, sort_keys=True),
             encoding="utf-8",
@@ -80,11 +84,7 @@ class Command(BaseCommand):
             },
             "diff": diff,
         }
-        diff_path = (
-            output_dir
-            / "diffs"
-            / f"{retrieved_at.replace(':', '').replace('+00:00', 'Z')}.json"
-        )
+        diff_path = output_dir / "diffs" / f"{safe_timestamp}.json"
         diff_path.write_text(
             json.dumps(diff_payload, indent=2, sort_keys=True),
             encoding="utf-8",
@@ -109,4 +109,10 @@ class Command(BaseCommand):
             payload = json.loads(latest_path.read_text(encoding="utf-8"))
             return payload.get("sources", [])
         except (json.JSONDecodeError, OSError, TypeError):
+            logger.warning(
+                "Failed to load previous HUD source index snapshot: %s", latest_path
+            )
             return []
+
+    def _format_timestamp_for_filename(self, timestamp: str) -> str:
+        return timestamp.replace(":", "").replace("+00:00", "Z")
