@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Dict, List
 
+from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 
 from core.models import OperatingExpense, Property, RentalIncome
@@ -126,10 +127,6 @@ def portfolio_trend_summary(user) -> Dict[str, Decimal]:
     )
 
     # Cap-rate trend: annualise monthly NOI and divide by total purchase price.
-    from django.db.models import (
-        Sum,
-    )  # local import to avoid module-level Django dep ordering
-
     total_price = Property.objects.filter(user=user).aggregate(
         total=Sum("purchase_price")
     )["total"] or Decimal("0")
