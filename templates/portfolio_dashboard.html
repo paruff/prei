@@ -11,14 +11,37 @@
       <li>Average Cap Rate: {{ agg.avg_cap_rate|floatformat:4 }}</li>
       <li>Average Cash-on-Cash: {{ agg.avg_coc|floatformat:4 }}</li>
     </ul>
-    <h2>NOI Trend (placeholder)</h2>
-    <table>
-      <thead><tr><th>Month</th><th>NOI</th></tr></thead>
-      <tbody>
-        {% for t in trend %}
-          <tr><td>{{ t.month }}</td><td>${{ t.noi|floatformat:2 }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+    <h2>12-Month Income Trend</h2>
+    {% if trend_summary %}
+      <p>
+        NOI trend: {{ trend_summary.trend_noi }}% &nbsp;|&nbsp;
+        Cap Rate trend: {{ trend_summary.trend_cap_rate }}%
+      </p>
+    {% endif %}
+    {% if monthly_series %}
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Gross Income</th>
+            <th>Expenses</th>
+            <th>NOI</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in monthly_series %}
+            <tr>
+              <td>{{ row.month }}</td>
+              <td>${{ row.gross_income|floatformat:2 }}</td>
+              <td>${{ row.expenses|floatformat:2 }}</td>
+              <td>${{ row.noi|floatformat:2 }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No income data for the past 12 months.</p>
+    {% endif %}
   {% endif %}
 {% endblock %}

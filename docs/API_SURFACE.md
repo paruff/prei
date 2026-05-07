@@ -97,6 +97,47 @@ summary = aggregate_portfolio(request.user)
 
 -----
 
+### `portfolio.monthly_income_series(user, months=12)`
+
+**Purpose:** Return month-by-month gross income, expenses, and NOI for the last N calendar months.
+**Parameters:**
+- `user` — Django `User` instance.
+- `months: int` — Number of trailing calendar months (default 12).
+
+**Returns:** `list[dict]` with keys `{"month": "YYYY-MM", "gross_income": Decimal, "expenses": Decimal, "noi": Decimal}`, oldest first. Returns `[]` when the user has no properties.
+**Side effects:** Reads `RentalIncome` and `OperatingExpense` rows for the user's properties.
+**Error cases:** Raises `ValueError` when `months < 1`. Returns empty list when user has no properties.
+**Example:**
+
+```python
+from core.services.portfolio import monthly_income_series
+
+series = monthly_income_series(request.user, months=3)
+# → [{"month": "2025-02", "gross_income": Decimal("1900"), "expenses": Decimal("300"), "noi": Decimal("1600")}, ...]
+```
+
+-----
+
+### `portfolio.portfolio_trend_summary(user)`
+
+**Purpose:** Return the percentage change in NOI and cap rate between the oldest and newest month in the 12-month series.
+**Parameters:**
+- `user` — Django `User` instance.
+
+**Returns:** `dict` with keys `trend_noi` and `trend_cap_rate` (both `Decimal`, rounded to 2 d.p.). Returns zeroes when there is ≤ 1 month of data or when the oldest month has zero values.
+**Side effects:** Reads `RentalIncome`, `OperatingExpense`, and `Property` rows for the user.
+**Error cases:** Guards against divide-by-zero; always returns a valid dict.
+**Example:**
+
+```python
+from core.services.portfolio import portfolio_trend_summary
+
+trend = portfolio_trend_summary(request.user)
+# → {"trend_noi": Decimal("5.26"), "trend_cap_rate": Decimal("5.26")}
+```
+
+-----
+
 ## Finance Utilities
 
 > Module: `investor_app/finance/utils.py`
