@@ -12,6 +12,7 @@ from core.models import Listing, SavedSearch
 from investor_app.finance.utils import score_listing_v1
 
 logger = logging.getLogger(__name__)
+THOUSANDS_DIVISOR = Decimal("1000")
 
 
 def _search_queryset(saved_search: SavedSearch):
@@ -27,23 +28,6 @@ def _search_queryset(saved_search: SavedSearch):
     if saved_search.max_price is not None:
         qs = qs.filter(price__lte=saved_search.max_price)
     return qs
-
-
-def _listing_matches_search(listing: Listing, saved_search: SavedSearch) -> bool:
-    if saved_search.query and saved_search.query.lower() not in listing.address.lower():
-        return False
-    if (
-        saved_search.zip_code
-        and listing.zip_code.lower() != saved_search.zip_code.lower()
-    ):
-        return False
-    if saved_search.state and listing.state.lower() != saved_search.state.lower():
-        return False
-    if saved_search.min_price is not None and listing.price < saved_search.min_price:
-        return False
-    if saved_search.max_price is not None and listing.price > saved_search.max_price:
-        return False
-    return True
 
 
 def _normalize_ranked_results(ranked: Any) -> list[dict[str, Any]]:
@@ -98,8 +82,14 @@ def _rank_listings(listings: list[Listing]) -> list[dict[str, Any]]:
 
 def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[dict[str, Any]]:
     """Recommend listings for a user based on saved searches."""
-    safe_limit = max(int(limit), 0)
-    if safe_limit == 0 or not getattr(user, "is_authenticated", False):
+    if not getattr(user, "is_authenticated", False):
+        return []
+
+    try:
+        safe_limit = int(limit)
+    except (TypeError, ValueError):
+        safe_limit = 0
+    if safe_limit <= 0:
         return []
 
     saved_searches = list(SavedSearch.objects.filter(user=user).order_by("-created_at"))
@@ -107,26 +97,19 @@ def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[dict[str
         return []
 
     combined_qs = Listing.objects.none()
+    search_by_listing_id: dict[int, SavedSearch] = {}
     for saved_search in saved_searches:
-        combined_qs = combined_qs | _search_queryset(saved_search)
+        search_qs = _search_queryset(saved_search)
+        combined_qs = combined_qs | search_qs
+        for listing_id in search_qs.values_list("id", flat=True):
+            search_by_listing_id.setdefault(listing_id, saved_search)
 
-    deduplicated: dict[int, Listing] = {}
-    for listing in combined_qs:
-        deduplicated[listing.id] = listing
-
-    ranked = _rank_listings(list(deduplicated.values()))
+    ranked = _rank_listings(list(combined_qs.distinct()))
 
     recommendations: list[dict[str, Any]] = []
     for item in ranked:
         listing = item["obj"]
-        matching_search = next(
-            (
-                search
-                for search in saved_searches
-                if _listing_matches_search(listing, search)
-            ),
-            None,
-        )
+        matching_search = search_by_listing_id.get(listing.id)
         if matching_search is None:
             continue
         recommendations.append(
@@ -145,8 +128,8 @@ def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[dict[str
 def explain_recommendation(listing: Listing, saved_search: SavedSearch) -> str:
     """Return a human-readable recommendation reason."""
     location = listing.state or saved_search.state or "your area"
-    beds_text = f" with {listing.beds}+ beds" if listing.beds else ""
-    price_in_thousands = (listing.price / Decimal("1000")).quantize(Decimal("1"))
+    beds_text = f" with {listing.beds} beds" if listing.beds is not None else ""
+    price_in_thousands = (listing.price / THOUSANDS_DIVISOR).quantize(Decimal("1"))
     return (
         f"Matches your search '{saved_search.name}': "
         f"${price_in_thousands}k in {location}{beds_text}"

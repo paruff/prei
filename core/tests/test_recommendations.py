@@ -10,7 +10,12 @@ from core.services.recommendations import explain_recommendation, recommend_list
 
 
 class _SavedSearchList(list):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.order_by_called_with = None
+
     def order_by(self, *_args):
+        self.order_by_called_with = _args
         return self
 
 
@@ -40,14 +45,16 @@ def _create_listing(
 
 @pytest.mark.django_db
 def test_recommend_listings_returns_empty_without_saved_searches(user, monkeypatch):
+    saved_searches = _SavedSearchList()
     monkeypatch.setattr(
         SavedSearch.objects,
         "filter",
-        lambda **_kwargs: _SavedSearchList(),
+        lambda **_kwargs: saved_searches,
     )
     _create_listing(address="100 Main St")
 
     assert recommend_listings(user) == []
+    assert saved_searches.order_by_called_with == ("-created_at",)
 
 
 @pytest.mark.django_db

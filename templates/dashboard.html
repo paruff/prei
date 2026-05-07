@@ -61,8 +61,6 @@
             <td>{{ item.score|floatformat:2 }}</td>
             <td>{{ item.explanation }}</td>
             <td>
-              <a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a>
-              |
               <a href="{% url 'report_listing' item.obj.id %}">Report</a>
             </td>
           </tr>
