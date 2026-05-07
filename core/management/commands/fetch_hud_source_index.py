@@ -113,8 +113,9 @@ class Command(BaseCommand):
             return payload.get("sources", [])
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning(
-                "Failed to load previous HUD source index snapshot: %s (%s)",
+                "Failed to load previous HUD source index snapshot: %s (%s: %s)",
                 latest_path,
+                type(exc).__name__,
                 exc,
                 exc_info=True,
             )

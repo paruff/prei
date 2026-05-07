@@ -28,7 +28,8 @@ def fetch_hud_homes_for_sale_html(page_url: str = HUD_HOMES_FOR_SALE_URL) -> byt
             return response.read()
     except (HTTPError, URLError, TimeoutError) as exc:
         raise HUDSourceIndexFetchError(
-            f"Failed to fetch HUD source index page ({type(exc).__name__}): {page_url}"
+            "Failed to fetch HUD source index page "
+            f"({type(exc).__name__}): {page_url} ({exc})"
         ) from exc
 
 
@@ -76,7 +77,10 @@ def discover_hud_homes_for_sale_sources(
     for anchor in soup.select("a[href]"):
         title = anchor.get_text(strip=True)
         if not title:
-            logger.debug("Skipping HUD source anchor without title text")
+            href = str(anchor.get("href", "")).strip()
+            logger.debug(
+                "Skipping HUD source anchor without title text (href=%r)", href
+            )
             continue
         href = str(anchor.get("href", "")).strip()
         if not href:
