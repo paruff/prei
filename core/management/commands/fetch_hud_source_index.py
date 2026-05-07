@@ -42,7 +42,9 @@ class Command(BaseCommand):
 
         raw_html = self._read_html_payload(options.get("input_file", ""))
         content_hash = compute_content_hash(raw_html)
-        retrieved_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        retrieval_dt = datetime.now(timezone.utc).replace(microsecond=0)
+        retrieved_at = retrieval_dt.isoformat()
+        safe_timestamp = self._format_timestamp_for_filename(retrieval_dt)
 
         sources = discover_hud_homes_for_sale_sources(
             raw_html.decode("utf-8", errors="ignore"),
@@ -62,7 +64,6 @@ class Command(BaseCommand):
             "total_sources": len(sources),
             "sources": sources,
         }
-        safe_timestamp = self._format_timestamp_for_filename(retrieved_at)
         version_name = f"{safe_timestamp}-{content_hash[:8]}.json"
         (output_dir / version_name).write_text(
             json.dumps(payload, indent=2, sort_keys=True),
@@ -108,7 +109,7 @@ class Command(BaseCommand):
         try:
             payload = json.loads(latest_path.read_text(encoding="utf-8"))
             return payload.get("sources", [])
-        except (json.JSONDecodeError, OSError, TypeError) as exc:
+        except (json.JSONDecodeError, OSError) as exc:
             logger.warning(
                 "Failed to load previous HUD source index snapshot: %s (%s)",
                 latest_path,
@@ -117,8 +118,5 @@ class Command(BaseCommand):
             )
             return []
 
-    def _format_timestamp_for_filename(self, timestamp: str) -> str:
-        parsed = datetime.fromisoformat(timestamp)
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        return parsed.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    def _format_timestamp_for_filename(self, timestamp: datetime) -> str:
+        return timestamp.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

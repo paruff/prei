@@ -52,6 +52,7 @@ def test_discover_hud_source_index_extracts_links_with_provenance() -> None:
         == "https://www.hud.gov/program_offices/housing/sfh/reo"
     )
     assert records[2]["category"] == "Multifamily Homes"
+    assert records[2]["source_url"] == "https://www.gsaauctions.gov"
     assert all(item["content_hash"] == payload_hash for item in records)
     assert all(item["retrieved_at"] == "2026-05-07T00:00:00Z" for item in records)
 
