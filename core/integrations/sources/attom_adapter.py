@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+from copy import deepcopy
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -43,6 +44,7 @@ class ATTOMAdapter:
 
     BASE_URL = "https://api.attomdata.com/propertyapi/v1.0.0"
     CACHE_DURATION = 86400  # 24 hours in seconds
+    MAX_ERROR_RESPONSE_LENGTH = 200
 
     def __init__(self, api_key: Optional[str] = None):
         """
@@ -116,7 +118,7 @@ class ATTOMAdapter:
         if geoid:
             params["geoid"] = geoid
         if radius is not None:
-            if radius <= 0:
+            if not isinstance(radius, int) or radius <= 0:
                 raise ValueError("radius must be a positive integer")
             params["radius"] = radius
 
@@ -178,7 +180,8 @@ class ATTOMAdapter:
 
         if cached_data:
             logger.info(f"Returning cached data for {address}")
-            result_cached: Dict[str, Any] = dict(cached_data)
+            # Copy to avoid mutating the object returned by the cache backend.
+            result_cached: Dict[str, Any] = deepcopy(cached_data)
             result_cached["_from_cache"] = True
             return result_cached
 
@@ -213,7 +216,11 @@ class ATTOMAdapter:
                 )
 
             if response.status_code != 200:
-                logger.error("ATTOM API error: %s", response.status_code)
+                logger.error(
+                    "ATTOM API error: %s - %s",
+                    response.status_code,
+                    (response.text or "")[: self.MAX_ERROR_RESPONSE_LENGTH],
+                )
                 raise ATTOMAPIError(
                     f"API request failed with status {response.status_code}"
                 )
@@ -507,22 +514,25 @@ def fetch(location: Optional[str] = None) -> List[Dict[str, Any]]:
     Returns:
         List of normalized property dictionaries
     """
-    if not location:
+    if location is None or not location.strip():
         logger.warning("ATTOM fetch called without location/geoid")
         return []
 
     adapter = ATTOMAdapter()
+    default_radius = int(os.getenv("ATTOM_DEFAULT_RADIUS", "25"))
 
     try:
-        foreclosure_data = adapter.fetch_foreclosure_data(geoid=location, radius=25)
+        foreclosure_data = adapter.fetch_foreclosure_data(
+            geoid=location, radius=default_radius
+        )
     except ATTOMAPIError:
         logger.exception(
             "Failed to fetch ATTOM foreclosure data for location=%s", location
         )
         return []
 
-    properties_raw = foreclosure_data.get(
-        "property", foreclosure_data.get("properties", [])
+    properties_raw = (
+        foreclosure_data.get("property") or foreclosure_data.get("properties") or []
     )
     if not isinstance(properties_raw, list):
         properties_raw = [properties_raw] if properties_raw else []

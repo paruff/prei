@@ -250,16 +250,19 @@ class TestHUDHomeScraper:
         with patch.object(
             hud_scraper, "_fetch_page_html", side_effect=[html_page_1, html_page_2]
         ):
-            with patch.object(asyncio, "sleep"):
+            with patch.object(asyncio, "sleep") as sleep_mock:
                 properties = asyncio.run(hud_scraper.scrape_state("FL"))
 
         assert len(properties) == 2
         assert hud_scraper.scraped_count == 2
+        assert sleep_mock.called
 
     def test_scrape_state_rejects_invalid_state_code(self, hud_scraper):
         """Test scrape_state rejects invalid state codes."""
         with pytest.raises(HUDScraperError):
             asyncio.run(hud_scraper.scrape_state("florida"))
+        with pytest.raises(HUDScraperError):
+            asyncio.run(hud_scraper.scrape_state("XX"))
 
     def test_extract_next_page_url_relative(self, hud_scraper):
         """Test extraction of next page URL with relative href."""

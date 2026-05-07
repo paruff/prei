@@ -165,6 +165,8 @@ class TestATTOMAdapter:
         """Test that invalid radius is rejected."""
         with pytest.raises(ValueError):
             attom_adapter.fetch_foreclosure_data(geoid="12345", radius=0)
+        with pytest.raises(ValueError):
+            attom_adapter.fetch_foreclosure_data(geoid="12345", radius=-1)
 
     @patch("core.integrations.sources.attom_adapter.cache")
     @patch("core.integrations.sources.attom_adapter.requests.Session.get")

@@ -10,6 +10,7 @@ import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -38,6 +39,60 @@ class HUDHomeScraper:
     """
 
     BASE_URL = "https://www.hudhomestore.gov"
+    BASE_DOMAIN = "www.hudhomestore.gov"
+    VALID_STATE_CODES = {
+        "AL",
+        "AK",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "FL",
+        "GA",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "OH",
+        "OK",
+        "OR",
+        "PA",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY",
+        "DC",
+    }
 
     # User agents for rotation
     USER_AGENTS = [
@@ -114,8 +169,10 @@ class HUDHomeScraper:
 
         properties: List[Dict[str, Any]] = []
         state_code_normalized = state_code.strip().upper()
-        if not re.match(r"^[A-Z]{2}$", state_code_normalized):
-            raise HUDScraperError("state_code must be a valid 2-letter state code")
+        if state_code_normalized not in self.VALID_STATE_CODES:
+            raise HUDScraperError(
+                f"state_code must be a valid 2-letter state code, got: {state_code}"
+            )
 
         try:
             next_url: Optional[str] = (
@@ -143,14 +200,20 @@ class HUDHomeScraper:
     async def _fetch_page_html(self, url: str) -> str:
         """Fetch HTML for one HUD page URL."""
         headers = {"User-Agent": random.choice(self.USER_AGENTS)}
-        response = await asyncio.to_thread(
-            requests.get,
-            url,
-            headers=headers,
-            timeout=20,
-        )
-        response.raise_for_status()
-        return response.text
+        try:
+            response = await asyncio.to_thread(
+                requests.get,
+                url,
+                headers=headers,
+                timeout=20,
+            )
+            response.raise_for_status()
+            return response.text
+        except requests.exceptions.HTTPError as exc:
+            status_code = exc.response.status_code if exc.response else "unknown"
+            raise HUDScraperError(
+                f"HUD request failed for URL {url} with status {status_code}"
+            ) from exc
 
     def _extract_next_page_url(self, html: str) -> Optional[str]:
         """Extract a next-page URL from page HTML."""
@@ -164,12 +227,13 @@ class HUDHomeScraper:
             return None
 
         if href.startswith("http"):
-            if not href.startswith(self.BASE_URL):
+            parsed_href = urlparse(href)
+            if parsed_href.netloc != self.BASE_DOMAIN:
                 logger.warning("Skipping non-HUD pagination URL")
                 return None
             return href
 
-        return f"{self.BASE_URL}{href if href.startswith('/') else f'/{href}'}"
+        return urljoin(f"{self.BASE_URL}/", href)
 
     def extract_properties_from_html(self, html: str) -> List[Dict[str, Any]]:
         """
