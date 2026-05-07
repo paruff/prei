@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   web:
     image: mcr.microsoft.com/devcontainers/python:1-3.11-bookworm
@@ -10,9 +8,11 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: investor_app.settings
       DATABASE_URL: postgres://prei:prei@db:5432/prei
-      POSTGRES_DB: prei
-      POSTGRES_USER: prei
-      POSTGRES_PASSWORD: prei
+      # DEVCONTAINER ONLY — do not reuse this key outside local development
+      SECRET_KEY: dev-secret-key-change-me
+      DEBUG: "True"
+      # DEVCONTAINER ONLY — '*' disables host-header validation; never use in production
+      ALLOWED_HOSTS: "*"
     depends_on:
       db:
         condition: service_healthy
