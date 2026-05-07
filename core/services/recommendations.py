@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, TypedDict
 
 from django.contrib.auth.models import AbstractBaseUser
 
@@ -13,6 +13,17 @@ from investor_app.finance.utils import score_listing_v1
 
 logger = logging.getLogger(__name__)
 THOUSANDS_DIVISOR = Decimal("1000")
+
+
+class RankedListing(TypedDict):
+    obj: Listing
+    score: Decimal
+
+
+class Recommendation(TypedDict):
+    obj: Listing
+    score: Decimal
+    explanation: str
 
 
 def _search_queryset(saved_search: SavedSearch):
@@ -30,8 +41,8 @@ def _search_queryset(saved_search: SavedSearch):
     return qs
 
 
-def _normalize_ranked_results(ranked: Any) -> list[dict[str, Any]]:
-    normalized: list[dict[str, Any]] = []
+def _normalize_ranked_results(ranked: Any) -> list[RankedListing]:
+    normalized: list[RankedListing] = []
     if not isinstance(ranked, list):
         return normalized
 
@@ -61,7 +72,7 @@ def _normalize_ranked_results(ranked: Any) -> list[dict[str, Any]]:
     return normalized
 
 
-def _rank_listings(listings: list[Listing]) -> list[dict[str, Any]]:
+def _rank_listings(listings: list[Listing]) -> list[RankedListing]:
     try:
         from core.services.ranking import rank_listings  # type: ignore
 
@@ -73,14 +84,14 @@ def _rank_listings(listings: list[Listing]) -> list[dict[str, Any]]:
             "recommend_listings: rank_listings unavailable, using fallback"
         )
 
-    scored = [
+    scored: list[RankedListing] = [
         {"obj": listing, "score": score_listing_v1(listing)} for listing in listings
     ]
     scored.sort(key=lambda item: item["score"], reverse=True)
     return scored
 
 
-def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[dict[str, Any]]:
+def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[Recommendation]:
     """Recommend listings for a user based on saved searches."""
     if not getattr(user, "is_authenticated", False):
         return []
@@ -92,7 +103,13 @@ def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[dict[str
     if safe_limit <= 0:
         return []
 
-    saved_searches = list(SavedSearch.objects.filter(user=user).order_by("-created_at"))
+    user_id = getattr(user, "id", None)
+    if not isinstance(user_id, int):
+        return []
+
+    saved_searches = list(
+        SavedSearch.objects.filter(user_id=user_id).order_by("-created_at")
+    )
     if not saved_searches:
         return []
 
@@ -106,7 +123,7 @@ def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[dict[str
 
     ranked = _rank_listings(list(combined_qs.distinct()))
 
-    recommendations: list[dict[str, Any]] = []
+    recommendations: list[Recommendation] = []
     for item in ranked:
         listing = item["obj"]
         matching_search = search_by_listing_id.get(listing.id)
