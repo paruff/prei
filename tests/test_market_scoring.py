@@ -42,6 +42,18 @@ class TestScoreMarket:
 
         assert score == Decimal("80")
 
+    def test_partial_signals_weighted_average(self) -> None:
+        """Multiple partial signals should use weighted average of active signals."""
+        snapshot = MarketSnapshot(
+            landlord_friendliness_score=Decimal("100"),
+            employment_diversity_score=Decimal("50"),
+        )
+
+        score = score_market(snapshot)
+
+        # (100*0.25 + 50*0.20) / (0.25 + 0.20) = 35 / 0.45 = 77.777...
+        assert score == Decimal("77.78")
+
 
 class TestPriceToRentRatio:
     """Tests for price_to_rent_ratio."""
@@ -55,6 +67,7 @@ class TestPriceToRentRatio:
         """A $500k home and $24k annual rent should produce a valid ratio."""
         ratio = price_to_rent_ratio(Decimal("500000"), Decimal("24000"))
 
+        # 500000 / 24000 = 20.833333...
         assert ratio.quantize(Decimal("0.0001")) == Decimal("20.8333")
 
 

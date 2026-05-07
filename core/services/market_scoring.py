@@ -1,4 +1,9 @@
-"""Market-level investor viability scoring service."""
+"""Market-level investor viability scoring service.
+
+This module computes an investor-focused market score on a 0-100 scale
+using weighted signals (price-to-rent, growth, diversity, and policy
+friendliness). Weights are configurable via ``settings.MARKET_SCORE_WEIGHTS``.
+"""
 
 from __future__ import annotations
 
@@ -17,26 +22,41 @@ _DEFAULT_MARKET_SCORE_WEIGHTS: dict[str, Decimal] = {
     "rent_growth": Decimal("0.10"),
 }
 
+_EXCELLENT_PRICE_TO_RENT_THRESHOLD = Decimal("15")
+_NEUTRAL_PRICE_TO_RENT_THRESHOLD = Decimal("20")
+_MAX_PRICE_TO_RENT_THRESHOLD = Decimal("30")
+_HIGH_SCORE_FLOOR = Decimal("60")
+_HIGH_SCORE_RANGE = Decimal("40")
+_LOW_SCORE_RANGE = Decimal("60")
+
+_MIN_GROWTH_RATE_PERCENT = Decimal("-5")
+_MAX_GROWTH_RATE_PERCENT = Decimal("10")
+_GROWTH_RATE_RANGE = _MAX_GROWTH_RATE_PERCENT - _MIN_GROWTH_RATE_PERCENT
+
 
 def _normalize_price_to_rent(price_to_rent: Decimal) -> Decimal:
     """Convert price-to-rent ratio into a 0-100 score."""
     if price_to_rent <= Decimal("0"):
         return Decimal("0")
-    if price_to_rent < Decimal("15"):
+    if price_to_rent < _EXCELLENT_PRICE_TO_RENT_THRESHOLD:
         return Decimal("100")
-    if price_to_rent <= Decimal("20"):
-        return (Decimal("20") - price_to_rent) / Decimal("5") * Decimal("40") + Decimal(
-            "60"
+    if price_to_rent <= _NEUTRAL_PRICE_TO_RENT_THRESHOLD:
+        return (_NEUTRAL_PRICE_TO_RENT_THRESHOLD - price_to_rent) / (
+            _NEUTRAL_PRICE_TO_RENT_THRESHOLD - _EXCELLENT_PRICE_TO_RENT_THRESHOLD
+        ) * _HIGH_SCORE_RANGE + _HIGH_SCORE_FLOOR
+    if price_to_rent <= _MAX_PRICE_TO_RENT_THRESHOLD:
+        return (
+            (_MAX_PRICE_TO_RENT_THRESHOLD - price_to_rent)
+            / (_MAX_PRICE_TO_RENT_THRESHOLD - _NEUTRAL_PRICE_TO_RENT_THRESHOLD)
+            * _LOW_SCORE_RANGE
         )
-    if price_to_rent <= Decimal("30"):
-        return (Decimal("30") - price_to_rent) / Decimal("10") * Decimal("60")
     return Decimal("0")
 
 
 def _normalize_growth_rate_percent(growth_rate: Decimal) -> Decimal:
     """Convert a percent growth rate into a 0-100 score."""
-    clamped = max(Decimal("-5"), min(Decimal("10"), growth_rate))
-    return (clamped + Decimal("5")) / Decimal("15") * Decimal("100")
+    clamped = max(_MIN_GROWTH_RATE_PERCENT, min(_MAX_GROWTH_RATE_PERCENT, growth_rate))
+    return (clamped - _MIN_GROWTH_RATE_PERCENT) / _GROWTH_RATE_RANGE * Decimal("100")
 
 
 def _clamp_score(value: Decimal) -> Decimal:
@@ -119,10 +139,11 @@ def update_market_scores(zip_codes: list[str]) -> int:
     if not zip_codes:
         return 0
 
-    updated = 0
-    for snapshot in MarketSnapshot.objects.filter(zip_code__in=zip_codes):
+    snapshots = list(MarketSnapshot.objects.filter(zip_code__in=zip_codes))
+    for snapshot in snapshots:
         snapshot.market_score = score_market(snapshot)
-        snapshot.save(update_fields=["market_score", "updated_at"])
-        updated += 1
 
-    return updated
+    if snapshots:
+        MarketSnapshot.objects.bulk_update(snapshots, ["market_score"])
+
+    return len(snapshots)
