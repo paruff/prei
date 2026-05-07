@@ -14,6 +14,7 @@ from investor_app.finance.utils import (
 # keep only the models that are actually used
 from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot, SavedSearch
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
+from core.services.recommendations import recommend_listings
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +49,18 @@ def dashboard(request):
             }
         )
 
+    recommendations = []
+    if request.user.is_authenticated:
+        recommendations = recommend_listings(request.user, limit=5)
+
     return render(
         request,
         "dashboard.html",
-        {"analyses": analyses, "listings": listings},
+        {
+            "analyses": analyses,
+            "listings": listings,
+            "recommendations": recommendations,
+        },
     )
 
 
