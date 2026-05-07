@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from statistics import median
 from typing import Any, Dict, Iterable, Sequence, TypedDict
 
 import numpy as np
@@ -1883,3 +1884,195 @@ def score_listing_v2(
         "coc_year1": coc_year1,
         "composite_score": composite,
     }
+
+
+# ── BRRRR Strategy ──────────────────────────────────────────────────────────────
+
+
+def estimate_arv(
+    comparable_sales: list[tuple[Decimal, Decimal]],
+    subject_sqft: Decimal,
+) -> Decimal:
+    """Estimate After-Repair Value (ARV) from comparable sales.
+
+    Computes the median price-per-square-foot (PPSF) of the comparable sales
+    and multiplies it by the subject property's square footage.
+
+    Args:
+        comparable_sales: List of ``(price, sqft)`` tuples, one per comparable
+            sale.  Both ``price`` and ``sqft`` must be positive.
+        subject_sqft: Square footage of the subject property (must be > 0).
+
+    Returns:
+        Estimated ARV as a Decimal.
+
+    Raises:
+        ValueError: If ``comparable_sales`` is empty.
+        ValueError: If any comparable has ``price <= 0`` or ``sqft <= 0``.
+        ValueError: If ``subject_sqft <= 0``.
+    """
+    if not comparable_sales:
+        raise ValueError("comparable_sales must not be empty")
+
+    subject = to_decimal(subject_sqft)
+    if subject <= Decimal("0"):
+        raise ValueError(
+            f"subject_sqft must be greater than zero (received {subject_sqft})"
+        )
+
+    ppsf_values: list[Decimal] = []
+    for idx, (price, sqft) in enumerate(comparable_sales):
+        p = to_decimal(price)
+        s = to_decimal(sqft)
+        if p <= Decimal("0"):
+            raise ValueError(
+                f"comparable_sales[{idx}]: price must be greater than zero (received {price})"
+            )
+        if s <= Decimal("0"):
+            raise ValueError(
+                f"comparable_sales[{idx}]: sqft must be greater than zero (received {sqft})"
+            )
+        ppsf_values.append(p / s)
+
+    median_ppsf = to_decimal(median(ppsf_values))
+    return median_ppsf * subject
+
+
+def estimate_rehab_cost(
+    sqft: Decimal,
+    renovation_level: str,
+    cost_per_sqft: dict[str, Decimal],
+) -> Decimal:
+    """Estimate total rehab cost for a property.
+
+    Args:
+        sqft: Square footage of the property (must be > 0).
+        renovation_level: Scope of renovation.  Must be one of the keys present
+            in ``cost_per_sqft`` (typically ``"cosmetic"``, ``"moderate"``, or
+            ``"full_gut"``).
+        cost_per_sqft: Mapping from renovation level to cost per square foot.
+            Supply ``settings.REHAB_COST_PER_SQFT`` from the service layer to
+            keep this function Django-free.
+
+    Returns:
+        Estimated rehab cost as a Decimal.
+
+    Raises:
+        ValueError: If ``renovation_level`` is not a key in ``cost_per_sqft``.
+        ValueError: If ``sqft <= 0``.
+    """
+    valid_levels = set(cost_per_sqft.keys())
+    if renovation_level not in valid_levels:
+        raise ValueError(
+            f"renovation_level must be one of {sorted(valid_levels)} "
+            f"(received {renovation_level!r})"
+        )
+    s = to_decimal(sqft)
+    if s <= Decimal("0"):
+        raise ValueError(f"sqft must be greater than zero (received {sqft})")
+
+    rate = to_decimal(cost_per_sqft[renovation_level])
+    return rate * s
+
+
+def max_refinance_loan(
+    arv: Decimal,
+    ltv_ratio: Decimal = Decimal("0.75"),
+) -> Decimal:
+    """Calculate the maximum cash-out refinance loan amount at a given LTV.
+
+    The conventional investment-property cash-out refinance limit (Fannie Mae)
+    is 75 % LTV.  Expose ``ltv_ratio`` as a configurable parameter so callers
+    can model different lender requirements.
+
+    Args:
+        arv: After-Repair Value of the property (must be > 0).
+        ltv_ratio: Loan-to-value ratio expressed as a decimal strictly between
+            0 and 1 (e.g., ``Decimal("0.75")`` for 75 %).
+
+    Returns:
+        Maximum refinance loan amount as a Decimal.
+
+    Raises:
+        ValueError: If ``arv <= 0``.
+        ValueError: If ``ltv_ratio`` is not strictly in ``(0, 1)``.
+    """
+    a = to_decimal(arv)
+    ltv = to_decimal(ltv_ratio)
+
+    if a <= Decimal("0"):
+        raise ValueError(f"arv must be greater than zero (received {arv})")
+    if ltv <= Decimal("0") or ltv >= Decimal("1"):
+        raise ValueError(
+            f"ltv_ratio must be strictly between 0 and 1 (received {ltv_ratio})"
+        )
+
+    return a * ltv
+
+
+def cash_left_in_deal(
+    purchase_price: Decimal,
+    rehab_cost: Decimal,
+    cash_out_refi_amount: Decimal,
+    closing_costs: Decimal = Decimal("0"),
+) -> Decimal:
+    """Calculate the investor's remaining cash deployed after a cash-out refinance.
+
+    Formula::
+
+        cash_left = purchase_price + rehab_cost + closing_costs - cash_out_refi_amount
+
+    A negative or zero result means the investor has recouped all invested capital
+    (the "infinite CoC" scenario in BRRRR terminology).
+
+    Args:
+        purchase_price: Purchase price of the property.
+        rehab_cost: Total rehabilitation cost.
+        cash_out_refi_amount: Proceeds from the cash-out refinance.
+        closing_costs: Total closing costs (purchase + refi combined).  Defaults
+            to ``Decimal("0")``.
+
+    Returns:
+        Cash left in the deal as a Decimal.  Negative or zero ⇒ infinite CoC.
+    """
+    return (
+        to_decimal(purchase_price)
+        + to_decimal(rehab_cost)
+        + to_decimal(closing_costs)
+        - to_decimal(cash_out_refi_amount)
+    )
+
+
+def brrrr_coc_return(
+    annual_net_cash_flow: Decimal,
+    cash_left_in_deal: Decimal,
+) -> Decimal:
+    """Calculate Cash-on-Cash return for a BRRRR deal.
+
+    Handles the "infinite CoC" scenario where the investor has recouped all
+    (or more than all) of their capital.
+
+    Rules:
+    * ``cash_left_in_deal <= 0`` → returns ``Decimal("Infinity")`` regardless
+      of cash flow (investor has no capital remaining in the deal).
+    * ``cash_left_in_deal > 0`` and ``annual_net_cash_flow == 0`` → returns
+      ``Decimal("0")`` (no return on remaining capital).
+    * Otherwise → returns ``annual_net_cash_flow / cash_left_in_deal``.
+
+    Args:
+        annual_net_cash_flow: Annual after-debt-service cash flow (can be
+            negative for a losing deal).
+        cash_left_in_deal: Capital still deployed after the cash-out refi
+            (from ``cash_left_in_deal()``).
+
+    Returns:
+        CoC return as a Decimal.  ``Decimal("Infinity")`` signals infinite CoC.
+    """
+    left = to_decimal(cash_left_in_deal)
+    flow = to_decimal(annual_net_cash_flow)
+
+    if left <= Decimal("0"):
+        return Decimal("Infinity")
+    if flow == Decimal("0"):
+        return Decimal("0")
+    return flow / left

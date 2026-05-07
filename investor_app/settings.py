@@ -123,3 +123,20 @@ REST_FRAMEWORK = {
 
 # Growth areas API cache duration (in seconds)
 GROWTH_AREAS_CACHE_DURATION = 86400  # 24 hours
+
+# BRRRR rehab cost per square foot by renovation level.
+# These are national averages and approximations only — actual costs vary
+# significantly by market, contractor, and property condition.
+# Override individual values via env vars: REHAB_COST_COSMETIC,
+# REHAB_COST_MODERATE, REHAB_COST_FULL_GUT (dollar amounts, e.g. "15").
+REHAB_COST_PER_SQFT: dict[str, Decimal] = {
+    "cosmetic": Decimal(
+        env("REHAB_COST_COSMETIC", default="15")
+    ),  # paint, carpet, fixtures
+    "moderate": Decimal(
+        env("REHAB_COST_MODERATE", default="35")
+    ),  # kitchen, baths, flooring
+    "full_gut": Decimal(
+        env("REHAB_COST_FULL_GUT", default="75")
+    ),  # structural, mechanicals, full reno
+}
