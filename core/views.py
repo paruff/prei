@@ -221,18 +221,18 @@ def report_listing(request, listing_id: int):
     ppsf = price_per_sqft(lst)
     market_snapshot = MarketSnapshot.objects.filter(zip_code=lst.zip_code).first()
 
-    kpis: dict[str, Decimal] = {
-        "cap_rate": Decimal("0"),
-        "cash_on_cash": Decimal("0"),
-        "dscr": Decimal("0"),
-        "noi": Decimal("0"),
-    }
     try:
-        kpis = estimate_listing_kpis(lst, market_snapshot)
+        kpis: dict[str, Decimal] = estimate_listing_kpis(lst, market_snapshot)
     except Exception:
         logger.exception(
             "report_listing: KPI computation failed for listing_id=%s", listing_id
         )
+        kpis = {
+            "cap_rate": Decimal("0"),
+            "cash_on_cash": Decimal("0"),
+            "dscr": Decimal("0"),
+            "noi": Decimal("0"),
+        }
 
     context = {
         "listing": lst,
