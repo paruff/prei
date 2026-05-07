@@ -2,7 +2,7 @@
 
 > Auto-maintained by `@docs-agent`. Updated whenever `core/services/` or `investor_app/finance/utils.py` changes.
 > DORA AI Cap 3: This document is loaded as context before every code generation session.
-> Last updated: 2026-05-06 (added one_percent_rule, gross_rent_multiplier, score_listing_v2)
+> Last updated: 2026-05-07 (added recommendations service APIs)
 
 -----
 
@@ -135,6 +135,39 @@ from core.services.portfolio import portfolio_trend_summary
 trend = portfolio_trend_summary(request.user)
 # → {"trend_noi": Decimal("5.26"), "trend_cap_rate": Decimal("5.26")}
 ```
+
+-----
+
+### `recommendations.recommend_listings(user, limit=10)`
+
+**Purpose:** Build personalized listing recommendations from a user's saved searches, deduplicate listing matches across searches, rank results (or fallback to `score_listing_v1`), and return the top `limit` entries with explanations.
+**Parameters:**
+- `user` — Django `User` instance.
+- `limit: int` — Maximum recommendations to return (default `10`).
+
+**Returns:** `list[dict]` where each dict includes `obj` (`Listing`), `score` (`Decimal`), and `explanation` (`str`).
+**Side effects:** Reads `SavedSearch` and `Listing` rows for the authenticated user.
+**Error cases:** Returns `[]` when user is anonymous, has no saved searches, or `limit <= 0`. Falls back to `score_listing_v1` ranking when `rank_listings` is unavailable.
+**Example:**
+
+```python
+from core.services.recommendations import recommend_listings
+
+items = recommend_listings(request.user, limit=5)
+```
+
+---
+
+### `recommendations.explain_recommendation(listing, saved_search)`
+
+**Purpose:** Return a human-readable reason string describing why a listing matches a saved search.
+**Parameters:**
+- `listing: Listing` — Listing that matched.
+- `saved_search: SavedSearch` — Matching saved search.
+
+**Returns:** `str` explanation such as `"Matches your search 'Downtown Flips': $150k in AZ with 3+ beds"`.
+**Side effects:** None.
+**Error cases:** None.
 
 -----
 

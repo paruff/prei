@@ -38,6 +38,40 @@
       </tbody>
     </table>
 
+    <h2 style="margin-top:2rem">Recommendations</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Address</th>
+          <th>City</th>
+          <th>State</th>
+          <th>Price</th>
+          <th>Score</th>
+          <th>Why this matches</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in recommendations %}
+          <tr>
+            <td>{{ item.obj.address }}</td>
+            <td>{{ item.obj.city }}</td>
+            <td>{{ item.obj.state }}</td>
+            <td>${{ item.obj.price }}</td>
+            <td>{{ item.score|floatformat:2 }}</td>
+            <td>{{ item.explanation }}</td>
+            <td>
+              <a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a>
+              |
+              <a href="{% url 'report_listing' item.obj.id %}">Report</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">No recommendations yet. Save a search to get personalized deals.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
     <h2 style="margin-top:2rem">New Listings</h2>
     <form method="get" style="margin-bottom:1rem">
       <label>Min Price <input type="number" name="min_price" value="{{ request.GET.min_price }}" /></label>

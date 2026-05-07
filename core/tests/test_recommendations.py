@@ -9,8 +9,19 @@ from core.models import Listing, SavedSearch
 from core.services.recommendations import explain_recommendation, recommend_listings
 
 
+class _SavedSearchList(list):
+    def order_by(self, *_args):
+        return self
 
-def _create_listing(*, address: str, state: str = "AZ", zip_code: str = "85001", price: str = "150000", sq_ft: int = 1000) -> Listing:
+
+def _create_listing(
+    *,
+    address: str,
+    state: str = "AZ",
+    zip_code: str = "85001",
+    price: str = "150000",
+    sq_ft: int = 1000,
+) -> Listing:
     return Listing.objects.create(
         source="dummy",
         address=address,
@@ -28,15 +39,23 @@ def _create_listing(*, address: str, state: str = "AZ", zip_code: str = "85001",
 
 
 @pytest.mark.django_db
-def test_recommend_listings_returns_empty_without_saved_searches(user):
+def test_recommend_listings_returns_empty_without_saved_searches(user, monkeypatch):
+    monkeypatch.setattr(
+        SavedSearch.objects,
+        "filter",
+        lambda **_kwargs: _SavedSearchList(),
+    )
     _create_listing(address="100 Main St")
 
     assert recommend_listings(user) == []
 
 
 @pytest.mark.django_db
-def test_recommend_listings_returns_matches_sorted_by_score(user):
-    SavedSearch.objects.create(user=user, name="AZ Deals", state="AZ")
+def test_recommend_listings_returns_matches_sorted_by_score(user, monkeypatch):
+    saved_searches = _SavedSearchList(
+        [SavedSearch(user=user, name="AZ Deals", state="AZ", query="", zip_code="")]
+    )
+    monkeypatch.setattr(SavedSearch.objects, "filter", lambda **_kwargs: saved_searches)
 
     lower_score = _create_listing(
         address="200 Main St", state="AZ", price="200000", sq_ft=1000
@@ -54,9 +73,18 @@ def test_recommend_listings_returns_matches_sorted_by_score(user):
 
 
 @pytest.mark.django_db
-def test_recommend_listings_deduplicates_matches_from_multiple_saved_searches(user):
-    SavedSearch.objects.create(user=user, name="AZ", state="AZ")
-    SavedSearch.objects.create(user=user, name="Phoenix Zip", zip_code="85001")
+def test_recommend_listings_deduplicates_matches_from_multiple_saved_searches(
+    user, monkeypatch
+):
+    saved_searches = _SavedSearchList(
+        [
+            SavedSearch(user=user, name="AZ", state="AZ", query="", zip_code=""),
+            SavedSearch(
+                user=user, name="Phoenix Zip", state="", query="", zip_code="85001"
+            ),
+        ]
+    )
+    monkeypatch.setattr(SavedSearch.objects, "filter", lambda **_kwargs: saved_searches)
 
     listing = _create_listing(address="400 Main St", state="AZ", zip_code="85001")
 
@@ -67,8 +95,11 @@ def test_recommend_listings_deduplicates_matches_from_multiple_saved_searches(us
 
 
 @pytest.mark.django_db
-def test_recommend_listings_respects_limit(user):
-    SavedSearch.objects.create(user=user, name="AZ Deals", state="AZ")
+def test_recommend_listings_respects_limit(user, monkeypatch):
+    saved_searches = _SavedSearchList(
+        [SavedSearch(user=user, name="AZ Deals", state="AZ", query="", zip_code="")]
+    )
+    monkeypatch.setattr(SavedSearch.objects, "filter", lambda **_kwargs: saved_searches)
 
     _create_listing(address="500 Main St", state="AZ")
     _create_listing(address="600 Main St", state="AZ")
@@ -81,7 +112,7 @@ def test_recommend_listings_respects_limit(user):
 
 @pytest.mark.django_db
 def test_explain_recommendation_contains_saved_search_name(user):
-    saved_search = SavedSearch.objects.create(user=user, name="Downtown Flips", state="AZ")
+    saved_search = SavedSearch(user=user, name="Downtown Flips", state="AZ")
     listing = _create_listing(address="800 Main St", state="AZ", price="150000")
 
     explanation = explain_recommendation(listing, saved_search)
