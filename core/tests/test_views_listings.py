@@ -11,7 +11,7 @@ from core.models import Listing, MarketSnapshot
 def _make_listing(**kwargs) -> Listing:
     """Create a minimal Listing with sensible defaults."""
     defaults = dict(
-        source="test",
+        source="external",
         address="42 Oak Ave",
         city="Austin",
         state="TX",
