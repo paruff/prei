@@ -109,8 +109,27 @@ class Command(BaseCommand):
         if not latest_path.exists():
             return []
         try:
-            payload = json.loads(latest_path.read_text(encoding="utf-8"))
-            return payload.get("sources", [])
+            payload: Any = json.loads(latest_path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                return []
+
+            raw_sources: Any = payload.get("sources", [])
+            if not isinstance(raw_sources, list):
+                return []
+
+            normalized_sources: list[dict[str, str]] = []
+            for source in raw_sources:
+                if not isinstance(source, dict):
+                    continue
+                normalized_source = {
+                    str(key): str(value)
+                    for key, value in source.items()
+                    if isinstance(key, str) and isinstance(value, str)
+                }
+                if normalized_source.get("source_url"):
+                    normalized_sources.append(normalized_source)
+
+            return normalized_sources
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning(
                 "Failed to load previous HUD source index snapshot: %s (%s: %s)",

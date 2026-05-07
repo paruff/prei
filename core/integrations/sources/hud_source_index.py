@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Any
+from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
@@ -25,7 +25,7 @@ def fetch_hud_homes_for_sale_html(page_url: str = HUD_HOMES_FOR_SALE_URL) -> byt
     request = Request(page_url, headers={"User-Agent": "prei-hud-source-index/1.0"})
     try:
         with urlopen(request, timeout=20) as response:
-            return response.read()
+            return cast(bytes, response.read())
     except (HTTPError, URLError, TimeoutError) as exc:
         raise HUDSourceIndexFetchError(
             "Failed to fetch HUD source index page "
