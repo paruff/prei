@@ -97,6 +97,60 @@ summary = aggregate_portfolio(request.user)
 
 -----
 
+### `portfolio.run_scenario(user, overrides)`
+
+**Purpose:** Apply what-if overrides to all user properties and return aggregate KPIs. Ephemeral — nothing is written to the database.
+**Parameters:**
+- `user` — Django `User` instance.
+- `overrides: dict` — Shallow override dict. Supported keys:
+  - `vacancy_rate` (`Decimal` 0–1, e.g. `Decimal("0.10")` for 10 %)
+  - `purchase_price_delta_pct` (`Decimal` %, e.g. `Decimal("-10")` for −10 %)
+  - `interest_rate` (`Decimal` %, reserved for future debt-service calculation)
+
+**Returns:** `dict` with keys `total_noi`, `avg_cap_rate`, `avg_coc` (all `Decimal`).
+**Side effects:** None (read-only DB access, no writes).
+**Error cases:** Returns zeroed dict when the user has no properties; returns zero cap rate / CoC when effective purchase price reaches zero.
+**Example:**
+
+```python
+from core.services.portfolio import run_scenario
+from decimal import Decimal
+
+kpis = run_scenario(request.user, {"vacancy_rate": Decimal("0.10")})
+# → {"total_noi": Decimal("15600.00"), "avg_cap_rate": Decimal("0.052"),
+#    "avg_coc": Decimal("0.052")}
+```
+
+-----
+
+### `portfolio.compare_scenarios(user, scenarios)`
+
+**Purpose:** Compare multiple what-if scenarios across a user's portfolio.
+**Parameters:**
+- `user` — Django `User` instance.
+- `scenarios: list[dict]` — List of override dicts. Each may include a `label` key; missing labels default to `"Scenario N"` (1-indexed).
+
+**Returns:** `list[dict]` — Each element has keys `label`, `total_noi`, `avg_cap_rate`, `avg_coc`.
+**Side effects:** None (read-only DB access, no writes).
+**Error cases:** Returns empty list for empty `scenarios` input; individual scenarios with zero-denominator return zeroed KPI fields.
+**Example:**
+
+```python
+from core.services.portfolio import compare_scenarios
+from decimal import Decimal
+
+results = compare_scenarios(request.user, [
+    {"label": "Optimistic", "vacancy_rate": Decimal("0.03")},
+    {"label": "Pessimistic", "vacancy_rate": Decimal("0.15")},
+])
+# → [
+#     {"label": "Optimistic", "total_noi": ..., "avg_cap_rate": ..., "avg_coc": ...},
+#     {"label": "Pessimistic", "total_noi": ..., "avg_cap_rate": ..., "avg_coc": ...},
+#   ]
+```
+
+-----
+
 ## Finance Utilities
 
 > Module: `investor_app/finance/utils.py`

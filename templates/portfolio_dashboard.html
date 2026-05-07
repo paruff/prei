@@ -20,5 +20,51 @@
         {% endfor %}
       </tbody>
     </table>
+
+    <h2>What-If Scenario Modeling</h2>
+    <p>Enter overrides for up to 3 scenarios. Leave fields blank to use defaults.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% for i in "123" %}
+        <fieldset style="margin-bottom:1em;padding:1em;border:1px solid #ccc">
+          <legend>Scenario {{ i }}</legend>
+          <label>Label: <input type="text" name="scenario_{{ i }}_label" placeholder="Scenario {{ i }}"></label><br>
+          <label>Vacancy Rate (%): <input type="number" step="0.01" min="0" max="100" name="scenario_{{ i }}_vacancy" placeholder="e.g. 10"></label><br>
+          <label>Interest Rate (%): <input type="number" step="0.01" min="0" name="scenario_{{ i }}_interest" placeholder="e.g. 7.5"></label><br>
+          <label>Purchase Price Change (%): <input type="number" step="0.01" name="scenario_{{ i }}_price_delta" placeholder="e.g. -10"></label>
+        </fieldset>
+      {% endfor %}
+      <button type="submit">Run Scenarios</button>
+    </form>
+
+    {% if scenario_results %}
+      <h3>Scenario Comparison</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Total NOI ($)</th>
+            <th>Avg Cap Rate</th>
+            <th>Avg Cash-on-Cash</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Baseline</td>
+            <td>{{ agg.total_noi }}</td>
+            <td>{{ agg.avg_cap_rate|floatformat:4 }}</td>
+            <td>{{ agg.avg_coc|floatformat:4 }}</td>
+          </tr>
+          {% for s in scenario_results %}
+            <tr>
+              <td>{{ s.label }}</td>
+              <td>{{ s.total_noi }}</td>
+              <td>{{ s.avg_cap_rate|floatformat:4 }}</td>
+              <td>{{ s.avg_coc|floatformat:4 }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
   {% endif %}
 {% endblock %}
