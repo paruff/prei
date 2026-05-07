@@ -243,7 +243,7 @@ def report_listing(request, listing_id: int):
             capex_reserve_rate = defaults["capex_reserve_rate"]
             down_payment_rate = defaults["down_payment_rate"]
             loan_interest_rate_pct = defaults["loan_interest_rate_pct"]
-            loan_term_years = int(defaults["loan_term_years"])
+            loan_term_years = defaults["loan_term_years"]
 
             # Estimate monthly rent from MarketSnapshot or via 1% rule
             if market_snapshot and market_snapshot.rent_index > 0:

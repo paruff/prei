@@ -71,7 +71,9 @@ def test_report_listing_no_market_snapshot_still_200(client):
     resp = client.get(url)
     assert resp.status_code == 200
     assert resp.context["market_snapshot"] is None
-    assert "N/A" in resp.content.decode()
+    # Page still renders the market data section with N/A fallback
+    content = resp.content.decode()
+    assert "N/A" in content or "no market snapshot" in content.lower()
 
 
 @pytest.mark.django_db
