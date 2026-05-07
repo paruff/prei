@@ -9,10 +9,11 @@ import random
 import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from urllib.parse import urljoin, urlparse
 
 import requests
+from requests import Response
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -201,14 +202,17 @@ class HUDHomeScraper:
         """Fetch HTML for one HUD page URL."""
         headers = {"User-Agent": random.choice(self.USER_AGENTS)}
         try:
-            response = await asyncio.to_thread(
-                requests.get,
-                url,
-                headers=headers,
-                timeout=20,
+            response = cast(
+                Response,
+                await asyncio.to_thread(
+                    requests.get,
+                    url,
+                    headers=headers,
+                    timeout=20,
+                ),
             )
             response.raise_for_status()
-            return response.text
+            return str(response.text)
         except requests.exceptions.HTTPError as exc:
             status_code = exc.response.status_code if exc.response else "unknown"
             raise HUDScraperError(
@@ -223,7 +227,7 @@ class HUDHomeScraper:
             return None
 
         href = next_link.get("href")
-        if not href:
+        if not isinstance(href, str) or not href:
             return None
 
         if href.startswith("http"):
