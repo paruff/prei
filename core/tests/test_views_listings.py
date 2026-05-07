@@ -1,4 +1,5 @@
 """Integration tests for the listing report view (Phase 2.4)."""
+
 from decimal import Decimal
 
 import pytest
