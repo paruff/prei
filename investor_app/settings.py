@@ -86,6 +86,9 @@ FINANCE_DEFAULTS = {
     "down_payment_rate": Decimal(env("DOWN_PAYMENT_RATE", default="0.20")),
     "loan_interest_rate_pct": Decimal(env("LOAN_INTEREST_RATE_PCT", default="7.5")),
     "loan_term_years": int(env("LOAN_TERM_YEARS", default="30")),
+    # Minimum DSCR required by most lenders for investment-property refinancing.
+    # Fannie Mae / conventional lenders typically require >= 1.25; some require 1.15–1.30.
+    "brrrr_dscr_threshold": Decimal(env("BRRRR_DSCR_THRESHOLD", default="1.25")),
 }
 
 # Basic logging suitable for CI and dev
@@ -123,3 +126,20 @@ REST_FRAMEWORK = {
 
 # Growth areas API cache duration (in seconds)
 GROWTH_AREAS_CACHE_DURATION = 86400  # 24 hours
+
+# BRRRR rehab cost per square foot by renovation level.
+# These are national averages and approximations only — actual costs vary
+# significantly by market, contractor, and property condition.
+# Override individual values via env vars: REHAB_COST_COSMETIC,
+# REHAB_COST_MODERATE, REHAB_COST_FULL_GUT (dollar amounts, e.g. "15").
+REHAB_COST_PER_SQFT: dict[str, Decimal] = {
+    "cosmetic": Decimal(
+        env("REHAB_COST_COSMETIC", default="15")
+    ),  # paint, carpet, fixtures
+    "moderate": Decimal(
+        env("REHAB_COST_MODERATE", default="35")
+    ),  # kitchen, baths, flooring
+    "full_gut": Decimal(
+        env("REHAB_COST_FULL_GUT", default="75")
+    ),  # structural, mechanicals, full reno
+}
