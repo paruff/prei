@@ -108,11 +108,17 @@ class Command(BaseCommand):
         try:
             payload = json.loads(latest_path.read_text(encoding="utf-8"))
             return payload.get("sources", [])
-        except (json.JSONDecodeError, OSError, TypeError):
+        except (json.JSONDecodeError, OSError, TypeError) as exc:
             logger.warning(
-                "Failed to load previous HUD source index snapshot: %s", latest_path
+                "Failed to load previous HUD source index snapshot: %s (%s)",
+                latest_path,
+                exc,
+                exc_info=True,
             )
             return []
 
     def _format_timestamp_for_filename(self, timestamp: str) -> str:
-        return timestamp.replace(":", "").replace("+00:00", "Z")
+        parsed = datetime.fromisoformat(timestamp)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

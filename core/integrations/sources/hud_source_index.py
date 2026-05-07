@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit, urlunsplit
@@ -11,6 +12,7 @@ from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 
 HUD_HOMES_FOR_SALE_URL = "https://www.hud.gov/topics/homes_for_sale"
+logger = logging.getLogger(__name__)
 
 
 class HUDSourceIndexFetchError(Exception):
@@ -66,6 +68,7 @@ def discover_hud_homes_for_sale_sources(
     for anchor in soup.select("a[href]"):
         title = anchor.get_text(strip=True)
         if not title:
+            logger.debug("Skipping HUD source anchor without title text")
             continue
         href = str(anchor.get("href", "")).strip()
         if not href:
