@@ -1657,6 +1657,30 @@ def gross_rent_multiplier(purchase_price: Decimal, annual_rent: Decimal) -> Deci
     return to_decimal(purchase_price) / ar
 
 
+def price_to_rent_ratio(
+    median_home_price: Decimal, annual_median_rent: Decimal
+) -> Decimal:
+    """Calculate market price-to-rent ratio.
+
+    Args:
+        median_home_price: Median home purchase price.
+        annual_median_rent: Median annual rent.
+
+    Returns:
+        Price-to-rent ratio as a Decimal.
+
+    Raises:
+        ValueError: If annual_median_rent is zero or negative.
+    """
+    annual_rent = to_decimal(annual_median_rent)
+    if annual_rent <= Decimal("0"):
+        raise ValueError(
+            "annual_median_rent must be greater than zero "
+            f"(received {annual_median_rent})"
+        )
+    return to_decimal(median_home_price) / annual_rent
+
+
 def _grm_score(grm: Decimal) -> Decimal:
     """Map a GRM value to a 0–100 sub-score using published heuristics.
 
