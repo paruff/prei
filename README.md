@@ -48,35 +48,55 @@ For detailed setup instructions, see the **[Getting Started Tutorial](https://pa
    - `python manage.py migrate`
    - `python manage.py runserver`
 
-## Quick start (Docker)
+## Quick start (Codespaces / Dev Container)
 
-For a complete setup with Redis and Celery for real-time auction monitoring:
+If you open this repository in a GitHub Codespace or VS Code Dev Container, use the devcontainer as the development runtime instead of trying to run Docker Compose inside the container.
 
-1. Clone the repo and create `.env` file:
-   - `git clone git@github.com:paruff/prei.git`
-   - `cd prei`
-   - `cp .env.example .env`
-   - Edit `.env` (set SECRET_KEY, update DATABASE_URL to use `db` hostname)
+1. Open the repository in the devcontainer.
+   - The devcontainer starts `web` and `db` from [.devcontainer/docker-compose.yml](./.devcontainer/docker-compose.yml).
+   - Dependencies are installed automatically by [.devcontainer/devcontainer.json](./.devcontainer/devcontainer.json).
 
-2. Build and start all services:
-   - `docker-compose up --build`
+2. Initialize the app in the integrated terminal:
+   - `make dev`
 
-3. Run migrations (in another terminal):
-   - `docker-compose exec web python manage.py migrate`
+   In a second terminal, create a superuser the first time only:
+   - `python manage.py createsuperuser`
 
-4. Create a superuser:
-   - `docker-compose exec web python manage.py createsuperuser`
-
-5. Access the application:
+3. Open the forwarded port for `8000`.
    - Web: `http://localhost:8000`
    - Admin: `http://localhost:8000/admin`
 
-Services included:
-- **web**: Django application with WebSocket support (Daphne)
-- **db**: PostgreSQL database
-- **redis**: Redis for caching and channel layers
-- **celery_worker**: Background task processing
-- **celery_beat**: Periodic task scheduling (auction monitoring, reminders)
+This is the fastest workflow for rapid development because the database already runs as a sidecar container and code changes apply immediately from the mounted workspace.
+
+Available convenience targets:
+- `make dev` runs migrations and starts the Django development server.
+- `make superuser` creates an admin user in the current environment.
+- `make lint` runs Ruff and Black checks.
+- `make test` runs `pytest -q`.
+- `make check` runs `manage.py check`, lint, and tests.
+- `make deploy-dev` starts the image-based Docker stack when Docker is available.
+
+## Quick start (Docker host deployment)
+
+Use the root compose file when you want to run the published container image on a machine that has Docker available.
+
+1. Create `.env` from `.env.example` and set required values.
+   - At minimum set `POSTGRES_PASSWORD`.
+
+2. Start the stack from the repository root:
+   - `docker compose up -d`
+
+3. Run migrations:
+   - `docker compose exec web python manage.py migrate`
+
+4. Create a superuser if needed:
+   - `docker compose exec web python manage.py createsuperuser`
+
+Notes:
+- The root [docker-compose.yml](./docker-compose.yml) uses `image: ghcr.io/paruff/prei:latest`; it does not build the application image locally.
+- If you want to build locally from the repository source, use the root [Dockerfile](./Dockerfile): `docker build -t prei:dev .`
+- Modern Docker uses `docker compose`; the legacy `docker-compose` binary may not be installed.
+- In a Codespace or VS Code Dev Container, rebuild the container after changes to [.devcontainer/devcontainer.json](./.devcontainer/devcontainer.json) if you want the `docker` CLI available inside the workspace container.
 
 ## Real-Time Auction Monitoring
 
