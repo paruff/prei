@@ -234,44 +234,64 @@ def report_listing(request, listing_id: int):
         "dscr": Decimal("0"),
         "noi": Decimal("0"),
     }
+def _build_listing_kpis(
+    lst: Listing, market_snapshot: MarketSnapshot | None
+) -> dict[str, Decimal]:
+    """Build KPI estimates for a listing using configured finance defaults.
+
+    Args:
+        lst: The listing being reported.
+        market_snapshot: Optional market snapshot used for rent estimation.
+
+    Returns:
+        A KPI dictionary containing cap rate, cash-on-cash, DSCR, and NOI.
+        Returns an empty dictionary when the listing price is missing or
+        non-positive.
+    """
+    defaults = settings.FINANCE_DEFAULTS
+    price = Decimal(str(lst.price)) if lst.price else Decimal("0")
+    if price <= 0:
+        return {}
+
+    vacancy_rate = Decimal(str(defaults["vacancy_rate"]))
+    management_fee_rate = Decimal(str(defaults["management_fee_rate"]))
+    capex_reserve_rate = Decimal(str(defaults["capex_reserve_rate"]))
+    down_payment_rate = Decimal(str(defaults["down_payment_rate"]))
+    loan_interest_rate_pct = Decimal(str(defaults["loan_interest_rate_pct"]))
+    loan_term_years = int(defaults["loan_term_years"])
+
+    if market_snapshot and market_snapshot.rent_index > 0:
+        monthly_rent = Decimal(str(market_snapshot.rent_index))
+    else:
+        monthly_rent = price * Decimal("0.01")
+
+    effective_monthly_income = monthly_rent * (Decimal("1") - vacancy_rate)
+    monthly_expenses = monthly_rent * (
+        management_fee_rate + capex_reserve_rate
+    )
+    annual_noi = noi(effective_monthly_income, monthly_expenses)
+    cap_rate_val = cap_rate(annual_noi, price)
+
+    down_payment = price * down_payment_rate
+    loan_amount = price - down_payment
+    monthly_mortgage = calculate_monthly_mortgage(
+        loan_amount, loan_interest_rate_pct, loan_term_years
+    )
+    annual_debt_service = monthly_mortgage * Decimal("12")
+    annual_cash_flow = annual_noi - annual_debt_service
+    coc_val = cash_on_cash(annual_cash_flow, down_payment)
+    dscr_val = dscr(annual_noi, annual_debt_service)
+
+    return {
+        "cap_rate": cap_rate_val,
+        "cash_on_cash": coc_val,
+        "dscr": dscr_val,
+        "noi": annual_noi,
+    }
+
+
     try:
-        defaults = settings.FINANCE_DEFAULTS
-        price = Decimal(str(lst.price)) if lst.price else Decimal("0")
-        if price > 0:
-            vacancy_rate = defaults["vacancy_rate"]
-            management_fee_rate = defaults["management_fee_rate"]
-            capex_reserve_rate = defaults["capex_reserve_rate"]
-            down_payment_rate = defaults["down_payment_rate"]
-            loan_interest_rate_pct = defaults["loan_interest_rate_pct"]
-            loan_term_years = defaults["loan_term_years"]
-
-            # Estimate monthly rent from MarketSnapshot or via 1% rule
-            if market_snapshot and market_snapshot.rent_index > 0:
-                monthly_rent = Decimal(str(market_snapshot.rent_index))
-            else:
-                monthly_rent = price * Decimal("0.01")
-
-            effective_monthly_income = monthly_rent * (1 - vacancy_rate)
-            monthly_expenses = monthly_rent * (management_fee_rate + capex_reserve_rate)
-            annual_noi = noi(effective_monthly_income, monthly_expenses)
-            cap_rate_val = cap_rate(annual_noi, price)
-
-            down_payment = price * down_payment_rate
-            loan_amount = price - down_payment
-            monthly_mortgage = calculate_monthly_mortgage(
-                loan_amount, loan_interest_rate_pct, loan_term_years
-            )
-            annual_debt_service = monthly_mortgage * Decimal("12")
-            annual_cash_flow = annual_noi - annual_debt_service
-            coc_val = cash_on_cash(annual_cash_flow, down_payment)
-            dscr_val = dscr(annual_noi, annual_debt_service)
-
-            kpis = {
-                "cap_rate": cap_rate_val,
-                "cash_on_cash": coc_val,
-                "dscr": dscr_val,
-                "noi": annual_noi,
-            }
+        kpis = _build_listing_kpis(lst, market_snapshot)
     except Exception:
         logger.exception("report_listing: KPI computation failed for listing_id=%s", listing_id)
 
@@ -281,6 +301,8 @@ def report_listing(request, listing_id: int):
         "ppsf": ppsf,
         "market_snapshot": market_snapshot,
         "kpis": kpis,
+        "crime": None,
+        "schools": None,
     }
     return render(request, "property_report.html", context)
 
