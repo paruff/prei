@@ -31,6 +31,9 @@
 |`calculate_cash_on_cash` signature or logic          |`investor_app/tests/test_finance_utils.py`, `tests/test_finance_utils.py`, `docs/API_SURFACE.md`               |
 |`calculate_irr` signature, logic, or accepted types  |`investor_app/tests/test_finance_utils.py`, `tests/test_finance_utils.py`, `docs/API_SURFACE.md`               |
 |Internal `irr()` helper                              |`calculate_irr` (its only caller), `tests/test_finance_utils.py`                                               |
+|`one_percent_rule` signature or logic                |`tests/test_underwriting_score.py`, `docs/API_SURFACE.md`                                                      |
+|`gross_rent_multiplier` signature or logic           |`tests/test_underwriting_score.py`, `docs/API_SURFACE.md`                                                      |
+|`score_listing_v2` signature or logic                |`tests/test_underwriting_score.py`, `docs/API_SURFACE.md`; callers must supply `local_market_cap_rate` from `MarketSnapshot` at the service layer |
 |`project_annual_cash_flows` signature or logic       |`tests/test_hold_period.py`, `docs/API_SURFACE.md`                                                             |
 |`project_property_value` signature or logic          |`tests/test_hold_period.py`, `docs/API_SURFACE.md`                                                             |
 |`net_sale_proceeds` signature or logic               |`tests/test_hold_period.py`, `docs/API_SURFACE.md`                                                             |

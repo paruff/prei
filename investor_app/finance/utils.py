@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Iterable, Sequence
+from typing import Any, Dict, Iterable, Sequence, TypedDict
 
 import numpy as np
 import numpy_financial as npf
@@ -53,6 +53,9 @@ def score_listing_v1(listing: Listing) -> Decimal:
     """Basic Phase 1 scoring using price per sq ft and freshness.
 
     Higher score is better. This is a simple heuristic for MVP.
+
+    Deprecated: use score_listing_v2 for passive investing use cases.
+    Will be removed after all callers are migrated.
     """
     price = to_decimal(listing.price) if listing.price is not None else Decimal("0")
     sq_ft = Decimal(listing.sq_ft or 0)
@@ -1579,3 +1582,208 @@ def depreciation_recapture_tax(
         )
 
     return acc_dep * rate
+
+
+# ── Underwriting Score v2 ──────────────────────────────────────────────────────
+
+# Scoring thresholds for composite score sub-components.
+# Cap rate is scaled so that a deal exactly 5 pp above market scores 100;
+# 5 pp was chosen as a practical "outstanding" cap-rate premium for US rental markets.
+_CAP_RATE_SCALE_THRESHOLD = Decimal("0.05")
+
+# CoC is scaled so that a 20% year-1 cash-on-cash return scores 100;
+# 20% is a well-established benchmark for strong passive income investments.
+_COC_SCALE_THRESHOLD = Decimal("0.20")
+
+
+class ScoreV2Result(TypedDict):
+    """Return type for :func:`score_listing_v2`."""
+
+    one_percent_rule_pass: bool
+    grm: Decimal
+    cap_rate: Decimal
+    cap_rate_vs_market: Decimal
+    coc_year1: Decimal
+    composite_score: Decimal
+
+
+def one_percent_rule(monthly_rent: Decimal, purchase_price: Decimal) -> bool:
+    """Evaluate the 1% Rule for a rental property.
+
+    The 1% Rule is a quick pass/fail filter: monthly rent should be at least
+    1% of the purchase price to indicate a potentially viable rental investment.
+
+    Args:
+        monthly_rent: Expected gross monthly rental income.
+        purchase_price: Total purchase price of the property.
+
+    Returns:
+        True if monthly_rent / purchase_price >= 0.01, False otherwise.
+
+    Raises:
+        ValueError: If purchase_price is zero or negative.
+    """
+    pp = to_decimal(purchase_price)
+    if pp <= Decimal("0"):
+        raise ValueError(
+            f"purchase_price must be greater than zero (received {purchase_price})"
+        )
+    return to_decimal(monthly_rent) / pp >= Decimal("0.01")
+
+
+def gross_rent_multiplier(purchase_price: Decimal, annual_rent: Decimal) -> Decimal:
+    """Calculate Gross Rent Multiplier (GRM).
+
+    GRM = Purchase Price / Annual Rent
+
+    Lower GRM values indicate better value relative to rental income.
+    Typical benchmarks: < 10 excellent, 10–15 good, 15–20 fair, > 20 poor.
+
+    Args:
+        purchase_price: Total purchase price of the property.
+        annual_rent: Expected gross annual rental income.
+
+    Returns:
+        GRM as a Decimal.
+
+    Raises:
+        ValueError: If annual_rent is zero or negative.
+    """
+    ar = to_decimal(annual_rent)
+    if ar <= Decimal("0"):
+        raise ValueError(
+            f"annual_rent must be greater than zero (received {annual_rent})"
+        )
+    return to_decimal(purchase_price) / ar
+
+
+def _grm_score(grm: Decimal) -> Decimal:
+    """Map a GRM value to a 0–100 sub-score using published heuristics.
+
+    Heuristics: GRM < 10 → excellent (100), 10–15 → good (75),
+    15–20 → fair (40), > 20 → poor (10).
+
+    Args:
+        grm: Gross Rent Multiplier value.
+
+    Returns:
+        Sub-score as a Decimal in [0, 100].
+    """
+    if grm < Decimal("10"):
+        return Decimal("100")
+    if grm < Decimal("15"):
+        return Decimal("75")
+    if grm < Decimal("20"):
+        return Decimal("40")
+    return Decimal("10")
+
+
+def score_listing_v2(
+    purchase_price: Decimal,
+    monthly_rent: Decimal,
+    annual_noi: Decimal,
+    local_market_cap_rate: Decimal,
+    down_payment: Decimal,
+    annual_debt_service: Decimal,
+) -> ScoreV2Result:
+    """Compute an investor-grade multi-signal underwriting score for a rental listing.
+
+    Signals and weights (hardcoded; future versions should read from
+    settings.UNDERWRITING_SCORE_WEIGHTS):
+        - 1% Rule pass/fail   : 20%
+        - Cap rate vs. market : 30%
+        - CoC Year 1          : 30%
+        - GRM heuristic       : 20%
+
+    A deal that fails the 1% Rule has its composite_score capped at 40.
+
+    Args:
+        purchase_price: Total purchase price of the property. Must be > 0.
+        monthly_rent: Expected gross monthly rental income. Must be > 0.
+        annual_noi: Net Operating Income for Year 1. Must be > 0.
+        local_market_cap_rate: Prevailing cap rate for the market as a decimal
+            (e.g., Decimal("0.06") for 6%). Must be > 0.
+        down_payment: Cash down payment (total cash invested). Must be > 0.
+        annual_debt_service: Total annual principal + interest payments. Must be > 0.
+
+    Returns:
+        Dict with keys:
+            one_percent_rule_pass (bool): True if monthly_rent / purchase_price >= 1%.
+            grm (Decimal): Gross Rent Multiplier.
+            cap_rate (Decimal): cap rate = annual_noi / purchase_price.
+            cap_rate_vs_market (Decimal): cap_rate minus local_market_cap_rate;
+                positive means above-market (better).
+            coc_year1 (Decimal): Cash-on-Cash return for Year 1.
+            composite_score (Decimal): Weighted score in [0, 100].
+
+    Raises:
+        ValueError: If any of purchase_price, monthly_rent, annual_noi,
+            local_market_cap_rate, down_payment, or annual_debt_service is <= 0.
+    """
+    # -- Input validation -------------------------------------------------------
+    inputs = {
+        "purchase_price": purchase_price,
+        "monthly_rent": monthly_rent,
+        "annual_noi": annual_noi,
+        "local_market_cap_rate": local_market_cap_rate,
+        "down_payment": down_payment,
+        "annual_debt_service": annual_debt_service,
+    }
+    for name, value in inputs.items():
+        if to_decimal(value) <= Decimal("0"):
+            raise ValueError(f"{name} must be greater than zero (received {value})")
+
+    # -- Individual signals -----------------------------------------------------
+    pp = to_decimal(purchase_price)
+    mr = to_decimal(monthly_rent)
+    noi_val = to_decimal(annual_noi)
+    market_cap = to_decimal(local_market_cap_rate)
+    dp = to_decimal(down_payment)
+    ads = to_decimal(annual_debt_service)
+
+    one_pct_pass = one_percent_rule(mr, pp)
+    grm = gross_rent_multiplier(pp, mr * Decimal("12"))
+    property_cap_rate = noi_val / pp
+    cap_rate_vs_market = property_cap_rate - market_cap
+    annual_cash_flow = noi_val - ads
+    coc_year1 = annual_cash_flow / dp
+
+    # -- Sub-scores (each 0–100) ------------------------------------------------
+    # 1% Rule: full points if pass, zero if fail
+    one_pct_sub = Decimal("100") if one_pct_pass else Decimal("0")
+
+    # Cap rate vs market: scale so +5 pp above market = 100, -5 pp = 0
+    # cap_rate_vs_market is a raw decimal difference (e.g. 0.02 = 2 pp above)
+    raw_cap_score = (cap_rate_vs_market / _CAP_RATE_SCALE_THRESHOLD) * Decimal("100")
+    cap_vs_market_sub = max(Decimal("0"), min(Decimal("100"), raw_cap_score))
+
+    # CoC Year 1: scale so 20% CoC = 100 points, 0% CoC = 0 points
+    raw_coc_score = coc_year1 / _COC_SCALE_THRESHOLD * Decimal("100")
+    coc_sub = max(Decimal("0"), min(Decimal("100"), raw_coc_score))
+
+    # GRM heuristic sub-score
+    grm_sub = _grm_score(grm)
+
+    # -- Composite score --------------------------------------------------------
+    # Weights: 1% rule 20%, cap vs market 30%, CoC 30%, GRM 20%
+    composite = (
+        one_pct_sub * Decimal("0.20")
+        + cap_vs_market_sub * Decimal("0.30")
+        + coc_sub * Decimal("0.30")
+        + grm_sub * Decimal("0.20")
+    )
+
+    # Cap at 40 if 1% rule fails
+    if not one_pct_pass:
+        composite = min(Decimal("40"), composite)
+
+    composite = max(Decimal("0"), min(Decimal("100"), composite))
+
+    return {
+        "one_percent_rule_pass": one_pct_pass,
+        "grm": grm,
+        "cap_rate": property_cap_rate,
+        "cap_rate_vs_market": cap_rate_vs_market,
+        "coc_year1": coc_year1,
+        "composite_score": composite,
+    }

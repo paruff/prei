@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-# removed unused Decimal import
+import logging
+from decimal import Decimal
+
 from django.shortcuts import render
 
 from investor_app.finance.utils import (
@@ -8,14 +10,12 @@ from investor_app.finance.utils import (
     score_listing_v1,
     calculate_whatif_monthly_cashflow,
 )
-from core.integrations.market.comps import get_comps_for_listing
-from core.integrations.market.rents import get_rent_estimate_for_listing
-from core.integrations.market.crime import get_crime_score
-from core.integrations.market.schools import get_school_rating
 
 # keep only the models that are actually used
 from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot, SavedSearch
-from core.services.cma import find_undervalued
+from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
+
+logger = logging.getLogger(__name__)
 
 
 def dashboard(request):
@@ -217,16 +217,31 @@ def report_listing(request, listing_id: int):
             request, "property_report.html", {"error": "Listing not found."}, status=404
         )
 
-    comps = get_comps_for_listing(lst)
-    rent_estimate = get_rent_estimate_for_listing(lst)
-    crime = get_crime_score(lst.zip_code, lst.city, lst.state)
-    schools = get_school_rating(lst.zip_code, lst.city, lst.state)
+    score = score_listing_v1(lst)
+    ppsf = price_per_sqft(lst)
+    market_snapshot = MarketSnapshot.objects.filter(zip_code=lst.zip_code).first()
+
+    try:
+        kpis: dict[str, Decimal] = estimate_listing_kpis(lst, market_snapshot)
+    except Exception:
+        logger.exception(
+            "report_listing: KPI computation failed for listing_id=%s", listing_id
+        )
+        kpis = {
+            "cap_rate": Decimal("0"),
+            "cash_on_cash": Decimal("0"),
+            "dscr": Decimal("0"),
+            "noi": Decimal("0"),
+        }
+
     context = {
         "listing": lst,
-        "comps": comps,
-        "rent_estimate": rent_estimate,
-        "crime": crime,
-        "schools": schools,
+        "score": score,
+        "ppsf": ppsf,
+        "market_snapshot": market_snapshot,
+        "kpis": kpis,
+        "crime": None,
+        "schools": None,
     }
     return render(request, "property_report.html", context)
 
