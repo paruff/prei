@@ -1,0 +1,112 @@
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from django.core.management.base import BaseCommand
+
+from core.integrations.sources.hud_source_index import (
+    HUD_HOMES_FOR_SALE_URL,
+    compute_content_hash,
+    diff_source_indexes,
+    discover_hud_homes_for_sale_sources,
+    fetch_hud_homes_for_sale_html,
+)
+
+
+class Command(BaseCommand):
+    help = "Fetch HUD Homes for Sale source index and persist versioned snapshot + daily diff"
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--output-dir",
+            type=str,
+            default="data/hud_source_index",
+            help="Output directory for index snapshots and diff logs",
+        )
+        parser.add_argument(
+            "--input-file",
+            type=str,
+            default="",
+            help="Optional local HTML file for deterministic runs/testing",
+        )
+
+    def handle(self, *args, **options):
+        output_dir = Path(options["output_dir"]).resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / "diffs").mkdir(parents=True, exist_ok=True)
+
+        raw_html = self._read_html_payload(options.get("input_file", ""))
+        content_hash = compute_content_hash(raw_html)
+        retrieved_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+        sources = discover_hud_homes_for_sale_sources(
+            raw_html.decode("utf-8", errors="ignore"),
+            page_url=HUD_HOMES_FOR_SALE_URL,
+            retrieved_at=retrieved_at,
+            content_hash=content_hash,
+        )
+
+        latest_path = output_dir / "latest.json"
+        previous_sources = self._load_previous_sources(latest_path)
+        diff = diff_source_indexes(previous_sources, sources)
+
+        payload = {
+            "source_page_url": HUD_HOMES_FOR_SALE_URL,
+            "retrieved_at": retrieved_at,
+            "content_hash": content_hash,
+            "total_sources": len(sources),
+            "sources": sources,
+        }
+        version_name = f"{retrieved_at.replace(':', '').replace('+00:00', 'Z')}-{content_hash[:8]}.json"
+        (output_dir / version_name).write_text(
+            json.dumps(payload, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        latest_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+
+        diff_payload = {
+            "source_page_url": HUD_HOMES_FOR_SALE_URL,
+            "retrieved_at": retrieved_at,
+            "content_hash": content_hash,
+            "counts": {
+                "added": len(diff["added"]),
+                "removed": len(diff["removed"]),
+                "unchanged": len(diff["unchanged"]),
+            },
+            "diff": diff,
+        }
+        diff_path = (
+            output_dir
+            / "diffs"
+            / f"{retrieved_at.replace(':', '').replace('+00:00', 'Z')}.json"
+        )
+        diff_path.write_text(
+            json.dumps(diff_payload, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                "HUD source index refreshed. "
+                f"total={len(sources)} added={len(diff['added'])} removed={len(diff['removed'])}"
+            )
+        )
+
+    def _read_html_payload(self, input_file: str) -> bytes:
+        if input_file:
+            return Path(input_file).read_bytes()
+        return fetch_hud_homes_for_sale_html()
+
+    def _load_previous_sources(self, latest_path: Path) -> list[dict[str, str]]:
+        if not latest_path.exists():
+            return []
+        try:
+            payload = json.loads(latest_path.read_text(encoding="utf-8"))
+            return payload.get("sources", [])
+        except (json.JSONDecodeError, OSError, TypeError):
+            return []
