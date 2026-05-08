@@ -121,3 +121,27 @@ def test_export_endpoint_returns_deal_pack_keys(property_obj, team, user, teamma
     assert set(response.data.keys()) == {"property", "kpis", "notes", "marketSnapshot"}
     assert response.data["property"]["id"] == property_obj.id
     assert len(response.data["notes"]) == 1
+
+
+@pytest.mark.django_db
+def test_export_endpoint_handles_analysis_error(
+    property_obj, team, user, teammate, monkeypatch
+):
+    share_property_with_team(property_obj, team, user)
+
+    def _raise_analysis_error(_property):
+        raise RuntimeError("analysis failed")
+
+    monkeypatch.setattr(
+        "core.api_views.compute_analysis_for_property", _raise_analysis_error
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=teammate)
+    url = reverse(
+        "api:export-property-deal-pack", kwargs={"property_id": property_obj.id}
+    )
+    response = client.get(url)
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert response.data["code"] == "SERVICE_UNAVAILABLE"

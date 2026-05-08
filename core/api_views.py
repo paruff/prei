@@ -1652,11 +1652,8 @@ def export_property_deal_pack(request, property_id: int):
     can_access = (
         property_obj.user_id == request.user.id
         or SharedProperty.objects.filter(property=property_obj)
-        .filter(team__owner=request.user)
+        .filter(Q(team__owner=request.user) | Q(team__team_members__user=request.user))
         .exists()
-        or SharedProperty.objects.filter(
-            property=property_obj, team__team_members__user=request.user
-        ).exists()
     )
 
     if not can_access:
@@ -1665,61 +1662,73 @@ def export_property_deal_pack(request, property_id: int):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    analysis = compute_analysis_for_property(property_obj)
-    notes = [
-        {
-            "id": note.id,
-            "body": note.body,
-            "created_at": note.created_at.isoformat(),
-            "author_id": note.author_id,
-            "author_username": note.author.username,
-        }
-        for note in PropertyNote.objects.filter(property=property_obj)
-        .select_related("author")
-        .order_by("created_at")
-    ]
-    market_snapshot = (
-        MarketSnapshot.objects.filter(zip_code=property_obj.zip_code).first()
-        or MarketSnapshot.objects.filter(
-            city__iexact=property_obj.city, state__iexact=property_obj.state
-        ).first()
-    )
+    try:
+        analysis = compute_analysis_for_property(property_obj)
+        notes = [
+            {
+                "id": note.id,
+                "body": note.body,
+                "created_at": note.created_at.isoformat(),
+                "author_id": note.author_id,
+                "author_username": note.author.username,
+            }
+            for note in PropertyNote.objects.filter(
+                property=property_obj
+            ).select_related("author")
+        ]
+        market_snapshot = (
+            MarketSnapshot.objects.filter(
+                Q(zip_code=property_obj.zip_code)
+                | Q(city__iexact=property_obj.city, state__iexact=property_obj.state)
+            )
+            .distinct()
+            .first()
+        )
 
-    return Response(
-        {
-            "property": {
-                "id": property_obj.id,
-                "address": property_obj.address,
-                "city": property_obj.city,
-                "state": property_obj.state,
-                "zipCode": property_obj.zip_code,
-                "purchasePrice": str(property_obj.purchase_price),
+        return Response(
+            {
+                "property": {
+                    "id": property_obj.id,
+                    "address": property_obj.address,
+                    "city": property_obj.city,
+                    "state": property_obj.state,
+                    "zipCode": property_obj.zip_code,
+                    "purchasePrice": str(property_obj.purchase_price),
+                },
+                "kpis": {
+                    "noi": str(analysis.noi),
+                    "capRate": str(analysis.cap_rate),
+                    "cashOnCash": str(analysis.cash_on_cash),
+                    "irr": str(analysis.irr),
+                    "dscr": str(analysis.dscr),
+                },
+                "notes": notes,
+                "marketSnapshot": (
+                    {
+                        "zipCode": market_snapshot.zip_code,
+                        "city": market_snapshot.city,
+                        "state": market_snapshot.state,
+                        "rentIndex": str(market_snapshot.rent_index),
+                        "priceTrend": str(market_snapshot.price_trend),
+                        "crimeScore": str(market_snapshot.crime_score),
+                        "schoolRating": str(market_snapshot.school_rating),
+                        "updatedAt": market_snapshot.updated_at.isoformat(),
+                    }
+                    if market_snapshot
+                    else None
+                ),
             },
-            "kpis": {
-                "noi": str(analysis.noi),
-                "capRate": str(analysis.cap_rate),
-                "cashOnCash": str(analysis.cash_on_cash),
-                "irr": str(analysis.irr),
-                "dscr": str(analysis.dscr),
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in export_property_deal_pack: {str(e)}")
+        return Response(
+            {
+                "error": "Export service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
             },
-            "notes": notes,
-            "marketSnapshot": (
-                {
-                    "zipCode": market_snapshot.zip_code,
-                    "city": market_snapshot.city,
-                    "state": market_snapshot.state,
-                    "rentIndex": str(market_snapshot.rent_index),
-                    "priceTrend": str(market_snapshot.price_trend),
-                    "crimeScore": str(market_snapshot.crime_score),
-                    "schoolRating": str(market_snapshot.school_rating),
-                    "updatedAt": market_snapshot.updated_at.isoformat(),
-                }
-                if market_snapshot
-                else None
-            ),
-        },
-        status=status.HTTP_200_OK,
-    )
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
 
 @api_view(["POST"])
