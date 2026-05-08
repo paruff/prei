@@ -11,8 +11,8 @@ services:
         "import sys, urllib.request;\ntry: urllib.request.urlopen('http://localhost:8000/api/health/')\nexcept Exception as e: print(f'health check failed: {e}', file=sys.stderr); sys.exit(1)"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      start_period: 90s
     restart: unless-stopped
 
   db:
