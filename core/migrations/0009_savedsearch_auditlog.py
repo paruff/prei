@@ -65,7 +65,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("action", models.CharField(max_length=64)),
-                ("object_type", models.CharField(max_length=64)),
+                (
+                    "object_type",
+                    models.CharField(blank=True, default="", max_length=64),
+                ),
                 ("object_id", models.IntegerField(blank=True, null=True)),
                 ("timestamp", models.DateTimeField(auto_now_add=True)),
                 ("meta", models.JSONField(default=dict)),

@@ -279,7 +279,7 @@ class AuditLog(models.Model):
         related_name="audit_logs",
     )
     action = models.CharField(max_length=64)
-    object_type = models.CharField(max_length=64)
+    object_type = models.CharField(max_length=64, blank=True, default="")
     object_id = models.IntegerField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     meta = models.JSONField(default=dict)
