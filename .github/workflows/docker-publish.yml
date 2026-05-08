@@ -79,7 +79,7 @@ jobs:
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
       - name: Trivy — block HIGH/CRITICAL CVEs with fixes
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}
@@ -89,7 +89,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
       - name: Trivy — upload SARIF
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         if: always()
         with:
           scan-type: image
