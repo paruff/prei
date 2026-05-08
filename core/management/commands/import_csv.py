@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
 from core.models import OperatingExpense, Property, RentalIncome
+from core.services.audit import log_action
 
 
 class Command(BaseCommand):
@@ -71,6 +72,9 @@ class Command(BaseCommand):
                     sqft=int(row.get("sqft") or 0) or None,
                     units=int(row.get("units") or 1),
                     notes=row.get("notes", ""),
+                )
+                log_action(
+                    user, "property.created", obj=prop, meta={"source": "import_csv"}
                 )
                 created_count += 1
 

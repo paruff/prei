@@ -208,6 +208,21 @@ items = recommend_listings(request.user, limit=5)
 
 -----
 
+### `audit.log_action(user, action, obj=None, meta=None)`
+
+**Purpose:** Persist a synchronous audit trail row for important user or system actions.
+**Parameters:**
+- `user` — Django user instance or `None` for system actions.
+- `action: str` — Dot-delimited action name (for example `"property.created"`).
+- `obj` — Optional model instance tied to the action.
+- `meta: dict[str, Any] | None` — Optional JSON metadata stored with the log.
+
+**Returns:** `AuditLog` created row.
+**Side effects:** Inserts one `AuditLog` row.
+**Error cases:** None.
+
+-----
+
 ## Integration Adapters
 
 > Module: `core/integrations/sources/attom_adapter.py`

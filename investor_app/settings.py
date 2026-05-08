@@ -4,6 +4,8 @@ from pathlib import Path
 from decimal import Decimal
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -15,9 +17,40 @@ env_file = BASE_DIR / ".env"
 if env_file.exists():
     environ.Env.read_env(str(env_file))
 
-DEBUG = env("DEBUG")
-SECRET_KEY = env("SECRET_KEY", default="dev-secret-key-change-me")
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+DJANGO_ENV = env("DJANGO_ENV", default="development").lower()
+IS_PRODUCTION = DJANGO_ENV == "production"
+
+DEBUG = (
+    env.bool("DEBUG", default=False)
+    if IS_PRODUCTION
+    else env.bool("DEBUG", default=True)
+)
+SECRET_KEY = (
+    env("SECRET_KEY")
+    if IS_PRODUCTION
+    else env("SECRET_KEY", default=get_random_secret_key())
+)
+ALLOWED_HOSTS = (
+    env.list("ALLOWED_HOSTS")
+    if IS_PRODUCTION
+    else env.list("ALLOWED_HOSTS", default=["*"])
+)
+
+if IS_PRODUCTION:
+    if not env("ALLOWED_HOSTS", default="").strip():
+        raise ImproperlyConfigured(
+            "ALLOWED_HOSTS must be set when DJANGO_ENV=production."
+        )
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool(
+        "SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True
+    )
+    SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=True)
+    SECURE_CONTENT_TYPE_NOSNIFF = env.bool("SECURE_CONTENT_TYPE_NOSNIFF", default=True)
+    X_FRAME_OPTIONS = env("X_FRAME_OPTIONS", default="DENY")
 
 DATABASES = {
     "default": env.db(

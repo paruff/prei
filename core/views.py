@@ -14,6 +14,7 @@ from investor_app.finance.utils import (
 # keep only the models that are actually used
 from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot, SavedSearch
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
+from core.services.audit import log_action
 from core.services.recommendations import recommend_listings
 
 logger = logging.getLogger(__name__)
@@ -133,7 +134,7 @@ def search_listings(request):
     # Save filter if requested
     if request.method == "POST" and request.user.is_authenticated:
         name = request.POST.get("name") or "Saved Search"
-        SavedSearch.objects.create(
+        saved_search = SavedSearch.objects.create(
             user=request.user,
             name=name,
             query=query,
@@ -142,6 +143,7 @@ def search_listings(request):
             min_price=request.POST.get("min_price") or None,
             max_price=request.POST.get("max_price") or None,
         )
+        log_action(request.user, "saved_search.created", obj=saved_search)
 
     saved = []
     if request.user.is_authenticated:
