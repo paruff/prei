@@ -62,6 +62,7 @@ from .validators import (
 )
 from .export_services import CSVExportService, JSONExportService, PDFExportService
 from .export_helpers import apply_foreclosure_filters, parse_and_filter_location
+from .services.audit import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -1125,6 +1126,12 @@ def watchlist_view(request):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        log_action(
+            request.user,
+            "listing.saved",
+            obj=watchlist_item,
+            meta={"property_id": property_obj.id},
+        )
         serializer = UserWatchlistSerializer(watchlist_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

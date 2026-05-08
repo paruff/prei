@@ -15,9 +15,28 @@ env_file = BASE_DIR / ".env"
 if env_file.exists():
     environ.Env.read_env(str(env_file))
 
-DEBUG = env("DEBUG")
-SECRET_KEY = env("SECRET_KEY", default="dev-secret-key-change-me")
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+DJANGO_ENV = env("DJANGO_ENV", default="development").lower()
+IS_PRODUCTION = DJANGO_ENV == "production"
+
+DEBUG = (
+    env.bool("DEBUG", default=False)
+    if IS_PRODUCTION
+    else env.bool("DEBUG", default=True)
+)
+SECRET_KEY = env("SECRET_KEY")
+ALLOWED_HOSTS = (
+    env.list("ALLOWED_HOSTS")
+    if IS_PRODUCTION
+    else env.list("ALLOWED_HOSTS", default=["*"])
+)
+
+if IS_PRODUCTION:
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+    SECURE_CONTENT_TYPE_NOSNIFF = env.bool("SECURE_CONTENT_TYPE_NOSNIFF", default=True)
+    X_FRAME_OPTIONS = env("X_FRAME_OPTIONS", default="DENY")
 
 DATABASES = {
     "default": env.db(

@@ -270,6 +270,24 @@ class SavedSearch(models.Model):
         return f"SavedSearch {self.name} ({self.state} {self.zip_code})"
 
 
+class AuditLog(models.Model):
+    user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="audit_logs",
+    )
+    action = models.CharField(max_length=64)
+    object_type = models.CharField(max_length=64)
+    object_id = models.IntegerField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    meta = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["-timestamp"]
+
+
 class GrowthArea(models.Model):
     """Economic growth area data for real estate investment analysis."""
 
