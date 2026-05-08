@@ -6,20 +6,20 @@ import re
 import subprocess
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+MIGRATION_GUARD_LINE = 'if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then'
 
 
 def test_entrypoint_runs_migrations_before_execing_server() -> None:
     script = (REPO_ROOT / "scripts" / "entrypoint.sh").read_text(encoding="utf-8")
 
-    migration_guard_line = 'if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then'
     migrate_line = "python manage.py migrate --noinput"
     exec_line = 'exec "$@"'
 
-    assert migration_guard_line in script
+    assert MIGRATION_GUARD_LINE in script
     assert migrate_line in script
     assert exec_line in script
     assert (
-        script.index(migration_guard_line)
+        script.index(MIGRATION_GUARD_LINE)
         < script.index(migrate_line)
         < script.index(exec_line)
     )
@@ -70,13 +70,10 @@ def run_entrypoint_with_fake_python(
     fake_python.write_text(
         "\n".join(
             [
-                "#!/usr/bin/env sh",
-                f'printf "%s\\n" "$*" >> "{log_path}"',
-                'if [ "$1" = "-c" ]; then',
-                "  shift",
-                '  exec python3 -c "$@"',
-                "fi",
-                "exit 0",
+                "#!/usr/bin/env python3",
+                "import pathlib",
+                "import sys",
+                f'pathlib.Path(r"{log_path}").open("a", encoding="utf-8").write(" ".join(sys.argv[1:]) + "\\n")',
             ]
         )
         + "\n",
