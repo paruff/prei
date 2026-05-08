@@ -6,6 +6,21 @@ app_name = "api"
 
 urlpatterns = [
     path(
+        "listings/",
+        api_views.ListingListView.as_view(),
+        name="listings-list",
+    ),
+    path(
+        "listings/<int:pk>/",
+        api_views.ListingDetailView.as_view(),
+        name="listings-detail",
+    ),
+    path(
+        "portfolio/analytics/",
+        api_views.PortfolioAnalyticsView.as_view(),
+        name="portfolio-analytics",
+    ),
+    path(
         "v1/real-estate/growth-areas",
         api_views.growth_areas_list,
         name="growth-areas-list",

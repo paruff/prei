@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
+from typing import cast
 
 from rest_framework import serializers
 
@@ -8,10 +10,15 @@ from .models import (
     AuctionAlert,
     ForeclosureProperty,
     GrowthArea,
+    Listing,
+    MarketSnapshot,
     Notification,
     NotificationPreference,
     UserWatchlist,
 )
+from investor_app.finance.utils import score_listing_v1
+
+logger = logging.getLogger(__name__)
 
 
 class GrowthMetricsSerializer(serializers.Serializer):
@@ -483,3 +490,36 @@ class StrategyComparisonRequestSerializer(serializers.Serializer):
             )
 
         return value
+
+
+class ListingSerializer(serializers.ModelSerializer):
+    """Serializer for listing API responses."""
+
+    score = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Listing
+        fields = "__all__"
+        read_only_fields = ("id", "created_at", "score")
+
+    def get_score(self, obj: Listing) -> Decimal | None:
+        """Return a computed listing score."""
+        score_by_listing_id = cast(
+            dict[int, Decimal | None],
+            self.context.get("score_by_listing_id", {}),
+        )
+        if obj.id in score_by_listing_id:
+            return score_by_listing_id[obj.id]
+        try:
+            return score_listing_v1(obj)
+        except (ArithmeticError, ValueError, TypeError, AttributeError):
+            logger.exception("Failed to score listing id=%s", getattr(obj, "id", None))
+            return None
+
+
+class MarketSnapshotSerializer(serializers.ModelSerializer):
+    """Serializer for market snapshot API responses."""
+
+    class Meta:
+        model = MarketSnapshot
+        fields = "__all__"
