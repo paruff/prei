@@ -97,6 +97,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # The attestation is emitted by the dedicated Tier 2 "attest" job below.
           provenance: false
           sbom: true
       - name: "job-finish"

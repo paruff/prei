@@ -66,8 +66,7 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const today = new Date().toISOString().split('T')[0];
-            const title = `🚨 Nightly CRITICAL CVEs in :latest — ${today}`;
+            const title = '🚨 Nightly CRITICAL CVEs in :latest';
             const body = [
               '## Nightly Trivy scan found CRITICAL vulnerabilities',
               '',
@@ -85,7 +84,7 @@ jobs:
               repo: context.repo.repo,
               state: 'open',
             });
-            const existing = issues.find(issue => issue.title.startsWith('🚨 Nightly CRITICAL CVEs in :latest'));
+            const existing = issues.find(issue => issue.title === title);
             if (existing) {
               await github.rest.issues.update({
                 owner: context.repo.owner,
