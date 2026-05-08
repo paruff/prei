@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+import logging
 from statistics import median
 from typing import Any, Dict, Iterable, Sequence, TypedDict
 
@@ -9,6 +10,8 @@ import numpy_financial as npf
 # removed unused 'settings' import
 
 from core.models import InvestmentAnalysis, Listing, Property
+
+logger = logging.getLogger(__name__)
 
 
 def to_decimal(value: Decimal | float | int) -> Decimal:
@@ -44,9 +47,13 @@ def irr(cashflows: Iterable[float | int | Decimal]) -> Decimal:
     try:
         value = float(npf.irr(cf))
         if np.isnan(value) or np.isinf(value):
+            logger.warning(
+                "irr: numpy_financial.irr returned non-finite value; returning 0"
+            )
             return Decimal("0")
         return to_decimal(value)
     except Exception:
+        logger.warning("irr: numpy_financial.irr raised; returning 0", exc_info=True)
         return Decimal("0")
 
 
@@ -1187,10 +1194,6 @@ def after_tax_irr(
         ... )
         Decimal("0.0718")
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
-
     if len(cash_flows) < 2:
         raise ValueError("At least 2 cash flows are required to calculate IRR")
 

@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from decimal import Decimal
 from django.utils import timezone
@@ -5,6 +7,7 @@ from django.utils import timezone
 from core.models import Listing, MarketSnapshot, Property
 from core.services.cma import find_undervalued
 from core.services.portfolio import aggregate_portfolio
+from investor_app.finance.utils import irr
 
 
 @pytest.mark.django_db
@@ -69,3 +72,28 @@ def test_market_snapshot_admin_ready():
         school_rating=Decimal("8.5"),
     )
     assert MarketSnapshot.objects.count() == 1
+
+
+def test_irr_unsolvable_cashflows_logs_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """irr() with all-positive cashflows (no sign change) emits a WARNING and returns 0."""
+    with caplog.at_level(logging.WARNING, logger="investor_app.finance.utils"):
+        result = irr([100, 200, 300])
+    assert result == Decimal("0")
+    assert any(
+        record.levelname == "WARNING"
+        and record.name == "investor_app.finance.utils"
+        and "non-finite" in record.message
+        for record in caplog.records
+    )
+
+
+def test_irr_no_unhandled_exception() -> None:
+    """irr() never raises an exception, even for degenerate inputs."""
+    # All-positive (no sign change) — returns 0 without raising
+    assert irr([100, 200, 300]) == Decimal("0")
+    # Single value — numpy-financial cannot compute IRR, must not raise
+    assert irr([100]) == Decimal("0")
+    # Empty — must not raise
+    assert irr([]) == Decimal("0")
