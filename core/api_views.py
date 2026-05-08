@@ -1683,7 +1683,6 @@ def export_property_deal_pack(request, property_id: int):
                 Q(zip_code=property_obj.zip_code)
                 | Q(city__iexact=property_obj.city, state__iexact=property_obj.state)
             )
-            .distinct()
             .order_by("-updated_at", "-id")
             .first()
         )
