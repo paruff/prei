@@ -1,7 +1,14 @@
 services:
   web:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: ghcr.io/paruff/prei:latest
     env_file: .env
+    environment:
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
+      HOME: /app/.runtime
+      MPLCONFIGDIR: /app/.runtime/matplotlib
     ports: ["8000:8000"]
     depends_on:
       db:

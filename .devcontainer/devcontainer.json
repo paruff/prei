@@ -9,9 +9,7 @@
     "db"
   ],
   "workspaceFolder": "/workspaces/prei",
-  "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
-  },
+  "features": {},
   "shutdownAction": "stopCompose",
   "forwardPorts": [
     8000,
