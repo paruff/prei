@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 from django.urls import reverse
@@ -24,7 +25,7 @@ def _make_listing(**kwargs) -> Listing:
         "baths": Decimal("2.0"),
         "sq_ft": 1500,
         "property_type": "SFH",
-        "url": f"https://example.com/listing/{timezone.now().timestamp()}",
+        "url": f"https://example.com/listing/{uuid4()}",
         "posted_at": timezone.now(),
     }
     defaults.update(kwargs)

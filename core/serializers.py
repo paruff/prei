@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 
 from rest_framework import serializers
@@ -15,6 +16,8 @@ from .models import (
     UserWatchlist,
 )
 from investor_app.finance.utils import score_listing_v1
+
+logger = logging.getLogger(__name__)
 
 
 class GrowthMetricsSerializer(serializers.Serializer):
@@ -500,9 +503,13 @@ class ListingSerializer(serializers.ModelSerializer):
 
     def get_score(self, obj: Listing) -> Decimal | None:
         """Return a computed listing score."""
+        score_by_listing_id = self.context.get("score_by_listing_id", {})
+        if obj.id in score_by_listing_id:
+            return score_by_listing_id[obj.id]
         try:
             return score_listing_v1(obj)
-        except Exception:
+        except (ArithmeticError, ValueError, TypeError, AttributeError):
+            logger.exception("Failed to score listing id=%s", getattr(obj, "id", None))
             return None
 
 

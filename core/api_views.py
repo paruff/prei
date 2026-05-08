@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict
 
 from django.conf import settings
@@ -72,6 +72,7 @@ from .export_helpers import apply_foreclosure_filters, parse_and_filter_location
 from .services.audit import log_action
 
 logger = logging.getLogger(__name__)
+DEFAULT_LISTING_SCORE = Decimal("0")
 
 
 class ListingPagination(PageNumberPagination):
@@ -86,6 +87,11 @@ class ListingListView(generics.ListAPIView):
     serializer_class = ListingSerializer
     pagination_class = ListingPagination
     throttle_classes = [UserRateThrottle, AnonRateThrottle]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["score_by_listing_id"] = getattr(self, "_score_by_listing_id", {})
+        return context
 
     def get_queryset(self):
         queryset = Listing.objects.all()
@@ -102,47 +108,54 @@ class ListingListView(generics.ListAPIView):
         if min_price:
             try:
                 queryset = queryset.filter(price__gte=Decimal(min_price))
-            except Exception as exc:
+            except (InvalidOperation, ValueError, TypeError) as exc:
                 raise serializers.ValidationError(
-                    {"min_price": "Invalid value."}
+                    {"min_price": "min_price must be a valid decimal number."}
                 ) from exc
 
         max_price = self.request.query_params.get("max_price")
         if max_price:
             try:
                 queryset = queryset.filter(price__lte=Decimal(max_price))
-            except Exception as exc:
+            except (InvalidOperation, ValueError, TypeError) as exc:
                 raise serializers.ValidationError(
-                    {"max_price": "Invalid value."}
+                    {"max_price": "max_price must be a valid decimal number."}
                 ) from exc
 
         beds = self.request.query_params.get("beds")
         if beds:
             try:
                 queryset = queryset.filter(beds=int(beds))
-            except Exception as exc:
-                raise serializers.ValidationError({"beds": "Invalid value."}) from exc
+            except (ValueError, TypeError) as exc:
+                raise serializers.ValidationError(
+                    {"beds": "beds must be a valid integer."}
+                ) from exc
 
         return queryset
 
     def list(self, request, *args, **kwargs):
         queryset = list(self.get_queryset())
         scored = []
+        score_by_listing_id: dict[int, Decimal | None] = {}
         for listing in queryset:
             try:
                 score = score_listing_v1(listing)
-            except Exception:
+            except (ArithmeticError, ValueError, TypeError, AttributeError):
                 score = None
+                logger.exception("Failed to score listing id=%s", listing.id)
+            score_by_listing_id[listing.id] = score
             scored.append((listing, score))
 
+        # Sort by two keys: (1) rows with missing score come last, (2) scored rows
+        # are ordered descending by score via negation.
         scored.sort(
             key=lambda pair: (
-                pair[1] is not None,
-                pair[1] if pair[1] is not None else Decimal("0"),
-            ),
-            reverse=True,
+                pair[1] is None,
+                -(pair[1] if pair[1] is not None else DEFAULT_LISTING_SCORE),
+            )
         )
         ordered = [listing for listing, _ in scored]
+        self._score_by_listing_id = score_by_listing_id
 
         page = self.paginate_queryset(ordered)
         if page is not None:
