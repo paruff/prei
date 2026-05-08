@@ -94,7 +94,7 @@ Notes:
 - Published images default `RUN_MIGRATIONS=1`, so they run `python manage.py migrate --noinput` during container startup before Gunicorn begins serving requests.
 - For multi-replica or rolling deployments, set `RUN_MIGRATIONS=0` on replicas that should not apply migrations.
 - Run migrations from a dedicated one-shot instance/job instead of every replica, for example:
-  `docker run --rm --env-file .env -e RUN_MIGRATIONS=0 ghcr.io/paruff/prei:latest python manage.py migrate`
+  `docker run --rm --env-file .env ghcr.io/paruff/prei:latest python manage.py migrate`
 - The published image sets `HOME` and `MPLCONFIGDIR` to a dedicated writable runtime directory owned by the app user.
 - Container healthchecks allow extra startup time for pre-start migration work before marking the service unhealthy.
 - If you want to build locally from the repository source, use the root [Dockerfile](./Dockerfile): `docker build -t prei:dev .`

@@ -1,5 +1,6 @@
 """Regression tests for the published container startup contract."""
 
+import json
 import os
 from pathlib import Path
 import re
@@ -73,7 +74,9 @@ def run_entrypoint_with_fake_python(
                 "#!/usr/bin/env python3",
                 "import pathlib",
                 "import sys",
-                f'pathlib.Path(r"{log_path}").open("a", encoding="utf-8").write(" ".join(sys.argv[1:]) + "\\n")',
+                "pathlib.Path("
+                f"{json.dumps(str(log_path))}"
+                ').open("a", encoding="utf-8").write(" ".join(sys.argv[1:]) + "\\n")',
             ]
         )
         + "\n",
