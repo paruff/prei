@@ -86,14 +86,17 @@ Use the root compose file when you want to run the published container image on 
 2. Start the stack from the repository root:
    - `docker compose up -d`
 
-3. Run migrations:
-   - `docker compose exec web python manage.py migrate`
-
-4. Create a superuser if needed:
+3. Create a superuser if needed:
    - `docker compose exec web python manage.py createsuperuser`
 
 Notes:
 - The root [docker-compose.yml](./docker-compose.yml) uses `image: ghcr.io/paruff/prei:latest`; it does not build the application image locally.
+- Published images default `RUN_MIGRATIONS=1`, so they run `python manage.py migrate --noinput` during container startup before Gunicorn begins serving requests.
+- For multi-replica or rolling deployments, set `RUN_MIGRATIONS=0` on replicas that should not apply migrations.
+- Run migrations from a dedicated one-shot instance/job instead of every replica, for example:
+  `docker run --rm --env-file .env ghcr.io/paruff/prei:latest python manage.py migrate`
+- The published image sets `HOME` and `MPLCONFIGDIR` to a dedicated writable runtime directory owned by the app user.
+- Container healthchecks allow extra startup time for pre-start migration work before marking the service unhealthy.
 - If you want to build locally from the repository source, use the root [Dockerfile](./Dockerfile): `docker build -t prei:dev .`
 - Modern Docker uses `docker compose`; the legacy `docker-compose` binary may not be installed.
 - In a Codespace or VS Code Dev Container, rebuild the container after changes to [.devcontainer/devcontainer.json](./.devcontainer/devcontainer.json) if you want the `docker` CLI available inside the workspace container.

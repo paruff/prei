@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -e
 
-python manage.py migrate --noinput
+if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
+    python manage.py migrate --noinput
+fi
 
-exec python manage.py runserver 0.0.0.0:8000
+# Hand off to the container CMD so this entrypoint also works for one-off commands.
+exec "$@"
