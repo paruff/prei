@@ -24,6 +24,7 @@ from investor_app.finance.utils import (
     calculate_roi_components,
     calculate_vacation_rental_strategy,
     cap_rate as calc_cap_rate,
+    compute_analysis_for_property,
     cash_on_cash as calc_coc,
     dscr as calc_dscr,
 )
@@ -32,8 +33,12 @@ from .models import (
     AuctionAlert,
     ForeclosureProperty,
     GrowthArea,
+    MarketSnapshot,
     Notification,
     NotificationPreference,
+    Property,
+    PropertyNote,
+    SharedProperty,
     UserWatchlist,
 )
 from .serializers import (
@@ -1624,6 +1629,122 @@ def export_property_analysis_pdf(request):
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+
+
+@api_view(["GET"])
+@throttle_classes([UserRateThrottle])
+def export_property_deal_pack(request, property_id: int):
+    """Export a property's deal pack JSON for authorized collaborators."""
+    if not request.user.is_authenticated:
+        return Response(
+            {"error": "Authentication required", "code": "UNAUTHORIZED"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        property_obj = Property.objects.get(id=property_id)
+    except Property.DoesNotExist:
+        return Response(
+            {"error": "Property not found", "code": "NOT_FOUND"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if property_obj.user_id == request.user.id:
+        can_access = True
+    else:
+        can_access = (
+            SharedProperty.objects.filter(
+                Q(property=property_obj)
+                & (
+                    Q(team__owner=request.user)
+                    | Q(team__team_members__user=request.user)
+                )
+            )
+            .distinct()
+            .exists()
+        )
+
+    if not can_access:
+        return Response(
+            {"error": "You do not have access to this property", "code": "FORBIDDEN"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    def _service_unavailable_response() -> Response:
+        return Response(
+            {
+                "error": "Export service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    try:
+        analysis = compute_analysis_for_property(property_obj)
+        notes = [
+            {
+                "id": note.id,
+                "body": note.body,
+                "created_at": note.created_at.isoformat(),
+                "author_id": note.author_id,
+                "author_username": note.author.username,
+            }
+            for note in PropertyNote.objects.filter(
+                property=property_obj
+            ).select_related("author")
+        ]
+        market_snapshot = (
+            MarketSnapshot.objects.filter(
+                Q(zip_code=property_obj.zip_code)
+                | Q(city__iexact=property_obj.city, state__iexact=property_obj.state)
+            )
+            .order_by("-updated_at", "-id")
+            .first()
+        )
+
+        return Response(
+            {
+                "property": {
+                    "id": property_obj.id,
+                    "address": property_obj.address,
+                    "city": property_obj.city,
+                    "state": property_obj.state,
+                    "zipCode": property_obj.zip_code,
+                    "purchasePrice": str(property_obj.purchase_price),
+                },
+                "kpis": {
+                    "noi": str(analysis.noi),
+                    "capRate": str(analysis.cap_rate),
+                    "cashOnCash": str(analysis.cash_on_cash),
+                    "irr": str(analysis.irr),
+                    "dscr": str(analysis.dscr),
+                },
+                "notes": notes,
+                "marketSnapshot": (
+                    {
+                        "zipCode": market_snapshot.zip_code,
+                        "city": market_snapshot.city,
+                        "state": market_snapshot.state,
+                        "rentIndex": str(market_snapshot.rent_index),
+                        "priceTrend": str(market_snapshot.price_trend),
+                        "crimeScore": str(market_snapshot.crime_score),
+                        "schoolRating": str(market_snapshot.school_rating),
+                        "updatedAt": market_snapshot.updated_at.isoformat(),
+                    }
+                    if market_snapshot
+                    else None
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )
+    except (RuntimeError, ValueError) as e:
+        logger.error(
+            f"Deal-pack analysis error for property_id={property_id}: {str(e)}"
+        )
+        return _service_unavailable_response()
+    except Exception as e:
+        logger.error(f"Unexpected error in export_property_deal_pack: {str(e)}")
+        return _service_unavailable_response()
 
 
 @api_view(["POST"])

@@ -26,6 +26,76 @@ class Property(models.Model):
         return f"{self.address}, {self.city}, {self.state} {self.zip_code}"
 
 
+class Team(models.Model):
+    """Collaboration team for sharing property analyses."""
+
+    name = models.CharField(max_length=255)
+    owner = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="owned_teams"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:  # noqa: D401
+        return self.name
+
+
+class TeamMember(models.Model):
+    """Membership record for a user in a team."""
+
+    class Role(models.TextChoices):
+        OWNER = "owner", "Owner"
+        MEMBER = "member", "Member"
+
+    team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name="team_members"
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="team_memberships"
+    )
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.MEMBER)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [["team", "user"]]
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"{self.user.username} in {self.team.name}"
+
+
+class PropertyNote(models.Model):
+    """Team collaboration note attached to a property."""
+
+    property = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="collaboration_notes"
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="property_notes"
+    )
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+
+class SharedProperty(models.Model):
+    """Property shared to a team by a user."""
+
+    property = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="shared_teams"
+    )
+    team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name="shared_properties"
+    )
+    shared_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="shared_properties"
+    )
+    shared_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [["property", "team"]]
+
+
 class RentalIncome(models.Model):
     property = models.ForeignKey(
         Property, on_delete=models.CASCADE, related_name="rental_incomes"

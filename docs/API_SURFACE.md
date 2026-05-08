@@ -2,7 +2,7 @@
 
 > Auto-maintained by `@docs-agent`. Updated whenever `core/services/` or `investor_app/finance/utils.py` changes.
 > DORA AI Cap 3: This document is loaded as context before every code generation session.
-> Last updated: 2026-05-07 (added foreclosure integration adapter APIs)
+> Last updated: 2026-05-08 (added collaboration service APIs)
 
 -----
 
@@ -168,6 +168,43 @@ items = recommend_listings(request.user, limit=5)
 **Returns:** `str` explanation such as `"Matches your search 'Downtown Flips': $150k in AZ with 3+ beds"`.
 **Side effects:** None.
 **Error cases:** None.
+
+-----
+
+### `collaboration.share_property_with_team(property, team, shared_by)`
+
+**Purpose:** Idempotently share a property with a team, updating who last shared it.
+**Parameters:**
+- `property: Property` — Property to share.
+- `team: Team` — Team receiving access.
+- `shared_by: User` — User performing the share.
+
+**Returns:** `SharedProperty` row for `(property, team)`.
+**Side effects:** Inserts/updates one `SharedProperty`.
+
+---
+
+### `collaboration.add_note(property, author, body)`
+
+**Purpose:** Add a collaboration note to a property.
+**Parameters:**
+- `property: Property` — Property to annotate.
+- `author: User` — Note author.
+- `body: str` — Note text.
+
+**Returns:** Created `PropertyNote`.
+**Side effects:** Inserts one `PropertyNote`.
+
+---
+
+### `collaboration.get_team_properties(team)`
+
+**Purpose:** Return all properties shared with a given team.
+**Parameters:**
+- `team: Team` — Team to fetch shared properties for.
+
+**Returns:** `QuerySet[Property]` with distinct shared properties.
+**Side effects:** Reads `SharedProperty` join rows.
 
 -----
 
