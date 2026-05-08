@@ -12,7 +12,7 @@ on:
       - "requirements.txt"
       - "pytest.ini"
       - ".github/workflows/ci-quality.yml"
-      - ".github/actions/python-setup/**"
+      - ".github/actions/python-setup/action.yml"
   push:
     branches: [main]
 
