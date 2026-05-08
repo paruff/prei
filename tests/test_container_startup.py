@@ -38,6 +38,7 @@ def test_dockerfile_uses_entrypoint_and_writable_runtime_dirs() -> None:
 
 
 def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
+    """Verify Compose grants extra startup time before healthcheck failures."""
     compose_file = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 
     assert "start_period: 90s" in compose_file
@@ -45,12 +46,14 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
 
 
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
+    """Verify RUN_MIGRATIONS=0 skips the migrate command before exec."""
     calls = run_entrypoint_with_fake_python(tmp_path, run_migrations="0")
 
     assert calls == ["-c print('ok')"]
 
 
 def test_entrypoint_runs_migrations_by_default(tmp_path: Path) -> None:
+    """Verify migrations run before exec when RUN_MIGRATIONS is unset."""
     calls = run_entrypoint_with_fake_python(tmp_path)
 
     assert calls == ["manage.py migrate --noinput", "-c print('ok')"]
@@ -59,6 +62,7 @@ def test_entrypoint_runs_migrations_by_default(tmp_path: Path) -> None:
 def run_entrypoint_with_fake_python(
     tmp_path: Path, run_migrations: str | None = None
 ) -> list[str]:
+    """Run the entrypoint with a stub python binary and return intercepted calls."""
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     log_path = tmp_path / "calls.log"
