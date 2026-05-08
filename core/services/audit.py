@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
-from django.contrib.auth.models import User
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
 
 from core.models import AuditLog
 
 
 def log_action(
-    user: User | None,
+    user: AbstractBaseUser | None,
     action: str,
     obj: object | None = None,
     meta: dict[str, Any] | None = None,
@@ -21,12 +21,12 @@ def log_action(
     object_type = ""
     if obj is not None:
         if isinstance(obj, models.Model):
-            object_type = str(obj._meta.object_name)
+            object_type = obj._meta.object_name or ""
         else:
             object_type = obj.__class__.__name__
 
     return AuditLog.objects.create(
-        user=user,
+        user=cast(Any, user),
         action=action,
         object_type=object_type,
         object_id=object_id if isinstance(object_id, int) else None,
