@@ -24,7 +24,11 @@ DEBUG = (
     if IS_PRODUCTION
     else env.bool("DEBUG", default=True)
 )
-SECRET_KEY = env("SECRET_KEY")
+SECRET_KEY = (
+    env("SECRET_KEY")
+    if IS_PRODUCTION
+    else env("SECRET_KEY", default="dev-only-secret-key")
+)
 ALLOWED_HOSTS = (
     env.list("ALLOWED_HOSTS")
     if IS_PRODUCTION

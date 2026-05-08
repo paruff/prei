@@ -2,26 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
-from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 
 from core.models import AuditLog
 
 
 def log_action(
-    user: AbstractBaseUser | None,
+    user: Any | None,
     action: str,
     obj: object | None = None,
     meta: dict[str, Any] | None = None,
 ) -> AuditLog:
     """Create an audit log entry for a user action."""
-    object_id = getattr(obj, "id", None) if obj is not None else None
+    object_id = getattr(obj, "id", None)
     object_type = ""
     if obj is not None:
         if isinstance(obj, models.Model):
-            object_type = obj._meta.object_name
+            object_type = cast(str, obj._meta.object_name)
         else:
             object_type = obj.__class__.__name__
 

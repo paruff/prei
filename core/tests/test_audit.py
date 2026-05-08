@@ -31,7 +31,8 @@ def test_audit_log_query_by_user_and_action_returns_expected_records(user) -> No
     log_action(user=user, action="saved_search.created")
 
     logs = AuditLog.objects.filter(user=user, action="listing.saved")
+    entry = logs.first()
 
     assert logs.count() == 1
-    assert logs.first() is not None
-    assert logs.first().action == "listing.saved"
+    assert entry is not None
+    assert entry.action == "listing.saved"
