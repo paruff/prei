@@ -47,7 +47,9 @@ def irr(cashflows: Iterable[float | int | Decimal]) -> Decimal:
     try:
         value = float(npf.irr(cf))
         if np.isnan(value) or np.isinf(value):
-            logger.warning("irr: numpy_financial.irr returned non-finite value; returning 0")
+            logger.warning(
+                "irr: numpy_financial.irr returned non-finite value; returning 0"
+            )
             return Decimal("0")
         return to_decimal(value)
     except Exception:

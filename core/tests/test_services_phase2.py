@@ -74,7 +74,9 @@ def test_market_snapshot_admin_ready():
     assert MarketSnapshot.objects.count() == 1
 
 
-def test_irr_unsolvable_cashflows_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
+def test_irr_unsolvable_cashflows_logs_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """irr() with all-positive cashflows (no sign change) emits a WARNING and returns 0."""
     with caplog.at_level(logging.WARNING, logger="investor_app.finance.utils"):
         result = irr([100, 200, 300])
