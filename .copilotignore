@@ -1,0 +1,150 @@
+# ============================================================
+# Copilot Ignore File
+# Purpose: Reduce cached tokens and context size to minimize
+#          Copilot usage costs across all repositories.
+# Author: Phil’s Copilot Config Pack
+# ============================================================
+
+# -----------------------------
+# Node / Frontend (Next.js, React)
+# -----------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+.next/
+out/
+dist/
+build/
+coverage/
+storybook-static/
+.vite/
+.vitest/
+*.tsbuildinfo
+
+# -----------------------------
+# Python / Django / FastAPI
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+.eggs/
+db.sqlite3
+media/
+staticfiles/
+static/
+migrations/0*.py
+migrations/00*.py
+migrations/000*.py
+migrations/__pycache__/
+.env
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+
+# -----------------------------
+# Terraform / IaC
+# -----------------------------
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# -----------------------------
+# Kubernetes / Helm
+# -----------------------------
+charts/**/charts/
+charts/**/tmp/
+charts/**/testcharts/
+charts/**/Chart.lock
+manifests/generated/
+kustomize/build/
+
+# -----------------------------
+# Docker / Containers
+# -----------------------------
+docker-data/
+docker-compose.override.yml
+*.tar
+*.img
+
+# -----------------------------
+# Logs / Temp / Cache
+# -----------------------------
+logs/
+*.log
+*.tmp
+*.cache/
+.cache/
+tmp/
+temp/
+.DS_Store
+
+# -----------------------------
+# Build Artifacts (General)
+# -----------------------------
+bin/
+obj/
+target/
+*.o
+*.so
+*.dll
+*.exe
+*.class
+*.jar
+*.war
+*.zip
+*.gz
+*.tgz
+
+# -----------------------------
+# Data / ML / Analytics
+# -----------------------------
+data/
+datasets/
+*.csv
+*.parquet
+*.feather
+*.h5
+*.pt
+*.pth
+*.onnx
+*.pickle
+*.pkl
+*.joblib
+
+# -----------------------------
+# Documentation Artifacts
+# -----------------------------
+docs/_build/
+mkdocs/site/
+*.pdf
+*.docx
+*.pptx
+
+# -----------------------------
+# Local Dev Tools
+# -----------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -----------------------------
+# GitHub / CI
+# -----------------------------
+.github/workflows/cache/
+.github/actions/cache/
+actions-runner/
+runner/
