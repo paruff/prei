@@ -1651,7 +1651,9 @@ def export_property_deal_pack(request, property_id: int):
 
     can_access = (
         property_obj.user_id == request.user.id
-        or SharedProperty.objects.filter(property=property_obj)
+        or SharedProperty.objects.filter(
+            property=property_obj,
+        )
         .filter(Q(team__owner=request.user) | Q(team__team_members__user=request.user))
         .exists()
     )
@@ -1682,6 +1684,7 @@ def export_property_deal_pack(request, property_id: int):
                 | Q(city__iexact=property_obj.city, state__iexact=property_obj.state)
             )
             .distinct()
+            .order_by("-updated_at", "-id")
             .first()
         )
 
@@ -1719,6 +1722,17 @@ def export_property_deal_pack(request, property_id: int):
                 ),
             },
             status=status.HTTP_200_OK,
+        )
+    except (RuntimeError, ValueError) as e:
+        logger.error(
+            f"Deal-pack analysis error for property_id={property_id}: {str(e)}"
+        )
+        return Response(
+            {
+                "error": "Export service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     except Exception as e:
         logger.error(f"Unexpected error in export_property_deal_pack: {str(e)}")
