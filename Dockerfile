@@ -5,9 +5,7 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION}-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    HOME=/tmp \
-    MPLCONFIGDIR=/tmp/matplotlib
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
@@ -34,7 +32,10 @@ COPY . .
 
 # Never run as root
 RUN addgroup --system app && adduser --system --group app
+RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app/.runtime
 USER app
+ENV HOME=/app/.runtime \
+    MPLCONFIGDIR=/app/.runtime/matplotlib
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \

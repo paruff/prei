@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-set -eu
+set -e
 
 python manage.py migrate --noinput
 
