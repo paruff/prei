@@ -1652,10 +1652,9 @@ def export_property_deal_pack(request, property_id: int):
     can_access = (
         property_obj.user_id == request.user.id
         or SharedProperty.objects.filter(
-            property=property_obj,
-        )
-        .filter(Q(team__owner=request.user) | Q(team__team_members__user=request.user))
-        .exists()
+            Q(property=property_obj)
+            & (Q(team__owner=request.user) | Q(team__team_members__user=request.user))
+        ).exists()
     )
 
     if not can_access:
