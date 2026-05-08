@@ -1649,18 +1649,34 @@ def export_property_deal_pack(request, property_id: int):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    can_access = (
-        property_obj.user_id == request.user.id
-        or SharedProperty.objects.filter(
-            Q(property=property_obj)
-            & (Q(team__owner=request.user) | Q(team__team_members__user=request.user))
-        ).exists()
-    )
+    if property_obj.user_id == request.user.id:
+        can_access = True
+    else:
+        can_access = (
+            SharedProperty.objects.filter(
+                Q(property=property_obj)
+                & (
+                    Q(team__owner=request.user)
+                    | Q(team__team_members__user=request.user)
+                )
+            )
+            .distinct()
+            .exists()
+        )
 
     if not can_access:
         return Response(
             {"error": "You do not have access to this property", "code": "FORBIDDEN"},
             status=status.HTTP_403_FORBIDDEN,
+        )
+
+    def _service_unavailable_response() -> Response:
+        return Response(
+            {
+                "error": "Export service temporarily unavailable. Please try again later.",
+                "code": "SERVICE_UNAVAILABLE",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
     try:
@@ -1725,22 +1741,10 @@ def export_property_deal_pack(request, property_id: int):
         logger.error(
             f"Deal-pack analysis error for property_id={property_id}: {str(e)}"
         )
-        return Response(
-            {
-                "error": "Export service temporarily unavailable. Please try again later.",
-                "code": "SERVICE_UNAVAILABLE",
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+        return _service_unavailable_response()
     except Exception as e:
         logger.error(f"Unexpected error in export_property_deal_pack: {str(e)}")
-        return Response(
-            {
-                "error": "Export service temporarily unavailable. Please try again later.",
-                "code": "SERVICE_UNAVAILABLE",
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+        return _service_unavailable_response()
 
 
 @api_view(["POST"])
