@@ -11,15 +11,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def test_entrypoint_runs_migrations_before_execing_server() -> None:
     script = (REPO_ROOT / "scripts" / "entrypoint.sh").read_text(encoding="utf-8")
 
-    guard_line = 'if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then'
+    migration_guard_line = 'if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then'
     migrate_line = "python manage.py migrate --noinput"
     exec_line = 'exec "$@"'
 
-    assert guard_line in script
+    assert migration_guard_line in script
     assert migrate_line in script
     assert exec_line in script
     assert (
-        script.index(guard_line) < script.index(migrate_line) < script.index(exec_line)
+        script.index(migration_guard_line)
+        < script.index(migrate_line)
+        < script.index(exec_line)
     )
 
 
@@ -43,6 +45,20 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
 
 
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
+    calls = run_entrypoint_with_fake_python(tmp_path, run_migrations="0")
+
+    assert calls == ["-c print('ok')"]
+
+
+def test_entrypoint_runs_migrations_by_default(tmp_path: Path) -> None:
+    calls = run_entrypoint_with_fake_python(tmp_path)
+
+    assert calls == ["manage.py migrate --noinput", "-c print('ok')"]
+
+
+def run_entrypoint_with_fake_python(
+    tmp_path: Path, run_migrations: str | None = None
+) -> list[str]:
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     log_path = tmp_path / "calls.log"
@@ -66,7 +82,10 @@ def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
 
     env = os.environ.copy()
     env["PATH"] = f"{fake_bin}:{env['PATH']}"
-    env["RUN_MIGRATIONS"] = "0"
+    if run_migrations is None:
+        env.pop("RUN_MIGRATIONS", None)
+    else:
+        env["RUN_MIGRATIONS"] = run_migrations
 
     subprocess.run(
         [
@@ -81,5 +100,4 @@ def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
         env=env,
     )
 
-    calls = log_path.read_text(encoding="utf-8").splitlines()
-    assert calls == ["-c print('ok')"]
+    return log_path.read_text(encoding="utf-8").splitlines()
