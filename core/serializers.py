@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
+from typing import cast
 
 from rest_framework import serializers
 
@@ -503,7 +504,10 @@ class ListingSerializer(serializers.ModelSerializer):
 
     def get_score(self, obj: Listing) -> Decimal | None:
         """Return a computed listing score."""
-        score_by_listing_id = self.context.get("score_by_listing_id", {})
+        score_by_listing_id = cast(
+            dict[int, Decimal | None],
+            self.context.get("score_by_listing_id", {}),
+        )
         if obj.id in score_by_listing_id:
             return score_by_listing_id[obj.id]
         try:
