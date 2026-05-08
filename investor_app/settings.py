@@ -91,18 +91,44 @@ FINANCE_DEFAULTS = {
     "brrrr_dscr_threshold": Decimal(env("BRRRR_DSCR_THRESHOLD", default="1.25")),
 }
 
-# Basic logging suitable for CI and dev
+LOG_LEVEL = env("LOG_LEVEL", default="INFO")
+
+# Structured logging for analytics pipelines and services.
+# Use verbose formatter (includes pathname + lineno) in DEBUG mode; simple otherwise.
+_log_formatter = "verbose" if DEBUG else "simple"
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "%(levelname)s %(name)s %(pathname)s:%(lineno)d %(message)s",
+        },
+        "simple": {
+            "format": "%(levelname)s %(name)s %(message)s",
+        },
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
+            "formatter": _log_formatter,
         }
     },
     "root": {
         "handlers": ["console"],
-        "level": "INFO",
+        "level": "WARNING",
+    },
+    "loggers": {
+        "investor_app": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": True,
+        },
+        "core": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": True,
+        },
     },
 }
 
