@@ -86,6 +86,11 @@ urlpatterns = [
         name="export-property-pdf",
     ),
     path(
+        "property/<int:property_id>/export/",
+        api_views.export_property_deal_pack,
+        name="export-property-deal-pack",
+    ),
+    path(
         "health/",
         api_views.health_check,
         name="health-check",
