@@ -7,8 +7,18 @@ name: CI Quality Gate — prei
 on:
   pull_request:
     branches: [main, develop]
+    paths:
+      - "**/*.py"
+      - "requirements.txt"
+      - "pytest.ini"
+      - ".github/workflows/ci-quality.yml"
+      - ".github/actions/python-setup/**"
   push:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
 
@@ -60,11 +70,7 @@ jobs:
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      - uses: ./.github/actions/python-setup
       - run: pip install ruff black
       - name: Ruff
         run: ruff check .
@@ -88,11 +94,7 @@ jobs:
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      - uses: ./.github/actions/python-setup
       - run: pip install -r requirements.txt mypy django-stubs types-requests
       - name: Mypy
         run: mypy core/ investor_app/finance/ --ignore-missing-imports
@@ -118,11 +120,7 @@ jobs:
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      - uses: ./.github/actions/python-setup
       - run: pip install -r requirements.txt pytest pytest-django pytest-bdd coverage
       - name: Run tests
         run: |
@@ -149,11 +147,7 @@ jobs:
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      - uses: ./.github/actions/python-setup
       - name: pip-audit (app dependency CVE scan)
         run: |
           pip install pip-audit

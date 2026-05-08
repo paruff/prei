@@ -1,0 +1,11 @@
+name: "Python Setup"
+description: "Checkout repo and set up Python 3.11 with pip cache"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+        cache: "pip"
