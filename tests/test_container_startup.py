@@ -1,7 +1,9 @@
 """Regression tests for the published container startup contract."""
 
+import os
 from pathlib import Path
 import re
+import subprocess
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,3 +40,46 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
 
     assert "start_period: 90s" in compose_file
     assert "retries: 5" in compose_file
+
+
+def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    log_path = tmp_path / "calls.log"
+    fake_python = fake_bin / "python"
+    fake_python.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env sh",
+                f'printf "%s\\n" "$*" >> "{log_path}"',
+                'if [ "$1" = "-c" ]; then',
+                "  shift",
+                '  exec python3 -c "$@"',
+                "fi",
+                "exit 0",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+
+    env = os.environ.copy()
+    env["PATH"] = f"{fake_bin}:{env['PATH']}"
+    env["RUN_MIGRATIONS"] = "0"
+
+    subprocess.run(
+        [
+            "sh",
+            str(REPO_ROOT / "scripts" / "entrypoint.sh"),
+            "python",
+            "-c",
+            "print('ok')",
+        ],
+        check=True,
+        cwd=REPO_ROOT,
+        env=env,
+    )
+
+    calls = log_path.read_text(encoding="utf-8").splitlines()
+    assert calls == ["-c print('ok')"]

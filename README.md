@@ -92,7 +92,8 @@ Use the root compose file when you want to run the published container image on 
 Notes:
 - The root [docker-compose.yml](./docker-compose.yml) uses `image: ghcr.io/paruff/prei:latest`; it does not build the application image locally.
 - Published images default `RUN_MIGRATIONS=1`, so they run `python manage.py migrate --noinput` during container startup before Gunicorn begins serving requests.
-- For multi-replica or rolling deployments, set `RUN_MIGRATIONS=0` on replicas that should not apply migrations and run migrations from a dedicated one-shot instance/job instead.
+- For multi-replica or rolling deployments, set `RUN_MIGRATIONS=0` on replicas that should not apply migrations.
+- Run migrations from a dedicated one-shot instance/job instead of every replica.
 - The published image sets `HOME` and `MPLCONFIGDIR` to a dedicated writable runtime directory owned by the app user.
 - Container healthchecks allow extra startup time for pre-start migration work before marking the service unhealthy.
 - If you want to build locally from the repository source, use the root [Dockerfile](./Dockerfile): `docker build -t prei:dev .`
