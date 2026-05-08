@@ -170,7 +170,7 @@ jobs:
 
   attest:
     name: "🧾 Tier 2 — Attest"
-    needs: publish
+    needs: [publish, build-image]
     runs-on: ubuntu-latest
     permissions:
       contents: read
