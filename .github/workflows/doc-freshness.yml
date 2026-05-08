@@ -79,10 +79,11 @@ jobs:
               '2. Update the base image or affected packages',
               '3. Push a fix so Tier 2 can republish a clean image',
             ].join('\n');
-            const { data: issues } = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
+              per_page: 100,
             });
             const existing = issues.find(issue => issue.title === title);
             if (existing) {
@@ -167,10 +168,11 @@ jobs:
             const fs = require('fs');
             const title = '📦 Nightly dependency drift';
             const body = fs.readFileSync('dependency-drift.md', 'utf8');
-            const { data: issues } = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
+              per_page: 100,
             });
             const existing = issues.find(issue => issue.title === title);
             if (existing) {
@@ -266,10 +268,11 @@ jobs:
             const fs = require('fs');
             const title = '📄 Nightly docs drift';
             const body = fs.readFileSync('docs-drift.md', 'utf8');
-            const { data: issues } = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
+              per_page: 100,
             });
             const existing = issues.find(issue => issue.title === title);
             if (existing) {
