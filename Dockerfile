@@ -5,7 +5,9 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION}-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    HOME=/tmp \
+    MPLCONFIGDIR=/tmp/matplotlib
 
 WORKDIR /app
 
@@ -37,4 +39,5 @@ USER app
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import sys, urllib.request\ntry:\n  urllib.request.urlopen('http://localhost:8000/api/health/')\nexcept Exception as e:\n  print(f'health check failed: {e}', file=sys.stderr)\n  sys.exit(1)"
+ENTRYPOINT ["sh", "./scripts/entrypoint.sh"]
 CMD ["gunicorn", "investor_app.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
