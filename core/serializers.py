@@ -8,10 +8,13 @@ from .models import (
     AuctionAlert,
     ForeclosureProperty,
     GrowthArea,
+    Listing,
+    MarketSnapshot,
     Notification,
     NotificationPreference,
     UserWatchlist,
 )
+from investor_app.finance.utils import score_listing_v1
 
 
 class GrowthMetricsSerializer(serializers.Serializer):
@@ -483,3 +486,29 @@ class StrategyComparisonRequestSerializer(serializers.Serializer):
             )
 
         return value
+
+
+class ListingSerializer(serializers.ModelSerializer):
+    """Serializer for listing API responses."""
+
+    score = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Listing
+        fields = "__all__"
+        read_only_fields = ("id", "created_at", "score")
+
+    def get_score(self, obj: Listing) -> Decimal | None:
+        """Return a computed listing score."""
+        try:
+            return score_listing_v1(obj)
+        except Exception:
+            return None
+
+
+class MarketSnapshotSerializer(serializers.ModelSerializer):
+    """Serializer for market snapshot API responses."""
+
+    class Meta:
+        model = MarketSnapshot
+        fields = "__all__"

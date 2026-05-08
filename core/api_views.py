@@ -11,10 +11,12 @@ from django.db import DatabaseError
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
-from rest_framework import serializers, status
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from rest_framework.views import APIView
 
 from investor_app.finance.utils import (
     calculate_break_even_rent,
@@ -24,15 +26,17 @@ from investor_app.finance.utils import (
     calculate_roi_components,
     calculate_vacation_rental_strategy,
     cap_rate as calc_cap_rate,
-    compute_analysis_for_property,
     cash_on_cash as calc_coc,
+    compute_analysis_for_property,
     dscr as calc_dscr,
+    score_listing_v1,
 )
 
 from .models import (
     AuctionAlert,
     ForeclosureProperty,
     GrowthArea,
+    Listing,
     MarketSnapshot,
     Notification,
     NotificationPreference,
@@ -41,11 +45,14 @@ from .models import (
     SharedProperty,
     UserWatchlist,
 )
+from .services.portfolio import aggregate_portfolio
 from .serializers import (
     AuctionAlertSerializer,
     CarryingCostRequestSerializer,
     ForeclosurePropertySerializer,
     GrowthAreaSerializer,
+    ListingSerializer,
+    MarketSnapshotSerializer,
     NotificationPreferenceSerializer,
     NotificationSerializer,
     StrategyComparisonRequestSerializer,
@@ -65,6 +72,134 @@ from .export_helpers import apply_foreclosure_filters, parse_and_filter_location
 from .services.audit import log_action
 
 logger = logging.getLogger(__name__)
+
+
+class ListingPagination(PageNumberPagination):
+    """Pagination for listing API responses."""
+
+    page_size = 20
+
+
+class ListingListView(generics.ListAPIView):
+    """List listings with optional filters."""
+
+    serializer_class = ListingSerializer
+    pagination_class = ListingPagination
+    throttle_classes = [UserRateThrottle, AnonRateThrottle]
+
+    def get_queryset(self):
+        queryset = Listing.objects.all()
+
+        state = self.request.query_params.get("state")
+        if state:
+            queryset = queryset.filter(state__iexact=state.strip())
+
+        property_type = self.request.query_params.get("property_type")
+        if property_type:
+            queryset = queryset.filter(property_type__iexact=property_type.strip())
+
+        min_price = self.request.query_params.get("min_price")
+        if min_price:
+            try:
+                queryset = queryset.filter(price__gte=Decimal(min_price))
+            except Exception as exc:
+                raise serializers.ValidationError(
+                    {"min_price": "Invalid value."}
+                ) from exc
+
+        max_price = self.request.query_params.get("max_price")
+        if max_price:
+            try:
+                queryset = queryset.filter(price__lte=Decimal(max_price))
+            except Exception as exc:
+                raise serializers.ValidationError(
+                    {"max_price": "Invalid value."}
+                ) from exc
+
+        beds = self.request.query_params.get("beds")
+        if beds:
+            try:
+                queryset = queryset.filter(beds=int(beds))
+            except Exception as exc:
+                raise serializers.ValidationError({"beds": "Invalid value."}) from exc
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = list(self.get_queryset())
+        scored = []
+        for listing in queryset:
+            try:
+                score = score_listing_v1(listing)
+            except Exception:
+                score = None
+            scored.append((listing, score))
+
+        scored.sort(
+            key=lambda pair: (
+                pair[1] is not None,
+                pair[1] if pair[1] is not None else Decimal("0"),
+            ),
+            reverse=True,
+        )
+        ordered = [listing for listing, _ in scored]
+
+        page = self.paginate_queryset(ordered)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(ordered, many=True)
+        return Response(serializer.data)
+
+
+class ListingDetailView(generics.RetrieveAPIView):
+    """Return a listing with computed score and nearest market snapshot."""
+
+    queryset = Listing.objects.all()
+    serializer_class = ListingSerializer
+    throttle_classes = [UserRateThrottle, AnonRateThrottle]
+
+    def _nearest_market_snapshot(self, listing: Listing) -> MarketSnapshot | None:
+        if listing.zip_code:
+            snapshot = (
+                MarketSnapshot.objects.filter(zip_code=listing.zip_code)
+                .order_by("-updated_at")
+                .first()
+            )
+            if snapshot:
+                return snapshot
+
+        if listing.city and listing.state:
+            return (
+                MarketSnapshot.objects.filter(
+                    city__iexact=listing.city,
+                    state__iexact=listing.state,
+                )
+                .order_by("-updated_at")
+                .first()
+            )
+
+        return None
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = self.get_serializer(instance).data
+        snapshot = self._nearest_market_snapshot(instance)
+        data["market_snapshot"] = (
+            MarketSnapshotSerializer(snapshot).data if snapshot is not None else None
+        )
+        return Response(data)
+
+
+class PortfolioAnalyticsView(APIView):
+    """Return aggregate analytics for the authenticated user's portfolio."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [UserRateThrottle, AnonRateThrottle]
+
+    def get(self, request):
+        return Response(aggregate_portfolio(request.user), status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
