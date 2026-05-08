@@ -1,87 +1,299 @@
-name: Documentation Freshness
-
-# DORA 2025 (DOCS-02): "Documentation is the least-used AI capability despite being high-value."
-
-# This workflow posts a reminder comment when service or utility files change
-# without a corresponding update to docs/API_SURFACE.md.
-# It does not block merges — it prompts @docs-agent to run.
+name: Tier 3 Governance — Nightly Drift
 
 on:
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'core/services/**'
-      - 'investor_app/finance/**'
-      - 'core/integrations/**'
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: tier-3-${{ github.workflow }}
+  cancel-in-progress: false
 
 permissions:
+  contents: read
   issues: write
-  pull-requests: write
+  packages: read
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  doc-freshness-check:
-    name: "\U0001f4c4 Documentation Freshness"
+  cves:
+    name: "🚨 Tier 3 — CVEs"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          fetch-depth: 0
-
-      - name: Check if docs were updated alongside code
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull published :latest
+        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      - name: Trivy — nightly SARIF scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: sarif
+          output: trivy-nightly.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: false
+      - name: Upload nightly SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-nightly.sarif
+          category: trivy-nightly-scan
+      - name: Trivy — check for CRITICAL CVEs
+        id: critical-check
+        uses: aquasecurity/trivy-action@v0.36.0
+        continue-on-error: true
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: false
+      - name: Open GitHub issue for CRITICAL CVEs
+        if: steps.critical-check.outcome == 'failure'
         uses: actions/github-script@v9
         with:
           script: |
-            const { data: files } = await github.rest.pulls.listFiles({
+            const title = '🚨 Nightly CRITICAL CVEs in :latest';
+            const body = [
+              '## Nightly Trivy scan found CRITICAL vulnerabilities',
+              '',
+              `**Image:** \`${process.env.REGISTRY}/${process.env.IMAGE_NAME}:latest\``,
+              `**Detected:** ${new Date().toISOString()}`,
+              `**Workflow:** [View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              '',
+              '### What to do',
+              '1. Check **Security → Code scanning** for the full CVE list',
+              '2. Update the base image or affected packages',
+              '3. Push a fix so Tier 2 can republish a clean image',
+            ].join('\n');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.issue.number,
+              state: 'open',
+              per_page: 100,
             });
-
-            const changedPaths = files.map(f => f.filename);
-
-            const codeChanged = changedPaths.some(f =>
-              f.startsWith('core/services/') ||
-              f.startsWith('investor_app/finance/') ||
-              f.startsWith('core/integrations/')
-            );
-
-            const docsUpdated = changedPaths.some(f =>
-              f === 'docs/API_SURFACE.md' ||
-              f === 'docs/CHANGE_IMPACT_MAP.md'
-            );
-
-            if (codeChanged && !docsUpdated) {
-              const changedCodePaths = changedPaths
-                .filter(f => f.startsWith('core/') || f.startsWith('investor_app/'))
-                .join(', ');
-              const body = [
-                '## \U0001f4c4 Documentation Freshness Reminder',
-                '',
-                'This PR changes `core/services/`, `investor_app/finance/`, or `core/integrations/` but does not update the living documentation.',
-                '',
-                '**If any public functions were added, removed, or changed:**',
-                'Run `@docs-agent` with this prompt:',
-                '```',
-                `@docs-agent The following files changed in this PR: ${changedCodePaths}`,
-                'Please update docs/API_SURFACE.md and docs/CHANGE_IMPACT_MAP.md to reflect the changes.',
-                '```',
-                '',
-                '**If no public API changed** (internal refactor only):',
-                'Add a comment below: "No public API changes \u2014 docs freshness N/A"',
-                '',
-                '*DORA 2025: Undocumented APIs force every agent to reverse-engineer intent from implementation.*',
-              ].join('\n');
-              await github.rest.issues.createComment({
+            const existing = issues.find(issue => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: existing.number,
+                title,
                 body,
               });
-              console.log('\U0001f4c4 Documentation reminder posted');
-            } else if (codeChanged && docsUpdated) {
-              console.log('\u2705 Documentation updated alongside code changes');
+              core.info('Updated existing CVE issue.');
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+              core.info('Created CVE issue.');
             }
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  dependency-drift:
+    name: "📦 Tier 3 — Dependency Drift"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - name: Checkout
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/python-setup
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Detect dependency drift
+        id: dependency-drift
+        run: |
+          python -m pip list --outdated --format=json > outdated.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          packages = json.loads(Path("outdated.json").read_text())
+          if packages:
+              lines = [
+                  "## Nightly dependency drift detected",
+                  "",
+                  "The following packages have newer releases available than the versions currently resolved in CI:",
+                  "",
+              ]
+              lines.extend(
+                  f"- `{package['name']}` {package['version']} → {package['latest_version']}"
+                  for package in packages
+              )
+              lines.extend(["", "Review whether any updates should be scheduled."])
+              body = "\n".join(lines)
+          else:
+              body = "No dependency drift detected."
+
+          Path("dependency-drift.md").write_text(body + "\n")
+
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as handle:
+              handle.write(body + "\n")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"has_drift={'true' if packages else 'false'}\n")
+          PY
+      - name: Open or update dependency drift issue
+        if: steps.dependency-drift.outputs.has_drift == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '📦 Nightly dependency drift';
+            const body = fs.readFileSync('dependency-drift.md', 'utf8');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find(issue => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.info('Updated existing dependency drift issue.');
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+              core.info('Created dependency drift issue.');
+            }
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  docs-drift:
+    name: "📄 Tier 3 — Docs Drift"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Detect documentation drift
+        id: docs-drift
+        run: |
+          git log --since="24 hours ago" --name-only --pretty=format: > changed-files.txt
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          changed_paths = {
+              line.strip()
+              for line in Path("changed-files.txt").read_text().splitlines()
+              if line.strip()
+          }
+          changed_code_paths = sorted(
+              path
+              for path in changed_paths
+              if path.startswith("core/services/")
+              or path.startswith("investor_app/finance/")
+              or path.startswith("core/integrations/")
+          )
+          docs_updated = any(
+              path in {"docs/API_SURFACE.md", "docs/CHANGE_IMPACT_MAP.md"}
+              for path in changed_paths
+          )
+
+          if changed_code_paths and not docs_updated:
+              body = "\n".join(
+                  [
+                      "## Nightly documentation drift detected",
+                      "",
+                      "Code changed in the last 24 hours without a matching update to living docs:",
+                      "",
+                      *[f"- `{path}`" for path in changed_code_paths],
+                      "",
+                      "Update `docs/API_SURFACE.md` and/or `docs/CHANGE_IMPACT_MAP.md` if the public API or documented impact changed.",
+                  ]
+              )
+          else:
+              body = "No documentation drift detected."
+
+          Path("docs-drift.md").write_text(body + "\n")
+
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as handle:
+              handle.write(body + "\n")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(
+                  f"has_drift={'true' if changed_code_paths and not docs_updated else 'false'}\n"
+              )
+          PY
+      - name: Open or update documentation drift issue
+        if: steps.docs-drift.outputs.has_drift == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '📄 Nightly docs drift';
+            const body = fs.readFileSync('docs-drift.md', 'utf8');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find(issue => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.info('Updated existing docs drift issue.');
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+              core.info('Created docs drift issue.');
+            }
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
