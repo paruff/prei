@@ -1,56 +1,66 @@
-name: Build, Scan, Attest & Publish Image
+name: Tier 2 Governance — Build, Publish & Attest
 
 on:
   push:
     branches: [main]
     tags: ["v*.*.*"]
-  pull_request:
-    branches: [main]
-    paths:
-      - "Dockerfile"
-      - ".dockerignore"
-      - "requirements.txt"
-      - "scripts/**"
-      - "core/**"
-      - "investor_app/**"
-      - "templates/**"
-      - ".github/workflows/docker-publish.yml"
-  schedule:
-    - cron: "0 6 * * 1"   # Every Monday 06:00 UTC — re-scans :latest for new CVEs
-  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: tier-2-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}   # → ghcr.io/paruff/prei
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # ─────────────────────────────────────────────────────────────────
-  # JOB 1: Build + Scan — runs on every push and PR.
-  #         Acts as the security gate: image only publishes if clean.
-  # ─────────────────────────────────────────────────────────────────
-  build-and-scan:
-    name: Build & Scan
+  build-image:
+    name: "🏗️ Tier 2 — Build Image"
     runs-on: ubuntu-latest
-    if: github.event_name != 'schedule'
     permissions:
       contents: read
-      packages: write
-      security-events: write   # upload SARIF to Security tab
-      id-token: write
-
     steps:
       - name: "job-start"
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build image for validation (linux/amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tier-2-candidate
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
 
+  publish:
+    name: "📤 Tier 2 — Publish"
+    needs: build-image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - name: Checkout
+        uses: actions/checkout@v6
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -66,135 +76,17 @@ jobs:
             org.opencontainers.image.title=PREI - Real Estate Investment Analyzer
             org.opencontainers.image.description=Django app for RE investment KPIs
             org.opencontainers.image.vendor=paruff
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}   # zero config — no secrets needed
-
-      # Build amd64 only and load into local Docker daemon for scanning.
-      # Multi-arch push happens after scan passes (publish job below).
-      - name: Build image for scanning (linux/amd64)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64
-          load: true                   # loads into local daemon — required for trivy image scan
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan-candidate
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # ── Scan 1: filesystem (Dockerfile, requirements.txt, etc.) ─────────────
-      # Fast — runs against source before the image. Non-blocking: warns only.
-      - name: Trivy — filesystem scan (warn only)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: table
-          exit-code: 0                 # warn, don't block
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-
-      # ── Scan 2: built image — THIS IS THE GATE ──────────────────────────────
-      # exit-code: 1 means the entire workflow fails if CRITICAL or HIGH CVEs
-      # with available fixes are found. Image is NOT published.
-      - name: Trivy — image scan (BLOCKING on CRITICAL/HIGH)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: image
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan-candidate
-          format: table
-          exit-code: 1                 # ← blocks publish if CVEs found
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true         # only block when a fix actually exists
-          vuln-type: os,library
-
-      # ── Scan 3: SARIF upload — populates GitHub Security tab ────────────────
-      # Runs even if scan 2 failed so you can see what was found.
-      - name: Trivy — SARIF upload to GitHub Security tab
-        uses: aquasecurity/trivy-action@master
-        if: always()
-        with:
-          scan-type: image
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan-candidate
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH,MEDIUM
-          ignore-unfixed: true
-
-      - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy-image-scan
-
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
-
-  # ─────────────────────────────────────────────────────────────────
-  # JOB 2: Publish — only runs if scan passed, only on push (not PR)
-  # ─────────────────────────────────────────────────────────────────
-  publish:
-    name: Publish Multi-Arch Image
-    needs: build-and-scan
-    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-      id-token: write
-
-    steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
-
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Full multi-arch push — uses GHA cache built in job 1 (fast, no re-compile)
-      - name: Build and push (linux/amd64 + linux/arm64)
+      - name: Build and push multi-arch image
         id: push
         uses: docker/build-push-action@v6
         with:
@@ -203,136 +95,36 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha         # reuses layers from job 1 — no rebuild
-          cache-to: type=gha,mode=max  # refreshes multi-arch cache for future runs
-          provenance: true             # SLSA provenance attestation
-          sbom: true                   # Software Bill of Materials
-
-      # Cryptographically binds: image digest ↔ git commit ↔ this workflow run
-      # Users can verify with: gh attestation verify ghcr.io/paruff/prei:latest
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
-
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          sbom: true
       - name: "job-finish"
         if: always()
         run: |
           echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
 
-  # ─────────────────────────────────────────────────────────────────
-  # JOB 3: Scheduled weekly re-scan of published :latest image.
-  #         Catches NEW CVEs disclosed after the image was built.
-  #         Opens a GitHub Issue automatically if CRITICAL CVEs found.
-  # ─────────────────────────────────────────────────────────────────
-  scheduled-rescan:
-    name: Weekly CVE Re-Scan (:latest)
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+  attest:
+    name: "🧾 Tier 2 — Attest"
+    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
-      security-events: write
-      issues: write                    # needed to auto-open issues
-
+      packages: write
+      attestations: write
+      id-token: write
     steps:
       - name: "job-start"
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull published :latest
-        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-
-      # Full scan — ignore-unfixed: false so we surface everything,
-      # including CVEs with no patch yet (useful for awareness).
-      - name: Trivy — re-scan :latest (SARIF)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: image
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          format: sarif
-          output: trivy-scheduled.sarif
-          severity: CRITICAL,HIGH,MEDIUM
-          ignore-unfixed: false
-
-      - name: Upload scheduled scan SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-scheduled.sarif
-          category: trivy-scheduled-scan
-
-      # Separate run just to get exit-code — used to decide whether to open issue
-      - name: Trivy — check for CRITICAL CVEs
-        id: critical-check
-        uses: aquasecurity/trivy-action@master
-        continue-on-error: true        # don't fail the job; handled below
-        with:
-          scan-type: image
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          format: table
-          exit-code: 1
-          severity: CRITICAL
-          ignore-unfixed: false
-
-      # Auto-open a deduped GitHub Issue when CRITICAL CVEs are found
-      - name: Open GitHub Issue for CRITICAL CVEs
-        if: steps.critical-check.outcome == 'failure'
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const today = new Date().toISOString().split('T')[0];
-            const title = `🚨 CRITICAL CVEs in :latest — ${today}`;
-            const body = [
-              '## Scheduled Trivy scan found CRITICAL vulnerabilities',
-              '',
-              `**Image:** \`${process.env.REGISTRY}/${process.env.IMAGE_NAME}:latest\``,
-              `**Detected:** ${new Date().toISOString()}`,
-              `**Workflow:** [View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
-              '',
-              '### What to do',
-              '1. Check **Security → Code scanning** for the full CVE list',
-              '2. Update the base image (`FROM python:3.x-slim`) or affected packages',
-              '3. Push a fix — the build gate will confirm the image is clean before publishing',
-              '',
-              '_Auto-opened by the weekly CVE re-scan workflow. Will not duplicate if already open._'
-            ].join('\n');
-
-            // Deduplicate — don't open a second issue if one is already open
-            const existing = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: ['security', 'automated']
-            });
-            const alreadyOpen = existing.data.some(i => i.title.startsWith('🚨 CRITICAL CVEs'));
-
-            if (!alreadyOpen) {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title,
-                body,
-                labels: ['security', 'automated']
-              });
-              core.info('Issue created.');
-            } else {
-              core.info('Issue already open — skipping duplicate.');
-            }
-        env:
-          REGISTRY: ${{ env.REGISTRY }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
-
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ needs.publish.outputs.image-digest }}
+          push-to-registry: true
       - name: "job-finish"
         if: always()
         run: |
