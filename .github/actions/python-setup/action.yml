@@ -1,0 +1,11 @@
+name: "Python Setup"
+description: "Set up Python 3.11 with pip cache (run actions/checkout before invoking this action)"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+        cache: "pip"
+        cache-dependency-path: requirements.txt

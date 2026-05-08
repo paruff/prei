@@ -6,9 +6,22 @@ on:
     tags: ["v*.*.*"]
   pull_request:
     branches: [main]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "requirements.txt"
+      - "scripts/**"
+      - "core/**"
+      - "investor_app/**"
+      - "templates/**"
+      - ".github/workflows/docker-publish.yml"
   schedule:
     - cron: "0 6 * * 1"   # Every Monday 06:00 UTC — re-scans :latest for new CVEs
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
