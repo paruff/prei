@@ -9,3 +9,6 @@ runs:
         python-version: "3.11"
         cache: "pip"
         cache-dependency-path: requirements.txt
+    - name: Upgrade pip and setuptools
+      run: pip install --upgrade pip "setuptools>=82"
+      shell: bash
