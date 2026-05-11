@@ -61,18 +61,23 @@ class Command(BaseCommand):
         with properties_path.open(newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                prop = Property.objects.create(
-                    user=user,
-                    address=row["address"],
-                    city=row.get("city", ""),
-                    state=row.get("state", ""),
-                    zip_code=row.get("zip_code", ""),
-                    purchase_price=Decimal(row.get("purchase_price", "0")),
-                    purchase_date=row.get("purchase_date") or None,
-                    sqft=int(row.get("sqft") or 0) or None,
-                    units=int(row.get("units") or 1),
-                    notes=row.get("notes", ""),
-                )
+                try:
+                    prop = Property.objects.create(
+                        user=user,
+                        address=row["address"],
+                        city=row.get("city", ""),
+                        state=row.get("state", ""),
+                        zip_code=row.get("zip_code", ""),
+                        purchase_price=Decimal(row.get("purchase_price", "0")),
+                        purchase_date=row.get("purchase_date") or None,
+                        sqft=int(row.get("sqft") or 0) or None,
+                        units=int(row.get("units") or 1),
+                        notes=row.get("notes", ""),
+                    )
+                except KeyError as exc:
+                    raise CommandError(
+                        f"Properties CSV missing required column: {exc.args[0]}"
+                    ) from exc
                 log_action(
                     user, "property.created", obj=prop, meta={"source": "import_csv"}
                 )
@@ -86,11 +91,17 @@ class Command(BaseCommand):
                 reader = csv.DictReader(f)
                 for row in reader:
                     try:
-                        prop = Property.objects.get(id=int(row["property_id"]))
+                        property_id = int(row["property_id"])
+                    except KeyError as exc:
+                        raise CommandError(
+                            f"Rents CSV missing required column: {exc.args[0]}"
+                        ) from exc
+                    try:
+                        prop = Property.objects.get(id=property_id)
                     except Property.DoesNotExist:
                         self.stdout.write(
                             self.style.WARNING(
-                                f"Skipping rent: property_id {row['property_id']} not found"
+                                f"Skipping rent: property_id {property_id} not found"
                             )
                         )
                         continue
@@ -111,11 +122,17 @@ class Command(BaseCommand):
                 reader = csv.DictReader(f)
                 for row in reader:
                     try:
-                        prop = Property.objects.get(id=int(row["property_id"]))
+                        property_id = int(row["property_id"])
+                    except KeyError as exc:
+                        raise CommandError(
+                            f"Expenses CSV missing required column: {exc.args[0]}"
+                        ) from exc
+                    try:
+                        prop = Property.objects.get(id=property_id)
                     except Property.DoesNotExist:
                         self.stdout.write(
                             self.style.WARNING(
-                                f"Skipping expense: property_id {row['property_id']} not found"
+                                f"Skipping expense: property_id {property_id} not found"
                             )
                         )
                         continue
