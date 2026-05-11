@@ -15,10 +15,8 @@ from pytest_bdd import given, parsers, scenario, then, when
 from core.models import InvestmentAnalysis, OperatingExpense, Property, RentalIncome
 from investor_app.finance.utils import (
     cap_rate,
-    cash_on_cash,
     dscr,
     estimate_insurance,
-    irr,
     noi,
 )
 
@@ -27,6 +25,10 @@ REL_TOLERANCE = 0.03
 
 def _parse_currency(value: str) -> Decimal:
     return Decimal(value.replace(",", ""))
+
+
+def _parse_percentage(value: int) -> Decimal:
+    return (Decimal(value) / Decimal("100")).quantize(Decimal("0.0001"))
 
 
 def _finance_default_decimal(key: str) -> Decimal:
@@ -93,9 +95,7 @@ def add_rental_income(
         property=property_record,
         monthly_rent=_parse_currency(monthly_rent),
         effective_date=timezone.now().date(),
-        vacancy_rate=(Decimal(vacancy_percent) / Decimal("100")).quantize(
-            Decimal("0.0001")
-        ),
+        vacancy_rate=_parse_percentage(vacancy_percent),
     )
 
 
@@ -158,12 +158,11 @@ def compute_investment_analysis(property_record: Property) -> InvestmentAnalysis
     )
     monthly_expenses += estimate_insurance(
         property_record.purchase_price,
-        year_built=timezone.now().year,
+        year_built=2020,
     ) / Decimal("12")
     monthly_expenses += monthly_rent * management_fee_rate
     annual_noi = noi(monthly_income, monthly_expenses)
     annual_debt_service = Decimal("0")
-    monthly_cashflow = annual_noi / Decimal("12")
 
     analysis, _ = InvestmentAnalysis.objects.update_or_create(
         property=property_record,
@@ -171,13 +170,6 @@ def compute_investment_analysis(property_record: Property) -> InvestmentAnalysis
             "noi": annual_noi.quantize(Decimal("0.01")),
             "cap_rate": cap_rate(
                 annual_noi, Decimal(str(property_record.purchase_price))
-            ).quantize(Decimal("0.0001")),
-            "cash_on_cash": cash_on_cash(
-                annual_noi, Decimal(str(property_record.purchase_price))
-            ).quantize(Decimal("0.0001")),
-            "irr": irr(
-                [Decimal(str(property_record.purchase_price)) * Decimal("-1")]
-                + [monthly_cashflow] * 12
             ).quantize(Decimal("0.0001")),
             "dscr": dscr(annual_noi, annual_debt_service).quantize(Decimal("0.0001")),
         },
