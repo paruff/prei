@@ -31,7 +31,8 @@ class TestImportCSVCommand:
             str(EXPENSES_CSV),
         )
 
-        assert Property.objects.count() > 0
+        assert Property.objects.count() == 2
+        assert Property.objects.filter(address="123 Main St").exists()
 
     def test_import_creates_rental_income(self, user) -> None:
         call_command(
@@ -42,7 +43,8 @@ class TestImportCSVCommand:
             str(EXPENSES_CSV),
         )
 
-        assert RentalIncome.objects.count() > 0
+        assert RentalIncome.objects.count() == 2
+        assert RentalIncome.objects.filter(monthly_rent=Decimal("2000")).exists()
 
     def test_import_creates_expenses(self, user) -> None:
         call_command(
@@ -53,7 +55,8 @@ class TestImportCSVCommand:
             str(EXPENSES_CSV),
         )
 
-        assert OperatingExpense.objects.count() > 0
+        assert OperatingExpense.objects.count() == 3
+        assert OperatingExpense.objects.filter(category="Insurance").exists()
 
     def test_import_idempotent(self, user) -> None:
         if not _supports_update_option():
@@ -118,5 +121,13 @@ class TestImportCSVCommand:
         )
 
         property_obj = Property.objects.get(address="123 Main St")
+        rental_obj = RentalIncome.objects.get(property__address="123 Main St")
+        expense_obj = OperatingExpense.objects.get(
+            property__address="123 Main St", category="Tax"
+        )
         assert isinstance(property_obj.purchase_price, Decimal)
         assert property_obj.purchase_price == Decimal("120000")
+        assert isinstance(rental_obj.monthly_rent, Decimal)
+        assert rental_obj.monthly_rent == Decimal("2000")
+        assert isinstance(expense_obj.amount, Decimal)
+        assert expense_obj.amount == Decimal("300")
