@@ -15,7 +15,7 @@ RENTS_CSV = DATA_DIR / "rents.csv"
 EXPENSES_CSV = DATA_DIR / "expenses.csv"
 
 
-def _supports_update_option() -> bool:
+def supports_update_option() -> bool:
     parser = Command().create_parser("manage.py", "import_csv")
     return any("--update" in action.option_strings for action in parser._actions)
 
@@ -59,7 +59,7 @@ class TestImportCSVCommand:
         assert OperatingExpense.objects.filter(category="Insurance").exists()
 
     def test_import_idempotent(self, user) -> None:
-        if not _supports_update_option():
+        if not supports_update_option():
             pytest.skip("import_csv command does not support --update idempotent mode")
 
         call_command(
@@ -92,18 +92,56 @@ class TestImportCSVCommand:
 
         assert second_counts == first_counts
 
-    def test_import_invalid_csv_raises_error(self, user, tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        ("invalid_target", "csv_content", "error_message"),
+        [
+            (
+                "properties",
+                "city,state,zip_code,purchase_price,purchase_date,sqft,units,notes\n"
+                "Town,CA,90000,120000,2025-01-01,1500,1,Missing address\n",
+                "Properties CSV missing required column: address",
+            ),
+            (
+                "rents",
+                "monthly_rent,effective_date,vacancy_rate\n2000,2025-03-01,0.05\n",
+                "Rents CSV missing required column: property_id",
+            ),
+            (
+                "expenses",
+                "category,amount,frequency,effective_date\nTax,300,monthly,2025-03-01\n",
+                "Expenses CSV missing required column: property_id",
+            ),
+        ],
+    )
+    def test_import_invalid_csv_raises_error(
+        self,
+        user,
+        tmp_path: Path,
+        invalid_target: str,
+        csv_content: str,
+        error_message: str,
+    ) -> None:
         invalid_csv = tmp_path / "invalid_properties.csv"
-        invalid_csv.write_text(
-            "city,state,zip_code,purchase_price,purchase_date,sqft,units,notes\n"
-            "Town,CA,90000,120000,2025-01-01,1500,1,Missing address\n",
-            encoding="utf-8",
-        )
+        invalid_csv.write_text(csv_content, encoding="utf-8")
 
-        with pytest.raises(
-            CommandError, match="Properties CSV missing required column: address"
-        ):
-            call_command("import_csv", user.email, str(invalid_csv))
+        properties_csv = str(PROPERTIES_CSV)
+        rents_csv = str(RENTS_CSV)
+        expenses_csv = str(EXPENSES_CSV)
+        if invalid_target == "properties":
+            properties_csv = str(invalid_csv)
+        elif invalid_target == "rents":
+            rents_csv = str(invalid_csv)
+        elif invalid_target == "expenses":
+            expenses_csv = str(invalid_csv)
+
+        with pytest.raises(CommandError, match=error_message):
+            call_command(
+                "import_csv",
+                user.email,
+                properties_csv,
+                rents_csv,
+                expenses_csv,
+            )
 
     def test_import_nonexistent_file_raises_error(self, user, tmp_path: Path) -> None:
         missing_csv = tmp_path / "missing_properties.csv"

@@ -91,11 +91,17 @@ class Command(BaseCommand):
                 reader = csv.DictReader(f)
                 for row in reader:
                     try:
-                        prop = Property.objects.get(id=int(row["property_id"]))
+                        property_id = int(row["property_id"])
+                    except KeyError as exc:
+                        raise CommandError(
+                            f"Rents CSV missing required column: {exc.args[0]}"
+                        ) from exc
+                    try:
+                        prop = Property.objects.get(id=property_id)
                     except Property.DoesNotExist:
                         self.stdout.write(
                             self.style.WARNING(
-                                f"Skipping rent: property_id {row['property_id']} not found"
+                                f"Skipping rent: property_id {property_id} not found"
                             )
                         )
                         continue
@@ -116,11 +122,17 @@ class Command(BaseCommand):
                 reader = csv.DictReader(f)
                 for row in reader:
                     try:
-                        prop = Property.objects.get(id=int(row["property_id"]))
+                        property_id = int(row["property_id"])
+                    except KeyError as exc:
+                        raise CommandError(
+                            f"Expenses CSV missing required column: {exc.args[0]}"
+                        ) from exc
+                    try:
+                        prop = Property.objects.get(id=property_id)
                     except Property.DoesNotExist:
                         self.stdout.write(
                             self.style.WARNING(
-                                f"Skipping expense: property_id {row['property_id']} not found"
+                                f"Skipping expense: property_id {property_id} not found"
                             )
                         )
                         continue
