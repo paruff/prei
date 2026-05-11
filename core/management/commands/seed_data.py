@@ -222,6 +222,7 @@ class Command(BaseCommand):
                 password=DEMO_PASSWORD,
             )
 
+        # Some custom user models may omit a username field in create_superuser.
         return User.objects.create_superuser(  # type: ignore[call-arg]
             email=DEMO_EMAIL,
             password=DEMO_PASSWORD,
