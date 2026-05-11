@@ -46,7 +46,15 @@ For detailed setup instructions, see the **[Getting Started Tutorial](https://pa
 
 4. Run migrations and start dev server:
    - `python manage.py migrate`
+   - `python manage.py seed_data`
    - `python manage.py runserver`
+
+   Seed command creates a demo superuser and sample properties:
+   - Email: `demo@prei.dev`
+   - Password: `DemoPass123!`
+   - Re-run safely: `python manage.py seed_data`
+   - Reset + reseed: `python manage.py seed_data --reset`
+   - For non-local environments, only run this command with explicit non-default `SEED_DEMO_EMAIL` and `SEED_DEMO_PASSWORD`.
 
 ## Quick start (Codespaces / Dev Container)
 
