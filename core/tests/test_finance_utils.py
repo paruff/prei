@@ -1,4 +1,7 @@
+import math
 from decimal import Decimal
+
+import pytest
 
 from investor_app.finance.utils import (
     calculate_appreciation,
@@ -19,20 +22,133 @@ from investor_app.finance.utils import (
 )
 
 
+def assert_close(actual: Decimal, expected: Decimal, rel_tol: float = 0.02) -> None:
+    """Assert two Decimal values are within rel_tol of each other."""
+    assert math.isclose(
+        float(actual), float(expected), rel_tol=rel_tol
+    ), f"Expected {expected}, got {actual}"
+
+
+# ── NOI tests ─────────────────────────────────────────────────────────────────
+
+
 def test_noi_basic():
-    assert noi(Decimal("1000"), Decimal("300")) == Decimal("8400")
+    """noi(2280, 862) should equal 17016 annually."""
+    assert_close(noi(Decimal("2280"), Decimal("862")), Decimal("17016"))
+
+
+def test_noi_zero_expenses():
+    """When expenses are 0, NOI equals monthly income × 12."""
+    result = noi(Decimal("2280"), Decimal("0"))
+    assert result == Decimal("2280") * 12
+
+
+def test_noi_negative_when_expenses_exceed_income():
+    """When expenses exceed income, NOI is negative."""
+    result = noi(Decimal("1000"), Decimal("1500"))
+    assert result < Decimal("0")
+
+
+@pytest.mark.parametrize(
+    "monthly_income,monthly_expenses,expected_annual",
+    [
+        (Decimal("1000"), Decimal("300"), Decimal("8400")),
+        (Decimal("2000"), Decimal("500"), Decimal("18000")),
+        (Decimal("3000"), Decimal("1000"), Decimal("24000")),
+    ],
+)
+def test_noi_parametrized(
+    monthly_income: Decimal, monthly_expenses: Decimal, expected_annual: Decimal
+) -> None:
+    """NOI = (monthly_income - monthly_expenses) × 12."""
+    assert noi(monthly_income, monthly_expenses) == expected_annual
+
+
+# ── Cap rate tests ─────────────────────────────────────────────────────────────
+
+
+def test_cap_rate_basic():
+    """cap_rate(17016, 325000) should be approximately 0.0524."""
+    assert_close(cap_rate(Decimal("17016"), Decimal("325000")), Decimal("0.0524"))
 
 
 def test_cap_rate_zero_price():
+    """cap_rate with zero price returns Decimal('0') rather than raising."""
     assert cap_rate(Decimal("12000"), Decimal("0")) == Decimal("0")
 
 
+def test_cap_rate_range():
+    """Cap rate for realistic inputs (NOI 15000, price 200000) is 0.01–0.20."""
+    result = cap_rate(Decimal("15000"), Decimal("200000"))
+    assert Decimal("0.01") <= result <= Decimal("0.20")
+
+
+# ── Cash-on-Cash tests ─────────────────────────────────────────────────────────
+
+
+def test_cash_on_cash_basic():
+    """cash_on_cash(17016, 325000) should be approximately 0.0524."""
+    assert_close(cash_on_cash(Decimal("17016"), Decimal("325000")), Decimal("0.0524"))
+
+
 def test_cash_on_cash_zero_invested():
+    """cash_on_cash with zero invested returns Decimal('0') rather than raising."""
     assert cash_on_cash(Decimal("12000"), Decimal("0")) == Decimal("0")
 
 
-def test_dscr_zero_debt():
-    assert dscr(Decimal("12000"), Decimal("0")) == Decimal("0")
+def test_cash_on_cash_negative():
+    """Negative annual cash flow produces a negative CoC return."""
+    result = cash_on_cash(Decimal("-5000"), Decimal("80000"))
+    assert result < Decimal("0")
+
+
+# ── DSCR tests ─────────────────────────────────────────────────────────────────
+
+
+def test_dscr_basic():
+    """dscr(17016, 15000) should be approximately 1.134."""
+    assert_close(dscr(Decimal("17016"), Decimal("15000")), Decimal("1.134"))
+
+
+def test_dscr_zero_debt_service():
+    """dscr returns Decimal('0') when debt service is zero (all-cash purchase guard).
+
+    Dividing by zero is undefined; the function returns 0 as a sentinel value so
+    callers don't need to handle ZeroDivisionError for all-cash scenarios.
+    """
+    assert dscr(Decimal("17016"), Decimal("0")) == Decimal("0")
+
+
+def test_dscr_below_one():
+    """When debt service exceeds NOI the DSCR is below 1.0."""
+    result = dscr(Decimal("17016"), Decimal("20784"))
+    assert result < Decimal("1.0")
+
+
+# ── IRR tests ──────────────────────────────────────────────────────────────────
+
+
+def test_irr_basic():
+    """Monthly cashflows that total more than the initial outlay produce a positive IRR."""
+    # -10 000 initial; 1 000/month × 12 = 12 000 total → net gain → positive IRR
+    cashflows = [Decimal("-10000")] + [Decimal("1000")] * 12
+    result = irr(cashflows)
+    assert result > Decimal("0")
+
+
+def test_irr_all_negative_cashflows():
+    """All-negative cashflows return Decimal('0') gracefully."""
+    cashflows = [Decimal("-1000")] * 12
+    result = irr(cashflows)
+    assert result == Decimal("0")
+
+
+def test_irr_single_period():
+    """A single outflow with no return period yields a non-finite IRR; function returns Decimal('0')."""
+    # numpy_financial.irr cannot compute a rate from a single cash flow →
+    # the defensive fallback in irr() returns Decimal("0").
+    result = irr([Decimal("-100000")])
+    assert result == Decimal("0")
 
 
 def test_irr_simple_positive():
