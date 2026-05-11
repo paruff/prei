@@ -15,7 +15,7 @@ RENTS_CSV = DATA_DIR / "rents.csv"
 EXPENSES_CSV = DATA_DIR / "expenses.csv"
 
 
-def supports_update_option() -> bool:
+def command_has_update_flag() -> bool:
     parser = Command().create_parser("manage.py", "import_csv")
     return any("--update" in action.option_strings for action in parser._actions)
 
@@ -58,8 +58,8 @@ class TestImportCSVCommand:
         assert OperatingExpense.objects.count() == 3
         assert OperatingExpense.objects.filter(category="Insurance").exists()
 
-    def test_import_idempotent(self, user) -> None:
-        if not supports_update_option():
+    def test_import_with_update_flag_is_idempotent(self, user) -> None:
+        if not command_has_update_flag():
             pytest.skip("import_csv command does not support --update idempotent mode")
 
         call_command(
@@ -121,7 +121,7 @@ class TestImportCSVCommand:
         csv_content: str,
         error_message: str,
     ) -> None:
-        invalid_csv = tmp_path / "invalid_properties.csv"
+        invalid_csv = tmp_path / f"invalid_{invalid_target}.csv"
         invalid_csv.write_text(csv_content, encoding="utf-8")
 
         properties_csv = str(PROPERTIES_CSV)
