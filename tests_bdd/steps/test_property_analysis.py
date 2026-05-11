@@ -6,17 +6,38 @@ import math
 from decimal import Decimal
 
 import pytest
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from pytest_bdd import given, parsers, scenario, then, when
 
 from core.models import InvestmentAnalysis, OperatingExpense, Property, RentalIncome
+from investor_app.finance.utils import (
+    cap_rate,
+    cash_on_cash,
+    dscr,
+    estimate_insurance,
+    irr,
+    noi,
+)
 
 REL_TOLERANCE = 0.03
 
 
 def _parse_currency(value: str) -> Decimal:
     return Decimal(value.replace(",", ""))
+
+
+def _finance_default_decimal(key: str) -> Decimal:
+    try:
+        return Decimal(str(settings.FINANCE_DEFAULTS[key]))
+    except KeyError as exc:
+        raise ValueError(f"Missing FINANCE_DEFAULTS['{key}'] for BDD scenario") from exc
+    except Exception as exc:
+        raise ValueError(
+            f"Invalid FINANCE_DEFAULTS['{key}'] value for BDD scenario"
+        ) from exc
 
 
 @scenario(
@@ -29,7 +50,7 @@ def test_investor_workflow() -> None:
 
 
 @given("I am logged in as an investor", target_fixture="logged_in_user")
-def logged_in_user(db, client) -> object:
+def logged_in_user(db, client) -> AbstractUser:
     """Create the authenticated investor used by the scenario."""
     user = get_user_model().objects.create_user(
         username="test_investor",
@@ -45,7 +66,9 @@ def logged_in_user(db, client) -> object:
     ),
     target_fixture="property_record",
 )
-def add_property(logged_in_user: object, address: str, purchase_price: str) -> Property:
+def add_property(
+    logged_in_user: AbstractUser, address: str, purchase_price: str
+) -> Property:
     """Create the property for the investor workflow."""
     return Property.objects.create(
         user=logged_in_user,
@@ -111,14 +134,52 @@ def add_maintenance_expense(
 @when("the investment analysis is computed", target_fixture="analysis")
 def compute_investment_analysis(property_record: Property) -> InvestmentAnalysis:
     """Persist the KPI snapshot for the happy-path scenario."""
+    management_fee_rate = _finance_default_decimal("management_fee_rate")
+    monthly_rent = sum(
+        (
+            Decimal(str(income.monthly_rent))
+            for income in property_record.rental_incomes.all()
+        ),
+        Decimal("0"),
+    )
+    monthly_income = sum(
+        (
+            income.effective_gross_income()
+            for income in property_record.rental_incomes.all()
+        ),
+        Decimal("0"),
+    )
+    monthly_expenses = sum(
+        (
+            expense.monthly_amount()
+            for expense in property_record.operating_expenses.all()
+        ),
+        Decimal("0"),
+    )
+    monthly_expenses += estimate_insurance(
+        property_record.purchase_price,
+        year_built=timezone.now().year,
+    ) / Decimal("12")
+    monthly_expenses += monthly_rent * management_fee_rate
+    annual_noi = noi(monthly_income, monthly_expenses)
+    annual_debt_service = Decimal("0")
+    monthly_cashflow = annual_noi / Decimal("12")
+
     analysis, _ = InvestmentAnalysis.objects.update_or_create(
         property=property_record,
         defaults={
-            "noi": Decimal("17016.00"),
-            "cap_rate": Decimal("0.0524"),
-            "cash_on_cash": Decimal("0.0524"),
-            "irr": Decimal("0"),
-            "dscr": Decimal("0"),
+            "noi": annual_noi.quantize(Decimal("0.01")),
+            "cap_rate": cap_rate(
+                annual_noi, Decimal(str(property_record.purchase_price))
+            ).quantize(Decimal("0.0001")),
+            "cash_on_cash": cash_on_cash(
+                annual_noi, Decimal(str(property_record.purchase_price))
+            ).quantize(Decimal("0.0001")),
+            "irr": irr(
+                [Decimal(str(property_record.purchase_price)) * Decimal("-1")]
+                + [monthly_cashflow] * 12
+            ).quantize(Decimal("0.0001")),
+            "dscr": dscr(annual_noi, annual_debt_service).quantize(Decimal("0.0001")),
         },
     )
     return analysis
