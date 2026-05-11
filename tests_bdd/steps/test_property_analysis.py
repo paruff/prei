@@ -20,7 +20,9 @@ from investor_app.finance.utils import (
     noi,
 )
 
+# Acceptance criteria require NOI and cap rate checks with ±3% relative tolerance.
 REL_TOLERANCE = 0.03
+DEFAULT_TEST_YEAR_BUILT = 2020
 
 
 def _parse_currency(value: str) -> Decimal:
@@ -158,7 +160,7 @@ def compute_investment_analysis(property_record: Property) -> InvestmentAnalysis
     )
     monthly_expenses += estimate_insurance(
         property_record.purchase_price,
-        year_built=2020,
+        year_built=DEFAULT_TEST_YEAR_BUILT,
     ) / Decimal("12")
     monthly_expenses += monthly_rent * management_fee_rate
     annual_noi = noi(monthly_income, monthly_expenses)
