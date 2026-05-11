@@ -114,7 +114,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         demo_user = self._get_or_create_demo_user()
-        demo_user_id = int(demo_user.pk)
+        demo_user_id = demo_user.pk
 
         self.stdout.write(self.style.SUCCESS("Demo credentials"))
         self.stdout.write(f"  email: {DEMO_EMAIL}")
