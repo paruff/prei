@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import argparse
 from datetime import date
 from decimal import Decimal
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
@@ -86,7 +88,7 @@ SEED_PROPERTIES = (
 class Command(BaseCommand):
     help = "Seed demo user and sample properties with rental, expenses, and analyses"
 
-    def add_arguments(self, parser) -> None:
+    def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--reset",
             action="store_true",
@@ -165,7 +167,7 @@ class Command(BaseCommand):
             )
         )
 
-    def _get_or_create_demo_user(self):
+    def _get_or_create_demo_user(self) -> AbstractBaseUser:
         User = get_user_model()
         user = User.objects.filter(email=DEMO_EMAIL).first()
         if user is not None:

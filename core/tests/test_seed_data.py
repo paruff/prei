@@ -24,7 +24,7 @@ class TestSeedDataCommand:
         properties = Property.objects.filter(user=user)
         assert properties.count() == 3
         assert RentalIncome.objects.filter(property__user=user).count() == 4
-        assert OperatingExpense.objects.filter(property__user=user).count() >= 12
+        assert OperatingExpense.objects.filter(property__user=user).count() == 12
         assert InvestmentAnalysis.objects.filter(property__user=user).count() == 3
 
         for prop in properties:
