@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import date
 from decimal import Decimal
+from typing import TypedDict
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -16,7 +17,22 @@ DEMO_EMAIL = str(getattr(settings, "SEED_DEMO_EMAIL", "demo@prei.dev"))
 DEMO_PASSWORD = str(getattr(settings, "SEED_DEMO_PASSWORD", "DemoPass123!"))
 DEMO_USERNAME = str(getattr(settings, "SEED_DEMO_USERNAME", "demo"))
 
-SEED_PROPERTIES = (
+
+class SeedProperty(TypedDict):
+    address: str
+    city: str
+    state: str
+    zip_code: str
+    purchase_price: Decimal
+    purchase_date: date
+    sqft: int
+    units: int
+    notes: str
+    rents: list[Decimal]
+    expenses: tuple[tuple[str, Decimal, str], ...]
+
+
+SEED_PROPERTIES: tuple[SeedProperty, ...] = (
     {
         "address": "4127 South Congress Ave",
         "city": "Austin",
@@ -98,13 +114,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         demo_user = self._get_or_create_demo_user()
+        demo_user_id = int(demo_user.pk)
 
         self.stdout.write(self.style.SUCCESS("Demo credentials"))
         self.stdout.write(f"  email: {DEMO_EMAIL}")
         self.stdout.write(f"  password: {DEMO_PASSWORD}")
 
         if options["reset"]:
-            deleted_count, _ = Property.objects.filter(user=demo_user).delete()
+            deleted_count, _ = Property.objects.filter(user_id=demo_user_id).delete()
             self.stdout.write(
                 self.style.WARNING(
                     f"--reset enabled: deleted existing demo-owned records={deleted_count}"
@@ -117,7 +134,7 @@ class Command(BaseCommand):
 
         for seed in SEED_PROPERTIES:
             prop, created = Property.objects.get_or_create(
-                user=demo_user,
+                user_id=demo_user_id,
                 address=seed["address"],
                 city=seed["city"],
                 state=seed["state"],
@@ -205,4 +222,7 @@ class Command(BaseCommand):
                 password=DEMO_PASSWORD,
             )
 
-        return User.objects.create_superuser(email=DEMO_EMAIL, password=DEMO_PASSWORD)
+        return User.objects.create_superuser(  # type: ignore[call-arg]
+            email=DEMO_EMAIL,
+            password=DEMO_PASSWORD,
+        )
