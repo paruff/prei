@@ -4,16 +4,17 @@ import argparse
 from datetime import date
 from decimal import Decimal
 
-from django.contrib.auth.base_user import AbstractBaseUser
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.core.management.base import BaseCommand
 
 from core.models import OperatingExpense, Property, RentalIncome
 from investor_app.finance.utils import compute_analysis_for_property
 
-DEMO_EMAIL = "demo@prei.dev"
-DEMO_PASSWORD = "DemoPass123!"
-DEMO_USERNAME = "demo"
+DEMO_EMAIL = str(getattr(settings, "SEED_DEMO_EMAIL", "demo@prei.dev"))
+DEMO_PASSWORD = str(getattr(settings, "SEED_DEMO_PASSWORD", "DemoPass123!"))
+DEMO_USERNAME = str(getattr(settings, "SEED_DEMO_USERNAME", "demo"))
 
 SEED_PROPERTIES = (
     {
@@ -86,7 +87,7 @@ SEED_PROPERTIES = (
 
 
 class Command(BaseCommand):
-    help = "Seed demo user and sample properties with rental, expenses, and analyses"
+    help = "Seed demo user and sample properties with rental, expenses, and analyses."
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
@@ -171,15 +172,33 @@ class Command(BaseCommand):
         User = get_user_model()
         user = User.objects.filter(email=DEMO_EMAIL).first()
         if user is not None:
+            is_staff_changed = not user.is_staff
+            is_superuser_changed = not user.is_superuser
+            user.is_staff = True
+            user.is_superuser = True
+            if not user.check_password(DEMO_PASSWORD):
+                user.set_password(DEMO_PASSWORD)
+                user.save(update_fields=["is_staff", "is_superuser", "password"])
+            elif is_staff_changed or is_superuser_changed:
+                user.save(update_fields=["is_staff", "is_superuser"])
             return user
 
         if hasattr(User, "username"):
-            base_username = DEMO_USERNAME
-            username = base_username
-            suffix = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base_username}{suffix}"
-                suffix += 1
+            existing_usernames = set(
+                User.objects.filter(username__startswith=DEMO_USERNAME).values_list(
+                    "username", flat=True
+                )
+            )
+            if DEMO_USERNAME not in existing_usernames:
+                username = DEMO_USERNAME
+            else:
+                numeric_suffixes = [
+                    int(existing_username[len(DEMO_USERNAME) :])
+                    for existing_username in existing_usernames
+                    if existing_username[len(DEMO_USERNAME) :].isdigit()
+                ]
+                next_suffix = (max(numeric_suffixes) + 1) if numeric_suffixes else 1
+                username = f"{DEMO_USERNAME}{next_suffix}"
             return User.objects.create_superuser(
                 username=username,
                 email=DEMO_EMAIL,

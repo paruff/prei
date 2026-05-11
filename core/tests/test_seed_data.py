@@ -6,7 +6,11 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 
-from core.management.commands.seed_data import DEMO_EMAIL, DEMO_PASSWORD
+from core.management.commands.seed_data import (
+    DEMO_EMAIL,
+    DEMO_PASSWORD,
+    SEED_PROPERTIES,
+)
 from core.models import InvestmentAnalysis, OperatingExpense, Property, RentalIncome
 
 
@@ -21,10 +25,17 @@ class TestSeedDataCommand:
         assert user.is_staff is True
         assert user.check_password(DEMO_PASSWORD) is True
 
+        expected_rents = sum(len(seed["rents"]) for seed in SEED_PROPERTIES)
+        expected_expenses = sum(len(seed["expenses"]) for seed in SEED_PROPERTIES)
         properties = Property.objects.filter(user=user)
         assert properties.count() == 3
-        assert RentalIncome.objects.filter(property__user=user).count() == 4
-        assert OperatingExpense.objects.filter(property__user=user).count() == 12
+        assert (
+            RentalIncome.objects.filter(property__user=user).count() == expected_rents
+        )
+        assert (
+            OperatingExpense.objects.filter(property__user=user).count()
+            == expected_expenses
+        )
         assert InvestmentAnalysis.objects.filter(property__user=user).count() == 3
 
         for prop in properties:
@@ -55,6 +66,21 @@ class TestSeedDataCommand:
 
         assert second_counts == first_counts
 
+    def test_seed_data_resets_existing_demo_user_password(self) -> None:
+        user = get_user_model().objects.create_user(
+            username="existing_demo_user",
+            email=DEMO_EMAIL,
+            password="DifferentPass123!",
+        )
+        assert user.check_password("DifferentPass123!") is True
+
+        call_command("seed_data")
+        user.refresh_from_db()
+        assert user.username == "existing_demo_user"
+        assert user.is_superuser is True
+        assert user.is_staff is True
+        assert user.check_password(DEMO_PASSWORD) is True
+
     def test_seed_data_reset_recreates_seed_for_demo_user(self) -> None:
         call_command("seed_data")
         user = get_user_model().objects.get(email=DEMO_EMAIL)
@@ -70,6 +96,13 @@ class TestSeedDataCommand:
 
         call_command("seed_data", "--reset")
         assert Property.objects.filter(user=user).count() == 3
-        assert RentalIncome.objects.filter(property__user=user).count() == 4
-        assert OperatingExpense.objects.filter(property__user=user).count() == 12
+        expected_rents = sum(len(seed["rents"]) for seed in SEED_PROPERTIES)
+        expected_expenses = sum(len(seed["expenses"]) for seed in SEED_PROPERTIES)
+        assert (
+            RentalIncome.objects.filter(property__user=user).count() == expected_rents
+        )
+        assert (
+            OperatingExpense.objects.filter(property__user=user).count()
+            == expected_expenses
+        )
         assert InvestmentAnalysis.objects.filter(property__user=user).count() == 3
