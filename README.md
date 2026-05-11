@@ -54,7 +54,7 @@ For detailed setup instructions, see the **[Getting Started Tutorial](https://pa
    - Password: `DemoPass123!`
    - Re-run safely: `python manage.py seed_data`
    - Reset + reseed: `python manage.py seed_data --reset`
-   - Local development only: override `SEED_DEMO_EMAIL`/`SEED_DEMO_PASSWORD` outside local environments.
+   - For non-local environments, only run this command with explicit non-default `SEED_DEMO_EMAIL` and `SEED_DEMO_PASSWORD`.
 
 ## Quick start (Codespaces / Dev Container)
 
