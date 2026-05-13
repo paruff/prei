@@ -11,6 +11,51 @@ A Django-based web application to analyze and track residential real estate inve
 - **Watchlists**: Track specific properties of interest
 - **In-App Notifications**: Receive real-time notifications for auction updates and reminders
 
+## 🚀 Quick Start
+
+Choose the path that fits your situation:
+
+| Path | Best for | Guide |
+|---|---|---|
+| **Docker (local)** | Running the app locally on Windows/Mac | [Docker Local Setup](docs/how-to-guides/docker-local-setup.md) |
+| **GitHub Codespaces** | Zero-install, browser-based evaluation | [Getting Started Tutorial](https://paruff.github.io/prei/tutorials/getting-started/) |
+| **Dev Container** | Local VS Code development | See Dev Container section below |
+
+> ⚠️ **Windows + Docker users:** Read the [Docker Local Setup guide](docs/how-to-guides/docker-local-setup.md)
+> before editing `.env` — several defaults are production-only and will prevent the app
+> from loading in a browser without changes.
+
+### Fastest path: GitHub Codespaces
+
+No installation required. Open the repo in a Codespace and the full environment
+starts automatically:
+
+1. Click **Code → Codespaces → Create codespace on main**
+2. Wait for the environment to build (~2 minutes)
+3. Run `make dev` in the integrated terminal
+4. Open the forwarded port for `8000`
+
+Demo login:
+- **Email:** `demo@prei.dev`
+- **Password:** `DemoPass123!`
+
+### Local Docker (Windows 11)
+
+See the full **[Docker Local Setup guide](docs/how-to-guides/docker-local-setup.md)**
+for Windows environment prep, WSL2 configuration, and browser troubleshooting.
+
+Quick summary once your environment is ready:
+
+```powershell
+git clone https://github.com/paruff/prei.git
+cd prei
+copy .env.example .env
+# Edit .env — see guide for required changes
+docker compose up -d
+```
+
+Then open `http://127.0.0.1:8000` in your browser.
+
 ## 📚 Documentation
 
 Comprehensive documentation is available at **[https://paruff.github.io/prei/](https://paruff.github.io/prei/)**
