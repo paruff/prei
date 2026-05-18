@@ -4,20 +4,27 @@
     <meta charset="utf-8" />
     <title>{% block title %}Investor App{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; margin: 2rem; }
-      nav a { margin-right: 1rem; }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid #ddd; padding: 8px; }
-      th { background: #f7f7f7; text-align: left; }
-    </style>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
   </head>
-  <body>
-    <nav>
-      <a href="{% url 'dashboard' %}">Dashboard</a>
-      <a href="{% url 'growth_areas' %}">Economically Growing Areas</a>
-      <a href="{% url 'search_listings' %}">Find Properties</a>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+      <div class="container">
+        <a class="navbar-brand" href="{% url 'dashboard' %}">prei</a>
+        <div class="navbar-nav ms-auto">
+          <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+          <a class="nav-link" href="{% url 'property_list' %}">Properties</a>
+          <a class="nav-link" href="/admin/core/property/add/">Add Property</a>
+          <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+        </div>
+      </div>
     </nav>
-    {% block content %}{% endblock %}
+    <main class="container pb-4">
+      {% block content %}{% endblock %}
+    </main>
   </body>
 </html>

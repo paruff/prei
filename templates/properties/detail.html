@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Property Details{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">{{ property.address }}</h1>
+    <a href="{% url 'property_list' %}" class="btn btn-outline-secondary btn-sm">Back to Properties</a>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="mb-1 text-muted">{{ property.city }}, {{ property.state }} {{ property.zip_code }}</div>
+      <div><strong>Purchase Price:</strong> ${{ property.purchase_price|floatformat:2 }}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h2 class="h5">Investment KPIs</h2>
+      <div class="row g-2 mt-2">
+        <div class="col-12 col-md-4"><strong>NOI:</strong> {% if analysis %}${{ analysis.noi|floatformat:2 }}{% else %}—{% endif %}</div>
+        <div class="col-12 col-md-4"><strong>Cap Rate:</strong> {% if analysis %}{{ analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</div>
+        <div class="col-12 col-md-4"><strong>Cash-on-Cash:</strong> {% if analysis %}{{ analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</div>
+        <div class="col-12 col-md-4"><strong>IRR:</strong> {% if analysis %}{{ analysis.irr|floatformat:4 }}{% else %}—{% endif %}</div>
+        <div class="col-12 col-md-4"><strong>DSCR:</strong> {% if analysis %}{{ analysis.dscr|floatformat:4 }}{% else %}—{% endif %}</div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

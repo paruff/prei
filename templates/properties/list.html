@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Properties{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Properties</h1>
+    <a href="/admin/core/property/add/" class="btn btn-primary btn-sm">Add Property</a>
+  </div>
+
+  {% if properties %}
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Address</th>
+            <th>Purchase Price</th>
+            <th>NOI</th>
+            <th>Cap Rate</th>
+            <th>CoC</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for property in properties %}
+            <tr>
+              <td>{{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}</td>
+              <td>${{ property.purchase_price|floatformat:2 }}</td>
+              <td>{% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</td>
+              <td>{% if property.analysis %}{{ property.analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</td>
+              <td>{% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</td>
+              <td><a href="{% url 'property_detail' property.pk %}">Details</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <p class="mb-2">No properties yet.</p>
+      <a href="/admin/core/property/add/" class="btn btn-primary">Add your first property</a>
+    </div>
+  {% endif %}
+{% endblock %}
