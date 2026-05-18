@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 
 from investor_app.finance.utils import (
+    build_cashflows,
     calculate_appreciation,
     calculate_break_even_rent,
     calculate_carrying_costs,
@@ -17,6 +18,7 @@ from investor_app.finance.utils import (
     cash_on_cash,
     dscr,
     estimate_insurance,
+    compute_analysis_for_property,
     irr,
     noi,
 )
@@ -155,6 +157,91 @@ def test_irr_simple_positive():
     cf = [Decimal("-100000")] + [Decimal("10000")] * 12
     result = irr(cf)
     assert isinstance(result, Decimal)
+
+
+def test_build_cashflows_structure():
+    cashflows = build_cashflows(
+        purchase_price=Decimal("325000"),
+        monthly_noi=Decimal("1418"),
+        hold_years=5,
+        exit_cap_rate=Decimal("0.055"),
+    )
+
+    assert len(cashflows) == 61
+    assert cashflows[0] == Decimal("-325000")
+    assert all(value == Decimal("1418") for value in cashflows[1:60])
+    assert cashflows[60] == Decimal("1418") + (Decimal("17016") / Decimal("0.055"))
+
+
+def test_irr_with_exit_value_higher_than_without():
+    purchase_price = Decimal("325000")
+    monthly_noi = Decimal("1418")
+    hold_years = 5
+
+    with_exit = irr(
+        build_cashflows(
+            purchase_price=purchase_price,
+            monthly_noi=monthly_noi,
+            hold_years=hold_years,
+            exit_cap_rate=Decimal("0.055"),
+        )
+    )
+    without_exit = irr(
+        [purchase_price * Decimal("-1")] + [monthly_noi] * (hold_years * 12)
+    )
+
+    assert with_exit > without_exit
+
+
+def test_irr_hold_period_1_year():
+    cashflows = build_cashflows(
+        purchase_price=Decimal("325000"),
+        monthly_noi=Decimal("1418"),
+        hold_years=1,
+        exit_cap_rate=Decimal("0.055"),
+    )
+
+    result = irr(cashflows)
+
+    assert len(cashflows) == 13
+    assert result > Decimal("0")
+
+
+def test_irr_hold_period_10_year():
+    cashflows = build_cashflows(
+        purchase_price=Decimal("325000"),
+        monthly_noi=Decimal("1418"),
+        hold_years=10,
+        exit_cap_rate=Decimal("0.055"),
+    )
+
+    result = irr(cashflows)
+
+    assert len(cashflows) == 121
+    assert result > Decimal("0")
+
+
+@pytest.mark.django_db
+def test_compute_analysis_for_property_uses_analysis_hold_inputs(
+    property_sfr,
+    rental_income_sfr,
+    expense_property_tax_annual,
+    expense_insurance_annual,
+    expense_maintenance_monthly,
+    expense_management_monthly,
+    expense_capex_reserve_monthly,
+):
+    baseline = compute_analysis_for_property(property_sfr)
+
+    baseline.hold_years = 1
+    baseline.exit_cap_rate = Decimal("0.08")
+    baseline.save(update_fields=["hold_years", "exit_cap_rate"])
+
+    updated = compute_analysis_for_property(property_sfr)
+
+    assert updated.hold_years == 1
+    assert updated.exit_cap_rate == Decimal("0.08")
+    assert updated.irr != baseline.irr
 
 
 def test_calculate_monthly_mortgage_basic():

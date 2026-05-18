@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 import logging
 from statistics import median
-from typing import Any, Dict, Iterable, Sequence, TypedDict
+from typing import Any, Dict, Sequence, TypedDict
 
 import numpy as np
 import numpy_financial as npf
@@ -42,7 +42,7 @@ def dscr(annual_noi: Decimal, annual_debt_service: Decimal) -> Decimal:
     return to_decimal(annual_noi) / to_decimal(annual_debt_service)
 
 
-def irr(cashflows: Iterable[float | int | Decimal]) -> Decimal:
+def irr(cashflows: list[Decimal]) -> Decimal:
     cf = np.array([float(c) for c in cashflows], dtype=float)
     try:
         value = float(npf.irr(cf))
@@ -55,6 +55,29 @@ def irr(cashflows: Iterable[float | int | Decimal]) -> Decimal:
     except Exception:
         logger.warning("irr: numpy_financial.irr raised; returning 0", exc_info=True)
         return Decimal("0")
+
+
+def build_cashflows(
+    purchase_price: Decimal,
+    monthly_noi: Decimal,
+    hold_years: int,
+    exit_cap_rate: Decimal,
+) -> list[Decimal]:
+    if hold_years < 1:
+        raise ValueError("hold_years must be at least 1")
+
+    if exit_cap_rate <= Decimal("0"):
+        raise ValueError("exit_cap_rate must be greater than 0")
+
+    annual_noi = to_decimal(monthly_noi) * Decimal("12")
+    exit_value = annual_noi / to_decimal(exit_cap_rate)
+    total_months = hold_years * 12
+
+    return (
+        [to_decimal(purchase_price) * Decimal("-1")]
+        + [to_decimal(monthly_noi)] * (total_months - 1)
+        + [to_decimal(monthly_noi) + exit_value]
+    )
 
 
 def score_listing_v1(listing: Listing) -> Decimal:
@@ -618,6 +641,9 @@ def compute_analysis_for_property(prop: Property) -> InvestmentAnalysis:
     annual_debt_service = Decimal("0")
 
     analysis, _ = InvestmentAnalysis.objects.get_or_create(property=prop)
+    hold_years = analysis.hold_years
+    exit_cap_rate = analysis.exit_cap_rate
+
     analysis.noi = annual_noi.quantize(Decimal("0.01"))
     analysis.cap_rate = cap_rate(annual_noi, to_decimal(prop.purchase_price)).quantize(
         Decimal("0.0001")
@@ -627,10 +653,13 @@ def compute_analysis_for_property(prop: Property) -> InvestmentAnalysis:
     ).quantize(Decimal("0.0001"))
     analysis.dscr = dscr(annual_noi, annual_debt_service).quantize(Decimal("0.0001"))
 
-    # Simple IRR: initial outlay negative, then 12 months of NOI as inflows for one year horizon
-    cashflows = [to_decimal(prop.purchase_price) * Decimal(-1)] + [
-        annual_noi / Decimal(12)
-    ] * 12
+    monthly_noi = annual_noi / Decimal(12)
+    cashflows = build_cashflows(
+        purchase_price=to_decimal(prop.purchase_price),
+        monthly_noi=monthly_noi,
+        hold_years=hold_years,
+        exit_cap_rate=to_decimal(exit_cap_rate),
+    )
     analysis.irr = irr(cashflows).quantize(Decimal("0.0001"))
     analysis.save()
     return analysis
