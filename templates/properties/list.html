@@ -3,7 +3,7 @@
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">Properties</h1>
-    <a href="/admin/core/property/add/" class="btn btn-primary btn-sm">Add Property</a>
+    <a href="{% url 'property_add' %}" class="btn btn-primary btn-sm">Add Property</a>
   </div>
 
   {% if properties %}
@@ -27,7 +27,11 @@
               <td>{% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</td>
               <td>{% if property.analysis %}{{ property.analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</td>
               <td>{% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</td>
-              <td><a href="{% url 'property_detail' property.pk %}">Details</a></td>
+              <td>
+                <a href="{% url 'property_detail' property.pk %}">Details</a>
+                ·
+                <a href="{% url 'property_edit' property.pk %}">Edit</a>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -36,7 +40,7 @@
   {% else %}
     <div class="alert alert-light border text-center">
       <p class="mb-2">No properties yet.</p>
-      <a href="/admin/core/property/add/" class="btn btn-primary">Add your first property</a>
+      <a href="{% url 'property_add' %}" class="btn btn-primary">Add your first property</a>
     </div>
   {% endif %}
 {% endblock %}
