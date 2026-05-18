@@ -29,9 +29,10 @@ def test_dashboard_computes_analysis(client, db, user):
         effective_date=timezone.now().date(),
     )
 
+    client.force_login(user)
     url = reverse("dashboard")
     resp = client.get(url)
     assert resp.status_code == 200
     content = resp.content.decode()
-    assert "Top Properties" in content
+    assert "Dashboard" in content
     assert "123 Main St" in content

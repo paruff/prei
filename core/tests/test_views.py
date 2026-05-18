@@ -42,7 +42,9 @@ def test_property_list_excludes_other_users_properties(
     assert property_owned_by_second_user.address not in content
 
 
-def test_property_detail_404_for_wrong_user(client, user, property_owned_by_second_user):
+def test_property_detail_404_for_wrong_user(
+    client, user, property_owned_by_second_user
+):
     client.force_login(user)
 
     response = client.get(

@@ -3,7 +3,10 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
-from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
+from django.db.models import Avg, Sum
+from django.shortcuts import get_object_or_404, redirect, render
 
 from investor_app.finance.utils import (
     compute_analysis_for_property,
@@ -15,52 +18,77 @@ from investor_app.finance.utils import (
 from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot, SavedSearch
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
 from core.services.audit import log_action
-from core.services.recommendations import recommend_listings
 
 logger = logging.getLogger(__name__)
 
 
-def dashboard(request):
-    # Property analyses (existing)
-    properties = Property.objects.all()[:20]
-    analyses: list[InvestmentAnalysis] = []
-    for p in properties:
-        analysis = compute_analysis_for_property(p)
-        analyses.append(analysis)
+def _portfolio_summary(user) -> dict[str, Decimal | int]:
+    properties = Property.objects.filter(user=user)
+    total_invested = properties.aggregate(total=Sum("purchase_price"))[
+        "total"
+    ] or Decimal("0")
+    average_cap_rate = InvestmentAnalysis.objects.filter(property__user=user).aggregate(
+        average=Avg("cap_rate")
+    )["average"] or Decimal("0")
+    return {
+        "total_properties": properties.count(),
+        "total_invested": total_invested,
+        "average_cap_rate": average_cap_rate,
+    }
 
-    # Basic listing filters
-    min_price = request.GET.get("min_price")
-    max_price = request.GET.get("max_price")
-    state = request.GET.get("state")
 
-    listings_qs = Listing.objects.all()
-    if min_price:
-        listings_qs = listings_qs.filter(price__gte=min_price)
-    if max_price:
-        listings_qs = listings_qs.filter(price__lte=max_price)
-    if state:
-        listings_qs = listings_qs.filter(state__iexact=state)
-
-    listings = []
-    for lst in listings_qs[:50]:
-        listings.append(
-            {
-                "obj": lst,
-                "score": score_listing_v1(lst),
-            }
-        )
-
-    recommendations = []
+def home(request):
     if request.user.is_authenticated:
-        recommendations = recommend_listings(request.user, limit=5)
+        return redirect("dashboard")
+    return redirect_to_login(request.get_full_path())
+
+
+@login_required
+def dashboard(request):
+    properties = (
+        Property.objects.filter(user=request.user)
+        .select_related("analysis")
+        .order_by("-id")
+    )
 
     return render(
         request,
         "dashboard.html",
         {
-            "analyses": analyses,
-            "listings": listings,
-            "recommendations": recommendations,
+            "properties": properties,
+            "portfolio_summary": _portfolio_summary(request.user),
+        },
+    )
+
+
+@login_required
+def property_list(request):
+    properties = (
+        Property.objects.filter(user=request.user)
+        .select_related("analysis")
+        .order_by("-id")
+    )
+    return render(
+        request,
+        "properties/list.html",
+        {
+            "properties": properties,
+            "portfolio_summary": _portfolio_summary(request.user),
+        },
+    )
+
+
+@login_required
+def property_detail(request, pk: int):
+    property_obj = get_object_or_404(
+        Property.objects.select_related("analysis"), pk=pk, user=request.user
+    )
+    return render(
+        request,
+        "properties/detail.html",
+        {
+            "property": property_obj,
+            "analysis": getattr(property_obj, "analysis", None),
         },
     )
 

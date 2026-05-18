@@ -16,9 +16,10 @@ def test_dashboard_shows_analyze_link(client, user):
         zip_code="00000",
         purchase_price=Decimal("100000"),
     )
+    client.force_login(user)
     resp = client.get(reverse("dashboard"))
     assert resp.status_code == 200
-    assert f"/analyze/{p.id}/" in resp.content.decode()
+    assert reverse("property_detail", kwargs={"pk": p.id}) in resp.content.decode()
 
 
 @pytest.mark.django_db

@@ -1,121 +1,71 @@
 {% extends "base.html" %}
-{% block title %}Investor Dashboard{% endblock %}
+{% block title %}Dashboard{% endblock %}
 {% block content %}
-    <h1>Top Properties</h1>
-    <table>
-      <thead>
-        <tr>
-          <th>Property</th>
-          <th>NOI</th>
-          <th>Cap Rate</th>
-          <th>Cash-on-Cash</th>
-          <th>IRR</th>
-          <th>DSCR</th>
-          <th>Updated</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for a in analyses %}
-          <tr>
-            <td>{{ a.property }}</td>
-            <td>${{ a.noi }}</td>
-            <td>{{ a.cap_rate|floatformat:4 }}</td>
-            <td>{{ a.cash_on_cash|floatformat:4 }}</td>
-            <td>{{ a.irr|floatformat:4 }}</td>
-            <td>{{ a.dscr|floatformat:4 }}</td>
-            <td>{{ a.updated_at }}</td>
-            <td><a href="{% url 'analyze_property' a.property.id %}">Analyze</a></td>
-            <td>
-              <a href="{% url 'analyze_property' a.property.id %}">Analyze</a>
-              |
-              <a href="{% url 'report_property' a.property.id %}">Report</a>
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="7">No properties yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Dashboard</h1>
+    <a href="/admin/core/property/add/" class="btn btn-primary btn-sm">Add Property</a>
+  </div>
 
-    <h2 style="margin-top:2rem">Recommendations</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Address</th>
-          <th>City</th>
-          <th>State</th>
-          <th>Price</th>
-          <th>Score</th>
-          <th>Why this matches</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in recommendations %}
-          <tr>
-            <td>{{ item.obj.address }}</td>
-            <td>{{ item.obj.city }}</td>
-            <td>{{ item.obj.state }}</td>
-            <td>${{ item.obj.price }}</td>
-            <td>{{ item.score|floatformat:2 }}</td>
-            <td>{{ item.explanation }}</td>
-            <td>
-              <a href="{% url 'report_listing' item.obj.id %}">Report</a>
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="7">No recommendations yet. Save a search to get personalized deals.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted">Total Properties</div>
+          <div class="fs-4 fw-semibold">{{ portfolio_summary.total_properties }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted">Total Invested</div>
+          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_invested|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted">Average Cap Rate</div>
+          <div class="fs-4 fw-semibold">{{ portfolio_summary.average_cap_rate|floatformat:4 }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <h2 style="margin-top:2rem">New Listings</h2>
-    <form method="get" style="margin-bottom:1rem">
-      <label>Min Price <input type="number" name="min_price" value="{{ request.GET.min_price }}" /></label>
-      <label>Max Price <input type="number" name="max_price" value="{{ request.GET.max_price }}" /></label>
-      <label>State <input type="text" name="state" value="{{ request.GET.state }}" /></label>
-      <button type="submit">Filter</button>
-    </form>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Address</th>
-          <th>City</th>
-          <th>State</th>
-          <th>Price</th>
-          <th>Beds</th>
-          <th>Baths</th>
-          <th>Sq Ft</th>
-          <th>Source</th>
-          <th>Posted</th>
-          <th>Score (V1)</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in listings %}
-          <tr>
-            <td>{{ item.obj.address }}</td>
-            <td>{{ item.obj.city }}</td>
-            <td>{{ item.obj.state }}</td>
-            <td>${{ item.obj.price }}</td>
-            <td>{{ item.obj.beds }}</td>
-            <td>{{ item.obj.baths }}</td>
-            <td>{{ item.obj.sq_ft }}</td>
-            <td>{{ item.obj.source }}</td>
-            <td>{{ item.obj.posted_at }}</td>
-            <td>{{ item.score|floatformat:2 }}</td>
-            <td>
-              <a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a>
-              |
-              <a href="{% url 'report_listing' item.obj.id %}">Report</a>
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="11">No listings available.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {% if properties %}
+    <div class="row g-3">
+      {% for property in properties %}
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between flex-wrap gap-2">
+                <div>
+                  <h2 class="h5 mb-1">{{ property.address }}</h2>
+                  <div class="text-muted">{{ property.city }}, {{ property.state }} {{ property.zip_code }}</div>
+                </div>
+                <div>
+                  <a href="{% url 'property_detail' property.pk %}" class="btn btn-outline-primary btn-sm">View Details</a>
+                </div>
+              </div>
+              <div class="row mt-3 g-2">
+                <div class="col-6 col-md-3"><strong>Purchase Price:</strong> ${{ property.purchase_price|floatformat:2 }}</div>
+                <div class="col-6 col-md-3"><strong>NOI:</strong> {% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</div>
+                <div class="col-6 col-md-3"><strong>Cap Rate:</strong> {% if property.analysis %}{{ property.analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</div>
+                <div class="col-6 col-md-3"><strong>CoC:</strong> {% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <h2 class="h5">No properties yet</h2>
+        <p class="text-muted mb-3">Start your portfolio to see KPI insights.</p>
+        <a href="/admin/core/property/add/" class="btn btn-primary">Add your first property</a>
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}
