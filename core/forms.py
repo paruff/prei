@@ -4,12 +4,14 @@ from django import forms
 
 from .models import OperatingExpense, Property, RentalIncome
 
+MIN_REALISTIC_YEAR_BUILT = 1800
+
 
 class PropertyForm(forms.ModelForm):
     property_type = forms.CharField(required=False, max_length=64)
     square_footage = forms.IntegerField(required=False, min_value=0)
     num_units = forms.IntegerField(required=False, min_value=1, initial=1)
-    year_built = forms.IntegerField(required=False, min_value=0)
+    year_built = forms.IntegerField(required=False, min_value=MIN_REALISTIC_YEAR_BUILT)
 
     class Meta:
         model = Property
@@ -33,6 +35,14 @@ class PropertyForm(forms.ModelForm):
             self.fields["num_units"].initial = self.instance.units
 
     def save(self, commit: bool = True) -> Property:
+        """Persist form values while mapping UX field names to model field names.
+
+        Args:
+            commit: Whether to immediately save the model instance.
+
+        Returns:
+            The updated property instance.
+        """
         instance = super().save(commit=False)
         instance.sqft = self.cleaned_data.get("square_footage")
         instance.units = self.cleaned_data.get("num_units") or 1

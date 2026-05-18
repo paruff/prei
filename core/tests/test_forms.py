@@ -33,7 +33,7 @@ def test_property_form_maps_square_footage_and_units(user):
             "state": "TX",
             "zip_code": "78701",
             "purchase_price": "250000.00",
-            "purchase_date": "2026-01-01",
+            "purchase_date": "2025-01-01",
             "property_type": "single-family",
             "square_footage": "1500",
             "num_units": "2",
@@ -137,6 +137,13 @@ def test_property_workflow_views_create_and_redirect(client, user):
 
 
 @pytest.mark.django_db
+def test_property_workflow_views_require_login(client):
+    response = client.get(reverse("property_add"))
+    assert response.status_code == 302
+    assert response.url.startswith("/accounts/login/")
+
+
+@pytest.mark.django_db
 def test_property_edit_prepopulated_and_delete_owner_only(client, user, second_user):
     property_obj = Property.objects.create(
         user=user,
@@ -155,16 +162,21 @@ def test_property_edit_prepopulated_and_delete_owner_only(client, user, second_u
     assert "12 Edit St" in content
     assert 'value="1400"' in content
 
-    intruder_client = client.__class__()
-    intruder_client.force_login(second_user)
-    forbidden_response = intruder_client.get(
+    other_user_client = client.__class__()
+    other_user_client.force_login(second_user)
+    forbidden_response = other_user_client.get(
         reverse("property_edit", kwargs={"pk": property_obj.pk})
     )
     assert forbidden_response.status_code == 404
 
+    delete_confirm = client.get(
+        reverse("property_edit", kwargs={"pk": property_obj.pk})
+    )
+    assert delete_confirm.status_code == 200
+    assert "Delete property" in delete_confirm.content.decode()
+
     delete_get = client.get(reverse("property_delete", kwargs={"pk": property_obj.pk}))
-    assert delete_get.status_code == 200
-    assert "Delete property" in delete_get.content.decode()
+    assert delete_get.status_code == 405
 
     delete_post = client.post(
         reverse("property_delete", kwargs={"pk": property_obj.pk})

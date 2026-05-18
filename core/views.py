@@ -5,12 +5,13 @@ from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
+from django.http import HttpResponseNotAllowed
 from django.db.models import Avg, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from investor_app.finance.utils import (
-    calculate_whatif_monthly_cashflow,
     compute_analysis_for_property,
+    calculate_whatif_monthly_cashflow,
     score_listing_v1,
 )
 
@@ -135,10 +136,10 @@ def property_edit(request, pk: int):
 @login_required
 def property_delete(request, pk: int):
     property_obj = get_object_or_404(Property, pk=pk, user=request.user)
-    if request.method == "POST":
-        property_obj.delete()
-        return redirect("property_list")
-    return render(request, "properties/edit.html", {"property": property_obj})
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    property_obj.delete()
+    return redirect("property_list")
 
 
 @login_required
