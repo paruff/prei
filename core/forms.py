@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from django import forms
 
 from .models import OperatingExpense, Property, RentalIncome
@@ -43,7 +45,7 @@ class PropertyForm(forms.ModelForm):
         Returns:
             The updated property instance.
         """
-        instance = super().save(commit=False)
+        instance = cast(Property, super().save(commit=False))
         instance.sqft = self.cleaned_data.get("square_footage")
         instance.units = self.cleaned_data.get("num_units") or 1
         if commit:
