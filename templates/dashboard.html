@@ -3,7 +3,7 @@
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">Dashboard</h1>
-    <a href="/admin/core/property/add/" class="btn btn-primary btn-sm">Add Property</a>
+    <a href="{% url 'property_add' %}" class="btn btn-primary btn-sm">Add Property</a>
   </div>
 
   <div class="row g-3 mb-4">
@@ -64,7 +64,7 @@
       <div class="card-body text-center py-5">
         <h2 class="h5">No properties yet</h2>
         <p class="text-muted mb-3">Start your portfolio to see KPI insights.</p>
-        <a href="/admin/core/property/add/" class="btn btn-primary">Add your first property</a>
+        <a href="{% url 'property_add' %}" class="btn btn-primary">Add your first property</a>
       </div>
     </div>
   {% endif %}

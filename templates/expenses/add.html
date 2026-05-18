@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Add Operating Expense{% endblock %}
+{% block content %}
+  <h1 class="h3 mb-1">Add Operating Expense</h1>
+  <p class="text-muted mb-3">{{ property.address }}</p>
+  <form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body">
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <div class="text-danger small mt-1">{{ field.errors }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" name="action" value="add_another" class="btn btn-primary">Add another expense</button>
+      <button type="submit" name="action" value="done" class="btn btn-success">Done</button>
+      <a href="{% url 'property_detail' property.pk %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

@@ -9,15 +9,16 @@ from django.db.models import Avg, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from investor_app.finance.utils import (
+    calculate_whatif_monthly_cashflow,
     compute_analysis_for_property,
     score_listing_v1,
-    calculate_whatif_monthly_cashflow,
 )
 
 # keep only the models that are actually used
-from .models import InvestmentAnalysis, Listing, Property, MarketSnapshot, SavedSearch
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
 from core.services.audit import log_action
+from .forms import OperatingExpenseForm, PropertyForm, RentalIncomeForm
+from .models import InvestmentAnalysis, Listing, MarketSnapshot, Property, SavedSearch
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,102 @@ def property_detail(request, pk: int):
         {
             "property": property_obj,
             "analysis": getattr(property_obj, "analysis", None),
+        },
+    )
+
+
+@login_required
+def property_add(request):
+    if request.method == "POST":
+        form = PropertyForm(request.POST)
+        if form.is_valid():
+            property_obj = form.save(commit=False)
+            property_obj.user = request.user
+            property_obj.save()
+            compute_analysis_for_property(property_obj)
+            return redirect("property_add_income", pk=property_obj.pk)
+    else:
+        form = PropertyForm()
+
+    return render(request, "properties/add.html", {"form": form})
+
+
+@login_required
+def property_edit(request, pk: int):
+    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    if request.method == "POST":
+        form = PropertyForm(request.POST, instance=property_obj)
+        if form.is_valid():
+            property_obj = form.save()
+            compute_analysis_for_property(property_obj)
+            return redirect("property_detail", pk=property_obj.pk)
+    else:
+        form = PropertyForm(instance=property_obj)
+
+    return render(
+        request,
+        "properties/edit.html",
+        {
+            "form": form,
+            "property": property_obj,
+        },
+    )
+
+
+@login_required
+def property_delete(request, pk: int):
+    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    if request.method == "POST":
+        property_obj.delete()
+        return redirect("property_list")
+    return render(request, "properties/edit.html", {"property": property_obj})
+
+
+@login_required
+def property_add_income(request, pk: int):
+    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    if request.method == "POST":
+        form = RentalIncomeForm(request.POST)
+        if form.is_valid():
+            rental_income = form.save(commit=False)
+            rental_income.property = property_obj
+            rental_income.save()
+            compute_analysis_for_property(property_obj)
+            return redirect("property_add_expense", pk=property_obj.pk)
+    else:
+        form = RentalIncomeForm()
+    return render(
+        request,
+        "income/add.html",
+        {
+            "form": form,
+            "property": property_obj,
+        },
+    )
+
+
+@login_required
+def property_add_expense(request, pk: int):
+    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    if request.method == "POST":
+        form = OperatingExpenseForm(request.POST)
+        if form.is_valid():
+            operating_expense = form.save(commit=False)
+            operating_expense.property = property_obj
+            operating_expense.save()
+            compute_analysis_for_property(property_obj)
+            action = request.POST.get("action")
+            if action == "done":
+                return redirect("property_detail", pk=property_obj.pk)
+            return redirect("property_add_expense", pk=property_obj.pk)
+    else:
+        form = OperatingExpenseForm()
+    return render(
+        request,
+        "expenses/add.html",
+        {
+            "form": form,
+            "property": property_obj,
         },
     )
 

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Add Property{% endblock %}
+{% block content %}
+  <h1 class="h3 mb-3">Add Property</h1>
+  <form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body">
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <div class="text-danger small mt-1">{{ field.errors }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary">Save and continue</button>
+      <a href="{% url 'property_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

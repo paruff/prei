@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Edit Property{% endblock %}
+{% block content %}
+  <h1 class="h3 mb-3">Edit Property</h1>
+
+  {% if form %}
+    <form method="post" class="card mb-3">
+      {% csrf_token %}
+      <div class="card-body">
+        {{ form.non_field_errors }}
+        {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <div class="text-danger small mt-1">{{ field.errors }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Save changes</button>
+        <a href="{% url 'property_detail' property.pk %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+
+  <div class="card border-danger">
+    <div class="card-body">
+      <h2 class="h5 text-danger">Delete property</h2>
+      <p class="mb-3">This action cannot be undone.</p>
+      <form method="post" action="{% url 'property_delete' property.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Delete property</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}
