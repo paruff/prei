@@ -24,5 +24,8 @@ urlpatterns = [
         views.report_property,
         name="report_property",
     ),
+    path(
+        "properties/<int:property_id>/", views.report_property, name="property_detail"
+    ),
     path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
 ]

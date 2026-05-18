@@ -18,6 +18,12 @@ class PropertyAdmin(admin.ModelAdmin):
     list_display = ("address", "city", "state", "purchase_price", "units")
     search_fields = ("address", "city", "state", "zip_code")
 
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(owner=request.user)
+
 
 @admin.register(RentalIncome)
 class RentalIncomeAdmin(admin.ModelAdmin):

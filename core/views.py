@@ -22,7 +22,11 @@ logger = logging.getLogger(__name__)
 
 def dashboard(request):
     # Property analyses (existing)
-    properties = Property.objects.all()[:20]
+    properties = (
+        Property.objects.filter(owner=request.user)[:20]
+        if request.user.is_authenticated
+        else Property.objects.none()
+    )
     analyses: list[InvestmentAnalysis] = []
     for p in properties:
         analysis = compute_analysis_for_property(p)
@@ -170,8 +174,16 @@ def search_listings(request):
 def analyze_property(request, property_id: int):
     from decimal import Decimal
 
+    if not request.user.is_authenticated:
+        return render(
+            request,
+            "analyze_property.html",
+            {"error": "Property not found."},
+            status=404,
+        )
+
     try:
-        prop = Property.objects.get(id=property_id)
+        prop = Property.objects.get(id=property_id, owner=request.user)
     except Property.DoesNotExist:
         return render(
             request,
@@ -258,8 +270,16 @@ def report_listing(request, listing_id: int):
 
 
 def report_property(request, property_id: int):
+    if not request.user.is_authenticated:
+        return render(
+            request,
+            "property_report.html",
+            {"error": "Property not found."},
+            status=404,
+        )
+
     try:
-        prop = Property.objects.get(id=property_id)
+        prop = Property.objects.get(id=property_id, owner=request.user)
     except Property.DoesNotExist:
         return render(
             request,

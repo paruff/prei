@@ -11,7 +11,16 @@ User = get_user_model()
 
 
 class Property(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="properties")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="legacy_properties"
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="properties",
+        null=True,
+        blank=True,
+    )
     address = models.CharField(max_length=255)
     city = models.CharField(max_length=128)
     state = models.CharField(max_length=64)
@@ -24,6 +33,13 @@ class Property(models.Model):
 
     def __str__(self) -> str:  # noqa: D401
         return f"{self.address}, {self.city}, {self.state} {self.zip_code}"
+
+    def save(self, *args, **kwargs) -> None:
+        if self.owner_id is None and self.user_id is not None:
+            self.owner_id = self.user_id
+        if self.user_id is None and self.owner_id is not None:
+            self.user_id = self.owner_id
+        super().save(*args, **kwargs)
 
 
 class Team(models.Model):

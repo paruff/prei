@@ -30,6 +30,7 @@ def test_dashboard_computes_analysis(client, db, user):
     )
 
     url = reverse("dashboard")
+    client.force_login(user)
     resp = client.get(url)
     assert resp.status_code == 200
     content = resp.content.decode()

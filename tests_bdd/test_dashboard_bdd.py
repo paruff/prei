@@ -42,6 +42,7 @@ def test_bdd_dashboard_flow(client, db, user):
         effective_date=timezone.now().date(),
     )
     # When I visit the dashboard
+    client.force_login(user)
     resp = client.get(reverse("dashboard"))
     # Then I see content
     assert resp.status_code == 200
