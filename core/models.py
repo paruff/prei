@@ -156,6 +156,10 @@ class InvestmentAnalysis(models.Model):
     )
     irr = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))
     dscr = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0"))
+    hold_years = models.IntegerField(default=5)
+    exit_cap_rate = models.DecimalField(
+        max_digits=5, decimal_places=4, default=Decimal("0.06")
+    )
 
     updated_at = models.DateTimeField(auto_now=True)
 
