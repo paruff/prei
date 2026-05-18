@@ -1092,8 +1092,11 @@ def calculate_irr(cash_flows: Sequence[float | int | Decimal]) -> Decimal:
     """
     if len(cash_flows) < 2:
         raise ValueError("At least 2 cash flows are required to calculate IRR")
-    result = irr(cash_flows)
-    if result == Decimal("0") and all(float(cf) >= 0 for cf in cash_flows):
+    normalized_cash_flows = [to_decimal(cf) for cf in cash_flows]
+    result = irr(normalized_cash_flows)
+    if result == Decimal("0") and all(
+        cf >= Decimal("0") for cf in normalized_cash_flows
+    ):
         raise ValueError("IRR could not be computed for the given cash flows")
     return result
 
