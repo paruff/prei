@@ -178,7 +178,9 @@ class TestCollectVrmDataCommand:
 
     def test_command_rejects_invalid_state_format(self) -> None:
         """Command should validate uppercase 2-letter state code."""
-        with pytest.raises(CommandError, match="state must be a 2-letter uppercase code"):
+        with pytest.raises(
+            CommandError, match="state must be a 2-letter uppercase code"
+        ):
             call_command("collect_vrm_data", "--state", "va")
 
     def test_command_prints_collection_summary(self, capsys) -> None:
