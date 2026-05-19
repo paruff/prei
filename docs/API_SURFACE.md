@@ -227,6 +227,7 @@ items = recommend_listings(request.user, limit=5)
 
 > Module: `core/integrations/sources/attom_adapter.py`
 > Module: `core/integrations/sources/hud_scraper.py`
+> Module: `core/integrations/sources/vrm_scraper.py`
 
 ### `ATTOMAdapter.fetch_property_detail(address, address2=None)`
 
@@ -307,6 +308,26 @@ items = recommend_listings(request.user, limit=5)
 - `html: str` — HUD page HTML.
 **Returns:** `list[dict[str, Any]]` parsed listing records.
 **Error cases:** Raises `HUDWebsiteChangeError` when listing containers cannot be found.
+
+---
+
+### `VrmScraper.collect_state_listings(state_code)`
+
+**Purpose:** Scrape VRM Properties listings for a state and follow pagination across all result pages.
+**Parameters:**
+- `state_code: str` — 2-letter uppercase state code.
+**Returns:** `list[dict[str, Any]]` parsed VRM listing records.
+**Error cases:** Propagates request errors when VRM pages cannot be fetched.
+
+---
+
+### `VrmScraper.extract_properties_from_html(html)`
+
+**Purpose:** Parse one VRM results page HTML into normalized listing dictionaries.
+**Parameters:**
+- `html: str` — VRM listing page HTML.
+**Returns:** `list[dict[str, Any]]` parsed listing records including IDs, address parts, pricing, status, and badges.
+**Error cases:** Returns an empty list when listing cards are not present.
 
 ---
 
