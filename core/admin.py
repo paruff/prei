@@ -107,7 +107,7 @@ class VrmPropertyAdmin(admin.ModelAdmin):
         "last_seen_at",
     )
     list_filter = ("state", "status", "vendee_eligible")
-    search_fields = ("vrm_property_id", "address", "city", "state", "zip_code")
+    search_fields = ("vrm_property_id__exact", "address", "city", "state", "zip_code")
 
 
 @admin.register(ForeclosureProperty)
