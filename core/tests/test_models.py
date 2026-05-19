@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import NamedTuple
 
 from django.contrib import admin
 from django.db import connection
@@ -7,6 +8,12 @@ from django.utils import timezone
 
 from core.admin import VrmPropertyAdmin
 from core.models import VrmProperty
+
+
+class FieldExpectation(NamedTuple):
+    field_type: type[models.Field]
+    nullable: bool
+    max_length: int | None = None
 
 
 def test_rental_income_fixture_effective_gross_income(rental_income_sfr):
@@ -39,39 +46,39 @@ def test_portfolio_fixture_bundles_expected_properties(portfolio):
 
 def test_vrm_property_model_fields_and_constraints(db):
     field_expectations = {
-        "vrm_property_id": (models.IntegerField, False, None),
-        "vrm_listing_url": (models.URLField, False, None),
-        "address": (models.CharField, False, None),
-        "city": (models.CharField, False, None),
-        "state": (models.CharField, False, 2),
-        "zip_code": (models.CharField, False, None),
-        "county": (models.CharField, True, None),
-        "list_price": (models.DecimalField, True, None),
-        "bedrooms": (models.IntegerField, True, None),
-        "bathrooms": (models.DecimalField, True, None),
-        "square_feet": (models.IntegerField, True, None),
-        "lot_size_sf": (models.IntegerField, True, None),
-        "year_built": (models.IntegerField, True, None),
-        "property_type": (models.CharField, True, None),
-        "status": (models.CharField, False, None),
-        "listing_type": (models.CharField, True, None),
-        "vendee_eligible": (models.BooleanField, False, None),
-        "occupied": (models.BooleanField, True, None),
-        "latitude": (models.DecimalField, True, None),
-        "longitude": (models.DecimalField, True, None),
-        "mls_id": (models.CharField, True, None),
-        "parcel_number": (models.CharField, True, None),
-        "days_on_site": (models.IntegerField, True, None),
-        "scraped_at": (models.DateTimeField, False, None),
-        "last_seen_at": (models.DateTimeField, False, None),
+        "vrm_property_id": FieldExpectation(models.IntegerField, False),
+        "vrm_listing_url": FieldExpectation(models.URLField, False),
+        "address": FieldExpectation(models.CharField, False),
+        "city": FieldExpectation(models.CharField, False),
+        "state": FieldExpectation(models.CharField, False, 2),
+        "zip_code": FieldExpectation(models.CharField, False),
+        "county": FieldExpectation(models.CharField, True),
+        "list_price": FieldExpectation(models.DecimalField, True),
+        "bedrooms": FieldExpectation(models.IntegerField, True),
+        "bathrooms": FieldExpectation(models.DecimalField, True),
+        "square_feet": FieldExpectation(models.IntegerField, True),
+        "lot_size_sf": FieldExpectation(models.IntegerField, True),
+        "year_built": FieldExpectation(models.IntegerField, True),
+        "property_type": FieldExpectation(models.CharField, True),
+        "status": FieldExpectation(models.CharField, False),
+        "listing_type": FieldExpectation(models.CharField, True),
+        "vendee_eligible": FieldExpectation(models.BooleanField, False),
+        "occupied": FieldExpectation(models.BooleanField, True),
+        "latitude": FieldExpectation(models.DecimalField, True),
+        "longitude": FieldExpectation(models.DecimalField, True),
+        "mls_id": FieldExpectation(models.CharField, True),
+        "parcel_number": FieldExpectation(models.CharField, True),
+        "days_on_site": FieldExpectation(models.IntegerField, True),
+        "scraped_at": FieldExpectation(models.DateTimeField, False),
+        "last_seen_at": FieldExpectation(models.DateTimeField, False),
     }
 
-    for field_name, (field_type, nullable, max_length) in field_expectations.items():
+    for field_name, expectation in field_expectations.items():
         field = VrmProperty._meta.get_field(field_name)
-        assert isinstance(field, field_type)
-        assert field.null is nullable
-        if max_length is not None:
-            assert field.max_length == max_length
+        assert isinstance(field, expectation.field_type)
+        assert field.null is expectation.nullable
+        if expectation.max_length is not None:
+            assert field.max_length == expectation.max_length
 
     assert VrmProperty._meta.db_table == "vrm_property"
     assert VrmProperty._meta.get_field("vrm_property_id").unique is True
