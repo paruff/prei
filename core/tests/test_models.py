@@ -16,6 +16,35 @@ class FieldExpectation(NamedTuple):
     max_length: int | None = None
 
 
+FIELD_EXPECTATIONS = {
+    "vrm_property_id": FieldExpectation(models.IntegerField, False),
+    "vrm_listing_url": FieldExpectation(models.URLField, False),
+    "address": FieldExpectation(models.CharField, False),
+    "city": FieldExpectation(models.CharField, False),
+    "state": FieldExpectation(models.CharField, False, 2),
+    "zip_code": FieldExpectation(models.CharField, False),
+    "county": FieldExpectation(models.CharField, True),
+    "list_price": FieldExpectation(models.DecimalField, True),
+    "bedrooms": FieldExpectation(models.IntegerField, True),
+    "bathrooms": FieldExpectation(models.DecimalField, True),
+    "square_feet": FieldExpectation(models.IntegerField, True),
+    "lot_size_sf": FieldExpectation(models.IntegerField, True),
+    "year_built": FieldExpectation(models.IntegerField, True),
+    "property_type": FieldExpectation(models.CharField, True),
+    "status": FieldExpectation(models.CharField, False),
+    "listing_type": FieldExpectation(models.CharField, True),
+    "vendee_eligible": FieldExpectation(models.BooleanField, False),
+    "occupied": FieldExpectation(models.BooleanField, True),
+    "latitude": FieldExpectation(models.DecimalField, True),
+    "longitude": FieldExpectation(models.DecimalField, True),
+    "mls_id": FieldExpectation(models.CharField, True),
+    "parcel_number": FieldExpectation(models.CharField, True),
+    "days_on_site": FieldExpectation(models.IntegerField, True),
+    "scraped_at": FieldExpectation(models.DateTimeField, False),
+    "last_seen_at": FieldExpectation(models.DateTimeField, False),
+}
+
+
 def test_rental_income_fixture_effective_gross_income(rental_income_sfr):
     assert rental_income_sfr.effective_gross_income() == Decimal("2280.000000")
 
@@ -45,35 +74,7 @@ def test_portfolio_fixture_bundles_expected_properties(portfolio):
 
 
 def test_vrm_property_model_fields_and_constraints(db):
-    field_expectations = {
-        "vrm_property_id": FieldExpectation(models.IntegerField, False),
-        "vrm_listing_url": FieldExpectation(models.URLField, False),
-        "address": FieldExpectation(models.CharField, False),
-        "city": FieldExpectation(models.CharField, False),
-        "state": FieldExpectation(models.CharField, False, 2),
-        "zip_code": FieldExpectation(models.CharField, False),
-        "county": FieldExpectation(models.CharField, True),
-        "list_price": FieldExpectation(models.DecimalField, True),
-        "bedrooms": FieldExpectation(models.IntegerField, True),
-        "bathrooms": FieldExpectation(models.DecimalField, True),
-        "square_feet": FieldExpectation(models.IntegerField, True),
-        "lot_size_sf": FieldExpectation(models.IntegerField, True),
-        "year_built": FieldExpectation(models.IntegerField, True),
-        "property_type": FieldExpectation(models.CharField, True),
-        "status": FieldExpectation(models.CharField, False),
-        "listing_type": FieldExpectation(models.CharField, True),
-        "vendee_eligible": FieldExpectation(models.BooleanField, False),
-        "occupied": FieldExpectation(models.BooleanField, True),
-        "latitude": FieldExpectation(models.DecimalField, True),
-        "longitude": FieldExpectation(models.DecimalField, True),
-        "mls_id": FieldExpectation(models.CharField, True),
-        "parcel_number": FieldExpectation(models.CharField, True),
-        "days_on_site": FieldExpectation(models.IntegerField, True),
-        "scraped_at": FieldExpectation(models.DateTimeField, False),
-        "last_seen_at": FieldExpectation(models.DateTimeField, False),
-    }
-
-    for field_name, expectation in field_expectations.items():
+    for field_name, expectation in FIELD_EXPECTATIONS.items():
         field = VrmProperty._meta.get_field(field_name)
         assert isinstance(field, expectation.field_type)
         assert field.null is expectation.nullable
@@ -86,7 +87,6 @@ def test_vrm_property_model_fields_and_constraints(db):
         "bedrooms",
         "square_feet",
         "lot_size_sf",
-        "year_built",
         "days_on_site",
     ):
         field = VrmProperty._meta.get_field(field_name)
@@ -94,6 +94,10 @@ def test_vrm_property_model_fields_and_constraints(db):
             isinstance(validator, MinValueValidator) and validator.limit_value == 0
             for validator in field.validators
         )
+    assert any(
+        isinstance(validator, MinValueValidator) and validator.limit_value == 1
+        for validator in VrmProperty._meta.get_field("year_built").validators
+    )
     assert any(
         isinstance(validator, MinValueValidator)
         and validator.limit_value == Decimal("0")

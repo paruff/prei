@@ -84,7 +84,7 @@ class Migration(migrations.Migration):
                     models.IntegerField(
                         blank=True,
                         null=True,
-                        validators=[django.core.validators.MinValueValidator(0)],
+                        validators=[django.core.validators.MinValueValidator(1)],
                     ),
                 ),
                 (

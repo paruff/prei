@@ -319,7 +319,7 @@ class VrmProperty(models.Model):
         null=True, blank=True, validators=[MinValueValidator(0)]
     )
     year_built = models.IntegerField(
-        null=True, blank=True, validators=[MinValueValidator(0)]
+        null=True, blank=True, validators=[MinValueValidator(1)]
     )
     property_type = models.CharField(max_length=64, null=True, blank=True)
     status = models.CharField(max_length=32, choices=Status.choices)
