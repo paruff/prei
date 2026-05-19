@@ -274,6 +274,67 @@ class SavedSearch(models.Model):
         return f"SavedSearch {self.name} ({self.state} {self.zip_code})"
 
 
+class VrmProperty(models.Model):
+    """VA REO property listing persisted from VRM Properties."""
+
+    class Status(models.TextChoices):
+        FOR_SALE = "for_sale", "For Sale"
+        COMING_SOON = "coming_soon", "Coming Soon"
+        PENDING = "pending", "Pending"
+        SOLD = "sold", "Sold"
+
+    class ListingType(models.TextChoices):
+        TRADITIONAL = "traditional", "Traditional"
+        ONLINE_AUCTION = "online_auction", "Online Auction"
+        IN_PERSON_AUCTION = "in_person_auction", "In-person Auction"
+
+    vrm_property_id = models.IntegerField(unique=True)
+    vrm_listing_url = models.URLField()
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=128)
+    state = models.CharField(max_length=2)
+    zip_code = models.CharField(max_length=16)
+    county = models.CharField(max_length=128, null=True, blank=True)
+    list_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    bedrooms = models.IntegerField(null=True, blank=True)
+    bathrooms = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True
+    )
+    square_feet = models.IntegerField(null=True, blank=True)
+    lot_size_sf = models.IntegerField(null=True, blank=True)
+    year_built = models.IntegerField(null=True, blank=True)
+    property_type = models.CharField(max_length=64, null=True, blank=True)
+    status = models.CharField(max_length=32, choices=Status.choices)
+    listing_type = models.CharField(
+        max_length=32, choices=ListingType.choices, null=True, blank=True
+    )
+    vendee_eligible = models.BooleanField(default=False)
+    occupied = models.BooleanField(null=True, blank=True)
+    latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    mls_id = models.CharField(max_length=128, null=True, blank=True)
+    parcel_number = models.CharField(max_length=128, null=True, blank=True)
+    days_on_site = models.IntegerField(null=True, blank=True)
+    scraped_at = models.DateTimeField()
+    last_seen_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "vrm_property"
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"{self.address}, {self.city}, {self.state}"
+
+
 class AuditLog(models.Model):
     user = models.ForeignKey(
         User,

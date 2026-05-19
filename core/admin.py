@@ -4,12 +4,13 @@ from .models import (
     ForeclosureProperty,
     InvestmentAnalysis,
     Listing,
-    SavedSearch,
+    MarketSnapshot,
     OperatingExpense,
     Property,
     RentalIncome,
+    SavedSearch,
     Transaction,
-    MarketSnapshot,
+    VrmProperty,
 )
 
 
@@ -91,6 +92,22 @@ class SavedSearchAdmin(admin.ModelAdmin):
         "created_at",
     )
     search_fields = ("name", "state", "zip_code")
+
+
+@admin.register(VrmProperty)
+class VrmPropertyAdmin(admin.ModelAdmin):
+    list_display = (
+        "vrm_property_id",
+        "address",
+        "city",
+        "state",
+        "status",
+        "list_price",
+        "vendee_eligible",
+        "last_seen_at",
+    )
+    list_filter = ("state", "status", "vendee_eligible")
+    search_fields = ("vrm_property_id", "address", "city", "state", "zip_code")
 
 
 @admin.register(ForeclosureProperty)
