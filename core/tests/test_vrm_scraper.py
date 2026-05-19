@@ -104,6 +104,14 @@ class TestVrmScraper:
             == "https://vrmproperties.com/Property-For-Sale/18581/369-charles-st"
         )
 
+    def test_extract_total_pages_falls_back_to_page_text(self) -> None:
+        """Total pages should be computed from body text when selectors are missing."""
+        html = "<html><body>Showing 1-16 of 33 results for state VA</body></html>"
+
+        scraper = VrmScraper(delay_seconds=0)
+
+        assert scraper.extract_total_pages(html) == 3
+
 
 @pytest.mark.django_db
 class TestCollectVrmDataCommand:
@@ -163,7 +171,9 @@ class TestCollectVrmDataCommand:
         assert existing.scraped_at == original_scraped_at
         assert existing.last_seen_at > original_last_seen
 
-    def test_command_logs_no_properties_for_empty_state(self, caplog) -> None:
+    def test_command_logs_and_reports_no_properties_for_empty_state(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Empty scrape should log no properties and exit successfully."""
         caplog.set_level("INFO", logger="prei.scraper.vrm")
 
@@ -175,6 +185,11 @@ class TestCollectVrmDataCommand:
 
         assert VrmProperty.objects.count() == 0
         assert "No properties found for state ZZ" in caplog.text
+        assert any(
+            record.name == "prei.scraper.vrm"
+            and "No properties found for state ZZ" in record.message
+            for record in caplog.records
+        )
 
     def test_command_rejects_invalid_state_format(self) -> None:
         """Command should validate uppercase 2-letter state code."""

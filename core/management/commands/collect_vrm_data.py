@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 import re
 from typing import Any
@@ -48,8 +49,11 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             for property_data in properties:
-                property_data["state"] = property_data.get("state") or state
-                self._upsert_property(property_data, now)
+                normalized_property_data = dict(property_data)
+                normalized_property_data["state"] = (
+                    normalized_property_data.get("state") or state
+                )
+                self._upsert_property(normalized_property_data, now)
 
         logger.info("Collected %s properties for state %s", len(properties), state)
         self.stdout.write(
@@ -58,7 +62,7 @@ class Command(BaseCommand):
             )
         )
 
-    def _upsert_property(self, property_data: dict[str, Any], now) -> None:
+    def _upsert_property(self, property_data: dict[str, Any], now: datetime) -> None:
         existing_scraped_at = (
             VrmProperty.objects.filter(vrm_property_id=property_data["vrm_property_id"])
             .values_list("scraped_at", flat=True)

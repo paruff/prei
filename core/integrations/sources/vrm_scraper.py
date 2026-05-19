@@ -7,7 +7,7 @@ import re
 import time
 from decimal import Decimal
 from math import ceil
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
@@ -26,7 +26,7 @@ class VrmScraper:
     LISTINGS_PATH = "/Properties-For-Sale"
     RESULTS_PER_PAGE = 16
 
-    def __init__(self, delay_seconds: Optional[float] = None) -> None:
+    def __init__(self, delay_seconds: float | None = None) -> None:
         default_delay = getattr(settings, "SCRAPER_DELAY_SECONDS", 1.5)
         self.delay_seconds = float(
             default_delay if delay_seconds is None else delay_seconds
@@ -118,7 +118,7 @@ class VrmScraper:
 
         return properties
 
-    def _extract_property_data(self, card_link: Any) -> Optional[Dict[str, Any]]:
+    def _extract_property_data(self, card_link: Any) -> dict[str, Any] | None:
         """Extract a normalized property dictionary from one card link element."""
         href = card_link.get("href")
         if not isinstance(href, str):
@@ -211,23 +211,32 @@ class VrmScraper:
             "zip_code": "",
         }
 
-    def _parse_decimal(self, value: str) -> Optional[Decimal]:
+    def _parse_decimal(self, value: str) -> Decimal | None:
         """Parse decimal numbers from mixed display text."""
-        if not value:
+        numeric_token = self._extract_numeric_token(value, allow_decimal=True)
+        if numeric_token is None:
             return None
-        match = re.search(r"\d+(?:,\d{3})*(?:\.\d+)?", value)
-        if not match:
-            return None
-        return Decimal(match.group(0).replace(",", ""))
+        return Decimal(numeric_token)
 
-    def _parse_int(self, value: str) -> Optional[int]:
+    def _parse_int(self, value: str) -> int | None:
         """Parse an integer from mixed display text."""
+        numeric_token = self._extract_numeric_token(value, allow_decimal=False)
+        if numeric_token is None:
+            return None
+        return int(numeric_token)
+
+    def _extract_numeric_token(self, value: str, allow_decimal: bool) -> str | None:
+        """Extract a sanitized numeric token, optionally allowing decimal places."""
         if not value:
             return None
-        match = re.search(r"\d+(?:,\d{3})*", value)
+
+        pattern = r"\d+(?:,\d{3})*(?:\.\d+)?" if allow_decimal else r"\d+(?:,\d{3})*"
+        match = re.search(pattern, value)
         if not match:
             return None
-        return int(match.group(0).replace(",", ""))
+
+        token = match.group(0).replace(",", "")
+        return token
 
     def _normalize_status(self, status_text: str) -> str:
         """Map display status text to VrmProperty status choices."""
@@ -240,7 +249,7 @@ class VrmScraper:
             return VrmProperty.Status.SOLD
         return VrmProperty.Status.FOR_SALE
 
-    def _normalize_listing_type(self, listing_type_text: str) -> Optional[str]:
+    def _normalize_listing_type(self, listing_type_text: str) -> str:
         """Map listing type badges to model choices."""
         normalized = listing_type_text.strip().lower()
         if not normalized:
