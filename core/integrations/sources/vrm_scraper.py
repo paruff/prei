@@ -56,13 +56,14 @@ class VrmScraper:
 
     def _fetch_listing_page(self, state_code: str, page: int) -> str:
         """Fetch one VRM listings page."""
+        params: dict[str, str | int] = {
+            "state": state_code,
+            "currentPage": page,
+            "orderBy": "days desc",
+        }
         response = requests.get(
             f"{self.BASE_URL}{self.LISTINGS_PATH}",
-            params={
-                "state": state_code,
-                "currentPage": page,
-                "orderBy": "days desc",
-            },
+            params=params,
             timeout=30,
         )
         response.raise_for_status()
