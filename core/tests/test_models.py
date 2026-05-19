@@ -2,6 +2,7 @@ from decimal import Decimal
 from typing import NamedTuple
 
 from django.contrib import admin
+from django.core.validators import MinValueValidator
 from django.db import connection
 from django.db import models
 from django.utils import timezone
@@ -82,6 +83,18 @@ def test_vrm_property_model_fields_and_constraints(db):
 
     assert VrmProperty._meta.db_table == "vrm_property"
     assert VrmProperty._meta.get_field("vrm_property_id").unique is True
+    for field_name in (
+        "bedrooms",
+        "square_feet",
+        "lot_size_sf",
+        "year_built",
+        "days_on_site",
+    ):
+        field = VrmProperty._meta.get_field(field_name)
+        assert any(
+            isinstance(validator, MinValueValidator) and validator.limit_value == 0
+            for validator in field.validators
+        )
 
 
 def test_vrm_property_model_schema_and_admin_registration(db):

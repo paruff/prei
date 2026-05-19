@@ -302,13 +302,21 @@ class VrmProperty(models.Model):
         blank=True,
         validators=[MinValueValidator(Decimal("0"))],
     )
-    bedrooms = models.IntegerField(null=True, blank=True)
+    bedrooms = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
     bathrooms = models.DecimalField(
         max_digits=4, decimal_places=1, null=True, blank=True
     )
-    square_feet = models.IntegerField(null=True, blank=True)
-    lot_size_sf = models.IntegerField(null=True, blank=True)
-    year_built = models.IntegerField(null=True, blank=True)
+    square_feet = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
+    lot_size_sf = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
+    year_built = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
     property_type = models.CharField(max_length=64, null=True, blank=True)
     status = models.CharField(max_length=32, choices=Status.choices)
     listing_type = models.CharField(
@@ -324,7 +332,9 @@ class VrmProperty(models.Model):
     )
     mls_id = models.CharField(max_length=128, null=True, blank=True)
     parcel_number = models.CharField(max_length=128, null=True, blank=True)
-    days_on_site = models.IntegerField(null=True, blank=True)
+    days_on_site = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
     scraped_at = models.DateTimeField()
     last_seen_at = models.DateTimeField()
 

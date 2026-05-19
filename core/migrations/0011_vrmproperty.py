@@ -43,16 +43,44 @@ class Migration(migrations.Migration):
                         ],
                     ),
                 ),
-                ("bedrooms", models.IntegerField(blank=True, null=True)),
+                (
+                    "bedrooms",
+                    models.IntegerField(
+                        blank=True,
+                        null=True,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                    ),
+                ),
                 (
                     "bathrooms",
                     models.DecimalField(
                         blank=True, decimal_places=1, max_digits=4, null=True
                     ),
                 ),
-                ("square_feet", models.IntegerField(blank=True, null=True)),
-                ("lot_size_sf", models.IntegerField(blank=True, null=True)),
-                ("year_built", models.IntegerField(blank=True, null=True)),
+                (
+                    "square_feet",
+                    models.IntegerField(
+                        blank=True,
+                        null=True,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                    ),
+                ),
+                (
+                    "lot_size_sf",
+                    models.IntegerField(
+                        blank=True,
+                        null=True,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                    ),
+                ),
+                (
+                    "year_built",
+                    models.IntegerField(
+                        blank=True,
+                        null=True,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                    ),
+                ),
                 (
                     "property_type",
                     models.CharField(blank=True, max_length=64, null=True),
@@ -101,7 +129,14 @@ class Migration(migrations.Migration):
                     "parcel_number",
                     models.CharField(blank=True, max_length=128, null=True),
                 ),
-                ("days_on_site", models.IntegerField(blank=True, null=True)),
+                (
+                    "days_on_site",
+                    models.IntegerField(
+                        blank=True,
+                        null=True,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                    ),
+                ),
                 ("scraped_at", models.DateTimeField()),
                 ("last_seen_at", models.DateTimeField()),
             ],
