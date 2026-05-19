@@ -54,7 +54,13 @@ class Migration(migrations.Migration):
                 (
                     "bathrooms",
                     models.DecimalField(
-                        blank=True, decimal_places=1, max_digits=4, null=True
+                        blank=True,
+                        decimal_places=1,
+                        max_digits=4,
+                        null=True,
+                        validators=[
+                            django.core.validators.MinValueValidator(Decimal("0"))
+                        ],
                     ),
                 ),
                 (
@@ -115,13 +121,27 @@ class Migration(migrations.Migration):
                 (
                     "latitude",
                     models.DecimalField(
-                        blank=True, decimal_places=6, max_digits=9, null=True
+                        blank=True,
+                        decimal_places=6,
+                        max_digits=9,
+                        null=True,
+                        validators=[
+                            django.core.validators.MinValueValidator(Decimal("-90")),
+                            django.core.validators.MaxValueValidator(Decimal("90")),
+                        ],
                     ),
                 ),
                 (
                     "longitude",
                     models.DecimalField(
-                        blank=True, decimal_places=6, max_digits=9, null=True
+                        blank=True,
+                        decimal_places=6,
+                        max_digits=9,
+                        null=True,
+                        validators=[
+                            django.core.validators.MinValueValidator(Decimal("-180")),
+                            django.core.validators.MaxValueValidator(Decimal("180")),
+                        ],
                     ),
                 ),
                 ("mls_id", models.CharField(blank=True, max_length=128, null=True)),

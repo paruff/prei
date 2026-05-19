@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 User = get_user_model()
@@ -306,7 +306,11 @@ class VrmProperty(models.Model):
         null=True, blank=True, validators=[MinValueValidator(0)]
     )
     bathrooms = models.DecimalField(
-        max_digits=4, decimal_places=1, null=True, blank=True
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
     )
     square_feet = models.IntegerField(
         null=True, blank=True, validators=[MinValueValidator(0)]
@@ -325,10 +329,24 @@ class VrmProperty(models.Model):
     vendee_eligible = models.BooleanField(default=False)
     occupied = models.BooleanField(null=True, blank=True)
     latitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-90")),
+            MaxValueValidator(Decimal("90")),
+        ],
     )
     longitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-180")),
+            MaxValueValidator(Decimal("180")),
+        ],
     )
     mls_id = models.CharField(max_length=128, null=True, blank=True)
     parcel_number = models.CharField(max_length=128, null=True, blank=True)

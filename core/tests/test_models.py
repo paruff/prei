@@ -2,9 +2,8 @@ from decimal import Decimal
 from typing import NamedTuple
 
 from django.contrib import admin
-from django.core.validators import MinValueValidator
-from django.db import connection
-from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import connection, models
 from django.utils import timezone
 
 from core.admin import VrmPropertyAdmin
@@ -95,6 +94,33 @@ def test_vrm_property_model_fields_and_constraints(db):
             isinstance(validator, MinValueValidator) and validator.limit_value == 0
             for validator in field.validators
         )
+    assert any(
+        isinstance(validator, MinValueValidator)
+        and validator.limit_value == Decimal("0")
+        for validator in VrmProperty._meta.get_field("bathrooms").validators
+    )
+    latitude_validators = VrmProperty._meta.get_field("latitude").validators
+    assert any(
+        isinstance(validator, MinValueValidator)
+        and validator.limit_value == Decimal("-90")
+        for validator in latitude_validators
+    )
+    assert any(
+        isinstance(validator, MaxValueValidator)
+        and validator.limit_value == Decimal("90")
+        for validator in latitude_validators
+    )
+    longitude_validators = VrmProperty._meta.get_field("longitude").validators
+    assert any(
+        isinstance(validator, MinValueValidator)
+        and validator.limit_value == Decimal("-180")
+        for validator in longitude_validators
+    )
+    assert any(
+        isinstance(validator, MaxValueValidator)
+        and validator.limit_value == Decimal("180")
+        for validator in longitude_validators
+    )
 
 
 def test_vrm_property_model_schema_and_admin_registration(db):
