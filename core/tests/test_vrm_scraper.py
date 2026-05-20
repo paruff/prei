@@ -7,6 +7,7 @@ from decimal import Decimal
 from unittest.mock import Mock, patch
 
 import pytest
+import requests
 from django.core.management import CommandError, call_command
 from django.utils import timezone
 
@@ -111,6 +112,63 @@ class TestVrmScraper:
         scraper = VrmScraper(delay_seconds=0)
 
         assert scraper.extract_total_pages(html) == 3
+
+    def test_fetch_property_detail_uses_http_get(self) -> None:
+        """Detail fetch should perform one GET to the provided listing URL."""
+        scraper = VrmScraper(delay_seconds=0)
+
+        with patch("core.integrations.sources.vrm_scraper.requests.get") as get_mock:
+            get_mock.return_value = self._mock_response("<html></html>")
+
+            html = scraper.fetch_property_detail(
+                "https://vrmproperties.com/Property-For-Sale/18581/example"
+            )
+
+        assert html == "<html></html>"
+        get_mock.assert_called_once_with(
+            "https://vrmproperties.com/Property-For-Sale/18581/example",
+            timeout=30,
+        )
+
+    def test_extract_property_details_from_html_parses_expected_fields(self) -> None:
+        """Detail parser should extract enrichment fields from detail-page HTML."""
+        html = """
+        <html>
+          <head>
+            <meta name="geo.position" content="39.184032;-78.164596" />
+          </head>
+          <body>
+            <nav aria-label="breadcrumb">
+              <a href="/">Home</a>
+              <a href="/VA">Virginia</a>
+              <a href="/VA/Frederick">Frederick County</a>
+            </nav>
+            <table>
+              <tr><th>Year Built</th><td>1994</td></tr>
+              <tr><th>Lot</th><td>6,098 Sq Ft</td></tr>
+              <tr><th>Parcel Number</th><td>54A11-3-16</td></tr>
+              <tr><th>MLS ID</th><td>VAFV201234</td></tr>
+              <tr><th>Property type</th><td>Single Family</td></tr>
+              <tr><th>Occupied</th><td>Yes</td></tr>
+            </table>
+            <img alt="Vendee Program" src="/img/vendee-logo.png" />
+          </body>
+        </html>
+        """
+
+        scraper = VrmScraper(delay_seconds=0)
+        details = scraper.extract_property_details_from_html(html)
+
+        assert details["latitude"] == Decimal("39.184032")
+        assert details["longitude"] == Decimal("-78.164596")
+        assert details["year_built"] == 1994
+        assert details["lot_size_sf"] == 6098
+        assert details["parcel_number"] == "54A11-3-16"
+        assert details["mls_id"] == "VAFV201234"
+        assert details["property_type"] == "Single Family"
+        assert details["occupied"] is True
+        assert details["county"] == "Virginia"
+        assert details["vendee_eligible"] is True
 
 
 @pytest.mark.django_db
@@ -226,3 +284,145 @@ class TestCollectVrmDataCommand:
 
         out = capsys.readouterr().out
         assert "Collected 1 properties for state VA" in out
+
+
+@pytest.mark.django_db
+class TestEnrichVrmDetailsCommand:
+    """Tests for enrich_vrm_details management command."""
+
+    def test_command_enriches_unenriched_properties_for_state(self, capsys) -> None:
+        """Command should enrich null-year properties and print summary."""
+        target = VrmProperty.objects.create(
+            vrm_property_id=18581,
+            vrm_listing_url="https://vrmproperties.com/Property-For-Sale/18581/example",
+            address="369 Charles St",
+            city="Winchester",
+            state="VA",
+            zip_code="22601",
+            status=VrmProperty.Status.FOR_SALE,
+            listing_type=VrmProperty.ListingType.TRADITIONAL,
+            vendee_eligible=False,
+            scraped_at=timezone.now(),
+            last_seen_at=timezone.now(),
+        )
+
+        detail_html = """
+        <html>
+          <head><meta name="geo.position" content="39.184032;-78.164596" /></head>
+          <body>
+            <nav aria-label="breadcrumb">
+              <a>Home</a><a>Virginia</a><a>Frederick County</a>
+            </nav>
+            <table>
+              <tr><th>Year Built</th><td>1994</td></tr>
+              <tr><th>Lot</th><td>6,098 Sq Ft</td></tr>
+              <tr><th>Parcel Number</th><td>54A11-3-16</td></tr>
+              <tr><th>MLS ID</th><td>VAFV201234</td></tr>
+              <tr><th>Property type</th><td>Single Family</td></tr>
+              <tr><th>Occupied</th><td>Yes</td></tr>
+            </table>
+            <img alt="Vendee Program" src="/img/vendee-logo.png" />
+          </body>
+        </html>
+        """
+
+        with patch(
+            "core.management.commands.enrich_vrm_details.VrmScraper.fetch_property_detail",
+            return_value=detail_html,
+        ) as fetch_mock:
+            call_command("enrich_vrm_details", "--state", "VA")
+
+        target.refresh_from_db()
+        assert target.year_built == 1994
+        assert target.lot_size_sf == 6098
+        assert target.parcel_number == "54A11-3-16"
+        assert target.mls_id == "VAFV201234"
+        assert target.property_type == "Single Family"
+        assert target.occupied is True
+        assert target.latitude == Decimal("39.184032")
+        assert target.longitude == Decimal("-78.164596")
+        assert target.county == "Virginia"
+        assert target.vendee_eligible is True
+        fetch_mock.assert_called_once_with(target.vrm_listing_url)
+
+        out = capsys.readouterr().out
+        assert "Enriched 1 properties for state VA" in out
+
+    def test_command_skips_already_enriched_records(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Command should skip non-force records that already have year_built."""
+        VrmProperty.objects.create(
+            vrm_property_id=18582,
+            vrm_listing_url="https://vrmproperties.com/Property-For-Sale/18582/example",
+            address="1 Main St",
+            city="Richmond",
+            state="VA",
+            zip_code="23220",
+            status=VrmProperty.Status.FOR_SALE,
+            listing_type=VrmProperty.ListingType.TRADITIONAL,
+            vendee_eligible=False,
+            year_built=1980,
+            scraped_at=timezone.now(),
+            last_seen_at=timezone.now(),
+        )
+        caplog.set_level("DEBUG", logger="prei.scraper.vrm")
+
+        with patch(
+            "core.management.commands.enrich_vrm_details.VrmScraper.fetch_property_detail"
+        ) as fetch_mock:
+            call_command("enrich_vrm_details", "--state", "VA")
+
+        fetch_mock.assert_not_called()
+        assert "Skipping 18582, already enriched" in caplog.text
+
+    def test_command_logs_warning_and_continues_on_http_404(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """404 responses should be logged and should not halt enrichment."""
+        missing = VrmProperty.objects.create(
+            vrm_property_id=30001,
+            vrm_listing_url="https://vrmproperties.com/Property-For-Sale/30001/missing",
+            address="404 Missing St",
+            city="Richmond",
+            state="VA",
+            zip_code="23220",
+            status=VrmProperty.Status.FOR_SALE,
+            listing_type=VrmProperty.ListingType.TRADITIONAL,
+            vendee_eligible=False,
+            scraped_at=timezone.now(),
+            last_seen_at=timezone.now(),
+        )
+        ok = VrmProperty.objects.create(
+            vrm_property_id=30002,
+            vrm_listing_url="https://vrmproperties.com/Property-For-Sale/30002/ok",
+            address="200 Success Ave",
+            city="Richmond",
+            state="VA",
+            zip_code="23220",
+            status=VrmProperty.Status.FOR_SALE,
+            listing_type=VrmProperty.ListingType.TRADITIONAL,
+            vendee_eligible=False,
+            scraped_at=timezone.now(),
+            last_seen_at=timezone.now(),
+        )
+        caplog.set_level("WARNING", logger="prei.scraper.vrm")
+
+        not_found_error = requests.HTTPError("Not Found")
+        not_found_error.response = Mock(status_code=404)
+
+        with patch(
+            "core.management.commands.enrich_vrm_details.VrmScraper.fetch_property_detail",
+            side_effect=[not_found_error, "<html></html>"],
+        ), patch(
+            "core.management.commands.enrich_vrm_details.VrmScraper.extract_property_details_from_html",
+            return_value={"year_built": 2001},
+        ):
+            call_command("enrich_vrm_details", "--state", "VA")
+
+        missing.refresh_from_db()
+        ok.refresh_from_db()
+
+        assert missing.year_built is None
+        assert ok.year_built == 2001
+        assert "Detail page not found for 30001" in caplog.text

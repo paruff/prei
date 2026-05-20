@@ -69,6 +69,33 @@ class VrmScraper:
         response.raise_for_status()
         return str(response.text)
 
+    def fetch_property_detail(self, listing_url: str) -> str:
+        """Fetch a single VRM detail page."""
+        response = requests.get(listing_url, timeout=30)
+        response.raise_for_status()
+        return str(response.text)
+
+    def extract_property_details_from_html(self, html: str) -> dict[str, Any]:
+        """Extract enrichment fields from a VRM property detail page."""
+        soup = BeautifulSoup(html, "html.parser")
+        details: dict[str, Any] = {
+            "latitude": None,
+            "longitude": None,
+            "year_built": None,
+            "lot_size_sf": None,
+            "parcel_number": None,
+            "mls_id": None,
+            "property_type": None,
+            "occupied": None,
+            "county": None,
+            "vendee_eligible": self._has_vendee_badge(soup),
+        }
+
+        details.update(self._extract_geo_position(soup))
+        details.update(self._extract_house_facts(soup))
+        details["county"] = self._extract_county_from_breadcrumb(soup)
+        return details
+
     def extract_total_pages(self, html: str) -> int:
         """Extract total pagination page count from result count text."""
         soup = BeautifulSoup(html, "html.parser")
@@ -175,6 +202,100 @@ class VrmScraper:
             if element:
                 return str(element.get_text(" ", strip=True))
         return ""
+
+    def _extract_geo_position(self, soup: BeautifulSoup) -> dict[str, Decimal | None]:
+        """Parse latitude/longitude from the geo.position meta tag."""
+        geo_meta = soup.find("meta", attrs={"name": "geo.position"})
+        content = geo_meta.get("content") if geo_meta else None
+        if not isinstance(content, str) or ";" not in content:
+            return {"latitude": None, "longitude": None}
+
+        latitude_text, longitude_text = content.split(";", 1)
+        try:
+            return {
+                "latitude": Decimal(latitude_text.strip()),
+                "longitude": Decimal(longitude_text.strip()),
+            }
+        except Exception:
+            return {"latitude": None, "longitude": None}
+
+    def _extract_house_facts(self, soup: BeautifulSoup) -> dict[str, Any]:
+        """Parse common fields from detail-page house-facts table rows."""
+        facts: dict[str, Any] = {
+            "year_built": None,
+            "lot_size_sf": None,
+            "parcel_number": None,
+            "mls_id": None,
+            "property_type": None,
+            "occupied": None,
+        }
+        key_map: dict[str, str] = {
+            "year built": "year_built",
+            "lot": "lot_size_sf",
+            "parcel number": "parcel_number",
+            "mls id": "mls_id",
+            "property type": "property_type",
+            "occupied": "occupied",
+        }
+
+        for row in soup.select("table tr"):
+            cells = row.find_all(["th", "td"])
+            if len(cells) < 2:
+                continue
+            raw_key = (
+                str(cells[0].get_text(" ", strip=True)).strip().lower().rstrip(":")
+            )
+            raw_value = str(cells[1].get_text(" ", strip=True)).strip()
+            if not raw_key or not raw_value:
+                continue
+            field_name = key_map.get(raw_key)
+            if field_name is None:
+                continue
+            if field_name == "year_built":
+                facts[field_name] = self._parse_int(raw_value)
+            elif field_name == "lot_size_sf":
+                facts[field_name] = self._parse_lot_size_sf(raw_value)
+            elif field_name == "occupied":
+                facts[field_name] = self._parse_occupied(raw_value)
+            else:
+                facts[field_name] = raw_value
+
+        return facts
+
+    def _parse_lot_size_sf(self, raw_value: str) -> int | None:
+        """Parse lot size into square feet from mixed lot-size strings."""
+        value = raw_value.lower()
+        if "acre" in value:
+            acre_match = re.search(r"\d+(?:,\d{3})*(?:\.\d+)?", value)
+            if not acre_match:
+                return None
+            acres = Decimal(acre_match.group(0).replace(",", ""))
+            return int(acres * Decimal("43560"))
+
+        return self._parse_int(raw_value)
+
+    def _parse_occupied(self, raw_value: str) -> bool | None:
+        """Parse occupied values into booleans when possible."""
+        normalized = raw_value.strip().lower()
+        if normalized in {"yes", "y", "true", "occupied"}:
+            return True
+        if normalized in {"no", "n", "false", "vacant", "not occupied"}:
+            return False
+        return None
+
+    def _extract_county_from_breadcrumb(self, soup: BeautifulSoup) -> str | None:
+        """Extract county from breadcrumb level 2 link text when present."""
+        breadcrumb_links = soup.select(
+            "nav[aria-label*='breadcrumb' i] a, .breadcrumb a, ol.breadcrumb a"
+        )
+        breadcrumb_texts = [
+            str(link.get_text(" ", strip=True)).strip()
+            for link in breadcrumb_links
+            if str(link.get_text(" ", strip=True)).strip()
+        ]
+        if len(breadcrumb_texts) >= 2:
+            return breadcrumb_texts[1]
+        return None
 
     def _parse_address(self, address_text: str) -> dict[str, str]:
         """Parse `street, city, ST ZIP` style addresses."""
