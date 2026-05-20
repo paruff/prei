@@ -46,6 +46,26 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
     assert "retries: 5" in compose_file
 
 
+def test_render_blueprint_defines_required_services_and_commands() -> None:
+    render_yaml = (REPO_ROOT / "render.yaml").read_text(encoding="utf-8")
+
+    assert "name: prei-web" in render_yaml
+    assert "name: prei-worker" in render_yaml
+    assert "name: prei-scheduler" in render_yaml
+    assert "name: prei-db" in render_yaml
+    assert "name: prei-redis" in render_yaml
+    assert "collectstatic --noinput" in render_yaml
+    assert "preDeployCommand: python manage.py migrate --noinput" in render_yaml
+    assert (
+        "startCommand: daphne -b 0.0.0.0 -p $PORT investor_app.asgi:application"
+        in render_yaml
+    )
+    assert "healthCheckPath: /health/" in render_yaml
+    assert "key: DEBUG" in render_yaml
+    assert 'value: "False"' in render_yaml
+    assert "key: ALLOWED_HOSTS" in render_yaml
+
+
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
     """Verify RUN_MIGRATIONS=0 skips the migrate command before exec."""
     calls = run_entrypoint_with_fake_python(tmp_path, run_migrations="0")

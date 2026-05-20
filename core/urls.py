@@ -5,6 +5,7 @@ from .views_portfolio import portfolio_dashboard
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("health/", views.health_check, name="health_check"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("properties/add/", views.property_add, name="property_add"),
     path("properties/", views.property_list, name="property_list"),

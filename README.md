@@ -25,6 +25,33 @@ Choose the path that fits your situation:
 > before editing `.env` — several defaults are production-only and will prevent the app
 > from loading in a browser without changes.
 
+## Deploy to Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/paruff/prei)
+
+This repository includes a root `render.yaml` blueprint that provisions:
+
+- `prei-web` (Django ASGI app via Daphne)
+- `prei-worker` (Celery worker)
+- `prei-scheduler` (Celery beat scheduler)
+- `prei-db` (managed PostgreSQL)
+- `prei-redis` (managed Redis)
+
+Steps:
+
+1. Click the deploy button above and select this repository.
+2. In Render, set required environment variables when prompted:
+   - `SECRET_KEY`
+   - `ALLOWED_HOSTS` (comma-separated, for example `your-app.onrender.com`)
+3. Deploy the blueprint.
+
+Notes:
+
+- Static assets are collected during build (`python manage.py collectstatic --noinput`).
+- Database migrations run before each web deploy (`python manage.py migrate --noinput`).
+- The web service health check uses `GET /health/` and returns `{"status": "ok"}`.
+- Production mode is enforced with `DJANGO_ENV=production` and `DEBUG=False`.
+
 ### Fastest path: GitHub Codespaces
 
 No installation required. Open the repo in a Codespace and the full environment

@@ -8,6 +8,13 @@ def test_dashboard_redirects_anonymous(client):
     assert response.url.startswith("/accounts/login/")
 
 
+def test_health_check_returns_ok(client):
+    response = client.get(reverse("health_check"))
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_dashboard_returns_200_for_logged_in_user(client, user):
     client.force_login(user)
 
