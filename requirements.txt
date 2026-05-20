@@ -1,6 +1,6 @@
 Django>=4.2,<5
 djangorestframework>=3.17.1,<4.0
-psycopg2-binary>=2.9
+psycopg2-binary>=2.9.12
 numpy>=1.25
 numpy-financial>=1.0
 django-environ>=0.13.0
