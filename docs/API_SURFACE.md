@@ -2,7 +2,7 @@
 
 > Auto-maintained by `@docs-agent`. Updated whenever `core/services/` or `investor_app/finance/utils.py` changes.
 > DORA AI Cap 3: This document is loaded as context before every code generation session.
-> Last updated: 2026-05-08 (added collaboration service APIs)
+> Last updated: 2026-05-20 (added VrmProperty.calculate_profitability model API)
 
 -----
 
@@ -222,6 +222,18 @@ items = recommend_listings(request.user, limit=5)
 **Error cases:** None.
 
 -----
+
+## Model APIs
+
+### `VrmProperty.calculate_profitability()`
+
+**Purpose:** Calculate and persist rental profitability metrics on a `VrmProperty` using configured expense and margin settings.
+**Parameters:** None.
+**Returns:** `None`.
+**Side effects:** Updates and saves `gross_annual_rent`, `effective_gross_rent`, `annual_expenses`, `noi`, `total_investment`, `cap_rate`, `profit_margin_pct`, and `meets_profit_target`.
+**Error cases:** Guards against divide-by-zero by returning `0` for percentage outputs when denominators are zero.
+
+---
 
 ## Integration Adapters
 
