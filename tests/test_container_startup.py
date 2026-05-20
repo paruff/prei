@@ -48,6 +48,7 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
 
 def test_render_blueprint_has_required_services_and_web_commands() -> None:
     render_yaml = (REPO_ROOT / "render.yaml").read_text(encoding="utf-8")
+    web_section = _service_section(render_yaml, "prei-web")
 
     assert "name: prei-web" in render_yaml
     assert "name: prei-worker" in render_yaml
@@ -63,9 +64,13 @@ def test_render_blueprint_has_required_services_and_web_commands() -> None:
     assert "startCommand: celery -A investor_app worker -l info" in render_yaml
     assert "startCommand: celery -A investor_app beat -l info" in render_yaml
     assert "healthCheckPath: /health/" in render_yaml
-    assert "key: DEBUG" in render_yaml
-    assert "key: ALLOWED_HOSTS" in render_yaml
-    assert "key: SECRET_KEY" in render_yaml
+    assert "key: DEBUG" in web_section, "DEBUG env var missing from prei-web service"
+    assert (
+        "key: ALLOWED_HOSTS" in web_section
+    ), "ALLOWED_HOSTS env var missing from prei-web service"
+    assert (
+        "key: SECRET_KEY" in web_section
+    ), "SECRET_KEY env var missing from prei-web service"
 
 
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
@@ -127,3 +132,21 @@ def run_entrypoint_with_fake_python(
     )
 
     return log_path.read_text(encoding="utf-8").splitlines()
+
+
+def _service_section(render_yaml: str, service_name: str) -> str:
+    """Return a named Render service block from raw render.yaml text.
+
+    The returned block spans from the `name: <service_name>` line to the start
+    of the next top-level service entry (`\n  - type:`), or end-of-file.
+    Raises AssertionError when the named service is missing.
+    """
+    service_marker = f"name: {service_name}"
+    start_index = render_yaml.find(service_marker)
+    assert start_index != -1, f"Service {service_name} not found in render.yaml"
+    next_service_index = render_yaml.find(
+        "\n  - type:", start_index + len(service_marker)
+    )
+    if next_service_index == -1:
+        return render_yaml[start_index:]
+    return render_yaml[start_index:next_service_index]
