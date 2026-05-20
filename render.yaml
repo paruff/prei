@@ -14,8 +14,10 @@ services:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
+        # Set in Render dashboard or via Blueprint environment setup.
         sync: false
       - key: ALLOWED_HOSTS
+        # Comma-separated production hosts, set per environment.
         sync: false
       - key: DATABASE_URL
         fromDatabase:
@@ -50,8 +52,10 @@ services:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
+        # Set in Render dashboard or via Blueprint environment setup.
         sync: false
       - key: ALLOWED_HOSTS
+        # Comma-separated production hosts, set per environment.
         sync: false
       - key: DATABASE_URL
         fromDatabase:
@@ -86,8 +90,10 @@ services:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
+        # Set in Render dashboard or via Blueprint environment setup.
         sync: false
       - key: ALLOWED_HOSTS
+        # Comma-separated production hosts, set per environment.
         sync: false
       - key: DATABASE_URL
         fromDatabase:
@@ -111,7 +117,6 @@ services:
 
   - type: redis
     name: prei-redis
-    ipAllowList: []
 
 databases:
   - name: prei-db
