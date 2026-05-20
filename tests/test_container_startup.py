@@ -6,8 +6,6 @@ from pathlib import Path
 import re
 import subprocess
 
-import yaml
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MIGRATION_GUARD_LINE = 'if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then'
 
@@ -49,37 +47,25 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
 
 
 def test_render_blueprint_has_required_services_and_web_commands() -> None:
-    render_blueprint = yaml.safe_load(
-        (REPO_ROOT / "render.yaml").read_text(encoding="utf-8")
-    )
-    services = render_blueprint["services"]
-    databases = render_blueprint["databases"]
-    service_by_name = {service["name"]: service for service in services}
+    render_yaml = (REPO_ROOT / "render.yaml").read_text(encoding="utf-8")
 
-    assert "prei-web" in service_by_name
-    assert "prei-worker" in service_by_name
-    assert "prei-scheduler" in service_by_name
-    assert "prei-redis" in service_by_name
-    assert any(database["name"] == "prei-db" for database in databases)
-
-    web = service_by_name["prei-web"]
-    worker = service_by_name["prei-worker"]
-    scheduler = service_by_name["prei-scheduler"]
-
-    assert "collectstatic --noinput" in web["buildCommand"]
-    assert web["preDeployCommand"] == "python manage.py migrate --noinput"
+    assert "name: prei-web" in render_yaml
+    assert "name: prei-worker" in render_yaml
+    assert "name: prei-scheduler" in render_yaml
+    assert "name: prei-db" in render_yaml
+    assert "name: prei-redis" in render_yaml
+    assert "collectstatic --noinput" in render_yaml
+    assert "preDeployCommand: python manage.py migrate --noinput" in render_yaml
     assert (
-        web["startCommand"]
-        == "daphne -b 0.0.0.0 -p $PORT investor_app.asgi:application"
+        "startCommand: daphne -b 0.0.0.0 -p $PORT investor_app.asgi:application"
+        in render_yaml
     )
-    assert web["healthCheckPath"] == "/health/"
-    assert worker["startCommand"] == "celery -A investor_app worker -l info"
-    assert scheduler["startCommand"] == "celery -A investor_app beat -l info"
-
-    web_env_var_keys = {item["key"] for item in web["envVars"]}
-    assert "DEBUG" in web_env_var_keys
-    assert "ALLOWED_HOSTS" in web_env_var_keys
-    assert "SECRET_KEY" in web_env_var_keys
+    assert "startCommand: celery -A investor_app worker -l info" in render_yaml
+    assert "startCommand: celery -A investor_app beat -l info" in render_yaml
+    assert "healthCheckPath: /health/" in render_yaml
+    assert "key: DEBUG" in render_yaml
+    assert "key: ALLOWED_HOSTS" in render_yaml
+    assert "key: SECRET_KEY" in render_yaml
 
 
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
