@@ -331,6 +331,26 @@ items = recommend_listings(request.user, limit=5)
 
 ---
 
+### `VrmScraper.fetch_property_detail(listing_url)`
+
+**Purpose:** Fetch one VRM property detail page HTML by listing URL.
+**Parameters:**
+- `listing_url: str` — Full VRM detail page URL.
+**Returns:** `str` HTML body content for the detail page.
+**Error cases:** Propagates request errors when the detail page cannot be fetched.
+
+---
+
+### `VrmScraper.extract_property_details_from_html(html)`
+
+**Purpose:** Parse VRM detail-page HTML into enrichment fields used on `VrmProperty`.
+**Parameters:**
+- `html: str` — VRM property detail HTML.
+**Returns:** `dict[str, Any]` with parsed values such as latitude/longitude, year built, lot size, parcel number, MLS ID, property type, occupied, county, and vendee eligibility.
+**Error cases:** Missing/unparseable values are returned as `None` (except `vendee_eligible`, which defaults to `False` when not detected).
+
+---
+
 ## Finance Utilities
 
 > Module: `investor_app/finance/utils.py`
