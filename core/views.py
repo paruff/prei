@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 from io import BytesIO
+from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
+from typing import cast
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -425,7 +427,9 @@ def report_property(request, property_id: int):
     return render(request, "property_report.html", context)
 
 
-def _get_financing_value(data: dict, *keys: str) -> FinancingValue:
+def _get_financing_value(
+    data: Mapping[str, FinancingValue | None], *keys: str
+) -> FinancingValue:
     """Return the first non-None value for any provided key in metadata.
 
     This handles mixed snake_case/camelCase key formats across existing
@@ -475,10 +479,13 @@ def export_pdf(request, pk: int) -> HttpResponse:
     rental_income = property_obj.rental_incomes.order_by(
         "-effective_date", "-id"
     ).first()
-    vacancy_rate = (
+    default_vacancy_rate = cast(
+        Decimal, settings.FINANCE_DEFAULTS.get("vacancy_rate", Decimal("0.05"))
+    )
+    vacancy_rate: Decimal = (
         rental_income.vacancy_rate
         if rental_income is not None
-        else settings.FINANCE_DEFAULTS["vacancy_rate"]
+        else default_vacancy_rate
     )
     effective_gross_income = (
         rental_income.effective_gross_income()
@@ -493,7 +500,7 @@ def export_pdf(request, pk: int) -> HttpResponse:
     )
     financing = None
     if loan_transaction:
-        metadata = loan_transaction.metadata
+        metadata = cast(dict[str, FinancingValue | None], loan_transaction.metadata)
         down_payment = _get_financing_value(metadata, "downPayment", "down_payment")
         interest_rate = _get_financing_value(metadata, "interestRate", "interest_rate")
         term_years = _get_financing_value(
@@ -515,9 +522,9 @@ def export_pdf(request, pk: int) -> HttpResponse:
         ):
             financing = None
 
-    hold_years_default = settings.FINANCE_DEFAULTS.get("hold_years", 5)
-    exit_cap_rate_default = settings.FINANCE_DEFAULTS.get(
-        "exit_cap_rate", Decimal("0.06")
+    hold_years_default = cast(int, settings.FINANCE_DEFAULTS.get("hold_years", 5))
+    exit_cap_rate_default = cast(
+        Decimal, settings.FINANCE_DEFAULTS.get("exit_cap_rate", Decimal("0.06"))
     )
     exit_cap_rate_value = analysis.exit_cap_rate if analysis else exit_cap_rate_default
 
