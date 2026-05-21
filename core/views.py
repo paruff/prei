@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.http import HttpResponseNotAllowed
+from django.http import HttpRequest, HttpResponseNotAllowed, JsonResponse
 from django.db.models import Avg, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -43,6 +43,11 @@ def home(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
     return redirect_to_login(request.get_full_path())
+
+
+def health_check(request: HttpRequest) -> JsonResponse:
+    """Return an unauthenticated health payload for platform monitoring."""
+    return JsonResponse({"status": "ok"})
 
 
 @login_required
