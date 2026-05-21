@@ -9,3 +9,9 @@ DATABASES = {
         "NAME": str(BASE_DIR / "test_db.sqlite3"),
     }
 }
+
+# Keep pytest/CI HTTP test-client behavior stable even when DEBUG=False is set
+# in workflow environments.
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False

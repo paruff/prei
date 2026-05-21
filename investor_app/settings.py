@@ -4,7 +4,6 @@ from pathlib import Path
 from decimal import Decimal
 
 import environ
-from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,17 +29,15 @@ SECRET_KEY = (
     if IS_PRODUCTION
     else env("SECRET_KEY", default=get_random_secret_key())
 )
-ALLOWED_HOSTS = (
-    env.list("ALLOWED_HOSTS")
-    if IS_PRODUCTION
-    else env.list("ALLOWED_HOSTS", default=["*"])
-)
+ALLOWED_HOSTS = [
+    host
+    for host in map(
+        str.strip, env("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
+    )
+    if host
+]
 
-if IS_PRODUCTION:
-    if not env("ALLOWED_HOSTS", default="").strip():
-        raise ImproperlyConfigured(
-            "ALLOWED_HOSTS must be set when DJANGO_ENV=production."
-        )
+if not DEBUG:
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
     SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
     CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
@@ -50,7 +47,8 @@ if IS_PRODUCTION:
     )
     SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=True)
     SECURE_CONTENT_TYPE_NOSNIFF = env.bool("SECURE_CONTENT_TYPE_NOSNIFF", default=True)
-    X_FRAME_OPTIONS = env("X_FRAME_OPTIONS", default="DENY")
+
+X_FRAME_OPTIONS = "DENY"
 
 DATABASES = {
     "default": env.db(
@@ -77,6 +75,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -108,6 +107,7 @@ WSGI_APPLICATION = "investor_app.wsgi.application"
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
