@@ -34,7 +34,7 @@
     <table>
       <tr><th>NOI</th><th>Cap Rate</th><th>Cash-on-Cash</th><th>IRR</th><th>DSCR</th></tr>
       <tr>
-        <td>${% if analysis %}{{ analysis.noi|floatformat:2 }}{% else %}0.00{% endif %}</td>
+        <td>{% if analysis %}${{ analysis.noi|floatformat:2 }}{% else %}$0.00{% endif %}</td>
         <td>{% if analysis %}{{ analysis.cap_rate|floatformat:4 }}{% else %}0.0000{% endif %}</td>
         <td>{% if analysis %}{{ analysis.cash_on_cash|floatformat:4 }}{% else %}0.0000{% endif %}</td>
         <td>{% if analysis %}{{ analysis.irr|floatformat:4 }}{% else %}0.0000{% endif %}</td>
@@ -47,7 +47,7 @@
     <h2>Rental Income</h2>
     <table>
       <tr><th>Monthly Rent</th><td>{% if rental_income %}${{ rental_income.monthly_rent|floatformat:2 }}{% else %}$0.00{% endif %}</td></tr>
-      <tr><th>Vacancy Rate</th><td>{{ assumptions.vacancy_rate|floatformat:4 }}</td></tr>
+      <tr><th>Vacancy Rate</th><td>{{ assumptions.vacancy_rate_pct|floatformat:2 }}%</td></tr>
       <tr><th>Effective Gross Income</th><td>${{ effective_gross_income|floatformat:2 }}</td></tr>
     </table>
   </div>
@@ -72,10 +72,10 @@
     <h2>Financing</h2>
     {% if financing %}
     <table>
-      <tr><th>Down Payment</th><td>{{ financing.down_payment|default:"N/A" }}</td></tr>
-      <tr><th>Rate</th><td>{{ financing.interest_rate|default:"N/A" }}</td></tr>
-      <tr><th>Term</th><td>{{ financing.term_years|default:"N/A" }}</td></tr>
-      <tr><th>Monthly Payment</th><td>{{ financing.monthly_payment|default:"N/A" }}</td></tr>
+      <tr><th>Down Payment</th><td>{{ financing.down_payment }}</td></tr>
+      <tr><th>Interest Rate</th><td>{{ financing.interest_rate }}</td></tr>
+      <tr><th>Loan Term</th><td>{{ financing.term_years }}</td></tr>
+      <tr><th>Monthly Payment</th><td>{{ financing.monthly_payment }}</td></tr>
     </table>
     {% else %}
     <div>No financing details recorded.</div>
@@ -83,9 +83,9 @@
   </div>
 
   <div class="footer">
-    Assumptions used: vacancy rate {{ assumptions.vacancy_rate|floatformat:4 }},
+    Assumptions used: vacancy rate {{ assumptions.vacancy_rate_pct|floatformat:2 }}%,
     hold period {{ assumptions.hold_years }} years,
-    exit cap rate {{ assumptions.exit_cap_rate|floatformat:4 }}.
+    exit cap rate {{ assumptions.exit_cap_rate_pct|floatformat:2 }}%.
   </div>
 </body>
 </html>

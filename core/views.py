@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from io import BytesIO
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -35,6 +35,7 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+FinancingValue = str | int | float | Decimal | None
 
 
 def _portfolio_summary(user) -> dict[str, Decimal | int]:
@@ -424,7 +425,12 @@ def report_property(request, property_id: int):
     return render(request, "property_report.html", context)
 
 
-def _get_financing_value(data: dict, *keys: str):
+def _get_financing_value(data: dict, *keys: str) -> FinancingValue:
+    """Return the first non-None value for any provided key in metadata.
+
+    This handles mixed snake_case/camelCase key formats across existing
+    financing metadata payloads.
+    """
     for key in keys:
         value = data.get(key)
         if value is not None:
@@ -432,8 +438,32 @@ def _get_financing_value(data: dict, *keys: str):
     return None
 
 
+def _format_financing_value(
+    value: FinancingValue, prefix: str = "", suffix: str = ""
+) -> str:
+    if value is None:
+        return "N/A"
+    try:
+        number = Decimal(str(value))
+        return f"{prefix}{number:,.2f}{suffix}"
+    except (InvalidOperation, TypeError, ValueError):
+        return f"{prefix}{value}{suffix}"
+
+
 @login_required
-def export_pdf(request, pk: int):
+def export_pdf(request, pk: int) -> HttpResponse:
+    """Render and return a one-page deal summary PDF for an owned property.
+
+    Args:
+        request: Authenticated Django request.
+        pk: Property primary key.
+
+    Returns:
+        HttpResponse: PDF attachment response.
+
+    Raises:
+        Http404: If the property is missing or does not belong to the user.
+    """
     property_obj = get_object_or_404(
         Property.objects.select_related("analysis").prefetch_related(
             "rental_incomes", "operating_expenses", "transactions"
@@ -464,22 +494,32 @@ def export_pdf(request, pk: int):
     financing = None
     if loan_transaction:
         metadata = loan_transaction.metadata
+        down_payment = _get_financing_value(metadata, "downPayment", "down_payment")
+        interest_rate = _get_financing_value(metadata, "interestRate", "interest_rate")
+        term_years = _get_financing_value(
+            metadata, "loanTermYears", "loan_term_years", "term_years"
+        )
+        monthly_payment = _get_financing_value(
+            metadata, "monthlyPayment", "monthly_payment"
+        )
         financing = {
-            "down_payment": _get_financing_value(
-                metadata, "downPayment", "down_payment"
-            ),
-            "interest_rate": _get_financing_value(
-                metadata, "interestRate", "interest_rate"
-            ),
-            "term_years": _get_financing_value(
-                metadata, "loanTermYears", "loan_term_years", "term_years"
-            ),
-            "monthly_payment": _get_financing_value(
-                metadata, "monthlyPayment", "monthly_payment"
-            ),
+            "down_payment": _format_financing_value(down_payment, "$"),
+            "interest_rate": _format_financing_value(interest_rate, suffix="%"),
+            "term_years": _format_financing_value(term_years, suffix=" years"),
+            "monthly_payment": _format_financing_value(monthly_payment, "$"),
         }
-        if not any(value is not None for value in financing.values()):
+        # Treat fully empty financing payloads as missing data for template display.
+        if all(
+            value is None
+            for value in [down_payment, interest_rate, term_years, monthly_payment]
+        ):
             financing = None
+
+    hold_years_default = settings.FINANCE_DEFAULTS.get("hold_years", 5)
+    exit_cap_rate_default = settings.FINANCE_DEFAULTS.get(
+        "exit_cap_rate", Decimal("0.06")
+    )
+    exit_cap_rate_value = analysis.exit_cap_rate if analysis else exit_cap_rate_default
 
     context = {
         "property": property_obj,
@@ -497,17 +537,27 @@ def export_pdf(request, pk: int):
         "financing": financing,
         "assumptions": {
             "vacancy_rate": vacancy_rate,
-            "hold_years": analysis.hold_years if analysis else 5,
-            "exit_cap_rate": analysis.exit_cap_rate if analysis else Decimal("0.06"),
+            "vacancy_rate_pct": vacancy_rate * Decimal("100"),
+            "hold_years": analysis.hold_years if analysis else hold_years_default,
+            "exit_cap_rate": exit_cap_rate_value,
+            "exit_cap_rate_pct": exit_cap_rate_value * Decimal("100"),
         },
         "generated_date": timezone.now(),
     }
 
     html = render_to_string("exports/deal_summary.html", context)
     pdf_result = BytesIO()
-    pdf = pisa.CreatePDF(src=html, dest=pdf_result)
-    if pdf.err:
-        return HttpResponse("Unable to generate PDF.", status=500)
+    conversion_result = pisa.CreatePDF(src=html, dest=pdf_result)
+    if conversion_result.err:
+        logger.error(
+            "PDF generation failed for property_id=%s with errors=%s",
+            property_obj.pk,
+            conversion_result.err,
+        )
+        return HttpResponse(
+            "Unable to generate PDF. Please contact support if this issue persists.",
+            status=500,
+        )
 
     filename = f"deal-summary-{slugify(property_obj.address) or property_obj.pk}.pdf"
     response = HttpResponse(pdf_result.getvalue(), content_type="application/pdf")
