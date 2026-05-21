@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import logging
+from io import BytesIO
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.http import HttpRequest, HttpResponseNotAllowed, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed, JsonResponse
 from django.db.models import Avg, Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.utils.text import slugify
+from xhtml2pdf import pisa
 
 from investor_app.finance.utils import (
     compute_analysis_for_property,
@@ -19,7 +25,14 @@ from investor_app.finance.utils import (
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
 from core.services.audit import log_action
 from .forms import OperatingExpenseForm, PropertyForm, RentalIncomeForm
-from .models import InvestmentAnalysis, Listing, MarketSnapshot, Property, SavedSearch
+from .models import (
+    InvestmentAnalysis,
+    Listing,
+    MarketSnapshot,
+    Property,
+    SavedSearch,
+    Transaction,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -409,3 +422,94 @@ def report_property(request, property_id: int):
         "schools": None,
     }
     return render(request, "property_report.html", context)
+
+
+def _get_financing_value(data: dict, *keys: str):
+    for key in keys:
+        value = data.get(key)
+        if value is not None:
+            return value
+    return None
+
+
+@login_required
+def export_pdf(request, pk: int):
+    property_obj = get_object_or_404(
+        Property.objects.select_related("analysis").prefetch_related(
+            "rental_incomes", "operating_expenses", "transactions"
+        ),
+        pk=pk,
+        user=request.user,
+    )
+    analysis = getattr(property_obj, "analysis", None)
+    rental_income = property_obj.rental_incomes.order_by(
+        "-effective_date", "-id"
+    ).first()
+    vacancy_rate = (
+        rental_income.vacancy_rate
+        if rental_income is not None
+        else settings.FINANCE_DEFAULTS["vacancy_rate"]
+    )
+    effective_gross_income = (
+        rental_income.effective_gross_income()
+        if rental_income is not None
+        else Decimal("0")
+    )
+
+    loan_transaction = (
+        property_obj.transactions.filter(type=Transaction.Type.LOAN)
+        .order_by("-date", "-id")
+        .first()
+    )
+    financing = None
+    if loan_transaction:
+        metadata = loan_transaction.metadata
+        financing = {
+            "down_payment": _get_financing_value(
+                metadata, "downPayment", "down_payment"
+            ),
+            "interest_rate": _get_financing_value(
+                metadata, "interestRate", "interest_rate"
+            ),
+            "term_years": _get_financing_value(
+                metadata, "loanTermYears", "loan_term_years", "term_years"
+            ),
+            "monthly_payment": _get_financing_value(
+                metadata, "monthlyPayment", "monthly_payment"
+            ),
+        }
+        if not any(value is not None for value in financing.values()):
+            financing = None
+
+    context = {
+        "property": property_obj,
+        "property_type": (
+            f"Multi-family ({property_obj.units} units)"
+            if property_obj.units > 1
+            else "Single-family"
+        ),
+        "analysis": analysis,
+        "rental_income": rental_income,
+        "effective_gross_income": effective_gross_income,
+        "operating_expenses": property_obj.operating_expenses.order_by(
+            "category", "id"
+        ),
+        "financing": financing,
+        "assumptions": {
+            "vacancy_rate": vacancy_rate,
+            "hold_years": analysis.hold_years if analysis else 5,
+            "exit_cap_rate": analysis.exit_cap_rate if analysis else Decimal("0.06"),
+        },
+        "generated_date": timezone.now(),
+    }
+
+    html = render_to_string("exports/deal_summary.html", context)
+    pdf_result = BytesIO()
+    pdf = pisa.CreatePDF(src=html, dest=pdf_result)
+    if pdf.err:
+        return HttpResponse("Unable to generate PDF.", status=500)
+
+    filename = f"deal-summary-{slugify(property_obj.address) or property_obj.pk}.pdf"
+    response = HttpResponse(pdf_result.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response

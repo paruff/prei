@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Deal Summary</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f2937; }
+    h1, h2 { margin: 0 0 6px 0; color: #111827; }
+    .brand { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+    .meta { color: #4b5563; margin-bottom: 14px; }
+    .section { margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #d1d5db; padding: 5px; text-align: left; }
+    th { background: #f3f4f6; }
+    .footer { margin-top: 16px; color: #4b5563; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <div class="brand">prei — Deal Summary</div>
+  <div class="meta">Generated {{ generated_date|date:"Y-m-d H:i" }}</div>
+
+  <div class="section">
+    <h2>Property Header</h2>
+    <table>
+      <tr><th>Address</th><td>{{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}</td></tr>
+      <tr><th>Type</th><td>{{ property_type }}</td></tr>
+      <tr><th>Purchase Price</th><td>${{ property.purchase_price|floatformat:2 }}</td></tr>
+      <tr><th>Purchase Date</th><td>{% if property.purchase_date %}{{ property.purchase_date|date:"Y-m-d" }}{% else %}N/A{% endif %}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Financial Summary</h2>
+    <table>
+      <tr><th>NOI</th><th>Cap Rate</th><th>Cash-on-Cash</th><th>IRR</th><th>DSCR</th></tr>
+      <tr>
+        <td>${% if analysis %}{{ analysis.noi|floatformat:2 }}{% else %}0.00{% endif %}</td>
+        <td>{% if analysis %}{{ analysis.cap_rate|floatformat:4 }}{% else %}0.0000{% endif %}</td>
+        <td>{% if analysis %}{{ analysis.cash_on_cash|floatformat:4 }}{% else %}0.0000{% endif %}</td>
+        <td>{% if analysis %}{{ analysis.irr|floatformat:4 }}{% else %}0.0000{% endif %}</td>
+        <td>{% if analysis %}{{ analysis.dscr|floatformat:4 }}{% else %}0.0000{% endif %}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Rental Income</h2>
+    <table>
+      <tr><th>Monthly Rent</th><td>{% if rental_income %}${{ rental_income.monthly_rent|floatformat:2 }}{% else %}$0.00{% endif %}</td></tr>
+      <tr><th>Vacancy Rate</th><td>{{ assumptions.vacancy_rate|floatformat:4 }}</td></tr>
+      <tr><th>Effective Gross Income</th><td>${{ effective_gross_income|floatformat:2 }}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Operating Expenses</h2>
+    <table>
+      <tr><th>Category</th><th>Amount</th><th>Frequency</th></tr>
+      {% for expense in operating_expenses %}
+      <tr>
+        <td>{{ expense.category }}</td>
+        <td>${{ expense.amount|floatformat:2 }}</td>
+        <td>{{ expense.get_frequency_display }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3">No operating expenses recorded.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Financing</h2>
+    {% if financing %}
+    <table>
+      <tr><th>Down Payment</th><td>{{ financing.down_payment|default:"N/A" }}</td></tr>
+      <tr><th>Rate</th><td>{{ financing.interest_rate|default:"N/A" }}</td></tr>
+      <tr><th>Term</th><td>{{ financing.term_years|default:"N/A" }}</td></tr>
+      <tr><th>Monthly Payment</th><td>{{ financing.monthly_payment|default:"N/A" }}</td></tr>
+    </table>
+    {% else %}
+    <div>No financing details recorded.</div>
+    {% endif %}
+  </div>
+
+  <div class="footer">
+    Assumptions used: vacancy rate {{ assumptions.vacancy_rate|floatformat:4 }},
+    hold period {{ assumptions.hold_years }} years,
+    exit cap rate {{ assumptions.exit_cap_rate|floatformat:4 }}.
+  </div>
+</body>
+</html>
