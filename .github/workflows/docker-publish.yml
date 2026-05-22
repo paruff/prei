@@ -99,7 +99,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
           ignore-unfixed: true
       - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-tier-2.sarif
