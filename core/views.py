@@ -57,6 +57,9 @@ class AuthenticatedUser(Protocol):
     The RBAC helpers only require a persisted integer ``id`` and do not depend on
     ``AbstractBaseUser`` fields, which avoids ORM typing mismatches in mypy while
     remaining compatible with configured auth user models.
+
+    Attributes:
+        id: Persisted primary key for the authenticated user.
     """
 
     id: int
@@ -118,6 +121,15 @@ def _is_client_only_user(user: AuthenticatedUser) -> bool:
 
 
 def _portfolio_summary(user: AuthenticatedUser) -> dict[str, Decimal | int]:
+    """Compute portfolio-level summary metrics for the given authenticated user.
+
+    Args:
+        user: Authenticated request user with a persisted integer id.
+
+    Returns:
+        dict[str, Decimal | int]: Total property count, invested capital, and
+        average cap rate for owner-scoped properties.
+    """
     properties = Property.objects.filter(user_id=user.id)
     total_invested = properties.aggregate(total=Sum("purchase_price"))[
         "total"
