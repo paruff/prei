@@ -8,6 +8,7 @@ from typing import cast
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.db.models import Avg, Q, Sum
@@ -51,7 +52,7 @@ User = get_user_model()
 ROLE_RANK = {"client": 1, "team": 2, "owner": 3}
 
 
-def _get_property_role(user, property_obj: Property) -> str | None:
+def _get_property_role(user: AbstractBaseUser, property_obj: Property) -> str | None:
     if property_obj.user_id == user.id:
         return "owner"
     share = PropertyShare.objects.filter(
@@ -62,14 +63,16 @@ def _get_property_role(user, property_obj: Property) -> str | None:
     return share.role
 
 
-def is_owner_or_shared(user, property_obj: Property, min_role: str = "client") -> bool:
+def is_owner_or_shared(
+    user: AbstractBaseUser, property_obj: Property, min_role: str = "client"
+) -> bool:
     role = _get_property_role(user, property_obj)
     if role is None:
         return False
     return ROLE_RANK[role] >= ROLE_RANK[min_role]
 
 
-def _is_client_only_user(user) -> bool:
+def _is_client_only_user(user: AbstractBaseUser) -> bool:
     if Property.objects.filter(user=user).exists():
         return False
     if PropertyShare.objects.filter(shared_with=user, role="team").exists():
@@ -134,7 +137,7 @@ def property_list(request):
         .distinct()
         .order_by("-id")
     )
-    property_ids = [property_obj.id for property_obj in properties]
+    property_ids = list(properties.values_list("id", flat=True))
     share_roles_by_property_id = dict(
         PropertyShare.objects.filter(
             shared_with=request.user,
@@ -225,8 +228,6 @@ def property_edit(request, pk: int):
 def property_delete(request, pk: int):
     property_obj = get_object_or_404(Property, pk=pk)
     if property_obj.user_id != request.user.id:
-        if is_owner_or_shared(request.user, property_obj, min_role="client"):
-            return HttpResponseForbidden("Only the property owner can delete.")
         raise Http404
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])

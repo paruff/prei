@@ -97,7 +97,7 @@ def test_team_member_can_edit_but_not_delete(client, owner, team_member, propert
     delete_response = client.post(
         reverse("property_delete", kwargs={"pk": property_obj.pk})
     )
-    assert delete_response.status_code == 403
+    assert delete_response.status_code == 404
     assert Property.objects.filter(pk=property_obj.pk).exists()
 
 
@@ -119,6 +119,21 @@ def test_client_can_view_shared_property(client, owner, client_user, property_ob
         reverse("property_detail", kwargs={"pk": property_obj.pk})
     )
     assert detail_response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_client_cannot_edit_shared_property(client, owner, client_user, property_obj):
+    PropertyShare.objects.create(
+        property=property_obj,
+        shared_with=client_user,
+        role="client",
+    )
+
+    client.force_login(client_user)
+
+    response = client.get(reverse("property_edit", kwargs={"pk": property_obj.pk}))
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
