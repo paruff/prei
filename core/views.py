@@ -4,11 +4,10 @@ import logging
 from io import BytesIO
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
-from typing import cast
+from typing import Protocol, cast
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import User as DjangoUser
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.db.models import Avg, Q, Sum
@@ -52,11 +51,15 @@ User = get_user_model()
 ROLE_RANK = {"client": 1, "team": 2, "owner": 3}
 
 
-def _get_property_role(user: DjangoUser, property_obj: Property) -> str | None:
+class AuthenticatedUser(Protocol):
+    id: int
+
+
+def _get_property_role(user: AuthenticatedUser, property_obj: Property) -> str | None:
     if property_obj.user_id == user.id:
         return "owner"
     share = PropertyShare.objects.filter(
-        property=property_obj, shared_with=user
+        property=property_obj, shared_with_id=user.id
     ).first()
     if share is None:
         return None
@@ -64,7 +67,7 @@ def _get_property_role(user: DjangoUser, property_obj: Property) -> str | None:
 
 
 def is_owner_or_shared(
-    user: DjangoUser, property_obj: Property, min_role: str = "client"
+    user: AuthenticatedUser, property_obj: Property, min_role: str = "client"
 ) -> bool:
     role = _get_property_role(user, property_obj)
     if role is None:
@@ -72,12 +75,12 @@ def is_owner_or_shared(
     return ROLE_RANK[role] >= ROLE_RANK[min_role]
 
 
-def _is_client_only_user(user: DjangoUser) -> bool:
-    if Property.objects.filter(user=user).exists():
+def _is_client_only_user(user: AuthenticatedUser) -> bool:
+    if Property.objects.filter(user_id=user.id).exists():
         return False
-    if PropertyShare.objects.filter(shared_with=user, role="team").exists():
+    if PropertyShare.objects.filter(shared_with_id=user.id, role="team").exists():
         return False
-    return PropertyShare.objects.filter(shared_with=user, role="client").exists()
+    return PropertyShare.objects.filter(shared_with_id=user.id, role="client").exists()
 
 
 def _portfolio_summary(user) -> dict[str, Decimal | int]:
