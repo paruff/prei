@@ -52,7 +52,12 @@ ROLE_RANK = {"client": 1, "team": 2, "owner": 3}
 
 
 class AuthenticatedUser(Protocol):
-    """Protocol for RBAC helpers that require a persisted user identifier."""
+    """Minimal authenticated-user contract used by RBAC helper functions.
+
+    The RBAC helpers only require a persisted integer ``id`` and do not depend on
+    ``AbstractBaseUser`` fields, which avoids ORM typing mismatches in mypy while
+    remaining compatible with configured auth user models.
+    """
 
     id: int
 
@@ -99,7 +104,11 @@ def is_owner_or_shared(
 def _is_client_only_user(user: AuthenticatedUser) -> bool:
     """Return True when user only has client-level shared access.
 
-    A client-only user owns no properties and has no team-level share grants.
+    Args:
+        user: Authenticated request user with a persisted integer id.
+
+    Returns:
+        bool: True when the user owns no properties and has no team-level shares.
     """
     if Property.objects.filter(user_id=user.id).exists():
         return False
@@ -108,14 +117,14 @@ def _is_client_only_user(user: AuthenticatedUser) -> bool:
     return PropertyShare.objects.filter(shared_with_id=user.id, role="client").exists()
 
 
-def _portfolio_summary(user) -> dict[str, Decimal | int]:
-    properties = Property.objects.filter(user=user)
+def _portfolio_summary(user: AuthenticatedUser) -> dict[str, Decimal | int]:
+    properties = Property.objects.filter(user_id=user.id)
     total_invested = properties.aggregate(total=Sum("purchase_price"))[
         "total"
     ] or Decimal("0")
-    average_cap_rate = InvestmentAnalysis.objects.filter(property__user=user).aggregate(
-        average=Avg("cap_rate")
-    )["average"] or Decimal("0")
+    average_cap_rate = InvestmentAnalysis.objects.filter(
+        property__user_id=user.id
+    ).aggregate(average=Avg("cap_rate"))["average"] or Decimal("0")
     return {
         "total_properties": properties.count(),
         "total_invested": total_invested,
