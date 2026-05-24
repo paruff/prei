@@ -3,7 +3,9 @@
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">Properties</h1>
-    <a href="{% url 'property_add' %}" class="btn btn-primary btn-sm">Add Property</a>
+    {% if can_add_property %}
+      <a href="{% url 'property_add' %}" class="btn btn-primary btn-sm">Add Property</a>
+    {% endif %}
   </div>
 
   {% if properties %}
@@ -29,8 +31,14 @@
               <td>{% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</td>
               <td>
                 <a href="{% url 'property_detail' property.pk %}">Details</a>
-                ·
-                <a href="{% url 'property_edit' property.pk %}">Edit</a>
+                {% if property.access_role == "owner" or property.access_role == "team" %}
+                  ·
+                  <a href="{% url 'property_edit' property.pk %}">Edit</a>
+                {% endif %}
+                {% if property.access_role == "owner" %}
+                  ·
+                  <a href="{% url 'property_share' property.pk %}">Share</a>
+                {% endif %}
               </td>
             </tr>
           {% endfor %}
