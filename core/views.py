@@ -212,6 +212,15 @@ def property_list(request):
 
 
 def _parse_compare_ids(raw_ids: list[str]) -> tuple[list[int], str | None]:
+    """Parse property IDs from repeated/comma-separated query parameter values.
+
+    Args:
+        raw_ids: Raw `ids` query values from request.GET.getlist("ids").
+
+    Returns:
+        tuple[list[int], str | None]: Parsed positive integer IDs and optional
+        validation error message.
+    """
     parsed_ids: list[int] = []
     for raw_id in raw_ids:
         for token in raw_id.split(","):
@@ -238,12 +247,7 @@ def property_compare(request):
             status=400,
         )
 
-    seen_ids: set[int] = set()
-    unique_ids: list[int] = []
-    for property_id in parsed_ids:
-        if property_id not in seen_ids:
-            seen_ids.add(property_id)
-            unique_ids.append(property_id)
+    unique_ids = list(dict.fromkeys(parsed_ids))
 
     if len(unique_ids) < 2:
         return render(
@@ -354,6 +358,10 @@ def property_compare(request):
         best_value = max(values) if row["higher_is_better"] else min(values)
         worst_value = min(values) if row["higher_is_better"] else max(values)
         row["values"] = row_values
+        if best_value == worst_value:
+            row["best_property_ids"] = []
+            row["worst_property_ids"] = []
+            continue
         row["best_property_ids"] = [
             cast(int, item["property_id"])
             for item in row_values

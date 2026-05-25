@@ -11,7 +11,7 @@
   {% if properties %}
     <form method="get" action="{% url 'property_compare' %}">
       <div class="d-flex justify-content-end mb-2">
-        <button type="submit" class="btn btn-outline-primary btn-sm">Compare selected</button>
+        <button type="submit" class="btn btn-outline-primary btn-sm" id="compare-selected-btn" disabled>Compare selected</button>
       </div>
       <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
@@ -29,7 +29,10 @@
           <tbody>
             {% for property in properties %}
               <tr>
-                <td><input type="checkbox" name="ids" value="{{ property.id }}" aria-label="Select {{ property.address }} for comparison"></td>
+                <td>
+                  <input type="checkbox" id="compare-{{ property.id }}" name="ids" value="{{ property.id }}" class="compare-checkbox">
+                  <label for="compare-{{ property.id }}" class="visually-hidden">Select {{ property.address }} for comparison</label>
+                </td>
                 <td>{{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}</td>
                 <td>${{ property.purchase_price|floatformat:2 }}</td>
                 <td>{% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</td>
@@ -52,6 +55,20 @@
         </table>
       </div>
     </form>
+    <script>
+      (() => {
+        const compareButton = document.getElementById("compare-selected-btn");
+        const checkboxes = document.querySelectorAll(".compare-checkbox");
+        if (!compareButton || !checkboxes.length) return;
+
+        const updateButtonState = () => {
+          compareButton.disabled = !Array.from(checkboxes).some((checkbox) => checkbox.checked);
+        };
+
+        checkboxes.forEach((checkbox) => checkbox.addEventListener("change", updateButtonState));
+        updateButtonState();
+      })();
+    </script>
   {% else %}
     <div class="alert alert-light border text-center">
       <p class="mb-2">No properties yet.</p>
