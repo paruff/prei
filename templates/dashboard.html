@@ -51,6 +51,7 @@
       <div class="card h-100">
         <div class="card-body">
           <div class="text-muted mb-2">Portfolio Allocation by State</div>
+          <p class="small text-muted mb-2" id="portfolio-allocation-status">Loading chart…</p>
           <canvas id="portfolio-allocation-chart" height="120"></canvas>
         </div>
       </div>
@@ -94,10 +95,14 @@
   {% endif %}
   {{ state_allocation_labels|json_script:"state-allocation-labels" }}
   {{ state_allocation_values|json_script:"state-allocation-values" }}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"
+    integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb"
+    crossorigin="anonymous"></script>
   <script>
     const stateAllocationLabels = JSON.parse(document.getElementById("state-allocation-labels").textContent);
     const stateAllocationValues = JSON.parse(document.getElementById("state-allocation-values").textContent);
+    const allocationStatus = document.getElementById("portfolio-allocation-status");
     const allocationChartCanvas = document.getElementById("portfolio-allocation-chart");
     if (allocationChartCanvas && stateAllocationLabels.length > 0 && typeof Chart !== "undefined") {
       new Chart(allocationChartCanvas, {
@@ -110,6 +115,13 @@
           }],
         },
       });
+      if (allocationStatus) {
+        allocationStatus.textContent = "";
+      }
+    } else if (allocationStatus) {
+      allocationStatus.textContent = stateAllocationLabels.length > 0
+        ? "Allocation chart is unavailable right now."
+        : "No properties available for allocation yet.";
     }
   </script>
 {% endblock %}

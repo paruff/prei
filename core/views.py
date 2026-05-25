@@ -148,7 +148,9 @@ def dashboard(request):
         .order_by("state")
     )
     state_allocation_labels = [
-        item["state"] or "Unknown" for item in state_allocation if item["total_value"]
+        item["state"] or "Unknown"
+        for item in state_allocation
+        if item["total_value"] is not None
     ]
     state_allocation_values = [
         float(item["total_value"])

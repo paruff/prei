@@ -11,6 +11,8 @@ from investor_app.finance.utils import (
     to_decimal,
 )
 
+MONTHS_PER_YEAR = Decimal("12")
+
 
 def _month_starts(base: date, count: int) -> List[date]:
     """Return ``count`` first-of-month dates ending at ``base``'s month, oldest first."""
@@ -200,7 +202,7 @@ def compute_portfolio_summary(user) -> Dict[str, Decimal | int]:
         if total_capital_invested_decimal != Decimal("0")
         else Decimal("0")
     )
-    total_monthly_cash_flow = total_annual_noi_decimal / Decimal("12")
+    total_monthly_cash_flow = total_annual_noi_decimal / MONTHS_PER_YEAR
 
     return {
         "total_properties": total_properties,
