@@ -211,6 +211,171 @@ def property_list(request):
     )
 
 
+def _parse_compare_ids(raw_ids: list[str]) -> tuple[list[int], str | None]:
+    parsed_ids: list[int] = []
+    for raw_id in raw_ids:
+        for token in raw_id.split(","):
+            stripped = token.strip()
+            if not stripped:
+                continue
+            try:
+                parsed_id = int(stripped)
+            except ValueError:
+                return [], "Property IDs must be integers."
+            if parsed_id > 0:
+                parsed_ids.append(parsed_id)
+    return parsed_ids, None
+
+
+@login_required
+def property_compare(request):
+    parsed_ids, parse_error = _parse_compare_ids(request.GET.getlist("ids"))
+    if parse_error:
+        return render(
+            request,
+            "properties/compare.html",
+            {"error_message": parse_error},
+            status=400,
+        )
+
+    seen_ids: set[int] = set()
+    unique_ids: list[int] = []
+    for property_id in parsed_ids:
+        if property_id not in seen_ids:
+            seen_ids.add(property_id)
+            unique_ids.append(property_id)
+
+    if len(unique_ids) < 2:
+        return render(
+            request,
+            "properties/compare.html",
+            {"error_message": "Select at least 2 properties to compare."},
+            status=400,
+        )
+
+    warning_message = None
+    if len(unique_ids) > 4:
+        unique_ids = unique_ids[:4]
+        warning_message = "You can compare up to 4 properties at once. Showing the first 4 selections."
+
+    properties = list(
+        Property.objects.filter(
+            Q(user=request.user) | Q(property_shares__shared_with=request.user),
+            id__in=unique_ids,
+        )
+        .select_related("analysis")
+        .prefetch_related("rental_incomes")
+        .distinct()
+    )
+    properties_by_id = {property_obj.id: property_obj for property_obj in properties}
+    if len(properties_by_id) != len(unique_ids):
+        raise Http404
+
+    ordered_properties = [properties_by_id[property_id] for property_id in unique_ids]
+    property_data: list[dict[str, object]] = []
+    for property_obj in ordered_properties:
+        analysis = getattr(property_obj, "analysis", None)
+        if analysis is None:
+            analysis = compute_analysis_for_property(property_obj)
+        rental_income = property_obj.rental_incomes.order_by(
+            "-effective_date", "-id"
+        ).first()
+        property_data.append(
+            {
+                "property": property_obj,
+                "metrics": {
+                    "noi": analysis.noi,
+                    "cap_rate": analysis.cap_rate,
+                    "cash_on_cash": analysis.cash_on_cash,
+                    "irr": analysis.irr,
+                    "dscr": analysis.dscr,
+                    "purchase_price": property_obj.purchase_price,
+                    "monthly_rent": (
+                        rental_income.monthly_rent if rental_income else Decimal("0")
+                    ),
+                    "vacancy_rate": (
+                        rental_income.vacancy_rate if rental_income else Decimal("0")
+                    ),
+                },
+            }
+        )
+
+    comparison_rows = [
+        {"label": "NOI", "key": "noi", "format": "currency", "higher_is_better": True},
+        {
+            "label": "Cap Rate",
+            "key": "cap_rate",
+            "format": "decimal4",
+            "higher_is_better": True,
+        },
+        {
+            "label": "Cash-on-Cash",
+            "key": "cash_on_cash",
+            "format": "decimal4",
+            "higher_is_better": True,
+        },
+        {"label": "IRR", "key": "irr", "format": "decimal4", "higher_is_better": True},
+        {
+            "label": "DSCR",
+            "key": "dscr",
+            "format": "decimal4",
+            "higher_is_better": True,
+        },
+        {
+            "label": "Purchase Price",
+            "key": "purchase_price",
+            "format": "currency",
+            "higher_is_better": False,
+        },
+        {
+            "label": "Monthly Rent",
+            "key": "monthly_rent",
+            "format": "currency",
+            "higher_is_better": True,
+        },
+        {
+            "label": "Vacancy Rate",
+            "key": "vacancy_rate",
+            "format": "decimal4",
+            "higher_is_better": False,
+        },
+    ]
+
+    for row in comparison_rows:
+        key = cast(str, row["key"])
+        row_values = [
+            {
+                "property_id": cast(Property, item["property"]).id,
+                "value": cast(Decimal, item["metrics"][key]),
+            }
+            for item in property_data
+        ]
+        values = [cast(Decimal, item["value"]) for item in row_values]
+        best_value = max(values) if row["higher_is_better"] else min(values)
+        worst_value = min(values) if row["higher_is_better"] else max(values)
+        row["values"] = row_values
+        row["best_property_ids"] = [
+            cast(int, item["property_id"])
+            for item in row_values
+            if cast(Decimal, item["value"]) == best_value
+        ]
+        row["worst_property_ids"] = [
+            cast(int, item["property_id"])
+            for item in row_values
+            if cast(Decimal, item["value"]) == worst_value
+        ]
+
+    return render(
+        request,
+        "properties/compare.html",
+        {
+            "property_data": property_data,
+            "comparison_rows": comparison_rows,
+            "warning_message": warning_message,
+        },
+    )
+
+
 @login_required
 def property_detail(request, pk: int):
     property_obj = get_object_or_404(Property.objects.select_related("analysis"), pk=pk)

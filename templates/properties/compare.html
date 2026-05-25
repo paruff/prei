@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Compare Properties{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Property Comparison</h1>
+    <a href="{% url 'property_list' %}" class="btn btn-outline-secondary btn-sm">Back to properties</a>
+  </div>
+
+  {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  {% if warning_message %}
+    <div class="alert alert-warning">{{ warning_message }}</div>
+  {% endif %}
+
+  {% if property_data %}
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            {% for item in property_data %}
+              <th>{{ item.property.address }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in comparison_rows %}
+            <tr>
+              <th>{{ row.label }}</th>
+              {% for value_item in row.values %}
+                <td class="{% if value_item.property_id in row.best_property_ids %}table-success{% elif value_item.property_id in row.worst_property_ids %}table-danger{% endif %}">
+                  {% if row.format == "currency" %}
+                    ${{ value_item.value|floatformat:2 }}
+                  {% else %}
+                    {{ value_item.value|floatformat:4 }}
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

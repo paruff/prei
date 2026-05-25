@@ -9,42 +9,49 @@
   </div>
 
   {% if properties %}
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle">
-        <thead>
-          <tr>
-            <th>Address</th>
-            <th>Purchase Price</th>
-            <th>NOI</th>
-            <th>Cap Rate</th>
-            <th>CoC</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for property in properties %}
+    <form method="get" action="{% url 'property_compare' %}">
+      <div class="d-flex justify-content-end mb-2">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Compare selected</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+          <thead>
             <tr>
-              <td>{{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}</td>
-              <td>${{ property.purchase_price|floatformat:2 }}</td>
-              <td>{% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</td>
-              <td>{% if property.analysis %}{{ property.analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</td>
-              <td>{% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</td>
-              <td>
-                <a href="{% url 'property_detail' property.pk %}">Details</a>
-                {% if property.access_role == "owner" or property.access_role == "team" %}
-                  ·
-                  <a href="{% url 'property_edit' property.pk %}">Edit</a>
-                {% endif %}
-                {% if property.access_role == "owner" %}
-                  ·
-                  <a href="{% url 'property_share' property.pk %}">Share</a>
-                {% endif %}
-              </td>
+              <th style="width: 1%; white-space: nowrap;">Compare</th>
+              <th>Address</th>
+              <th>Purchase Price</th>
+              <th>NOI</th>
+              <th>Cap Rate</th>
+              <th>CoC</th>
+              <th></th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {% for property in properties %}
+              <tr>
+                <td><input type="checkbox" name="ids" value="{{ property.id }}" aria-label="Select {{ property.address }} for comparison"></td>
+                <td>{{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}</td>
+                <td>${{ property.purchase_price|floatformat:2 }}</td>
+                <td>{% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td>{% if property.analysis %}{{ property.analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</td>
+                <td>{% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</td>
+                <td>
+                  <a href="{% url 'property_detail' property.pk %}">Details</a>
+                  {% if property.access_role == "owner" or property.access_role == "team" %}
+                    ·
+                    <a href="{% url 'property_edit' property.pk %}">Edit</a>
+                  {% endif %}
+                  {% if property.access_role == "owner" %}
+                    ·
+                    <a href="{% url 'property_share' property.pk %}">Share</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
   {% else %}
     <div class="alert alert-light border text-center">
       <p class="mb-2">No properties yet.</p>
