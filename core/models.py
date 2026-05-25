@@ -96,6 +96,22 @@ class SharedProperty(models.Model):
         unique_together = [["property", "team"]]
 
 
+class PropertyShare(models.Model):
+    ROLE_CHOICES = [("team", "Team Member"), ("client", "Client")]
+
+    property = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="property_shares"
+    )
+    shared_with = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="shared_properties_access"
+    )
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [["property", "shared_with"]]
+
+
 class RentalIncome(models.Model):
     property = models.ForeignKey(
         Property, on_delete=models.CASCADE, related_name="rental_incomes"

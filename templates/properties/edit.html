@@ -23,14 +23,16 @@
     </form>
   {% endif %}
 
-  <div class="card border-danger">
-    <div class="card-body">
-      <h2 class="h5 text-danger">Delete property</h2>
-      <p class="mb-3">This action cannot be undone.</p>
-      <form method="post" action="{% url 'property_delete' property.pk %}">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">Delete property</button>
-      </form>
+  {% if can_delete_property %}
+    <div class="card border-danger">
+      <div class="card-body">
+        <h2 class="h5 text-danger">Delete property</h2>
+        <p class="mb-3">This action cannot be undone.</p>
+        <form method="post" action="{% url 'property_delete' property.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Delete property</button>
+        </form>
+      </div>
     </div>
-  </div>
+  {% endif %}
 {% endblock %}

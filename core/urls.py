@@ -11,6 +11,7 @@ urlpatterns = [
     path("properties/", views.property_list, name="property_list"),
     path("properties/<int:pk>/edit/", views.property_edit, name="property_edit"),
     path("properties/<int:pk>/delete/", views.property_delete, name="property_delete"),
+    path("properties/<int:pk>/share/", views.property_share, name="property_share"),
     path(
         "properties/<int:pk>/export/pdf/", views.export_pdf, name="property_export_pdf"
     ),

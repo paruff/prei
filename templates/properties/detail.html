@@ -4,7 +4,12 @@
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">{{ property.address }}</h1>
     <div class="d-flex gap-2">
-      <a href="{% url 'property_edit' property.pk %}" class="btn btn-outline-primary btn-sm">Edit</a>
+      {% if can_edit_property %}
+        <a href="{% url 'property_edit' property.pk %}" class="btn btn-outline-primary btn-sm">Edit</a>
+      {% endif %}
+      {% if can_share_property %}
+        <a href="{% url 'property_share' property.pk %}" class="btn btn-outline-primary btn-sm">Share</a>
+      {% endif %}
       <a href="{% url 'property_list' %}" class="btn btn-outline-secondary btn-sm">Back to Properties</a>
     </div>
   </div>

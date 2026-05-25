@@ -4,13 +4,21 @@ import logging
 from io import BytesIO
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
-from typing import cast
+from typing import Protocol, cast
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed, JsonResponse
-from django.db.models import Avg, Sum
+from django.db.models import Avg, Q, Sum
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseForbidden,
+    HttpResponseNotAllowed,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -32,22 +40,103 @@ from .models import (
     Listing,
     MarketSnapshot,
     Property,
+    PropertyShare,
     SavedSearch,
     Transaction,
 )
 
 logger = logging.getLogger(__name__)
 FinancingValue = str | int | float | Decimal | None
+User = get_user_model()
+ROLE_RANK = {"client": 1, "team": 2, "owner": 3}
 
 
-def _portfolio_summary(user) -> dict[str, Decimal | int]:
-    properties = Property.objects.filter(user=user)
+class AuthenticatedUser(Protocol):
+    """Minimal authenticated-user contract used by RBAC helper functions.
+
+    The RBAC helpers only require a persisted integer ``id`` and do not depend on
+    ``AbstractBaseUser`` fields, which avoids ORM typing mismatches in mypy while
+    remaining compatible with configured auth user models.
+
+    Attributes:
+        id: Persisted primary key for the authenticated user.
+    """
+
+    id: int
+
+
+def _get_property_role(user: AuthenticatedUser, property_obj: Property) -> str | None:
+    """Return the caller's role for the property, if any.
+
+    Args:
+        user: Authenticated request user with a persisted integer id.
+        property_obj: Property being authorized.
+
+    Returns:
+        str | None: "owner", "team", or "client" when access exists; otherwise None.
+    """
+    if property_obj.user_id == user.id:
+        return "owner"
+    share = PropertyShare.objects.filter(
+        property=property_obj, shared_with_id=user.id
+    ).first()
+    if share is None:
+        return None
+    return share.role
+
+
+def is_owner_or_shared(
+    user: AuthenticatedUser, property_obj: Property, min_role: str = "client"
+) -> bool:
+    """Check whether user meets or exceeds the minimum property access role.
+
+    Args:
+        user: Authenticated request user with a persisted integer id.
+        property_obj: Property being authorized.
+        min_role: Minimum accepted role ("client", "team", or "owner").
+
+    Returns:
+        bool: True when the user's role rank is at least min_role; otherwise False.
+    """
+    role = _get_property_role(user, property_obj)
+    if role is None:
+        return False
+    return ROLE_RANK[role] >= ROLE_RANK[min_role]
+
+
+def _is_client_only_user(user: AuthenticatedUser) -> bool:
+    """Return True when user only has client-level shared access.
+
+    Args:
+        user: Authenticated request user with a persisted integer id.
+
+    Returns:
+        bool: True when the user owns no properties and has no team-level shares.
+    """
+    if Property.objects.filter(user_id=user.id).exists():
+        return False
+    if PropertyShare.objects.filter(shared_with_id=user.id, role="team").exists():
+        return False
+    return PropertyShare.objects.filter(shared_with_id=user.id, role="client").exists()
+
+
+def _portfolio_summary(user: AuthenticatedUser) -> dict[str, Decimal | int]:
+    """Compute portfolio-level summary metrics for the given authenticated user.
+
+    Args:
+        user: Authenticated request user with a persisted integer id.
+
+    Returns:
+        dict[str, Decimal | int]: Total property count, invested capital, and
+        average cap rate for owner-scoped properties.
+    """
+    properties = Property.objects.filter(user_id=user.id)
     total_invested = properties.aggregate(total=Sum("purchase_price"))[
         "total"
     ] or Decimal("0")
-    average_cap_rate = InvestmentAnalysis.objects.filter(property__user=user).aggregate(
-        average=Avg("cap_rate")
-    )["average"] or Decimal("0")
+    average_cap_rate = InvestmentAnalysis.objects.filter(
+        property__user_id=user.id
+    ).aggregate(average=Avg("cap_rate"))["average"] or Decimal("0")
     return {
         "total_properties": properties.count(),
         "total_invested": total_invested,
@@ -68,6 +157,9 @@ def health_check(request: HttpRequest) -> JsonResponse:
 
 @login_required
 def dashboard(request):
+    if _is_client_only_user(request.user):
+        return redirect("property_list")
+
     properties = (
         Property.objects.filter(user=request.user)
         .select_related("analysis")
@@ -87,37 +179,60 @@ def dashboard(request):
 @login_required
 def property_list(request):
     properties = (
-        Property.objects.filter(user=request.user)
+        Property.objects.filter(
+            Q(user=request.user) | Q(property_shares__shared_with=request.user)
+        )
         .select_related("analysis")
+        .distinct()
         .order_by("-id")
     )
+    property_ids = list(properties.values_list("id", flat=True))
+    share_roles_by_property_id = dict(
+        PropertyShare.objects.filter(
+            shared_with=request.user,
+            property_id__in=property_ids,
+        ).values_list("property_id", "role")
+    )
+    for property_obj in properties:
+        property_obj.access_role = (
+            "owner"
+            if property_obj.user_id == request.user.id
+            else share_roles_by_property_id.get(property_obj.id, "client")
+        )
+
     return render(
         request,
         "properties/list.html",
         {
             "properties": properties,
             "portfolio_summary": _portfolio_summary(request.user),
+            "can_add_property": not _is_client_only_user(request.user),
         },
     )
 
 
 @login_required
 def property_detail(request, pk: int):
-    property_obj = get_object_or_404(
-        Property.objects.select_related("analysis"), pk=pk, user=request.user
-    )
+    property_obj = get_object_or_404(Property.objects.select_related("analysis"), pk=pk)
+    if not is_owner_or_shared(request.user, property_obj, min_role="client"):
+        raise Http404
+    user_role = _get_property_role(request.user, property_obj)
     return render(
         request,
         "properties/detail.html",
         {
             "property": property_obj,
             "analysis": getattr(property_obj, "analysis", None),
+            "can_edit_property": user_role in {"owner", "team"},
+            "can_share_property": user_role == "owner",
         },
     )
 
 
 @login_required
 def property_add(request):
+    if _is_client_only_user(request.user):
+        return HttpResponseForbidden("Client users have read-only access.")
     if request.method == "POST":
         form = PropertyForm(request.POST)
         if form.is_valid():
@@ -134,7 +249,10 @@ def property_add(request):
 
 @login_required
 def property_edit(request, pk: int):
-    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    property_obj = get_object_or_404(Property, pk=pk)
+    if not is_owner_or_shared(request.user, property_obj, min_role="team"):
+        raise Http404
+    user_role = _get_property_role(request.user, property_obj)
     if request.method == "POST":
         form = PropertyForm(request.POST, instance=property_obj)
         if form.is_valid():
@@ -150,13 +268,16 @@ def property_edit(request, pk: int):
         {
             "form": form,
             "property": property_obj,
+            "can_delete_property": user_role == "owner",
         },
     )
 
 
 @login_required
 def property_delete(request, pk: int):
-    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    property_obj = get_object_or_404(Property, pk=pk)
+    if property_obj.user_id != request.user.id:
+        raise Http404
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
     property_obj.delete()
@@ -165,7 +286,9 @@ def property_delete(request, pk: int):
 
 @login_required
 def property_add_income(request, pk: int):
-    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    property_obj = get_object_or_404(Property, pk=pk)
+    if not is_owner_or_shared(request.user, property_obj, min_role="team"):
+        raise Http404
     if request.method == "POST":
         form = RentalIncomeForm(request.POST)
         if form.is_valid():
@@ -188,7 +311,9 @@ def property_add_income(request, pk: int):
 
 @login_required
 def property_add_expense(request, pk: int):
-    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    property_obj = get_object_or_404(Property, pk=pk)
+    if not is_owner_or_shared(request.user, property_obj, min_role="team"):
+        raise Http404
     if request.method == "POST":
         form = OperatingExpenseForm(request.POST)
         if form.is_valid():
@@ -208,6 +333,51 @@ def property_add_expense(request, pk: int):
         {
             "form": form,
             "property": property_obj,
+        },
+    )
+
+
+@login_required
+def property_share(request, pk: int):
+    property_obj = get_object_or_404(Property, pk=pk, user=request.user)
+    error = ""
+    if request.method == "POST":
+        revoke_share_id = request.POST.get("revoke_share_id")
+        if revoke_share_id:
+            PropertyShare.objects.filter(
+                id=revoke_share_id, property=property_obj
+            ).delete()
+            return redirect("property_share", pk=property_obj.pk)
+
+        email = request.POST.get("email", "").strip()
+        role = request.POST.get("role", "")
+        if role not in dict(PropertyShare.ROLE_CHOICES):
+            error = "Invalid role selected."
+        else:
+            shared_user = User.objects.filter(email__iexact=email).first()
+            if shared_user is None:
+                error = "No user found for that email."
+            elif shared_user.id == request.user.id:
+                error = "You already own this property."
+            else:
+                PropertyShare.objects.update_or_create(
+                    property=property_obj,
+                    shared_with=shared_user,
+                    defaults={"role": role},
+                )
+                return redirect("property_share", pk=property_obj.pk)
+
+    shares = PropertyShare.objects.filter(property=property_obj).select_related(
+        "shared_with"
+    )
+    return render(
+        request,
+        "properties/share.html",
+        {
+            "property": property_obj,
+            "shares": shares,
+            "role_choices": PropertyShare.ROLE_CHOICES,
+            "error": error,
         },
     )
 
