@@ -71,7 +71,7 @@ def test_portfolio_summary_weighted_cap_rate(user):
     InvestmentAnalysis.objects.create(
         property=property_one,
         noi=Decimal("10000.00"),
-        cap_rate=Decimal("0.9999"),
+        cap_rate=Decimal("0.0800"),
         cash_on_cash=Decimal("0.0800"),
         irr=Decimal("0.1000"),
         dscr=Decimal("1.3000"),
@@ -79,7 +79,7 @@ def test_portfolio_summary_weighted_cap_rate(user):
     InvestmentAnalysis.objects.create(
         property=property_two,
         noi=Decimal("12000.00"),
-        cap_rate=Decimal("0.0001"),
+        cap_rate=Decimal("0.0300"),
         cash_on_cash=Decimal("0.0500"),
         irr=Decimal("0.0800"),
         dscr=Decimal("1.2000"),
