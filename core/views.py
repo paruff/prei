@@ -10,7 +10,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.db.models import Avg, Q, Sum
+from django.db.models import Q, Sum
 from django.http import (
     Http404,
     HttpRequest,
@@ -33,10 +33,10 @@ from investor_app.finance.utils import (
 
 # keep only the models that are actually used
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
+from core.services import compute_portfolio_summary
 from core.services.audit import log_action
 from .forms import OperatingExpenseForm, PropertyForm, RentalIncomeForm
 from .models import (
-    InvestmentAnalysis,
     Listing,
     MarketSnapshot,
     Property,
@@ -120,30 +120,6 @@ def _is_client_only_user(user: AuthenticatedUser) -> bool:
     return PropertyShare.objects.filter(shared_with_id=user.id, role="client").exists()
 
 
-def _portfolio_summary(user: AuthenticatedUser) -> dict[str, Decimal | int]:
-    """Compute portfolio-level summary metrics for the given authenticated user.
-
-    Args:
-        user: Authenticated request user with a persisted integer id.
-
-    Returns:
-        dict[str, Decimal | int]: Total property count, invested capital, and
-        average cap rate for owner-scoped properties.
-    """
-    properties = Property.objects.filter(user_id=user.id)
-    total_invested = properties.aggregate(total=Sum("purchase_price"))[
-        "total"
-    ] or Decimal("0")
-    average_cap_rate = InvestmentAnalysis.objects.filter(
-        property__user_id=user.id
-    ).aggregate(average=Avg("cap_rate"))["average"] or Decimal("0")
-    return {
-        "total_properties": properties.count(),
-        "total_invested": total_invested,
-        "average_cap_rate": average_cap_rate,
-    }
-
-
 def home(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
@@ -165,13 +141,29 @@ def dashboard(request):
         .select_related("analysis")
         .order_by("-id")
     )
+    portfolio_summary = compute_portfolio_summary(request.user)
+    state_allocation = list(
+        properties.values("state")
+        .annotate(total_value=Sum("purchase_price"))
+        .order_by("state")
+    )
+    state_allocation_labels = [
+        item["state"] or "Unknown" for item in state_allocation if item["total_value"]
+    ]
+    state_allocation_values = [
+        float(item["total_value"])
+        for item in state_allocation
+        if item["total_value"] is not None
+    ]
 
     return render(
         request,
         "dashboard.html",
         {
             "properties": properties,
-            "portfolio_summary": _portfolio_summary(request.user),
+            "portfolio_summary": portfolio_summary,
+            "state_allocation_labels": state_allocation_labels,
+            "state_allocation_values": state_allocation_values,
         },
     )
 
@@ -205,7 +197,7 @@ def property_list(request):
         "properties/list.html",
         {
             "properties": properties,
-            "portfolio_summary": _portfolio_summary(request.user),
+            "portfolio_summary": compute_portfolio_summary(request.user),
             "can_add_property": not _is_client_only_user(request.user),
         },
     )
