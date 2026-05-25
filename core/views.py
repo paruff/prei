@@ -247,6 +247,7 @@ def property_compare(request):
             status=400,
         )
 
+    # Preserve user-selected order so comparison columns are stable and predictable.
     unique_ids = list(dict.fromkeys(parsed_ids))
 
     if len(unique_ids) < 2:
@@ -273,7 +274,9 @@ def property_compare(request):
     )
     properties_by_id = {property_obj.id: property_obj for property_obj in properties}
     if len(properties_by_id) != len(unique_ids):
-        raise Http404
+        raise Http404(
+            "One or more selected properties were not found or are not accessible."
+        )
 
     ordered_properties = [properties_by_id[property_id] for property_id in unique_ids]
     property_data: list[dict[str, object]] = []
@@ -281,9 +284,12 @@ def property_compare(request):
         analysis = getattr(property_obj, "analysis", None)
         if analysis is None:
             analysis = compute_analysis_for_property(property_obj)
-        rental_income = property_obj.rental_incomes.order_by(
-            "-effective_date", "-id"
-        ).first()
+        rental_incomes = list(property_obj.rental_incomes.all())
+        rental_income = max(
+            rental_incomes,
+            key=lambda income: (income.effective_date, income.id),
+            default=None,
+        )
         property_data.append(
             {
                 "property": property_obj,
@@ -359,6 +365,7 @@ def property_compare(request):
         worst_value = min(values) if row["higher_is_better"] else max(values)
         row["values"] = row_values
         if best_value == worst_value:
+            # Avoid ambiguous highlights when every value is identical.
             row["best_property_ids"] = []
             row["worst_property_ids"] = []
             continue

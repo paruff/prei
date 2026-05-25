@@ -13,6 +13,7 @@
       <div class="d-flex justify-content-end mb-2">
         <button type="submit" class="btn btn-outline-primary btn-sm" id="compare-selected-btn" disabled>Compare selected</button>
       </div>
+      <p id="compare-selection-hint" class="text-muted small mb-2">Select 2–4 properties to compare.</p>
       <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
           <thead>
@@ -58,11 +59,27 @@
     <script>
       (() => {
         const compareButton = document.getElementById("compare-selected-btn");
+        const compareHint = document.getElementById("compare-selection-hint");
         const checkboxes = document.querySelectorAll(".compare-checkbox");
         if (!compareButton || !checkboxes.length) return;
 
         const updateButtonState = () => {
-          compareButton.disabled = !Array.from(checkboxes).some((checkbox) => checkbox.checked);
+          const checkedCount = Array.from(checkboxes).reduce(
+            (count, checkbox) => count + (checkbox.checked ? 1 : 0),
+            0
+          );
+          const canCompare = checkedCount >= 2 && checkedCount <= 4;
+          compareButton.disabled = !canCompare;
+
+          if (compareHint) {
+            if (checkedCount > 4) {
+              compareHint.textContent = "You selected more than 4 properties. Only the first 4 will be compared.";
+            } else if (checkedCount < 2) {
+              compareHint.textContent = "Select at least 2 properties to compare.";
+            } else {
+              compareHint.textContent = "Ready to compare selected properties.";
+            }
+          }
         };
 
         checkboxes.forEach((checkbox) => checkbox.addEventListener("change", updateButtonState));

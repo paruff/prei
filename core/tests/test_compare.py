@@ -99,8 +99,22 @@ def test_compare_excludes_other_users_properties(
     other_users_property = make_property(user=second_user, address="444 Theirs")
     make_rental_income(property=owned_property)
     make_rental_income(property=other_users_property)
-    InvestmentAnalysis.objects.create(property=owned_property)
-    InvestmentAnalysis.objects.create(property=other_users_property)
+    InvestmentAnalysis.objects.create(
+        property=owned_property,
+        noi=Decimal("12000.00"),
+        cap_rate=Decimal("0.0500"),
+        cash_on_cash=Decimal("0.0800"),
+        irr=Decimal("0.1000"),
+        dscr=Decimal("1.2000"),
+    )
+    InvestmentAnalysis.objects.create(
+        property=other_users_property,
+        noi=Decimal("11000.00"),
+        cap_rate=Decimal("0.0450"),
+        cash_on_cash=Decimal("0.0700"),
+        irr=Decimal("0.0900"),
+        dscr=Decimal("1.1000"),
+    )
 
     client.force_login(user)
     response = client.get(
