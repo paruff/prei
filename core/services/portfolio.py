@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Dict, List
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 
@@ -179,7 +180,7 @@ def aggregate_portfolio(user) -> Dict[str, Decimal]:
     }
 
 
-def compute_portfolio_summary(user) -> Dict[str, Decimal | int]:
+def compute_portfolio_summary(user: AbstractBaseUser) -> Dict[str, Decimal | int]:
     """Compute portfolio-level aggregate metrics for dashboard rendering.
 
     Args:
@@ -202,12 +203,12 @@ def compute_portfolio_summary(user) -> Dict[str, Decimal | int]:
         if total_capital_invested_decimal != Decimal("0")
         else Decimal("0")
     )
-    total_monthly_cash_flow = total_annual_noi_decimal / MONTHS_PER_YEAR
+    average_monthly_noi = total_annual_noi_decimal / MONTHS_PER_YEAR
 
     return {
         "total_properties": total_properties,
         "total_capital_invested": total_capital_invested_decimal,
         "total_annual_noi": total_annual_noi_decimal,
         "weighted_average_cap_rate": weighted_average_cap_rate,
-        "total_monthly_cash_flow": total_monthly_cash_flow,
+        "total_monthly_cash_flow": average_monthly_noi,
     }
