@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Dict, List
 
-from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import User
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 
@@ -180,7 +180,7 @@ def aggregate_portfolio(user) -> Dict[str, Decimal]:
     }
 
 
-def compute_portfolio_summary(user: AbstractBaseUser) -> Dict[str, Decimal | int]:
+def compute_portfolio_summary(user: User) -> Dict[str, Decimal | int]:
     """Compute portfolio-level aggregate metrics for dashboard rendering.
 
     Args:

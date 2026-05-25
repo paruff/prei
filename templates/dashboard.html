@@ -103,7 +103,8 @@
     onerror="window.chartJsFailedToLoad = true;"></script>
   <script>
     const stateAllocationLabels = JSON.parse(document.getElementById("state-allocation-labels").textContent);
-    // Chart.js consumes JS numbers; minor float precision is acceptable for visualization only.
+    // Converted from stringified Python Decimal to JS Number for Chart.js compatibility;
+    // minor float precision loss is acceptable for visualization only.
     const stateAllocationValues = JSON.parse(document.getElementById("state-allocation-values").textContent).map(Number);
     const allocationStatus = document.getElementById("portfolio-allocation-status");
     const allocationChartCanvas = document.getElementById("portfolio-allocation-chart");
