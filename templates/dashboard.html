@@ -95,16 +95,19 @@
   {% endif %}
   {{ state_allocation_labels|json_script:"state-allocation-labels" }}
   {{ state_allocation_values|json_script:"state-allocation-values" }}
+  <script>window.chartJsFailedToLoad = false;</script>
   <script
     src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"
     integrity="sha384-tgbB5AKnszdcfwcZtTfuhR3Ko1XZdlDfsLtkxiiAZiVkkXCkFmp+FQFh+V/UTo54"
-    crossorigin="anonymous"></script>
+    crossorigin="anonymous"
+    onerror="window.chartJsFailedToLoad = true;"></script>
   <script>
     const stateAllocationLabels = JSON.parse(document.getElementById("state-allocation-labels").textContent);
-    const stateAllocationValues = JSON.parse(document.getElementById("state-allocation-values").textContent);
+    const stateAllocationValues = JSON.parse(document.getElementById("state-allocation-values").textContent).map(Number);
     const allocationStatus = document.getElementById("portfolio-allocation-status");
     const allocationChartCanvas = document.getElementById("portfolio-allocation-chart");
-    if (allocationChartCanvas && stateAllocationLabels.length > 0 && typeof Chart !== "undefined") {
+    const chartLibraryLoaded = !window.chartJsFailedToLoad && typeof Chart !== "undefined";
+    if (allocationChartCanvas && stateAllocationLabels.length > 0 && chartLibraryLoaded) {
       new Chart(allocationChartCanvas, {
         type: "doughnut",
         data: {
@@ -119,9 +122,10 @@
         allocationStatus.textContent = "";
       }
     } else if (allocationStatus) {
-      allocationStatus.textContent = stateAllocationLabels.length > 0
-        ? "Allocation chart is unavailable right now."
-        : "No properties available for allocation yet.";
+      allocationStatus.textContent =
+        stateAllocationLabels.length === 0
+          ? "No properties available for allocation yet."
+          : "Allocation chart is unavailable right now.";
     }
   </script>
 {% endblock %}

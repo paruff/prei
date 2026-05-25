@@ -203,12 +203,13 @@ def compute_portfolio_summary(user: AbstractBaseUser) -> Dict[str, Decimal | int
         if total_capital_invested_decimal != Decimal("0")
         else Decimal("0")
     )
-    average_monthly_noi = total_annual_noi_decimal / MONTHS_PER_YEAR
+    # MONTHS_PER_YEAR is constant 12, so divide-by-zero is not possible.
+    total_monthly_noi = total_annual_noi_decimal / MONTHS_PER_YEAR
 
     return {
         "total_properties": total_properties,
         "total_capital_invested": total_capital_invested_decimal,
         "total_annual_noi": total_annual_noi_decimal,
         "weighted_average_cap_rate": weighted_average_cap_rate,
-        "total_monthly_cash_flow": average_monthly_noi,
+        "total_monthly_cash_flow": total_monthly_noi,
     }
