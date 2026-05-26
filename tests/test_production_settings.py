@@ -81,6 +81,9 @@ def _load_settings_with_env(extra_env: dict[str, str]) -> dict[str, Any]:
     env = os.environ.copy()
     for key in SECURITY_ENV_KEYS:
         env.pop(key, None)
+    # Keep this subprocess deterministic across CI environments where PYTHONWARNINGS
+    # may be configured to treat deprecations as errors.
+    env.pop("PYTHONWARNINGS", None)
     env.update(extra_env)
 
     script = """
