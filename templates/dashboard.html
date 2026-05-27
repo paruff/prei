@@ -7,7 +7,7 @@
   </div>
 
   <div class="row g-3 mb-4">
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-6 col-lg-4">
       <div class="card h-100">
         <div class="card-body">
           <div class="text-muted">Total Properties</div>
@@ -15,19 +15,44 @@
         </div>
       </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-6 col-lg-4">
       <div class="card h-100">
         <div class="card-body">
-          <div class="text-muted">Total Invested</div>
-          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_invested|floatformat:2 }}</div>
+          <div class="text-muted">Total Capital Invested</div>
+          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_capital_invested|floatformat:2 }}</div>
         </div>
       </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-6 col-lg-4">
       <div class="card h-100">
         <div class="card-body">
-          <div class="text-muted">Average Cap Rate</div>
-          <div class="fs-4 fw-semibold">{{ portfolio_summary.average_cap_rate|floatformat:4 }}</div>
+          <div class="text-muted">Total Annual NOI</div>
+          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_annual_noi|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted">Weighted Average Cap Rate</div>
+          <div class="fs-4 fw-semibold">{{ portfolio_summary.weighted_average_cap_rate|floatformat:4 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted">Total Monthly Cash Flow</div>
+          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_monthly_cash_flow|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-8">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted mb-2">Portfolio Allocation by State</div>
+          <p class="small text-muted mb-2" id="portfolio-allocation-status">Loading chart…</p>
+          <canvas id="portfolio-allocation-chart" height="120"></canvas>
         </div>
       </div>
     </div>
@@ -68,4 +93,41 @@
       </div>
     </div>
   {% endif %}
+  {{ state_allocation_labels|json_script:"state-allocation-labels" }}
+  {{ state_allocation_values|json_script:"state-allocation-values" }}
+  <script>window.chartJsFailedToLoad = false;</script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"
+    integrity="sha384-tgbB5AKnszdcfwcZtTfuhR3Ko1XZdlDfsLtkxiiAZiVkkXCkFmp+FQFh+V/UTo54"
+    crossorigin="anonymous"
+    onerror="window.chartJsFailedToLoad = true;"></script>
+  <script>
+    const stateAllocationLabels = JSON.parse(document.getElementById("state-allocation-labels").textContent);
+    // Converted from stringified Python Decimal to JS Number for Chart.js compatibility;
+    // minor float precision loss is acceptable for visualization only.
+    const stateAllocationValues = JSON.parse(document.getElementById("state-allocation-values").textContent).map(Number);
+    const allocationStatus = document.getElementById("portfolio-allocation-status");
+    const allocationChartCanvas = document.getElementById("portfolio-allocation-chart");
+    const chartLibraryLoaded = !window.chartJsFailedToLoad && typeof Chart !== "undefined";
+    if (allocationChartCanvas && stateAllocationLabels.length > 0 && chartLibraryLoaded) {
+      new Chart(allocationChartCanvas, {
+        type: "doughnut",
+        data: {
+          labels: stateAllocationLabels,
+          datasets: [{
+            label: "Property Value by State",
+            data: stateAllocationValues,
+          }],
+        },
+      });
+      if (allocationStatus) {
+        allocationStatus.textContent = "";
+      }
+    } else if (allocationStatus) {
+      allocationStatus.textContent =
+        stateAllocationLabels.length === 0
+          ? "No properties available for allocation yet."
+          : "Allocation chart is unavailable right now.";
+    }
+  </script>
 {% endblock %}

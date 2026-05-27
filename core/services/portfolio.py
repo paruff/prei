@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Dict, List
 
+from django.contrib.auth.models import User
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 
@@ -10,6 +11,8 @@ from investor_app.finance.utils import (
     compute_analysis_for_property,
     to_decimal,
 )
+
+MONTHS_PER_YEAR = Decimal("12")
 
 
 def _month_starts(base: date, count: int) -> List[date]:
@@ -174,4 +177,40 @@ def aggregate_portfolio(user) -> Dict[str, Decimal]:
         "total_noi": total_noi,
         "avg_cap_rate": avg_cap_rate,
         "avg_coc": avg_coc,
+    }
+
+
+def compute_portfolio_summary(user: User) -> Dict[str, Decimal | int]:
+    """Compute portfolio-level aggregate metrics for dashboard rendering.
+
+    Args:
+        user: Django User instance.
+
+    Returns:
+        Dict with total property count, total invested capital, total annual NOI,
+        weighted average cap rate, and total monthly cash flow.
+    """
+    properties = Property.objects.filter(user=user)
+    total_properties = properties.count()
+    total_capital_invested = properties.aggregate(total=Sum("purchase_price"))["total"]
+    total_annual_noi = properties.aggregate(total=Sum("analysis__noi"))["total"]
+
+    total_capital_invested_decimal = to_decimal(total_capital_invested or Decimal("0"))
+    total_annual_noi_decimal = to_decimal(total_annual_noi or Decimal("0"))
+
+    weighted_average_cap_rate = (
+        total_annual_noi_decimal / total_capital_invested_decimal
+        if total_capital_invested_decimal != Decimal("0")
+        else Decimal("0")
+    )
+    # MONTHS_PER_YEAR is constant 12, so divide-by-zero is not possible.
+    # This metric follows issue acceptance criteria: monthly value derived from NOI.
+    total_monthly_cash_flow = total_annual_noi_decimal / MONTHS_PER_YEAR
+
+    return {
+        "total_properties": total_properties,
+        "total_capital_invested": total_capital_invested_decimal,
+        "total_annual_noi": total_annual_noi_decimal,
+        "weighted_average_cap_rate": weighted_average_cap_rate,
+        "total_monthly_cash_flow": total_monthly_cash_flow,
     }

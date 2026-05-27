@@ -97,6 +97,28 @@ summary = aggregate_portfolio(request.user)
 
 -----
 
+### `portfolio.compute_portfolio_summary(user)`
+
+**Purpose:** Compute dashboard summary KPIs across a user's portfolio, including total properties, invested capital, annual NOI, weighted cap rate, and monthly cash flow.
+**Parameters:**
+- `user` — Django `User` instance.
+
+**Returns:** `dict` with keys `total_properties` (`int`), `total_capital_invested`, `total_annual_noi`, `weighted_average_cap_rate`, and `total_monthly_cash_flow` (all `Decimal` except count).
+**Side effects:** Reads `Property` and related `InvestmentAnalysis` rows for the user.
+**Error cases:** Returns zeroed numeric values for empty portfolios; guards against divide-by-zero when invested capital is zero.
+**Example:**
+
+```python
+from core.services.portfolio import compute_portfolio_summary
+
+summary = compute_portfolio_summary(request.user)
+# → {"total_properties": 3, "total_capital_invested": Decimal("864900.00"),
+#    "total_annual_noi": Decimal("36000.00"), "weighted_average_cap_rate": Decimal("0.0416"),
+#    "total_monthly_cash_flow": Decimal("3000.00")}
+```
+
+-----
+
 ### `portfolio.monthly_income_series(user, months=12)`
 
 **Purpose:** Return month-by-month gross income, expenses, and NOI for the last N calendar months.
