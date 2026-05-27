@@ -383,6 +383,9 @@ class NotificationSerializer(serializers.ModelSerializer):
     """Serializer for Notification model."""
 
     notificationType = serializers.CharField(source="notification_type")
+    propertyAddress = serializers.SerializerMethodField(
+        method_name="get_property_address"
+    )
     propertyId = serializers.CharField(
         source="property.property_id", read_only=True, allow_null=True
     )
@@ -404,6 +407,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             "priority",
             "title",
             "body",
+            "propertyAddress",
             "propertyId",
             "url",
             "data",
@@ -413,6 +417,17 @@ class NotificationSerializer(serializers.ModelSerializer):
             "dismissedAt",
             "createdAt",
         ]
+
+    def get_property_address(self, obj) -> str:
+        if obj.property is None:
+            return ""
+        parts = [
+            obj.property.street or "",
+            obj.property.city or "",
+            obj.property.state or "",
+        ]
+        address = ", ".join(part for part in parts if part)
+        return address
 
 
 class FlipStrategyAssumptionsSerializer(serializers.Serializer):

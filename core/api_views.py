@@ -1397,10 +1397,12 @@ def notifications_view(request):
     is_read = request.GET.get("isRead")
     is_dismissed = request.GET.get("isDismissed")
 
-    notifications = Notification.objects.filter(user=request.user)
+    notifications = Notification.objects.filter(user=request.user, is_dismissed=False)
 
     if is_read is not None:
         notifications = notifications.filter(is_read=is_read.lower() == "true")
+    else:
+        notifications = notifications.filter(is_read=False)
 
     if is_dismissed is not None:
         notifications = notifications.filter(
