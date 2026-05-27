@@ -10,12 +10,44 @@
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous"
     />
+    <style>
+      .notification-status-dot {
+        top: 8px;
+        right: 8px;
+      }
+    </style>
   </head>
   <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
       <div class="container">
         <a class="navbar-brand" href="{% url 'dashboard' %}">prei</a>
         <div class="navbar-nav ms-auto">
+          {% if user.is_authenticated %}
+          <div class="nav-item dropdown">
+            <button
+              id="notificationBell"
+              type="button"
+              class="btn nav-link border-0 bg-transparent text-white position-relative"
+              aria-expanded="false"
+              aria-label="Notifications"
+            >
+              <span aria-hidden="true">🔔</span>
+              <span
+                id="notificationUnreadBadge"
+                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+              >0</span>
+            </button>
+            <span id="notificationConnectionStatus" class="notification-status-dot position-absolute translate-middle p-1 border border-light rounded-circle bg-danger" aria-live="polite" aria-label="Notification connection failed"></span>
+            <div
+              id="notificationDropdown"
+              class="dropdown-menu dropdown-menu-end p-0"
+              style="width: 360px;"
+            >
+              <div class="px-3 py-2 border-bottom fw-semibold">Notifications</div>
+              <div id="notificationList" class="list-group list-group-flush"></div>
+            </div>
+          </div>
+          {% endif %}
           <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
           <a class="nav-link" href="{% url 'property_list' %}">Properties</a>
           <a class="nav-link" href="{% url 'property_add' %}">Add Property</a>
@@ -26,5 +58,8 @@
     <main class="container pb-4">
       {% block content %}{% endblock %}
     </main>
+    {% if user.is_authenticated %}
+    <script src="/static/js/notifications.js"></script>
+    {% endif %}
   </body>
 </html>
