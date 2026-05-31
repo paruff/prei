@@ -24,6 +24,6 @@ playwright>=1.40.0
 cffi>=2.0.0
 reportlab>=4.5.0
 xhtml2pdf>=0.2.17  # HTML/CSS template-driven PDF export without WeasyPrint system deps
-svglib>=1.5.0,<1.6.0  # Avoids Cairo build-time dependency introduced in svglib 1.6+
+svglib>=1.5.0,<1.6.0  # Keep below 1.6 because 1.6+ introduces a Cairo build-time dependency
 matplotlib>=3.10.9
 pillow>=12.2.0
