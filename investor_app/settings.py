@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from decimal import Decimal
 
 import environ
-from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -28,7 +26,7 @@ DEBUG = (
 SECRET_KEY = (
     env("SECRET_KEY")
     if IS_PRODUCTION
-    else os.environ.get("SECRET_KEY", get_random_secret_key())
+    else env.str("SECRET_KEY", default="dev-only-secret-key-not-for-production")
 )
 ALLOWED_HOSTS = [
     host
