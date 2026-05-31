@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from decimal import Decimal
 
@@ -27,7 +28,7 @@ DEBUG = (
 SECRET_KEY = (
     env("SECRET_KEY")
     if IS_PRODUCTION
-    else env("SECRET_KEY", default=get_random_secret_key())
+    else os.environ.get("SECRET_KEY", get_random_secret_key())
 )
 ALLOWED_HOSTS = [
     host
