@@ -68,8 +68,10 @@ def test_render_blueprint_has_required_services_and_web_commands() -> None:
     assert "name: prei-worker" not in render_yaml
     assert "name: prei-scheduler" not in render_yaml
     assert "name: prei-redis" not in render_yaml
-    assert "celery" not in render_yaml
+    assert "celery -A investor_app" not in render_yaml
     assert "REDIS_URL" not in render_yaml
+    assert "CELERY_BROKER_URL" not in render_yaml
+    assert "CELERY_RESULT_BACKEND" not in render_yaml
 
 
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
