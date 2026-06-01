@@ -31,11 +31,8 @@ Choose the path that fits your situation:
 
 This repository includes a root `render.yaml` blueprint that provisions:
 
-- `prei-web` (Django ASGI app via Daphne)
-- `prei-worker` (Celery worker)
-- `prei-scheduler` (Celery beat scheduler)
+- `prei-web` (Django app via Gunicorn)
 - `prei-db` (managed PostgreSQL)
-- `prei-redis` (managed Redis)
 
 Steps:
 
@@ -254,9 +251,7 @@ setInterval(() => {
 
 ### Background Tasks
 
-Celery tasks run periodically:
-- **Auction Monitoring**: Checks for status changes every 15 minutes
-- **Auction Reminders**: Sends reminders at 7 days, 3 days, 1 day, and 1 hour before auction
+Scheduled jobs run via GitHub Actions workflows rather than Celery. See `.github/workflows/` for available schedules.
 
 ## CI & tooling
 
