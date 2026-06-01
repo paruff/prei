@@ -118,6 +118,10 @@ services:
   - type: redis
     name: prei-redis
 
+  ipAllowList:
+    - source: 0.0.0.0/0
+      description: Allow Render services
+
 databases:
   - name: prei-db
     databaseName: prei
