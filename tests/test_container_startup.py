@@ -51,18 +51,10 @@ def test_render_blueprint_has_required_services_and_web_commands() -> None:
     web_section = _service_section(render_yaml, "prei-web")
 
     assert "name: prei-web" in render_yaml
-    assert "name: prei-worker" in render_yaml
-    assert "name: prei-scheduler" in render_yaml
     assert "name: prei-db" in render_yaml
-    assert "name: prei-redis" in render_yaml
     assert "collectstatic --noinput" in render_yaml
     assert "preDeployCommand: python manage.py migrate --noinput" in render_yaml
-    assert (
-        "startCommand: daphne -b 0.0.0.0 -p $PORT investor_app.asgi:application"
-        in render_yaml
-    )
-    assert "startCommand: celery -A investor_app worker -l info" in render_yaml
-    assert "startCommand: celery -A investor_app beat -l info" in render_yaml
+    assert "startCommand: gunicorn investor_app.wsgi:application" in render_yaml
     assert "healthCheckPath: /health/" in render_yaml
     assert "key: DEBUG" in web_section, "DEBUG env var missing from prei-web service"
     assert (
@@ -71,6 +63,13 @@ def test_render_blueprint_has_required_services_and_web_commands() -> None:
     assert (
         "key: SECRET_KEY" in web_section
     ), "SECRET_KEY env var missing from prei-web service"
+
+    # Redis and Celery services must not be present (MVP simplification)
+    assert "name: prei-worker" not in render_yaml
+    assert "name: prei-scheduler" not in render_yaml
+    assert "name: prei-redis" not in render_yaml
+    assert "celery" not in render_yaml
+    assert "REDIS_URL" not in render_yaml
 
 
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
