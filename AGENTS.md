@@ -5,46 +5,42 @@
 # AGENTS — prei
 
 ## AI Policy
-- AI implements; humans decide architecture, risk acceptance, and merge approvals.
-- No AI-generated change merges without human review of code, tests, and PR notes.
-- Never include production secrets, credentials, or real user PII in prompts.
-- Use repo docs and tests as primary truth; uncertain behavior must be escalated.
-- Security-sensitive changes (auth, permissions, workflows, dependencies) require explicit human approval.
-- AI output must be validated with project checks before review handoff.
+- AI writes; humans decide.
+- Human review before merge.
+- No secrets/PII.
+- Follow repo docs/tests.
+- Ask before risky changes.
 
 ## Project Identity
-- Product: prei — residential real estate investment analytics platform.
-- Stack: Python 3.11, Django 4.2 LTS, DRF, PostgreSQL, Celery, Redis, MkDocs.
-- Key constraints: Decimal currency math, layered architecture, service-first business logic.
+- prei: real-estate analytics.
+- Stack: Py3.11, Django 4.2, DRF, Postgres.
+- Constraints: Decimal money; service-layer boundaries.
 
-## Never Do (Hard Rules)
-1. Do not put financial math in views/models/templates (use `investor_app/finance/utils.py` or `core/services/`).
-2. Do not call external APIs from views (integrations must flow through `core/integrations/` + services).
-3. Do not use float for persisted currency values; use Decimal end-to-end.
-4. Do not modify migrations, dependencies, auth/permissions, or workflows without human approval.
-5. Do not merge or push directly to `main`, and never bypass required human review.
+## Never Do
+1. Finance math outside services/utils.
+2. External API calls from views.
+3. Float persistence for currency.
+4. Auth/deps/migrations/workflows need approval.
+5. Direct push/merge to `main`.
 
-## Token Budget Protocol (Agent Mode)
-Before implementation, post a 2-sentence scope check: files to read, files to change, and expected output.
-If scope exceeds 5 files or touches high-risk surfaces (auth, migrations, workflows, dependencies), stop and request approval.
-Load only relevant on-demand skill files; do not preload all skills.
+## Token Budget Protocol
+Agent Mode: read files, write files, 2-sentence plan.
+If scope >5 files or high risk, ask.
 
-## On-Demand Skills (.github/skills)
-| Skill | Purpose |
+## On-Demand Skills
+| Skill | Use |
 |---|---|
-| `architecture/SKILL.md` | Layer boundaries, dependency rules, architecture checklist |
-| `pr-contract/SKILL.md` | PM-agent contract, PR requirements, coding/testing/merge guardrails |
-| `metrics/SKILL.md` | DORA + rework + AI credit burn targets and measurement ritual |
-| `model-routing/SKILL.md` | Ask/Edit/Agent mode and model selection rules |
+| `architecture` | boundaries |
+| `pr-contract` | PR gates |
+| `metrics` | DORA + credits |
+| `model-routing` | mode routing |
 
-## Context Files (Read Before Code Changes)
+## Context Files
 | File | Why |
 |---|---|
-| `core/models.py` | Model constraints and domain entities |
-| `docs/ARCHITECTURE.md` | Layer boundaries and allowed dependencies |
-| `docs/API_SURFACE.md` | Public service and utility contracts |
-| `docs/KNOWN_LIMITATIONS.md` | Existing constraints to preserve |
-| `docs/CHANGE_IMPACT_MAP.md` | Required co-changes for model/service updates |
+| `core/models.py` | model rules |
+| `docs/ARCHITECTURE.md` | layer rules |
+| `docs/CHANGE_IMPACT_MAP.md` | co-change map |
 
 ## See Also
 - `docs/COPILOT_COST_GUIDE.md`
