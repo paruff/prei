@@ -2,7 +2,9 @@
 """
 Minimal PREI task runner — Phase 1 UAR
 """
-import subprocess, json, sys
+import subprocess
+import json
+import sys
 from pathlib import Path
 from datetime import datetime
 
