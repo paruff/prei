@@ -105,7 +105,7 @@ trap 'rm -f "$TMP_OUT"' EXIT
 
   echo "## Recommendations"
   if [ "$total_tokens" -gt 320 ]; then
-    echo "- Reduce always-on context further; move more policy details into .github/skills/."
+    echo "- Reduce always-on context further; move more policy details into .agents/skills/."
   else
     echo "- Always-on context is within lean target; keep policy details on-demand."
   fi

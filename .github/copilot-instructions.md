@@ -1,6 +1,6 @@
 # Copilot Instructions — prei (Lean Always-On)
 
-Keep this file minimal to control token spend. Load details from `.github/skills/*/SKILL.md` on demand.
+Keep this file minimal to control token spend. Load details from `.agents/skills/*/SKILL.md` on demand.
 
 ## Required startup behavior
 1. Read `AGENTS.md` first.
@@ -15,10 +15,10 @@ Keep this file minimal to control token spend. Load details from `.github/skills
 - Human review is mandatory before merge.
 
 ## Load on-demand skills
-- Architecture: `.github/skills/architecture/SKILL.md`
-- PR contract: `.github/skills/pr-contract/SKILL.md`
-- Metrics: `.github/skills/metrics/SKILL.md`
-- Model routing: `.github/skills/model-routing/SKILL.md`
+- Architecture: `.agents/skills/architecture/SKILL.md`
+- PR contract: `.agents/skills/pr-contract/SKILL.md`
+- Metrics: `.agents/skills/metrics/SKILL.md`
+- Model routing: `.agents/skills/model-routing/SKILL.md`
 
 ## Validation baseline
 Run: `python -m ruff check . && python -m black --check . && python -m pytest -q`

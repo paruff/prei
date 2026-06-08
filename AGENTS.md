@@ -1,6 +1,6 @@
 # TOKEN COST: This file loads on every Copilot/Claude Code/Cursor request.
 # Every line is billed on every interaction. Keep it lean.
-# Full details live in .github/skills/ — load them on demand only.
+# Full details live in .agents/skills/ — load them on demand only.
 
 # AGENTS — prei
 
@@ -42,7 +42,18 @@ If scope >5 files or high risk, ask.
 | `docs/ARCHITECTURE.md` | layer rules |
 | `docs/CHANGE_IMPACT_MAP.md` | co-change map |
 
+## Agent Roles
+Roles live in `.agents/roles/`. Load on demand.
+| Role | Use |
+|---|---|
+| `planner` | Task decomposition |
+| `coder` | Implementation |
+| `reviewer` | Pre-merge gates |
+| `security` | Security audit |
+| `test-writer` | Test coverage |
+
 ## See Also
+- `.agents/README.md`
 - `docs/COPILOT_COST_GUIDE.md`
 - `docs/MODEL_ROUTING_GUIDE.md`
 - `docs/GOLDEN_PATH.md`

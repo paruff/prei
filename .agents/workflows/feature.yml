@@ -1,0 +1,54 @@
+workflow: feature
+description: End-to-end feature implementation pipeline with human gates.
+
+steps:
+  - agent: planner
+    action: define_task_graph
+    output: task_list, risk_flags
+    reads:
+      - docs/ARCHITECTURE.md
+      - docs/CHANGE_IMPACT_MAP.md
+      - core/models.py
+
+  - agent: coder
+    action: implement
+    rules:
+      - service_boundaries
+      - decimal_money
+      - tests_required
+      - minimal_diff
+    reads:
+      - docs/ARCHITECTURE.md
+      - docs/CHANGE_IMPACT_MAP.md
+
+  - agent: reviewer
+    action: validate
+    checks:
+      - architecture_boundaries
+      - decimal_currency
+      - test_coverage
+      - secrets_pii
+      - migrations
+      - docker_compose
+    reads:
+      - docs/ARCHITECTURE.md
+
+  - human: approve
+    required_for:
+      - migrations
+      - auth_changes
+      - new_external_deps
+      - workflow_changes
+
+  - action: run_verification
+    command: make check
+
+  - action: create_pr
+    target: main
+    requires: human_approval
+    description_block:
+      - change_summary
+      - failure_modes
+      - test_coverage
+      - architecture_check
+      - judgment_calls
