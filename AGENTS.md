@@ -51,6 +51,7 @@ Roles live in `.agents/roles/`. Load on demand.
 | `reviewer` | Pre-merge gates |
 | `security` | Security audit |
 | `test-writer` | Test coverage |
+| `docs` | Living documentation |
 
 ## See Also
 - `.agents/README.md`

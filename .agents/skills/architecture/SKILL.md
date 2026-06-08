@@ -8,13 +8,11 @@
 core/api_views.py -> core/services/ -> core/models.py
                                 -> investor_app/finance/utils.py
                                 -> core/integrations/
-core/tasks.py -> core/services/
 templates/ <- Django views/context only
 ```
 
 ## Dependency direction rules
 - Allowed: `views -> services -> (models, integrations, finance utils)`.
-- Allowed: `tasks -> services`.
 - Disallowed: `views -> integrations` direct calls.
 - Disallowed: financial formulas in views/models/templates.
 - Disallowed: Django ORM or settings imports inside `investor_app/finance/utils.py`.
@@ -24,7 +22,6 @@ templates/ <- Django views/context only
 2. `core/services/`: business logic orchestration and KPI composition.
 3. `core/serializers.py`: input/output validation, including Decimal parsing.
 4. `core/integrations/`: external source adapters only.
-5. `core/tasks.py`: async orchestration only; delegate logic to services.
 
 ## What to read before writing code
 - `core/models.py`
