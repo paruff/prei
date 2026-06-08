@@ -19,10 +19,13 @@ Single source of truth for all AI-assisted development in prei.
 │   └── security-agent.md  (dispatcher → roles/security.md)
 ├── skills/         # On-demand skill packs (load selectively)
 │   ├── architecture/SKILL.md
+│   ├── data-collection/SKILL.md
+│   ├── finance-review/SKILL.md
 │   ├── metrics/SKILL.md
 │   ├── model-routing/SKILL.md
 │   └── pr-contract/SKILL.md
 ├── workflows/      # Multi-agent pipelines
+│   ├── bugfix.yml
 │   └── feature.yml
 └── README.md       # This file
 ```
@@ -50,6 +53,7 @@ Referenced from `AGENTS.md` — never loaded by default.
 ## Workflows
 
 - **feature.yml**: planner → coder → reviewer → human approve → verify → PR
+- **bugfix.yml**: triage → fix → review → security (if auth/data) → verify → PR
 
 ## Design Principles
 
