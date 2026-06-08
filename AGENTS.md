@@ -31,9 +31,12 @@ If scope >5 files or high risk, ask.
 | Skill | Use |
 |---|---|
 | `architecture` | boundaries |
-| `pr-contract` | PR gates |
+| `data-collection` | scrapers, freshness, failures |
+| `evaluation` | agent accuracy scoring |
+| `finance-review` | financial math review |
 | `metrics` | DORA + credits |
 | `model-routing` | mode routing |
+| `pr-contract` | PR gates |
 
 ## Context Files
 | File | Why |

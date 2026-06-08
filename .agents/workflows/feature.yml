@@ -112,6 +112,16 @@ steps:
       - architecture_check (boundaries respected)
       - judgment_calls (needs human review)
 
+  # ── Step 8: Evaluate ────────────────────────────────────────
+  - step: evaluate
+    agent: human
+    action: score agent accuracy
+    when: after human review, before or after merge
+    file: .agents/memory/agent_scores.jsonl
+    protocol: .agents/skills/evaluation/SKILL.md
+    agents_to_score: [planner, coder, reviewer, security, test-writer]
+    notes: score each agent 1-5, log human_corrections, flag any ≤ 2
+
 # Escalation loop: step 2 ↔ step 1
 # If coder escalates → planner replans → coder resumes
 # If reviewer fails → coder fixes → reviewer re-checks

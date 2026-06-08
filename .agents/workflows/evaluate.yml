@@ -1,0 +1,38 @@
+# Evaluation Workflow — prei
+# Score agent accuracy after each feature or bugfix.
+# Run this AFTER human review and BEFORE or AFTER merge.
+
+workflow: evaluate
+type: reference-checklist
+updated: 2026-06-08
+
+steps:
+
+  # ── Step 1: Score agents ─────────────────────────────────────
+  - step: score
+    action: human scores each agent's contribution
+    when: after human review, before or after merge
+    format: JSONL entry (see .agents/skills/evaluation/SKILL.md)
+    file: .agents/memory/agent_scores.jsonl
+    agents_to_score:
+      - planner (if used)
+      - coder
+      - reviewer
+      - security (if step was run)
+      - test-writer (if used)
+
+  # ── Step 2: Log corrections ──────────────────────────────────
+  - step: log_corrections
+    action: list human corrections made
+    field: human_corrections (array of strings)
+    purpose: identify patterns for agent prompt improvement
+
+  # ── Step 3: Flag low scores ──────────────────────────────────
+  - step: flag
+    action: flag agents scoring ≤ 2
+    gates:
+      - Any agent ≤ 2 → note pattern in PR description
+      - Reviewer false_negatives ≥ 2 → update review checklist
+      - Planner completeness ≤ 2 → check if migration detection needs improvement
+
+# This workflow runs per-feature. Monthly aggregation is in scripts/agent_report.py.

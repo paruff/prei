@@ -42,3 +42,5 @@ Use the first output for denominator and a 14-day churn sample for numerator.
 4. Identify top two regressions and assign owners.
 5. Update `docs/METRICS.md` with actions and deadlines.
 6. Review instruction-file size drift and run `scripts/token-audit.sh`.
+7. Run `python scripts/agent_report.py --month YYYY-MM` for agent accuracy.
+8. If any agent averages < 3, update the role prompt and note in PR.

@@ -20,12 +20,14 @@ Single source of truth for all AI-assisted development in prei.
 ├── skills/         # On-demand skill packs (load selectively)
 │   ├── architecture/SKILL.md
 │   ├── data-collection/SKILL.md
+│   ├── evaluation/SKILL.md
 │   ├── finance-review/SKILL.md
 │   ├── metrics/SKILL.md
 │   ├── model-routing/SKILL.md
 │   └── pr-contract/SKILL.md
 ├── workflows/      # Multi-agent pipelines
 │   ├── bugfix.yml
+│   ├── evaluate.yml
 │   └── feature.yml
 └── README.md       # This file
 ```
@@ -52,8 +54,9 @@ Referenced from `AGENTS.md` — never loaded by default.
 
 ## Workflows
 
-- **feature.yml**: planner → coder → reviewer → human approve → verify → PR
-- **bugfix.yml**: triage → fix → review → security (if auth/data) → verify → PR
+- **feature.yml**: plan → implement → review → security → approve → verify → PR → evaluate
+- **bugfix.yml**: triage → fix → review → security (if auth/data) → verify → PR → evaluate
+- **evaluate.yml**: score agent accuracy after each feature/bugfix
 
 ## Design Principles
 

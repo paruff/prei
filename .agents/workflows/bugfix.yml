@@ -75,6 +75,16 @@ steps:
       - regression test added
       - whether production data needs remediation
 
+  # ── Step 7: Evaluate ────────────────────────────────────────
+  - step: evaluate
+    agent: human
+    action: score agent accuracy
+    when: after merge
+    file: .agents/memory/agent_scores.jsonl
+    protocol: .agents/skills/evaluation/SKILL.md
+    agents_to_score: [coder, reviewer, security, test-writer]
+    notes: skip planner (not used in bugfix workflow)
+
 # Escalation loop: step 2 ↔ step 1 (re-understand if fix doesn't work)
 # This workflow skips the planner — bugfixes are small and scoped.
 # If the bug fix expands beyond 3 files, switch to feature.yml workflow.

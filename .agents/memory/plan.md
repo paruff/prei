@@ -43,13 +43,14 @@ Core domain: financial calculations (IRR, DSCR, cap rate, BRRRR), property data 
 
 ## Current state
 
-### .agents/ structure (18 files)
+### .agents/ structure (22 files)
 
 ```
 .agents/
 ├── README.md
 ├── memory/
-│   └── plan.md                        ← this file
+│   ├── plan.md                        ← this file
+│   └── agent_scores.jsonl             ← append-only evaluation log
 ├── roles/
 │   ├── planner.md                     (task decomposition + replanning protocol)
 │   ├── coder.md                       (implementation + escalation protocol)
@@ -64,13 +65,15 @@ Core domain: financial calculations (IRR, DSCR, cap rate, BRRRR), property data 
 ├── skills/
 │   ├── architecture/SKILL.md          (layer boundaries, dependency rules)
 │   ├── data-collection/SKILL.md       (VRM/HUD/ATTOM scrapers)
+│   ├── evaluation/SKILL.md            (agent accuracy scoring)
 │   ├── finance-review/SKILL.md        (financial math review)
 │   ├── metrics/SKILL.md               (DORA + AI credit tracking)
 │   ├── model-routing/SKILL.md         (mode/model decision tables)
 │   └── pr-contract/SKILL.md           (PR size, AI-assisted review block)
 └── workflows/
-    ├── bugfix.yml                     (triage → fix → review → verify → PR)
-    └── feature.yml                    (plan → implement → review → security → approve → verify → PR)
+    ├── bugfix.yml                     (triage → fix → review → verify → PR → evaluate)
+    ├── evaluate.yml                   (score agent accuracy after each feature/bugfix)
+    └── feature.yml                    (plan → implement → review → security → approve → verify → PR → evaluate)
 ```
 
 ### Root config
@@ -80,6 +83,7 @@ Core domain: financial calculations (IRR, DSCR, cap rate, BRRRR), property data 
 | `AGENTS.md` | Lean entry point (loaded on every AI request, token-cost-aware) |
 | `opencode.json` | opencode config (skill paths, agent definitions, AGENTS.md instruction) |
 | `.github/copilot-instructions.md` | Copilot-specific (references .agents/skills/) |
+| `scripts/agent_report.py` | Monthly agent accuracy aggregation script |
 
 ### Git history (this session)
 
@@ -92,10 +96,12 @@ bc2fb2c refactor: consolidate agent infrastructure into .agents/
 
 ## Backlog
 
-### P2 — Evaluation loop (effort: L)
-- Track agent accuracy (how often each agent's output gets corrected by humans)
-- Add `agent_scores.jsonl` to workflow
-- Monthly review of agent performance metrics
+### P2 — Evaluation loop (effort: L) ✅ DONE
+- ✅ Created `evaluation` skill (scoring protocol, dimensions per agent, 1-5 scale)
+- ✅ Created `evaluate.yml` workflow (per-feature scoring)
+- ✅ Created `scripts/agent_report.py` (monthly aggregation, correction patterns)
+- ✅ Integrated into `feature.yml` (step 8) and `bugfix.yml` (step 7)
+- ✅ Updated `metrics` skill with monthly agent review ritual
 
 ### P3 — Nice to have
 - Hotfix workflow (expedited with mandatory security review)
