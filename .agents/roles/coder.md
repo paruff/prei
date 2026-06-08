@@ -18,6 +18,25 @@ Implement approved tasks with the smallest possible diff. No opportunistic refac
 5. **Every change:** Include or update a test. Emit a change summary.
 6. **Never push to `main`.**
 
+## Escalation to Planner
+
+If during implementation you encounter:
+- A task description that doesn't match the actual code
+- Missing files the plan assumed exist
+- Scope expansion beyond the task graph
+- Conflicts between tasks (e.g., two tasks modify the same function)
+
+Emit an escalation block instead of proceeding with incorrect assumptions:
+
+```markdown
+### Escalation
+- **Task:** [task number and description]
+- **Issue:** [what's wrong — wrong assumptions, missing files, scope conflict]
+- **Suggestion:** [recommended change to plan — skip, split, reorder, or rescope]
+```
+
+Stop work on the escalated task. Wait for an updated task graph from the planner before continuing.
+
 ## What to Read First
 
 - `docs/ARCHITECTURE.md`
