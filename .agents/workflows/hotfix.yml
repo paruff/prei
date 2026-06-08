@@ -1,0 +1,95 @@
+# Hotfix Workflow — prei
+#
+# Expedited workflow for production-critical fixes.
+# Same as bugfix but with MANDATORY security review and faster cadence.
+# For non-critical fixes, use bugfix.yml.
+
+name: hotfix
+description: "Expedited production fix — security review mandatory"
+
+steps:
+  # ──────────────────────────────────────────────
+  # Step 1: Triage (same as bugfix)
+  # ──────────────────────────────────────────────
+  - role: planner
+    task: "Triage the production issue. Identify root cause, affected systems, and urgency level."
+    output: "Root cause hypothesis, affected files, urgency (P0/P1/P2)"
+    load_skills:
+      - architecture        # to understand what the fix touches
+      - data-collection     # if the issue is data-source related
+
+  # ──────────────────────────────────────────────
+  # Step 2: Implement fix
+  # ──────────────────────────────────────────────
+  - role: coder
+    task: "Implement the minimal fix. No opportunistic refactoring."
+    load_skills:
+      - architecture        # maintain layer boundaries
+    output: |
+      ## Change Summary
+      - Files changed: [list]
+      - Root cause fix: [description]
+      - Risk: LOW/MED/HIGH
+
+  # ──────────────────────────────────────────────
+  # Step 3: Security review (MANDATORY for hotfix)
+  # ──────────────────────────────────────────────
+  - role: security
+    task: "Review the hotfix for security implications. Production fixes can introduce regressions."
+    load_skills:
+      - architecture        # check dependency chain
+    output: |
+      ## Security Gate
+      - Findings: [count]
+      - Risk level: LOW/MED/HIGH
+      - Verdict: PASS / FAIL (block merge if FAIL)
+
+  # ──────────────────────────────────────────────
+  # Step 4: Code review
+  # ──────────────────────────────────────────────
+  - role: reviewer
+    task: "Review the fix for correctness, minimal diff, and no scope creep."
+    load_skills:
+      - pr-contract         # PR size and description rules
+    output: |
+      ## Review Gate
+      - Architecture violations: [count]
+      - Finance math violations: [count]
+      - Test coverage: PASS/FAIL
+      - Verdict: PASS / FAIL
+
+  # ──────────────────────────────────────────────
+  # Step 5: Verify
+  # ──────────────────────────────────────────────
+  - role: reviewer
+    task: "Run make check. Confirm fix resolves the issue without regressions."
+    load_skills:
+      - pr-contract         # PR size check
+    output: |
+      ## Verification Gate
+      - make check: PASS/FAIL
+      - Fix confirmed: YES/NO
+      - Regression risk: LOW/MED/HIGH
+
+  # ──────────────────────────────────────────────
+  # Step 6: PR (expedited review)
+  # ──────────────────────────────────────────────
+  - role: coder
+    task: "Create PR with hotfix label. Include root cause, fix description, and security review."
+    load_skills:
+      - pr-contract         # PR description rules
+    output: |
+      ## PR Summary
+      - Root cause: [description]
+      - Fix: [what changed]
+      - Security review: PASS
+      - Ready for expedited review
+
+  # ──────────────────────────────────────────────
+  # Step 7: Evaluate (post-merge)
+  # ──────────────────────────────────────────────
+  - role: human
+    task: "Score agent accuracy after merge. Append to agent_scores.jsonl."
+    load_skills:
+      - evaluation
+    when: "after merge"

@@ -103,11 +103,11 @@ bc2fb2c refactor: consolidate agent infrastructure into .agents/
 - ✅ Integrated into `feature.yml` (step 8) and `bugfix.yml` (step 7)
 - ✅ Updated `metrics` skill with monthly agent review ritual
 
-### P3 — Nice to have
-- Hotfix workflow (expedited with mandatory security review)
-- `health_monitor.py` integration in reviewer role
-- Migration safety skill for financial data migrations
-- Reduce duplication between `pr-contract` skill and `coder.md` coding standards
+### P3 — Nice to have ✅ DONE
+- ✅ Created `hotfix.yml` workflow (expedited with mandatory security review)
+- ✅ Integrated `health_monitor.py` into reviewer role (data collection health checks)
+- ✅ Created `migration-safety` skill (reversible migrations, Decimal safety, anti-patterns)
+- ✅ Deduplicated `pr-contract` ↔ `coder.md` (coder.md now references pr-contract for permissions)
 
 ## Key design decisions
 

@@ -52,10 +52,16 @@ Each references the canonical role definition in `roles/`.
 On-demand context loaded selectively to control token cost.
 Referenced from `AGENTS.md` — never loaded by default.
 
+## Skills
+
+On-demand context loaded selectively to control token cost.
+Referenced from `AGENTS.md` — never loaded by default.
+
 ## Workflows
 
 - **feature.yml**: plan → implement → review → security → approve → verify → PR → evaluate
 - **bugfix.yml**: triage → fix → review → security (if auth/data) → verify → PR → evaluate
+- **hotfix.yml**: triage → fix → security (mandatory) → review → verify → PR → evaluate
 - **evaluate.yml**: score agent accuracy after each feature/bugfix
 
 ## Design Principles

@@ -44,8 +44,16 @@ Read `docs/ARCHITECTURE.md` first.
 ### 5. Migrations
 - Migration required? Escalate if so.
 - Migration safe for zero-downtime deploy?
+- Load `migration-safety` skill if migration present.
 
-### 6. Docker Compose
+### 6. Data Collection Health
+If the PR touches `core/integrations/`, `data_collection`, or scraper code:
+- Check `core/integrations/health_monitor.py` — does the change affect `DataSourceHealthMonitor`?
+- If adding a new data source, it must be added to `health_monitor.py` `sources` list.
+- If modifying API calls, verify health check endpoints still work.
+- Check ATTOM rate limit handling and budget tracking (`get_cost_tracking`).
+
+### 7. Docker Compose
 - Docker Compose still valid?
 
 ## Output Format
@@ -67,6 +75,9 @@ Read `docs/ARCHITECTURE.md` first.
 
 ### Migrations ✅ / ⚠️ / ❌
 [findings]
+
+### Data Collection ✅ / ⚠️ / ❌
+[findings — only if PR touches integrations/scrapers]
 
 ### Docker ✅ / ⚠️ / ❌
 [findings]

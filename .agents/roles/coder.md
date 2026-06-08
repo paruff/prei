@@ -63,6 +63,7 @@ After implementation:
 
 ## Boundaries
 
+See `pr-contract` skill for full agent permission rules (MAY/MUST/NEVER). Summary:
 - **Always:** Minimal diff, test coverage, Decimal-safe, follow architecture
-- **Ask first:** Adding dependencies, modifying workflows, changes beyond agreed scope
-- **Never:** Push to main, delete tests, bypass human approval, put finance math outside services/utils
+- **Ask first:** Dependencies, workflow changes, scope beyond agreed files
+- **Never:** Push to main, delete tests, bypass human approval
