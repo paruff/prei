@@ -16,11 +16,93 @@ class Property(models.Model):
     city = models.CharField(max_length=128)
     state = models.CharField(max_length=64)
     zip_code = models.CharField(max_length=16)
-    purchase_price = models.DecimalField(max_digits=12, decimal_places=2)
+    purchase_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
     purchase_date = models.DateField(null=True, blank=True)
     sqft = models.IntegerField(null=True, blank=True)
     units = models.IntegerField(default=1)
     notes = models.TextField(blank=True)
+
+    # --- Phase 0: MVP data-entry fields ---
+    PROPERTY_TYPE_CHOICES = [
+        ("SFR", "Single-Family Residence"),
+        ("duplex", "Duplex"),
+        ("triplex", "Triplex"),
+        ("fourplex", "Fourplex"),
+        ("small_multifamily", "Small Multifamily"),
+    ]
+
+    property_type = models.CharField(
+        max_length=32,
+        choices=PROPERTY_TYPE_CHOICES,
+        blank=True,
+        default="SFR",
+    )
+    bedrooms = models.PositiveIntegerField(null=True, blank=True)
+    bathrooms = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+
+    # Income
+    monthly_rent_gross = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    other_monthly_income = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+
+    # Expenses (annual / monthly)
+    property_taxes_annual = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    insurance_annual = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    hoa_monthly = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+
+    # Loan terms
+    down_payment_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.20"),
+        help_text="Fraction (e.g. 0.20 for 20%)",
+    )
+    interest_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.07"),
+        help_text="Annual rate as fraction (e.g. 0.07 for 7%)",
+    )
+    loan_term_years = models.PositiveIntegerField(default=30)
+
+    # Assumptions (defaults per issue spec)
+    vacancy_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.08"),
+        help_text="Fraction (e.g. 0.08 for 8%)",
+    )
+    mgmt_fee_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.10"),
+        help_text="Fraction (e.g. 0.10 for 10%)",
+    )
+    maintenance_monthly = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("150.00")
+    )
+    capex_monthly = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("100.00")
+    )
 
     def __str__(self) -> str:  # noqa: D401
         return f"{self.address}, {self.city}, {self.state} {self.zip_code}"

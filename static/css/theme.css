@@ -1,0 +1,23 @@
+/* Dark mode overrides — theme toggle button styles */
+
+/* Toggle button in navbar */
+#theme-toggle {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* Dropdown menu active indicator */
+#theme-dropdown [data-theme-value].active::before {
+  content: "\2713\00a0";
+  font-weight: bold;
+}
+
+/* Smooth transition when switching themes */
+html {
+  transition: color-scheme 0.2s ease;
+}
+
+/* Ensure body bg-light is overridden by data-bs-theme */
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}

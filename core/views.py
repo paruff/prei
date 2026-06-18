@@ -25,6 +25,8 @@ from django.utils import timezone
 from django.utils.text import slugify
 from xhtml2pdf import pisa
 
+from .models import VrmProperty
+
 from investor_app.finance.utils import (
     compute_analysis_for_property,
     calculate_whatif_monthly_cashflow,
@@ -914,3 +916,49 @@ def export_pdf(request, pk: int) -> HttpResponse:
     response = HttpResponse(pdf_result.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+US_STATES = [
+    ("AL", "Alabama"), ("AK", "Alaska"), ("AZ", "Arizona"), ("AR", "Arkansas"),
+    ("CA", "California"), ("CO", "Colorado"), ("CT", "Connecticut"), ("DE", "Delaware"),
+    ("DC", "District of Columbia"), ("FL", "Florida"), ("GA", "Georgia"), ("HI", "Hawaii"),
+    ("ID", "Idaho"), ("IL", "Illinois"), ("IN", "Indiana"), ("IA", "Iowa"),
+    ("KS", "Kansas"), ("KY", "Kentucky"), ("LA", "Louisiana"), ("ME", "Maine"),
+    ("MD", "Maryland"), ("MA", "Massachusetts"), ("MI", "Michigan"), ("MN", "Minnesota"),
+    ("MS", "Mississippi"), ("MO", "Missouri"), ("MT", "Montana"), ("NE", "Nebraska"),
+    ("NV", "Nevada"), ("NH", "New Hampshire"), ("NJ", "New Jersey"), ("NM", "New Mexico"),
+    ("NY", "New York"), ("NC", "North Carolina"), ("ND", "North Dakota"), ("OH", "Ohio"),
+    ("OK", "Oklahoma"), ("OR", "Oregon"), ("PA", "Pennsylvania"), ("RI", "Rhode Island"),
+    ("SC", "South Carolina"), ("SD", "South Dakota"), ("TN", "Tennessee"), ("TX", "Texas"),
+    ("UT", "Utah"), ("VT", "Vermont"), ("VA", "Virginia"), ("WA", "Washington"),
+    ("WV", "West Virginia"), ("WI", "Wisconsin"), ("WY", "Wyoming"),
+]
+
+
+@login_required
+def vrm_properties_list(request: HttpRequest) -> HttpResponse:
+    """List VRM properties with state/zip filtering."""
+    state = request.GET.get("state", "").strip().upper()
+    zip_code = request.GET.get("zip", "").strip()
+
+    queryset = VrmProperty.objects.all()
+
+    if state:
+        queryset = queryset.filter(state=state)
+    if zip_code:
+        queryset = queryset.filter(zip_code=zip_code)
+
+    queryset = queryset.order_by("-last_seen_at")[:100]
+
+    return render(
+        request,
+        "vrm_properties/list.html",
+        {
+            "properties": queryset,
+            "states": US_STATES,
+            "selected_state": state,
+            "selected_zip": zip_code,
+            "total_count": VrmProperty.objects.count(),
+            "filtered_count": queryset.count(),
+        },
+    )

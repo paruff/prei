@@ -110,4 +110,15 @@ urlpatterns = [
         api_views.health_check,
         name="health-check",
     ),
+    # VRM Properties
+    path(
+        "v1/vrm-properties/",
+        api_views.VrmPropertyListAPI.as_view(),
+        name="vrm-properties-list",
+    ),
+    path(
+        "v1/vrm-properties/scrape/",
+        api_views.VrmPropertyScrapeAPI.as_view(),
+        name="vrm-properties-scrape",
+    ),
 ]

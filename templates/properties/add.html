@@ -6,15 +6,180 @@
     {% csrf_token %}
     <div class="card-body">
       {{ form.non_field_errors }}
-      {% for field in form %}
-        <div class="mb-3">
-          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <div class="text-danger small mt-1">{{ field.errors }}</div>
-          {% endif %}
+
+      {# Location #}
+      <fieldset class="mb-4">
+        <legend class="h5 mb-3">Location</legend>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="{{ form.address.id_for_label }}">Address</label>
+            {{ form.address }}
+            {% if form.address.errors %}<div class="text-danger small mt-1">{{ form.address.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.city.id_for_label }}">City</label>
+            {{ form.city }}
+            {% if form.city.errors %}<div class="text-danger small mt-1">{{ form.city.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-1 mb-3">
+            <label class="form-label" for="{{ form.state.id_for_label }}">State</label>
+            {{ form.state }}
+            {% if form.state.errors %}<div class="text-danger small mt-1">{{ form.state.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-2 mb-3">
+            <label class="form-label" for="{{ form.zip_code.id_for_label }}">Zip</label>
+            {{ form.zip_code }}
+            {% if form.zip_code.errors %}<div class="text-danger small mt-1">{{ form.zip_code.errors }}</div>{% endif %}
+          </div>
         </div>
-      {% endfor %}
+      </fieldset>
+
+      {# Property Details #}
+      <fieldset class="mb-4">
+        <legend class="h5 mb-3">Property Details</legend>
+        <div class="row">
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.property_type.id_for_label }}">Type</label>
+            {{ form.property_type }}
+            {% if form.property_type.errors %}<div class="text-danger small mt-1">{{ form.property_type.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-2 mb-3">
+            <label class="form-label" for="{{ form.bedrooms.id_for_label }}">Beds</label>
+            {{ form.bedrooms }}
+            {% if form.bedrooms.errors %}<div class="text-danger small mt-1">{{ form.bedrooms.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-2 mb-3">
+            <label class="form-label" for="{{ form.bathrooms.id_for_label }}">Baths</label>
+            {{ form.bathrooms }}
+            {% if form.bathrooms.errors %}<div class="text-danger small mt-1">{{ form.bathrooms.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-2 mb-3">
+            <label class="form-label" for="{{ form.square_footage.id_for_label }}">Sq Ft</label>
+            {{ form.square_footage }}
+            {% if form.square_footage.errors %}<div class="text-danger small mt-1">{{ form.square_footage.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-2 mb-3">
+            <label class="form-label" for="{{ form.num_units.id_for_label }}">Units</label>
+            {{ form.num_units }}
+            {% if form.num_units.errors %}<div class="text-danger small mt-1">{{ form.num_units.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-1 mb-3">
+            <label class="form-label" for="{{ form.year_built.id_for_label }}">Year</label>
+            {{ form.year_built }}
+            {% if form.year_built.errors %}<div class="text-danger small mt-1">{{ form.year_built.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </fieldset>
+
+      {# Purchase #}
+      <fieldset class="mb-4">
+        <legend class="h5 mb-3">Purchase</legend>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label class="form-label" for="{{ form.purchase_price.id_for_label }}">Purchase Price</label>
+            {{ form.purchase_price }}
+            {% if form.purchase_price.errors %}<div class="text-danger small mt-1">{{ form.purchase_price.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label" for="{{ form.purchase_date.id_for_label }}">Purchase Date</label>
+            {{ form.purchase_date }}
+            {% if form.purchase_date.errors %}<div class="text-danger small mt-1">{{ form.purchase_date.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </fieldset>
+
+      {# Income #}
+      <fieldset class="mb-4">
+        <legend class="h5 mb-3">Income</legend>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label class="form-label" for="{{ form.monthly_rent_gross.id_for_label }}">Monthly Rent (Gross)</label>
+            {{ form.monthly_rent_gross }}
+            {% if form.monthly_rent_gross.errors %}<div class="text-danger small mt-1">{{ form.monthly_rent_gross.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label" for="{{ form.other_monthly_income.id_for_label }}">Other Monthly Income</label>
+            {{ form.other_monthly_income }}
+            {% if form.other_monthly_income.errors %}<div class="text-danger small mt-1">{{ form.other_monthly_income.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </fieldset>
+
+      {# Expenses #}
+      <fieldset class="mb-4">
+        <legend class="h5 mb-3">Expenses</legend>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label class="form-label" for="{{ form.property_taxes_annual.id_for_label }}">Property Taxes (Annual)</label>
+            {{ form.property_taxes_annual }}
+            {% if form.property_taxes_annual.errors %}<div class="text-danger small mt-1">{{ form.property_taxes_annual.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label" for="{{ form.insurance_annual.id_for_label }}">Insurance (Annual)</label>
+            {{ form.insurance_annual }}
+            {% if form.insurance_annual.errors %}<div class="text-danger small mt-1">{{ form.insurance_annual.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label" for="{{ form.hoa_monthly.id_for_label }}">HOA (Monthly)</label>
+            {{ form.hoa_monthly }}
+            {% if form.hoa_monthly.errors %}<div class="text-danger small mt-1">{{ form.hoa_monthly.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </fieldset>
+
+      {# Loan #}
+      <fieldset class="mb-4">
+        <legend class="h5 mb-3">Loan</legend>
+        <div class="row">
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.down_payment_pct.id_for_label }}">Down Payment %</label>
+            {{ form.down_payment_pct }}
+            <div class="form-text">e.g. 0.20 for 20%</div>
+            {% if form.down_payment_pct.errors %}<div class="text-danger small mt-1">{{ form.down_payment_pct.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.interest_rate.id_for_label }}">Interest Rate</label>
+            {{ form.interest_rate }}
+            <div class="form-text">e.g. 0.07 for 7%</div>
+            {% if form.interest_rate.errors %}<div class="text-danger small mt-1">{{ form.interest_rate.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.loan_term_years.id_for_label }}">Loan Term (Years)</label>
+            {{ form.loan_term_years }}
+            {% if form.loan_term_years.errors %}<div class="text-danger small mt-1">{{ form.loan_term_years.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </fieldset>
+
+      {# Assumptions #}
+      <fieldset class="mb-4">
+        <legend class="h5 mb-3">Assumptions</legend>
+        <div class="row">
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.vacancy_rate.id_for_label }}">Vacancy Rate</label>
+            {{ form.vacancy_rate }}
+            <div class="form-text">e.g. 0.08 for 8%</div>
+            {% if form.vacancy_rate.errors %}<div class="text-danger small mt-1">{{ form.vacancy_rate.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.mgmt_fee_pct.id_for_label }}">Management Fee %</label>
+            {{ form.mgmt_fee_pct }}
+            <div class="form-text">e.g. 0.10 for 10%</div>
+            {% if form.mgmt_fee_pct.errors %}<div class="text-danger small mt-1">{{ form.mgmt_fee_pct.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.maintenance_monthly.id_for_label }}">Maintenance (Monthly)</label>
+            {{ form.maintenance_monthly }}
+            {% if form.maintenance_monthly.errors %}<div class="text-danger small mt-1">{{ form.maintenance_monthly.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label" for="{{ form.capex_monthly.id_for_label }}">CapEx (Monthly)</label>
+            {{ form.capex_monthly }}
+            {% if form.capex_monthly.errors %}<div class="text-danger small mt-1">{{ form.capex_monthly.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </fieldset>
+
       <button type="submit" class="btn btn-primary">Save and continue</button>
       <a href="{% url 'property_list' %}" class="btn btn-outline-secondary">Cancel</a>
     </div>

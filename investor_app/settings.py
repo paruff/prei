@@ -56,6 +56,9 @@ DATABASES = {
     )
 }
 
+LOGIN_REDIRECT_URL = "/dashboard/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
+
 TIME_ZONE = env("TIME_ZONE", default="UTC")
 USE_TZ = True
 

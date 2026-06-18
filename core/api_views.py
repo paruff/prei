@@ -18,6 +18,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
+from .models import VrmProperty
+from .serializers import VrmPropertySerializer
+
 from investor_app.finance.utils import (
     calculate_break_even_rent,
     calculate_carrying_costs as calc_costs,
@@ -2175,3 +2178,129 @@ def health_check(request: Any) -> Response:
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+
+# --- VRM Properties API ---
+
+
+US_STATES = [
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL",
+    "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
+    "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH",
+    "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
+    "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+]
+
+
+class VrmPropertyListAPI(APIView):
+    """
+    GET /api/v1/vrm-properties/?state=VA&zip=23356
+
+    List VRM properties with optional state and zip code filters.
+    """
+
+    def get(self, request: Any) -> Response:
+        queryset = VrmProperty.objects.all()
+
+        state = request.query_params.get("state", "").strip().upper()
+        if state:
+            if state not in US_STATES:
+                return Response(
+                    {"error": f"Invalid state code: {state}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            queryset = queryset.filter(state=state)
+
+        zip_code = request.query_params.get("zip", "").strip()
+        if zip_code:
+            if not zip_code.isdigit() or len(zip_code) != 5:
+                return Response(
+                    {"error": "Zip code must be exactly 5 digits"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            queryset = queryset.filter(zip_code=zip_code)
+
+        queryset = queryset.order_by("-last_seen_at")
+
+        page = request.query_params.get("page", 1)
+        page_size = request.query_params.get("page_size", 25)
+        try:
+            page = max(1, int(page))
+            page_size = min(100, max(1, int(page_size)))
+        except (ValueError, TypeError):
+            page = 1
+            page_size = 25
+
+        offset = (page - 1) * page_size
+        total = queryset.count()
+        properties = queryset[offset : offset + page_size]
+
+        serializer = VrmPropertySerializer(properties, many=True)
+
+        return Response(
+            {
+                "count": total,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": -(-total // page_size) if page_size else 0,
+                "results": serializer.data,
+            }
+        )
+
+
+class VrmPropertyScrapeAPI(APIView):
+    """
+    POST /api/v1/vrm-properties/scrape/ {"state": "VA"}
+
+    Trigger a VRM scrape for the given state.
+    """
+
+    def post(self, request: Any) -> Response:
+        state = request.data.get("state", "").strip().upper()
+        if not state:
+            return Response(
+                {"error": "State parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if state not in US_STATES:
+            return Response(
+                {"error": f"Invalid state code: {state}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from core.integrations.sources.vrm_scraper import VrmScraper
+
+            scraper = VrmScraper()
+            listings = scraper.collect_state_listings(state)
+
+            now = timezone.now()
+            created_count = 0
+            updated_count = 0
+            for listing in listings:
+                listing["scraped_at"] = now
+                listing["last_seen_at"] = now
+                _, created = VrmProperty.objects.update_or_create(
+                    vrm_property_id=listing["vrm_property_id"],
+                    defaults=listing,
+                )
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+
+            return Response(
+                {
+                    "status": "completed",
+                    "state": state,
+                    "total_listings": len(listings),
+                    "created": created_count,
+                    "updated": updated_count,
+                }
+            )
+        except Exception as e:
+            logger.error(f"VRM scrape failed for state={state}: {e}")
+            return Response(
+                {"error": f"Scrape failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

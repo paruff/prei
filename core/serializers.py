@@ -15,6 +15,7 @@ from .models import (
     Notification,
     NotificationPreference,
     UserWatchlist,
+    VrmProperty,
 )
 from investor_app.finance.utils import score_listing_v1
 
@@ -538,3 +539,38 @@ class MarketSnapshotSerializer(serializers.ModelSerializer):
     class Meta:
         model = MarketSnapshot
         fields = "__all__"
+
+
+class VrmPropertySerializer(serializers.ModelSerializer):
+    """Serializer for VrmProperty model."""
+
+    class Meta:
+        model = VrmProperty
+        fields = [
+            "vrm_property_id",
+            "address",
+            "city",
+            "state",
+            "zip_code",
+            "county",
+            "list_price",
+            "bedrooms",
+            "bathrooms",
+            "square_feet",
+            "lot_size_sf",
+            "year_built",
+            "property_type",
+            "status",
+            "listing_type",
+            "vendee_eligible",
+            "occupied",
+            "latitude",
+            "longitude",
+            "mls_id",
+            "parcel_number",
+            "days_on_site",
+            "vrm_listing_url",
+            "scraped_at",
+            "last_seen_at",
+        ]
+        read_only_fields = fields

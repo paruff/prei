@@ -10,12 +10,27 @@
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous"
     />
+    <link rel="stylesheet" href="/static/css/theme.css" />
     <style>
       .notification-status-dot {
         top: 8px;
         right: 8px;
       }
     </style>
+    <!-- Prevent flash of wrong theme (FOUC) — apply before render -->
+    <script>
+      (function(){
+        try {
+          var t = localStorage.getItem("prei-theme");
+          if (t === "light" || t === "dark") {
+            document.documentElement.setAttribute("data-bs-theme", t);
+          } else if (t === "system" || !t) {
+            var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            document.documentElement.setAttribute("data-bs-theme", dark ? "dark" : "light");
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
@@ -48,9 +63,28 @@
             </div>
           </div>
           {% endif %}
+          <!-- Theme toggle -->
+          <div class="nav-item dropdown">
+            <button
+              id="theme-toggle"
+              type="button"
+              class="btn nav-link border-0 bg-transparent text-white"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              aria-label="Toggle dark mode"
+            >
+              <span class="theme-icon" aria-hidden="true">🌙</span>
+            </button>
+            <ul id="theme-dropdown" class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" data-theme-value="light">Light</a></li>
+              <li><a class="dropdown-item" href="#" data-theme-value="dark">Dark</a></li>
+              <li><a class="dropdown-item" href="#" data-theme-value="system">System</a></li>
+            </ul>
+          </div>
           <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
           <a class="nav-link" href="{% url 'property_list' %}">Properties</a>
           <a class="nav-link" href="{% url 'property_add' %}">Add Property</a>
+          <a class="nav-link" href="{% url 'vrm_properties_list' %}">VRM Properties</a>
           <a class="nav-link" href="{% url 'logout' %}">Logout</a>
         </div>
       </div>
@@ -61,5 +95,9 @@
     {% if user.is_authenticated %}
     <script src="/static/js/notifications.js"></script>
     {% endif %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"></script>
+    <script src="/static/js/theme.js"></script>
   </body>
 </html>

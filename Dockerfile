@@ -1,11 +1,20 @@
 # syntax=docker/dockerfile:1.7
 # ↑ enables BuildKit features — put this as line 1
 
-ARG PYTHON_VERSION=3.11
+ARG PYTHON_VERSION=3.12
 FROM python:${PYTHON_VERSION}-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
+
+# Update all OS packages to latest security patches and remove Perl
+# (not needed by this Python project) to eliminate Trivy alerts:
+#   #137 — perl-archive-tar path traversal via symlinks (Critical)
+#   #136 — Perl heap buffer overflow through 5.43.10 (Critical)
+RUN apt-get update && \
+    apt-get upgrade -y --no-install-recommends && \
+    apt-get remove --purge -y --auto-remove perl libperl* && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
