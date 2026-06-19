@@ -1008,3 +1008,30 @@ class Notification(models.Model):
 
             self.dismissed_at = timezone.now()
             self.save()
+
+
+class UserProfile(models.Model):
+    """Per-user investment preferences and tax settings."""
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="profile"
+    )
+    marginal_tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.24"),
+        help_text="Marginal income-tax rate as a fraction (e.g. 0.24 for 24 %)",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("1"))],
+    )
+    land_value_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.20"),
+        help_text="Fraction of property value attributable to land (e.g. 0.20 for 20 %)",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("0.99"))],
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"Profile for {self.user.username}"
