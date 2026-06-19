@@ -1,0 +1,77 @@
+:root {
+  /* ── Palette ────────────────────────────────── */
+  --color-grow-50:   #E1F5EE;
+  --color-grow-100:  #9FE1CB;
+  --color-grow-400:  #1D9E75;
+  --color-grow-700:  #0F6E56;
+  --color-grow-900:  #04342C;
+
+  --color-caution-50:  #FAEEDA;
+  --color-caution-100: #FAC775;
+  --color-caution-400: #EF9F27;
+  --color-caution-700: #854F0B;
+
+  --color-risk-50:  #FCEBEB;
+  --color-risk-100: #F7C1C1;
+  --color-risk-400: #E24B4A;
+  --color-risk-700: #A32D2D;
+
+  --color-neutral-50:  #F1EFE8;
+  --color-neutral-100: #D3D1C7;
+  --color-neutral-200: #B4B2A9;
+  --color-neutral-500: #5F5E5A;
+  --color-neutral-700: #444441;
+  --color-neutral-900: #2C2C2A;
+
+  /* ── Semantic aliases ───────────────────────── */
+  --color-primary:      var(--color-grow-400);
+  --color-primary-bg:   var(--color-grow-50);
+  --color-primary-text: var(--color-grow-700);
+
+  --color-verdict-a-bg:   var(--color-grow-50);
+  --color-verdict-a-text: var(--color-grow-700);
+  --color-verdict-b-bg:   var(--color-caution-50);
+  --color-verdict-b-text: var(--color-caution-700);
+  --color-verdict-c-bg:   var(--color-risk-50);
+  --color-verdict-c-text: var(--color-risk-700);
+
+  /* ── Surfaces ───────────────────────────────── */
+  --surface-page:      #F8F8F6;
+  --surface-card:      #FFFFFF;
+  --surface-secondary: #F1EFE8;
+
+  /* ── Borders ────────────────────────────────── */
+  --border-default: 1px solid #E0DED6;
+  --border-subtle:  0.5px solid #E0DED6;
+
+  /* ── Typography ─────────────────────────────── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --text-xs:   11px;
+  --text-sm:   13px;
+  --text-base: 15px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+
+  --weight-regular: 400;
+  --weight-medium:  500;
+
+  /* ── Spacing (4px base unit) ────────────────── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* ── Radius ─────────────────────────────────── */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-pill: 20px;
+
+  /* ── Nav ─────────────────────────────────────── */
+  --nav-height: 52px;
+}

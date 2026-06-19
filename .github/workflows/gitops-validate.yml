@@ -1,0 +1,152 @@
+name: GitOps Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "Dockerfile*"
+      - "docker-compose*.yml"
+      - "docker-compose*.yaml"
+      - "manifests/**"
+      - "overlays/**"
+      - "**/*.k8s.yaml"
+      - "**/*.k8s.yml"
+      - "**/kustomization.yaml"
+      - "**/kustomization.yml"
+      - ".env*"
+      - "scripts/gitops-validate.sh"
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile*"
+      - "docker-compose*.yml"
+      - "docker-compose*.yaml"
+      - "manifests/**"
+      - "overlays/**"
+      - "**/*.k8s.yaml"
+      - "**/*.k8s.yml"
+      - "**/kustomization.yaml"
+      - "**/kustomization.yml"
+      - ".env*"
+      - "scripts/gitops-validate.sh"
+
+concurrency:
+  group: gitops-validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: "🔍 GitOps Best Practices"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+      - uses: actions/checkout@v6
+
+      - name: Make validator executable
+        run: chmod +x scripts/gitops-validate.sh
+
+      - name: Run GitOps validation
+        run: ./scripts/gitops-validate.sh
+
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  docker-build:
+    name: "🐳 Docker Build Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+      - uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: prei:pr-${{ github.event.pull_request.number || 'ci' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  kustomize-build:
+    name: "📦 Kustomize Build Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+      - uses: actions/checkout@v6
+
+      - name: Install kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Validate Kustomize builds
+        run: |
+          # Find all kustomization.yaml files and try to build them
+          FOUND=0
+          while IFS= read -r -d '' kfile; do
+            dir=$(dirname "$kfile")
+            echo "Building kustomization in: $dir"
+            kustomize build "$dir" > /dev/null
+            FOUND=1
+          done < <(find . -name 'kustomization.yaml' -not -path './.venv/*' -not -path './.git/*' -print0 2>/dev/null)
+
+          if [ "$FOUND" -eq 0 ]; then
+            echo "ℹ  No kustomization.yaml files found — skipping"
+          fi
+
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  validation-summary:
+    name: "✅ GitOps Validation Complete"
+    needs: [validate, docker-build, kustomize-build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - name: Check validation gates
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ] ||
+             [ "${{ needs.docker-build.result }}" != "success" ]; then
+            echo "❌ GitOps validation failed"
+            exit 1
+          fi
+          echo "✅ GitOps validation passed"
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
