@@ -1035,3 +1035,64 @@ class UserProfile(models.Model):
 
     def __str__(self) -> str:  # noqa: D401
         return f"Profile for {self.user.username}"
+
+
+class UserInvestmentTargets(models.Model):
+    """Per-user configurable underwriting thresholds and assumptions."""
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="investment_targets"
+    )
+
+    # Buy/no-buy thresholds
+    min_coc_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.08"),
+        help_text="Minimum Cash-on-Cash return as a fraction (e.g. 0.08 for 8 %)",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("1"))],
+    )
+    min_dscr = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("1.25"),
+        help_text="Minimum Debt Service Coverage Ratio (e.g. 1.25)",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("10"))],
+    )
+    max_grm = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("12.00"),
+        help_text="Maximum Gross Rent Multiplier — lower is better (e.g. 12.0)",
+        validators=[MinValueValidator(Decimal("1")), MaxValueValidator(Decimal("100"))],
+    )
+    require_one_pct_rule = models.BooleanField(
+        default=True,
+        help_text="If enabled, properties failing the 1% Rule are capped at 40 points",
+    )
+    target_hold_years = models.PositiveIntegerField(default=7)
+    annual_rent_growth_assumption = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.03"),
+        help_text="Assumed annual rent growth as a fraction",
+    )
+    annual_appreciation_assumption = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.03"),
+        help_text="Assumed annual appreciation as a fraction",
+    )
+    marginal_tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.24"),
+        help_text="Marginal income-tax rate as a fraction",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("1"))],
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"Investment targets for {self.user.username}"

@@ -25,7 +25,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from xhtml2pdf import pisa
 
-from .models import VrmProperty
+from .models import VrmProperty, UserInvestmentTargets
 
 from investor_app.finance.utils import (
     compute_analysis_for_property,
@@ -37,7 +37,7 @@ from investor_app.finance.utils import (
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
 from core.services import compute_portfolio_summary
 from core.services.audit import log_action
-from .forms import OperatingExpenseForm, PropertyForm, RentalIncomeForm
+from .forms import OperatingExpenseForm, PropertyForm, RentalIncomeForm, InvestmentTargetsForm
 from .models import (
     Listing,
     MarketSnapshot,
@@ -189,12 +189,29 @@ def property_list(request):
             property_id__in=property_ids,
         ).values_list("property_id", "role")
     )
+
+    # Compute underwriting score for each property
+    from core.services.scoring import score_listing_v2
+    from core.models import UserInvestmentTargets
+
+    try:
+        targets = UserInvestmentTargets.objects.get(user=request.user)
+    except UserInvestmentTargets.DoesNotExist:
+        targets = None
+
     for property_obj in properties:
         property_obj.access_role = (
             "owner"
             if property_obj.user_id == request.user.id
             else share_roles_by_property_id.get(property_obj.id, "client")
         )
+        # Attach scoring data
+        property_obj.underwriting_score = None
+        if targets:
+            try:
+                property_obj.underwriting_score = score_listing_v2(property_obj, targets)
+            except Exception:
+                pass
 
     return render(
         request,
@@ -975,4 +992,24 @@ def vrm_properties_list(request: HttpRequest) -> HttpResponse:
             "total_count": VrmProperty.objects.count(),
             "filtered_count": queryset.count(),
         },
+    )
+
+
+@login_required
+def investment_targets_edit(request: HttpRequest) -> HttpResponse:
+    """Edit the current user's investment targets (underwriting thresholds)."""
+    targets, _created = UserInvestmentTargets.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = InvestmentTargetsForm(request.POST, instance=targets)
+        if form.is_valid():
+            form.save()
+            return redirect("investment_targets_edit")
+    else:
+        form = InvestmentTargetsForm(instance=targets)
+
+    return render(
+        request,
+        "investment_targets/edit.html",
+        {"form": form, "targets": targets},
     )

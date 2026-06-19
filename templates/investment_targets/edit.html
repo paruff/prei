@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Investment Targets — Prei{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="mb-4">Investment Targets</h1>
+  <p class="text-muted mb-4">
+    Configure your underwriting thresholds and assumptions.
+    These control how the scoring engine evaluates properties.
+  </p>
+
+  <form method="post" class="card card-body">
+    {% csrf_token %}
+
+    <h5 class="mb-3">Buy / No-Buy Thresholds</h5>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <label for="id_min_coc_pct" class="form-label">Min Cash-on-Cash (%)</label>
+        {{ form.min_coc_pct }}
+        <div class="form-text">e.g. 0.08 = 8 %</div>
+      </div>
+      <div class="col-md-4">
+        <label for="id_min_dscr" class="form-label">Min DSCR</label>
+        {{ form.min_dscr }}
+        <div class="form-text">e.g. 1.25</div>
+      </div>
+      <div class="col-md-4">
+        <label for="id_max_grm" class="form-label">Max GRM</label>
+        {{ form.max_grm }}
+        <div class="form-text">Lower is better. e.g. 12.0</div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="form-check mt-2">
+          {{ form.require_one_pct_rule }}
+          <label class="form-check-label" for="id_require_one_pct_rule">
+            Enforce 1% Rule (cap score at 40 if fails)
+          </label>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label for="id_target_hold_years" class="form-label">Target Hold (years)</label>
+        {{ form.target_hold_years }}
+      </div>
+      <div class="col-md-4"></div>
+    </div>
+
+    <h5 class="mb-3">Assumptions</h5>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <label for="id_annual_rent_growth_assumption" class="form-label">Annual Rent Growth (%)</label>
+        {{ form.annual_rent_growth_assumption }}
+        <div class="form-text">e.g. 0.03 = 3 %</div>
+      </div>
+      <div class="col-md-4">
+        <label for="id_annual_appreciation_assumption" class="form-label">Annual Appreciation (%)</label>
+        {{ form.annual_appreciation_assumption }}
+        <div class="form-text">e.g. 0.03 = 3 %</div>
+      </div>
+      <div class="col-md-4">
+        <label for="id_marginal_tax_rate" class="form-label">Marginal Tax Rate (%)</label>
+        {{ form.marginal_tax_rate }}
+        <div class="form-text">e.g. 0.24 = 24 %</div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Targets</button>
+  </form>
+</div>
+{% endblock %}

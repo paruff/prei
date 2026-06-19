@@ -4,7 +4,7 @@ from typing import cast
 
 from django import forms
 
-from .models import OperatingExpense, Property, RentalIncome
+from .models import OperatingExpense, Property, RentalIncome, UserInvestmentTargets
 
 MIN_REALISTIC_YEAR_BUILT = 1800
 
@@ -114,3 +114,44 @@ class OperatingExpenseForm(forms.ModelForm):
     class Meta:
         model = OperatingExpense
         fields = ["category", "amount", "frequency", "effective_date"]
+
+
+class InvestmentTargetsForm(forms.ModelForm):
+    """Form for editing a user's underwriting thresholds and assumptions."""
+
+    class Meta:
+        model = UserInvestmentTargets
+        fields = [
+            "min_coc_pct",
+            "min_dscr",
+            "max_grm",
+            "require_one_pct_rule",
+            "target_hold_years",
+            "annual_rent_growth_assumption",
+            "annual_appreciation_assumption",
+            "marginal_tax_rate",
+        ]
+        widgets = {
+            "min_coc_pct": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01"}
+            ),
+            "min_dscr": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01"}
+            ),
+            "max_grm": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.1"}
+            ),
+            "require_one_pct_rule": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+            "target_hold_years": forms.NumberInput(attrs={"class": "form-control"}),
+            "annual_rent_growth_assumption": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01"}
+            ),
+            "annual_appreciation_assumption": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01"}
+            ),
+            "marginal_tax_rate": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01"}
+            ),
+        }

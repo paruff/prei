@@ -85,9 +85,19 @@ def score_listing_v1(listing: Listing) -> Decimal:
 
     Higher score is better. This is a simple heuristic for MVP.
 
-    Deprecated: use score_listing_v2 for passive investing use cases.
-    Will be removed after all callers are migrated.
+    .. deprecated::
+        Use :func:`core.services.scoring.score_listing_v2` for
+        underwriting-grade scores.  Will be removed after all callers
+        are migrated.
     """
+    import warnings as _warnings
+
+    _warnings.warn(
+        "score_listing_v1 is deprecated; use core.services.scoring.score_listing_v2 "
+        "for investor-grade underwriting scores.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     price = to_decimal(listing.price) if listing.price is not None else Decimal("0")
     sq_ft = Decimal(listing.sq_ft or 0)
     # price per square foot (lower is better)

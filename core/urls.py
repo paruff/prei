@@ -48,4 +48,5 @@ urlpatterns = [
     ),
     path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
+    path("settings/investment-targets/", views.investment_targets_edit, name="investment_targets_edit"),
 ]
