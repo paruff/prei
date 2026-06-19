@@ -1,7 +1,7 @@
 from django.urls import path
 
 from . import views
-from .views_portfolio import portfolio_dashboard
+from .views_portfolio import portfolio_actuals_add, portfolio_dashboard
 
 urlpatterns = [
     path("", views.home, name="home"),
@@ -47,6 +47,7 @@ urlpatterns = [
         name="report_property",
     ),
     path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
+    path("portfolio/actuals/add/", portfolio_actuals_add, name="portfolio_actuals_add"),
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
     path("settings/investment-targets/", views.investment_targets_edit, name="investment_targets_edit"),
     path("markets/", views.markets_list, name="markets_list"),

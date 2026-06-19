@@ -1106,3 +1106,58 @@ class UserInvestmentTargets(models.Model):
 
     def __str__(self) -> str:  # noqa: D401
         return f"Investment targets for {self.user.username}"
+
+
+class MonthlyActuals(models.Model):
+    """Monthly actual income and expense figures entered from PM reports.
+
+    Used for variance analysis comparing actuals to underwritten projections.
+    """
+
+    prop = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="monthly_actuals"
+    )
+    month = models.DateField(
+        help_text="First day of month, e.g. 2026-06-01",
+    )
+    actual_rent_collected = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    actual_vacancy_days = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of vacant days in the month",
+    )
+    actual_expenses = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0"),
+        help_text="Total operating expenses (taxes, insurance, HOA, etc.)",
+    )
+    actual_maintenance = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0"),
+        help_text="Maintenance and repair costs",
+    )
+    notes = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("prop", "month")
+        ordering = ["-month"]
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"Actuals for {self.prop} — {self.month.strftime('%Y-%m')}"
+
+    @property
+    def actual_noi(self) -> Decimal:
+        """Net operating income for this month."""
+        return (
+            self.actual_rent_collected
+            - self.actual_expenses
+            - self.actual_maintenance
+        )
+
+    @property
+    def vacancy_rate(self) -> Decimal:
+        """Vacancy rate as a fraction of the month."""
+        days_in_month = 30  # Simplified; most months ~30 days
+        return Decimal(str(self.actual_vacancy_days)) / Decimal(str(days_in_month))
