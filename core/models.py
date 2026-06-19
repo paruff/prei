@@ -307,6 +307,33 @@ class MarketSnapshot(models.Model):
     city = models.CharField(max_length=128, blank=True, default="")
     state = models.CharField(max_length=64, blank=True, default="")
 
+    # --- Phase 0: Census & BLS market indicators ---
+    msa_name = models.CharField(
+        max_length=255, blank=True, default="",
+        help_text="Metropolitan Statistical Area name",
+    )
+    population = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Total population for ZIP/area",
+    )
+    population_growth_pct_5yr = models.DecimalField(
+        max_digits=7, decimal_places=4, null=True, blank=True,
+        help_text="5-year population growth as fraction (e.g. 0.0234 = 2.34%)",
+    )
+    unemployment_rate = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True,
+        help_text="Unemployment rate as fraction (e.g. 0.045 = 4.5%)",
+    )
+    median_household_income = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Median household income in dollars",
+    )
+    fetched_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When this data was fetched from Census/BLS APIs",
+    )
+
+    # --- Existing metrics ---
     rent_index = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0")
     )
