@@ -50,4 +50,5 @@ urlpatterns = [
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
     path("settings/investment-targets/", views.investment_targets_edit, name="investment_targets_edit"),
     path("markets/", views.markets_list, name="markets_list"),
+    path("brrrr/", views.brrrr_calculator, name="brrrr_calculator"),
 ]

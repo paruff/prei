@@ -1091,3 +1091,53 @@ def markets_list(request: HttpRequest) -> HttpResponse:
         "markets/list.html",
         {"markets": markets},
     )
+
+
+def brrrr_calculator(request: HttpRequest) -> HttpResponse:
+    """Standalone BRRRR calculator page — no login required.
+
+    Accepts POST with deal inputs and renders the BRRRRAnalysis result.
+    GET renders an empty form.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from core.services.brrrr import calculate_brrrr
+
+    result = None
+    form_data: dict[str, str] = {}
+
+    if request.method == "POST":
+        # Collect form values
+        form_data = {
+            "purchase_price": request.POST.get("purchase_price", ""),
+            "rehab_cost": request.POST.get("rehab_cost", ""),
+            "arv": request.POST.get("arv", ""),
+            "monthly_rent_post_rehab": request.POST.get("monthly_rent_post_rehab", ""),
+            "annual_operating_expenses": request.POST.get("annual_operating_expenses", ""),
+            "refi_ltv_pct": request.POST.get("refi_ltv_pct", "75"),
+            "refi_interest_rate": request.POST.get("refi_interest_rate", "7"),
+            "refi_term_years": request.POST.get("refi_term_years", "30"),
+            "closing_costs_pct": request.POST.get("closing_costs_pct", "2"),
+        }
+
+        try:
+            result = calculate_brrrr(
+                purchase_price=Decimal(form_data["purchase_price"]),
+                rehab_cost=Decimal(form_data["rehab_cost"]),
+                arv=Decimal(form_data["arv"]),
+                monthly_rent_post_rehab=Decimal(form_data["monthly_rent_post_rehab"]),
+                annual_operating_expenses=Decimal(form_data["annual_operating_expenses"]),
+                refi_ltv_pct=Decimal(form_data["refi_ltv_pct"]) / Decimal("100"),
+                refi_interest_rate=Decimal(form_data["refi_interest_rate"]) / Decimal("100"),
+                refi_term_years=int(form_data["refi_term_years"]),
+                closing_costs_pct=Decimal(form_data["closing_costs_pct"]) / Decimal("100"),
+            )
+        except (InvalidOperation, ValueError, ZeroDivisionError):
+            # Invalid input — render form with no result
+            result = None
+
+    return render(
+        request,
+        "brrrr_calculator.html",
+        {"result": result, "form_data": form_data},
+    )

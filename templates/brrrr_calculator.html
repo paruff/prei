@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}BRRRR Calculator — Prei{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">BRRRR Calculator</h1>
+    <span class="text-muted">Buy, Rehab, Rent, Refinance, Repeat</span>
+  </div>
+
+  <div class="row g-4">
+    <!-- Input Form -->
+    <div class="col-12 col-lg-5">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Deal Inputs</h2>
+          <form id="brrrr-form" method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label for="purchase_price" class="form-label">Purchase Price ($)</label>
+              <input type="number" class="form-control" id="purchase_price" name="purchase_price"
+                     step="0.01" min="0" required
+                     value="{{ form_data.purchase_price|default:'' }}">
+            </div>
+
+            <div class="mb-3">
+              <label for="rehab_cost" class="form-label">Rehab Cost ($)</label>
+              <input type="number" class="form-control" id="rehab_cost" name="rehab_cost"
+                     step="0.01" min="0" required
+                     value="{{ form_data.rehab_cost|default:'' }}">
+            </div>
+
+            <div class="mb-3">
+              <label for="arv" class="form-label">After-Repair Value (ARV) ($)</label>
+              <input type="number" class="form-control" id="arv" name="arv"
+                     step="0.01" min="0" required
+                     value="{{ form_data.arv|default:'' }}">
+              <div class="form-text">Your estimate of the property's value after renovation.</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="monthly_rent" class="form-label">Monthly Rent Post-Rehab ($)</label>
+              <input type="number" class="form-control" id="monthly_rent" name="monthly_rent_post_rehab"
+                     step="0.01" min="0" required
+                     value="{{ form_data.monthly_rent_post_rehab|default:'' }}">
+            </div>
+
+            <div class="mb-3">
+              <label for="annual_opex" class="form-label">Annual Operating Expenses ($)</label>
+              <input type="number" class="form-control" id="annual_opex" name="annual_operating_expenses"
+                     step="0.01" min="0" required
+                     value="{{ form_data.annual_operating_expenses|default:'' }}">
+              <div class="form-text">Taxes, insurance, management, maintenance, capex, vacancy.</div>
+            </div>
+
+            <hr>
+            <h3 class="h6 mb-3">Refinance Terms</h3>
+
+            <div class="row g-3">
+              <div class="col-6">
+                <label for="refi_ltv" class="form-label">Refi LTV (%)</label>
+                <input type="number" class="form-control" id="refi_ltv" name="refi_ltv_pct"
+                       step="1" min="1" max="99" required
+                       value="{{ form_data.refi_ltv_pct|default:'75' }}">
+              </div>
+              <div class="col-6">
+                <label for="refi_rate" class="form-label">Refi Rate (%)</label>
+                <input type="number" class="form-control" id="refi_rate" name="refi_interest_rate"
+                       step="0.01" min="0" max="30" required
+                       value="{{ form_data.refi_interest_rate|default:'7' }}">
+              </div>
+              <div class="col-6">
+                <label for="refi_term" class="form-label">Term (years)</label>
+                <input type="number" class="form-control" id="refi_term" name="refi_term_years"
+                       step="1" min="1" max="50" required
+                       value="{{ form_data.refi_term_years|default:'30' }}">
+              </div>
+              <div class="col-6">
+                <label for="closing_pct" class="form-label">Closing Costs (%)</label>
+                <input type="number" class="form-control" id="closing_pct" name="closing_costs_pct"
+                       step="0.01" min="0" max="10" required
+                       value="{{ form_data.closing_costs_pct|default:'2' }}">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-4">Calculate BRRRR</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="col-12 col-lg-7">
+      {% if result %}
+        <!-- Verdict Banner -->
+        <div class="card mb-4 {% if result.verdict == 'Full Cycle' %}border-success{% elif result.verdict == 'Partial Recycle' %}border-warning{% else %}border-danger{% endif %}">
+          <div class="card-body text-center py-4">
+            <h2 class="h4 mb-2">Verdict: {{ result.verdict }}</h2>
+            {% if result.is_full_cycle %}
+              <p class="text-success mb-0 fw-semibold">Infinite returns — all capital recovered!</p>
+            {% elif result.verdict == "Partial Recycle" %}
+              <p class="text-warning mb-0">Good deal — most capital recycled.</p>
+            {% else %}
+              <p class="text-danger mb-0">Too much capital left in the deal.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <div class="text-muted small">Total Project Cost</div>
+                <div class="fs-5 fw-semibold">${{ result.total_project_cost|floatformat:0 }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <div class="text-muted small">Max Refi Loan</div>
+                <div class="fs-5 fw-semibold">${{ result.max_refi_loan|floatformat:0 }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <div class="text-muted small">Cash Left in Deal</div>
+                <div class="fs-5 fw-semibold {% if result.cash_left_in_deal <= 0 %}text-success{% elif result.cash_left_in_deal <= result.total_project_cost %}text-warning{% else %}text-danger{% endif %}">
+                  ${{ result.cash_left_in_deal|floatformat:0 }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <div class="text-muted small">Post-Refi CoC</div>
+                <div class="fs-5 fw-semibold">
+                  {% if result.post_refi_coc == "Infinity" %}∞{% else %}{{ result.post_refi_coc|floatformat:2 }}{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Breakdown -->
+        <div class="card">
+          <div class="card-body">
+            <h3 class="h5 mb-3">Detailed Breakdown</h3>
+            <table class="table table-sm mb-0">
+              <tbody>
+                <tr>
+                  <td class="text-muted">Purchase Price</td>
+                  <td class="text-end">${{ result.purchase_price|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Rehab Cost</td>
+                  <td class="text-end">${{ result.rehab_cost|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">After-Repair Value (ARV)</td>
+                  <td class="text-end fw-bold">${{ result.arv|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Max Refi Loan ({{ form_data.refi_ltv_pct|default:75 }}% LTV)</td>
+                  <td class="text-end">${{ result.max_refi_loan|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Cash Left in Deal</td>
+                  <td class="text-end {% if result.cash_left_in_deal <= 0 %}text-success{% else %}text-warning{% endif %}">
+                    ${{ result.cash_left_in_deal|floatformat:2 }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Post-Refi DSCR</td>
+                  <td class="text-end {% if result.post_refi_dscr >= 1.25 %}text-success{% else %}text-danger{% endif %}">
+                    {{ result.post_refi_dscr|floatformat:2 }}
+                    {% if result.post_refi_dscr < 1.25 %}
+                      <span class="badge bg-warning text-dark ms-1">Below 1.25</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Post-Refi CoC</td>
+                  <td class="text-end">
+                    {% if result.post_refi_coc == "Infinity" %}
+                      <span class="text-success fw-bold">∞ (Infinite)</span>
+                    {% else %}
+                      {{ result.post_refi_coc|floatformat:4 }}
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted">Full Cycle</td>
+                  <td class="text-end">
+                    {% if result.is_full_cycle %}
+                      <span class="badge bg-success">Yes</span>
+                    {% else %}
+                      <span class="badge bg-secondary">No</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% else %}
+        <!-- Empty state -->
+        <div class="card">
+          <div class="card-body text-center py-5">
+            <h2 class="h5">Enter deal details to calculate</h2>
+            <p class="text-muted mb-0">
+              Fill in the form on the left and click "Calculate BRRRR" to see
+              whether this deal achieves Full Cycle, Partial Recycle, or is a
+              Capital Trap.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
