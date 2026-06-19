@@ -21,27 +21,131 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-body">
-      <h2 class="h5">Investment KPIs</h2>
-      <div class="row g-2 mt-2">
-        <div class="col-12 col-md-4"><strong>NOI:</strong> {% if analysis %}${{ analysis.noi|floatformat:2 }}{% else %}—{% endif %}</div>
-        <div class="col-12 col-md-4"><strong>Cap Rate:</strong> {% if analysis %}{{ analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</div>
-        <div class="col-12 col-md-4"><strong>Cash-on-Cash:</strong> {% if analysis %}{{ analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</div>
-        <div class="col-12 col-md-4"><strong>IRR:</strong> {% if analysis %}{{ analysis.irr|floatformat:4 }}{% else %}—{% endif %}</div>
-        <div class="col-12 col-md-4"><strong>DSCR:</strong> {% if analysis %}{{ analysis.dscr|floatformat:4 }}{% else %}—{% endif %}</div>
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" id="propertyTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="kpis-tab" data-bs-toggle="tab" data-bs-target="#kpis" type="button" role="tab">KPIs</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="projections-tab" data-bs-toggle="tab" data-bs-target="#projections" type="button" role="tab">10-Year Projections</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="exit-tab" data-bs-toggle="tab" data-bs-target="#exit" type="button" role="tab">Exit Analysis</button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-3" id="propertyTabContent">
+    <!-- KPIs Tab -->
+    <div class="tab-pane fade show active" id="kpis" role="tabpanel">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h5">Investment KPIs</h2>
+          <div class="row g-2 mt-2">
+            <div class="col-12 col-md-4"><strong>NOI:</strong> {% if analysis %}${{ analysis.noi|floatformat:2 }}{% else %}—{% endif %}</div>
+            <div class="col-12 col-md-4"><strong>Cap Rate:</strong> {% if analysis %}{{ analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</div>
+            <div class="col-12 col-md-4"><strong>Cash-on-Cash:</strong> {% if analysis %}{{ analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</div>
+            <div class="col-12 col-md-4"><strong>IRR:</strong> {% if analysis %}{{ analysis.irr|floatformat:4 }}{% else %}—{% endif %}</div>
+            <div class="col-12 col-md-4"><strong>DSCR:</strong> {% if analysis %}{{ analysis.dscr|floatformat:4 }}{% else %}—{% endif %}</div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- After-Tax Disclaimer (for when after-tax calculations are displayed) -->
-  <!--
-  <div class="alert alert-info mt-3" role="alert">
-    <small>
-      <strong>Note:</strong> After-tax calculations use a simplified model.
-      Does not apply PAL (Passive Activity Loss) rules or cost segregation.
-      Consult a CPA for accurate tax advice.
-    </small>
+    <!-- 10-Year Projections Tab -->
+    <div class="tab-pane fade" id="projections" role="tabpanel">
+      {% if projections %}
+        <div class="card">
+          <div class="card-body">
+            <h2 class="h5">10-Year Cash Flow Projection</h2>
+            <div class="table-responsive mt-3">
+              <table class="table table-sm table-striped">
+                <thead>
+                  <tr>
+                    <th>Year</th>
+                    <th>Gross Rent</th>
+                    <th>Expenses</th>
+                    <th>NOI</th>
+                    <th>Mortgage</th>
+                    <th>Pre-Tax CF</th>
+                    <th>After-Tax CF</th>
+                    <th>Loan Balance</th>
+                    <th>Property Value</th>
+                    <th>Equity</th>
+                    <th>Cumulative CF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in projections %}
+                    <tr>
+                      <td>{{ p.year }}</td>
+                      <td>${{ p.gross_rent|floatformat:2 }}</td>
+                      <td>${{ p.operating_expenses|floatformat:2 }}</td>
+                      <td>${{ p.noi|floatformat:2 }}</td>
+                      <td>${{ p.mortgage_payment_annual|floatformat:2 }}</td>
+                      <td>${{ p.pre_tax_cashflow|floatformat:2 }}</td>
+                      <td>${{ p.after_tax_cashflow|floatformat:2 }}</td>
+                      <td>${{ p.loan_balance|floatformat:2 }}</td>
+                      <td>${{ p.property_value|floatformat:2 }}</td>
+                      <td>${{ p.equity|floatformat:2 }}</td>
+                      <td>${{ p.cumulative_cashflow|floatformat:2 }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- After-Tax Disclaimer -->
+        <div class="alert alert-info mt-3" role="alert">
+          <small>
+            <strong>Note:</strong> After-tax calculations use a simplified model.
+            Does not apply PAL (Passive Activity Loss) rules or cost segregation.
+            Consult a CPA for accurate tax advice.
+          </small>
+        </div>
+      {% else %}
+        <div class="alert alert-warning">
+          Projections could not be computed. Ensure all property financial fields are populated.
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Exit Analysis Tab -->
+    <div class="tab-pane fade" id="exit" role="tabpanel">
+      {% if exit_analysis %}
+        <div class="card">
+          <div class="card-body">
+            <h2 class="h5">Exit Analysis (Year 10)</h2>
+            <div class="row g-3 mt-2">
+              <div class="col-12 col-md-6">
+                <table class="table table-sm">
+                  <tbody>
+                    <tr><td><strong>Gross Sale Price</strong></td><td>${{ exit_analysis.gross_sale_price|floatformat:2 }}</td></tr>
+                    <tr><td>Selling Costs (6%)</td><td>-${{ exit_analysis.selling_costs|floatformat:2 }}</td></tr>
+                    <tr><td>Loan Payoff</td><td>-${{ exit_analysis.loan_payoff|floatformat:2 }}</td></tr>
+                    <tr><td><strong>Net Proceeds (Before Tax)</strong></td><td>${{ exit_analysis.net_proceeds_before_tax|floatformat:2 }}</td></tr>
+                    <tr><td>Capital Gains Tax (20%)</td><td>-${{ exit_analysis.estimated_capital_gains_tax|floatformat:2 }}</td></tr>
+                    <tr class="table-success"><td><strong>Net Proceeds (After Tax)</strong></td><td><strong>${{ exit_analysis.net_proceeds_after_tax|floatformat:2 }}</strong></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-12 col-md-6">
+                <table class="table table-sm">
+                  <tbody>
+                    <tr><td><strong>Total Return</strong></td><td><strong>${{ exit_analysis.total_return|floatformat:2 }}</strong></td></tr>
+                    <tr><td><strong>Annualized IRR</strong></td><td><strong>{{ exit_analysis.annualized_irr|floatformat:4 }}</strong></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="alert alert-warning">
+          Exit analysis could not be computed. Ensure all property financial fields are populated.
+        </div>
+      {% endif %}
+    </div>
   </div>
-  -->
 {% endblock %}

@@ -393,12 +393,26 @@ def property_detail(request, pk: int):
     if not is_owner_or_shared(request.user, property_obj, min_role="client"):
         raise Http404
     user_role = _get_property_role(request.user, property_obj)
+
+    # Compute 10-year projections for the detail view
+    projections = None
+    exit_analysis = None
+    try:
+        from core.services.projections import project_hold_period
+
+        projections, exit_analysis = project_hold_period(property_obj, hold_years=10)
+    except Exception:
+        # Projections are optional; don't break the page if they fail
+        pass
+
     return render(
         request,
         "properties/detail.html",
         {
             "property": property_obj,
             "analysis": getattr(property_obj, "analysis", None),
+            "projections": projections,
+            "exit_analysis": exit_analysis,
             "can_edit_property": user_role in {"owner", "team"},
             "can_share_property": user_role == "owner",
         },
