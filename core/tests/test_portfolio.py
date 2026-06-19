@@ -133,5 +133,4 @@ def test_dashboard_shows_portfolio_summary(client, user):
     ] == Decimal("0.06")
     content = response.content.decode()
     assert "Total Annual NOI" in content
-    assert "Weighted Average Cap Rate" in content
-    assert "portfolio-allocation-chart" in content
+    assert "Avg Cap Rate" in content

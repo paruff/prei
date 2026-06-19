@@ -139,8 +139,11 @@ def dashboard(request):
         return redirect("property_list")
 
     properties = (
-        Property.objects.filter(user=request.user)
+        Property.objects.filter(
+            Q(user=request.user) | Q(property_shares__shared_with=request.user)
+        )
         .select_related("analysis")
+        .distinct()
         .order_by("-id")
     )
     portfolio_summary = compute_portfolio_summary(request.user)
@@ -160,14 +163,64 @@ def dashboard(request):
         if item["total_value"] is not None
     ]
 
+    # Compute underwriting scores for each property
+    from core.services.scoring import score_listing_v2
+    from core.services.market_scoring import score_market_by_zip
+    from core.models import UserInvestmentTargets
+
+    try:
+        targets = UserInvestmentTargets.objects.get(user=request.user)
+    except UserInvestmentTargets.DoesNotExist:
+        targets = None
+
+    # Collect unique states for filter dropdown
+    states = sorted(
+        properties.values_list("state", flat=True).distinct().exclude(state="")
+    )
+
+    scored_properties = []
+    for prop in properties:
+        score_data = {
+            "property": prop,
+            "underwriting_score": None,
+            "market_score": None,
+            "is_incomplete": False,
+        }
+
+        # Check for incomplete data
+        if (
+            prop.monthly_rent_gross is None
+            or prop.monthly_rent_gross <= 0
+            or prop.purchase_price is None
+            or prop.purchase_price <= 0
+        ):
+            score_data["is_incomplete"] = True
+
+        # Compute underwriting score
+        if targets and not score_data["is_incomplete"]:
+            try:
+                score_data["underwriting_score"] = score_listing_v2(prop, targets)
+            except Exception:
+                pass
+
+        # Compute market score
+        if prop.zip_code:
+            try:
+                score_data["market_score"] = score_market_by_zip(prop.zip_code)
+            except Exception:
+                pass
+
+        scored_properties.append(score_data)
+
     return render(
         request,
         "dashboard.html",
         {
-            "properties": properties,
+            "scored_properties": scored_properties,
             "portfolio_summary": portfolio_summary,
             "state_allocation_labels": state_allocation_labels,
             "state_allocation_values": state_allocation_values,
+            "states": states,
         },
     )
 
@@ -1012,4 +1065,29 @@ def investment_targets_edit(request: HttpRequest) -> HttpResponse:
         request,
         "investment_targets/edit.html",
         {"form": form, "targets": targets},
+    )
+
+
+@login_required
+def markets_list(request: HttpRequest) -> HttpResponse:
+    """List all markets (ZIPs) with entered properties, showing market scores."""
+    from core.services.market_scoring import score_market_by_zip
+
+    # Get all distinct ZIP codes that have at least one property
+    zips = (
+        Property.objects.values_list("zip_code", flat=True)
+        .distinct()
+        .exclude(zip_code="")
+        .order_by("zip_code")
+    )
+
+    markets = []
+    for zip_code in zips:
+        market_data = score_market_by_zip(zip_code)
+        markets.append(market_data)
+
+    return render(
+        request,
+        "markets/list.html",
+        {"markets": markets},
     )

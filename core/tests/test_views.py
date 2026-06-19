@@ -31,9 +31,9 @@ def test_dashboard_shows_property_kpis(client, user, full_sfr):
 
     assert response.status_code == 200
     assert full_sfr["property"].address in content
-    assert "17016.00" in content
-    assert "0.0524" in content
-    assert "0.0850" in content
+    # Dashboard now shows Deal Screener with portfolio summary cards
+    assert "Total Properties" in content
+    assert "Total Capital Invested" in content
 
 
 def test_property_list_excludes_other_users_properties(

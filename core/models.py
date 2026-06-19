@@ -138,7 +138,9 @@ class TeamMember(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [["team", "user"]]
+        constraints = [
+            models.UniqueConstraint(fields=["team", "user"], name="unique_team_user"),
+        ]
 
     def __str__(self) -> str:  # noqa: D401
         return f"{self.user.username} in {self.team.name}"
@@ -175,7 +177,9 @@ class SharedProperty(models.Model):
     shared_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [["property", "team"]]
+        constraints = [
+            models.UniqueConstraint(fields=["property", "team"], name="unique_property_team"),
+        ]
 
 
 class PropertyShare(models.Model):
@@ -191,7 +195,9 @@ class PropertyShare(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [["property", "shared_with"]]
+        constraints = [
+            models.UniqueConstraint(fields=["property", "shared_with"], name="unique_property_shared_with"),
+        ]
 
 
 class RentalIncome(models.Model):
@@ -628,7 +634,9 @@ class GrowthArea(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [["state", "city_name"]]
+        constraints = [
+            models.UniqueConstraint(fields=["state", "city_name"], name="unique_state_city"),
+        ]
         ordering = ["-data_timestamp"]
 
     def __str__(self) -> str:  # noqa: D401
@@ -792,7 +800,9 @@ class UserWatchlist(models.Model):
     notes = models.TextField(blank=True, default="")
 
     class Meta:
-        unique_together = [["user", "property"]]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "property"], name="unique_user_watchlist_property"),
+        ]
         ordering = ["-added_at"]
 
     def __str__(self) -> str:  # noqa: D401

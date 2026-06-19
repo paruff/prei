@@ -1,13 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Deal Screener — Prei{% endblock %}
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Dashboard</h1>
+    <h1 class="h3 mb-0">Deal Screener</h1>
     <a href="{% url 'property_add' %}" class="btn btn-primary btn-sm">Add Property</a>
   </div>
 
+  <!-- Portfolio Summary Cards -->
   <div class="row g-3 mb-4">
-    <div class="col-12 col-md-6 col-lg-4">
+    <div class="col-12 col-md-6 col-lg-3">
       <div class="card h-100">
         <div class="card-body">
           <div class="text-muted">Total Properties</div>
@@ -15,7 +16,7 @@
         </div>
       </div>
     </div>
-    <div class="col-12 col-md-6 col-lg-4">
+    <div class="col-12 col-md-6 col-lg-3">
       <div class="card h-100">
         <div class="card-body">
           <div class="text-muted">Total Capital Invested</div>
@@ -23,7 +24,7 @@
         </div>
       </div>
     </div>
-    <div class="col-12 col-md-6 col-lg-4">
+    <div class="col-12 col-md-6 col-lg-3">
       <div class="card h-100">
         <div class="card-body">
           <div class="text-muted">Total Annual NOI</div>
@@ -31,103 +32,311 @@
         </div>
       </div>
     </div>
-    <div class="col-12 col-md-6 col-lg-4">
+    <div class="col-12 col-md-6 col-lg-3">
       <div class="card h-100">
         <div class="card-body">
-          <div class="text-muted">Weighted Average Cap Rate</div>
+          <div class="text-muted">Avg Cap Rate</div>
           <div class="fs-4 fw-semibold">{{ portfolio_summary.weighted_average_cap_rate|floatformat:4 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-md-6 col-lg-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Total Monthly Cash Flow</div>
-          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_monthly_cash_flow|floatformat:2 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-lg-8">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted mb-2">Portfolio Allocation by State</div>
-          <p class="small text-muted mb-2" id="portfolio-allocation-status">Loading chart…</p>
-          <canvas id="portfolio-allocation-chart" height="120"></canvas>
         </div>
       </div>
     </div>
   </div>
 
-  {% if properties %}
-    <div class="row g-3">
-      {% for property in properties %}
-        <div class="col-12">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex justify-content-between flex-wrap gap-2">
-                <div>
-                  <h2 class="h5 mb-1">{{ property.address }}</h2>
-                  <div class="text-muted">{{ property.city }}, {{ property.state }} {{ property.zip_code }}</div>
-                </div>
-                <div>
-                  <a href="{% url 'property_detail' property.pk %}" class="btn btn-outline-primary btn-sm">View Details</a>
-                </div>
+  {% if scored_properties %}
+    <!-- Filters -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <!-- Min Score Slider -->
+          <div class="col-12 col-md-3">
+            <label for="filter-min-score" class="form-label">Min Score: <span id="min-score-display">0</span></label>
+            <input type="range" class="form-range" id="filter-min-score" min="0" max="100" value="0" step="5">
+          </div>
+
+          <!-- Verdict Checkboxes -->
+          <div class="col-12 col-md-4">
+            <label class="form-label">Verdict</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input filter-verdict" type="checkbox" value="Strong Buy" id="verdict-strong" checked>
+                <label class="form-check-label" for="verdict-strong">Strong Buy</label>
               </div>
-              <div class="row mt-3 g-2">
-                <div class="col-6 col-md-3"><strong>Purchase Price:</strong> ${{ property.purchase_price|floatformat:2 }}</div>
-                <div class="col-6 col-md-3"><strong>NOI:</strong> {% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</div>
-                <div class="col-6 col-md-3"><strong>Cap Rate:</strong> {% if property.analysis %}{{ property.analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</div>
-                <div class="col-6 col-md-3"><strong>CoC:</strong> {% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</div>
+              <div class="form-check">
+                <input class="form-check-input filter-verdict" type="checkbox" value="Conditional" id="verdict-conditional" checked>
+                <label class="form-check-label" for="verdict-conditional">Conditional</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input filter-verdict" type="checkbox" value="Pass" id="verdict-pass" checked>
+                <label class="form-check-label" for="verdict-pass">Pass</label>
               </div>
             </div>
           </div>
+
+          <!-- State Filter -->
+          <div class="col-12 col-md-3">
+            <label for="filter-state" class="form-label">State</label>
+            <select class="form-select" id="filter-state">
+              <option value="">All States</option>
+              {% for state in states %}
+                <option value="{{ state }}">{{ state }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- 1% Rule Toggle -->
+          <div class="col-12 col-md-2">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="filter-one-pct">
+              <label class="form-check-label" for="filter-one-pct">1% Rule Only</label>
+            </div>
+          </div>
         </div>
-      {% endfor %}
+      </div>
+    </div>
+
+    <!-- Results count -->
+    <div class="mb-2">
+      <small class="text-muted" id="results-count">Showing {{ scored_properties|length }} properties</small>
+    </div>
+
+    <!-- Deal Screener Table -->
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle" id="deal-table">
+        <thead>
+          <tr>
+            <th style="cursor: pointer;" data-sort="address">Address ↕</th>
+            <th style="cursor: pointer;" data-sort="market_score">Market ↕</th>
+            <th style="cursor: pointer;" data-sort="one_pct">1% Rule ↕</th>
+            <th style="cursor: pointer;" data-sort="coc">CoC ↕</th>
+            <th style="cursor: pointer;" data-sort="dscr">DSCR ↕</th>
+            <th style="cursor: pointer;" data-sort="cap_rate">Cap Rate ↕</th>
+            <th style="cursor: pointer;" data-sort="score" class="table-primary">Score ↕</th>
+            <th>Verdict</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in scored_properties %}
+            <tr
+              data-score="{{ item.underwriting_score.total_score|default:'0' }}"
+              data-verdict="{{ item.underwriting_score.verdict|default:'Unknown' }}"
+              data-state="{{ item.property.state }}"
+              data-one-pct="{{ item.underwriting_score.passes_one_pct_rule|default:'False' }}"
+              data-coc="{{ item.underwriting_score.cash_on_cash|default:'0' }}"
+              data-dscr="{{ item.underwriting_score.dscr|default:'0' }}"
+              data-cap-rate="{{ item.underwriting_score.cap_rate|default:'0' }}"
+              data-market-score="{{ item.market_score.overall_score|default:'0' }}"
+              data-address="{{ item.property.address }}"
+            >
+              <td>
+                <a href="{% url 'property_detail' item.property.pk %}">{{ item.property.address }}</a>
+                <div class="small text-muted">{{ item.property.city }}, {{ item.property.state }} {{ item.property.zip_code }}</div>
+                {% if item.is_incomplete %}
+                  <span class="badge bg-secondary">Incomplete Data</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.market_score %}
+                  <span class="fw-bold">{{ item.market_score.overall_score }}</span>
+                  {% if item.market_score.price_to_rent_ratio %}
+                    <div class="small text-muted">P/R: {{ item.market_score.price_to_rent_ratio|floatformat:1 }}</div>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.underwriting_score %}
+                  {% if item.underwriting_score.passes_one_pct_rule %}
+                    <span class="badge bg-success">Pass</span>
+                  {% else %}
+                    <span class="badge bg-danger">Fail</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.underwriting_score %}
+                  <span class="{% if item.underwriting_score.cash_on_cash < 0 %}text-danger{% elif item.underwriting_score.cash_on_cash >= 0.08 %}text-success{% endif %}">
+                    {{ item.underwriting_score.cash_on_cash|floatformat:2 }}%
+                  </span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.underwriting_score %}
+                  <span class="{% if item.underwriting_score.dscr < 1.0 %}text-danger{% elif item.underwriting_score.dscr >= 1.25 %}text-success{% endif %}">
+                    {{ item.underwriting_score.dscr|floatformat:2 }}
+                  </span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.underwriting_score %}
+                  <span class="{% if item.underwriting_score.cap_rate < 0.06 %}text-warning{% elif item.underwriting_score.cap_rate >= 0.06 %}text-success{% endif %}">
+                    {{ item.underwriting_score.cap_rate|floatformat:2 }}%
+                  </span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.underwriting_score %}
+                  <span class="fs-5 fw-bold">{{ item.underwriting_score.total_score }}</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.underwriting_score %}
+                  {% if item.underwriting_score.verdict == "Strong Buy" %}
+                    <span class="badge bg-success">{{ item.underwriting_score.verdict }}</span>
+                  {% elif item.underwriting_score.verdict == "Conditional" %}
+                    <span class="badge bg-warning text-dark">{{ item.underwriting_score.verdict }}</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ item.underwriting_score.verdict }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'property_detail' item.property.pk %}" class="btn btn-outline-primary btn-sm">Details</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   {% else %}
     <div class="card">
       <div class="card-body text-center py-5">
         <h2 class="h5">No properties yet</h2>
-        <p class="text-muted mb-3">Start your portfolio to see KPI insights.</p>
+        <p class="text-muted mb-3">Add properties to see underwriting scores and market analysis.</p>
         <a href="{% url 'property_add' %}" class="btn btn-primary">Add your first property</a>
       </div>
     </div>
   {% endif %}
-  {{ state_allocation_labels|json_script:"state-allocation-labels" }}
-  {{ state_allocation_values|json_script:"state-allocation-values" }}
-  <script>window.chartJsFailedToLoad = false;</script>
-  <script
-    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"
-    integrity="sha384-tgbB5AKnszdcfwcZtTfuhR3Ko1XZdlDfsLtkxiiAZiVkkXCkFmp+FQFh+V/UTo54"
-    crossorigin="anonymous"
-    onerror="window.chartJsFailedToLoad = true;"></script>
+
   <script>
-    const stateAllocationLabels = JSON.parse(document.getElementById("state-allocation-labels").textContent);
-    // Converted from stringified Python Decimal to JS Number for Chart.js compatibility;
-    // minor float precision loss is acceptable for visualization only.
-    const stateAllocationValues = JSON.parse(document.getElementById("state-allocation-values").textContent).map(Number);
-    const allocationStatus = document.getElementById("portfolio-allocation-status");
-    const allocationChartCanvas = document.getElementById("portfolio-allocation-chart");
-    const chartLibraryLoaded = !window.chartJsFailedToLoad && typeof Chart !== "undefined";
-    if (allocationChartCanvas && stateAllocationLabels.length > 0 && chartLibraryLoaded) {
-      new Chart(allocationChartCanvas, {
-        type: "doughnut",
-        data: {
-          labels: stateAllocationLabels,
-          datasets: [{
-            label: "Property Value by State",
-            data: stateAllocationValues,
-          }],
-        },
-      });
-      if (allocationStatus) {
-        allocationStatus.textContent = "";
+    document.addEventListener('DOMContentLoaded', function() {
+      const table = document.getElementById('deal-table');
+      if (!table) return;
+
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const minScoreSlider = document.getElementById('filter-min-score');
+      const minScoreDisplay = document.getElementById('min-score-display');
+      const verdictCheckboxes = document.querySelectorAll('.filter-verdict');
+      const stateFilter = document.getElementById('filter-state');
+      const onePctFilter = document.getElementById('filter-one-pct');
+      const resultsCount = document.getElementById('results-count');
+
+      // Sorting
+      let currentSort = { field: 'score', direction: 'desc' };
+
+      function getCellValue(row, field) {
+        switch(field) {
+          case 'address': return row.dataset.address || '';
+          case 'market_score': return parseFloat(row.dataset.marketScore) || 0;
+          case 'one_pct': return row.dataset.onePct === 'True' ? 1 : 0;
+          case 'coc': return parseFloat(row.dataset.coc) || 0;
+          case 'dscr': return parseFloat(row.dataset.dscr) || 0;
+          case 'cap_rate': return parseFloat(row.dataset.capRate) || 0;
+          case 'score': return parseFloat(row.dataset.score) || 0;
+          default: return 0;
+        }
       }
-    } else if (allocationStatus) {
-      allocationStatus.textContent =
-        stateAllocationLabels.length === 0
-          ? "No properties available for allocation yet."
-          : "Allocation chart is unavailable right now.";
-    }
+
+      function sortRows(field) {
+        if (currentSort.field === field) {
+          currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSort.field = field;
+          currentSort.direction = 'desc';
+        }
+
+        rows.sort((a, b) => {
+          let aVal = getCellValue(a, field);
+          let bVal = getCellValue(b, field);
+
+          if (field === 'address') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+            return currentSort.direction === 'asc'
+              ? aVal.localeCompare(bVal)
+              : bVal.localeCompare(aVal);
+          }
+
+          return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+        updateSortIndicators();
+      }
+
+      function updateSortIndicators() {
+        table.querySelectorAll('th[data-sort]').forEach(th => {
+          const field = th.dataset.sort;
+          if (field === currentSort.field) {
+            th.textContent = th.textContent.replace(/ [↕↑↓]$/, '') +
+              (currentSort.direction === 'asc' ? ' ↑' : ' ↓');
+          } else {
+            th.textContent = th.textContent.replace(/ [↕↑↓]$/, '') + ' ↕';
+          }
+        });
+      }
+
+      // Filtering
+      function applyFilters() {
+        const minScore = parseInt(minScoreSlider.value);
+        const selectedVerdicts = Array.from(verdictCheckboxes)
+          .filter(cb => cb.checked)
+          .map(cb => cb.value);
+        const selectedState = stateFilter.value;
+        const onePctOnly = onePctFilter.checked;
+
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+          const score = parseFloat(row.dataset.score) || 0;
+          const verdict = row.dataset.verdict;
+          const state = row.dataset.state;
+          const onePct = row.dataset.onePct;
+
+          const passScore = score >= minScore;
+          const passVerdict = selectedVerdicts.includes(verdict);
+          const passState = !selectedState || state === selectedState;
+          const passOnePct = !onePctOnly || onePct === 'True';
+
+          const visible = passScore && passVerdict && passState && passOnePct;
+          row.style.display = visible ? '' : 'none';
+          if (visible) visibleCount++;
+        });
+
+        resultsCount.textContent = 'Showing ' + visibleCount + ' of ' + rows.length + ' properties';
+      }
+
+      // Event listeners
+      minScoreSlider.addEventListener('input', function() {
+        minScoreDisplay.textContent = this.value;
+        applyFilters();
+      });
+
+      verdictCheckboxes.forEach(cb => cb.addEventListener('change', applyFilters));
+      stateFilter.addEventListener('change', applyFilters);
+      onePctFilter.addEventListener('change', applyFilters);
+
+      // Sort header clicks
+      table.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => sortRows(th.dataset.sort));
+      });
+
+      // Initial sort by score descending
+      sortRows('score');
+    });
   </script>
 {% endblock %}
