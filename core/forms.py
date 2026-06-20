@@ -9,6 +9,30 @@ from .models import OperatingExpense, Property, RentalIncome, UserInvestmentTarg
 MIN_REALISTIC_YEAR_BUILT = 1800
 
 
+class StyledNumberInput(forms.NumberInput):
+    """NumberInput that auto-applies ``form-input num`` CSS class."""
+
+    def __init__(self, *args, **kwargs):  # noqa: D401
+        super().__init__(*args, **kwargs)
+        self.attrs.setdefault("class", "form-input num")
+
+
+class StyledTextInput(forms.TextInput):
+    """TextInput that auto-applies ``form-input`` CSS class."""
+
+    def __init__(self, *args, **kwargs):  # noqa: D401
+        super().__init__(*args, **kwargs)
+        self.attrs.setdefault("class", "form-input")
+
+
+class StyledSelect(forms.Select):
+    """Select that auto-applies ``form-input`` CSS class."""
+
+    def __init__(self, *args, **kwargs):  # noqa: D401
+        super().__init__(*args, **kwargs)
+        self.attrs.setdefault("class", "form-input")
+
+
 class PropertyForm(forms.ModelForm):
     """Form for creating and editing properties with all MVP data-entry fields."""
 
@@ -16,10 +40,20 @@ class PropertyForm(forms.ModelForm):
         choices=[("", "---------")] + Property.PROPERTY_TYPE_CHOICES,
         required=False,
         initial="SFR",
+        widget=StyledSelect(),
     )
-    square_footage = forms.IntegerField(required=False, min_value=0)
-    num_units = forms.IntegerField(required=False, min_value=1, initial=1)
-    year_built = forms.IntegerField(required=False, min_value=MIN_REALISTIC_YEAR_BUILT)
+    square_footage = forms.IntegerField(
+        required=False, min_value=0,
+        widget=StyledNumberInput(attrs={"step": "100", "min": "0"}),
+    )
+    num_units = forms.IntegerField(
+        required=False, min_value=1, initial=1,
+        widget=StyledNumberInput(attrs={"step": "1", "min": "1"}),
+    )
+    year_built = forms.IntegerField(
+        required=False, min_value=MIN_REALISTIC_YEAR_BUILT,
+        widget=StyledNumberInput(attrs={"step": "1", "min": "1800", "max": "2030"}),
+    )
 
     class Meta:
         model = Property
@@ -57,28 +91,28 @@ class PropertyForm(forms.ModelForm):
             "capex_monthly",
         ]
         widgets = {
-            "address": forms.TextInput(attrs={"class": "form-control"}),
-            "city": forms.TextInput(attrs={"class": "form-control"}),
-            "state": forms.TextInput(attrs={"class": "form-control", "maxlength": "2"}),
-            "zip_code": forms.TextInput(attrs={"class": "form-control"}),
-            "purchase_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "purchase_date": forms.DateInput(
-                attrs={"class": "form-control", "type": "date"}
-            ),
-            "bedrooms": forms.NumberInput(attrs={"class": "form-control"}),
-            "bathrooms": forms.NumberInput(attrs={"class": "form-control", "step": "0.5"}),
-            "monthly_rent_gross": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "other_monthly_income": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "property_taxes_annual": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "insurance_annual": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "hoa_monthly": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "down_payment_pct": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "interest_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.0001"}),
-            "loan_term_years": forms.NumberInput(attrs={"class": "form-control"}),
-            "vacancy_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "mgmt_fee_pct": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "maintenance_monthly": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "capex_monthly": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "address": StyledTextInput(),
+            "city": StyledTextInput(),
+            "state": StyledTextInput(attrs={"maxlength": "2"}),
+            "zip_code": StyledTextInput(),
+            "property_type": StyledSelect(),
+            "purchase_price": StyledNumberInput(attrs={"step": "1000", "min": "0"}),
+            "purchase_date": forms.DateInput(attrs={"type": "date", "class": "form-input"}),
+            "bedrooms": StyledNumberInput(attrs={"step": "1", "min": "0"}),
+            "bathrooms": StyledNumberInput(attrs={"step": "0.5"}),
+            "year_built": StyledNumberInput(attrs={"step": "1", "min": "1800", "max": "2030"}),
+            "monthly_rent_gross": StyledNumberInput(attrs={"step": "50", "min": "0"}),
+            "other_monthly_income": StyledNumberInput(attrs={"step": "10", "min": "0"}),
+            "property_taxes_annual": StyledNumberInput(attrs={"step": "100", "min": "0"}),
+            "insurance_annual": StyledNumberInput(attrs={"step": "100", "min": "0"}),
+            "hoa_monthly": StyledNumberInput(attrs={"step": "10", "min": "0"}),
+            "maintenance_monthly": StyledNumberInput(attrs={"step": "10", "min": "0"}),
+            "capex_monthly": StyledNumberInput(attrs={"step": "10", "min": "0"}),
+            "down_payment_pct": StyledNumberInput(attrs={"step": "1", "min": "0", "max": "100"}),
+            "interest_rate": StyledNumberInput(attrs={"step": "0.125", "min": "0", "max": "30"}),
+            "loan_term_years": StyledNumberInput(attrs={"step": "1", "min": "1", "max": "40"}),
+            "vacancy_rate": StyledNumberInput(attrs={"step": "1", "min": "0", "max": "100"}),
+            "mgmt_fee_pct": StyledNumberInput(attrs={"step": "1", "min": "0", "max": "50"}),
         }
 
     def __init__(self, *args, **kwargs):

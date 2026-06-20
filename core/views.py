@@ -510,11 +510,11 @@ def property_add(request):
             property_obj.user = request.user
             property_obj.save()
             compute_analysis_for_property(property_obj)
-            return redirect("property_add_income", pk=property_obj.pk)
+            return redirect("property_detail", pk=property_obj.pk)
     else:
         form = PropertyForm()
 
-    return render(request, "properties/add.html", {"form": form})
+    return render(request, "property_form.html", {"form": form})
 
 
 @login_required
@@ -534,10 +534,10 @@ def property_edit(request, pk: int):
 
     return render(
         request,
-        "properties/edit.html",
+        "property_form.html",
         {
             "form": form,
-            "property": property_obj,
+            "object": property_obj,
             "can_delete_property": user_role == "owner",
         },
     )
