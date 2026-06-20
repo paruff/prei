@@ -1,222 +1,177 @@
 {% extends "base.html" %}
-{% block title %}BRRRR Calculator — Prei{% endblock %}
+{% block title %}BRRRR calculator{% endblock %}
+
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">BRRRR Calculator</h1>
-    <span class="text-muted">Buy, Rehab, Rent, Refinance, Repeat</span>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">BRRRR calculator</h1>
+    <p class="page-sub">Buy &middot; Rehab &middot; Rent &middot; Refinance &middot; Repeat</p>
   </div>
+</div>
 
-  <div class="row g-4">
-    <!-- Input Form -->
-    <div class="col-12 col-lg-5">
-      <div class="card">
-        <div class="card-body">
-          <h2 class="h5 mb-3">Deal Inputs</h2>
-          <form id="brrrr-form" method="post" novalidate>
-            {% csrf_token %}
-
-            <div class="mb-3">
-              <label for="purchase_price" class="form-label">Purchase Price ($)</label>
-              <input type="number" class="form-control" id="purchase_price" name="purchase_price"
-                     step="0.01" min="0" required
-                     value="{{ form_data.purchase_price|default:'' }}">
-            </div>
-
-            <div class="mb-3">
-              <label for="rehab_cost" class="form-label">Rehab Cost ($)</label>
-              <input type="number" class="form-control" id="rehab_cost" name="rehab_cost"
-                     step="0.01" min="0" required
-                     value="{{ form_data.rehab_cost|default:'' }}">
-            </div>
-
-            <div class="mb-3">
-              <label for="arv" class="form-label">After-Repair Value (ARV) ($)</label>
-              <input type="number" class="form-control" id="arv" name="arv"
-                     step="0.01" min="0" required
-                     value="{{ form_data.arv|default:'' }}">
-              <div class="form-text">Your estimate of the property's value after renovation.</div>
-            </div>
-
-            <div class="mb-3">
-              <label for="monthly_rent" class="form-label">Monthly Rent Post-Rehab ($)</label>
-              <input type="number" class="form-control" id="monthly_rent" name="monthly_rent_post_rehab"
-                     step="0.01" min="0" required
-                     value="{{ form_data.monthly_rent_post_rehab|default:'' }}">
-            </div>
-
-            <div class="mb-3">
-              <label for="annual_opex" class="form-label">Annual Operating Expenses ($)</label>
-              <input type="number" class="form-control" id="annual_opex" name="annual_operating_expenses"
-                     step="0.01" min="0" required
-                     value="{{ form_data.annual_operating_expenses|default:'' }}">
-              <div class="form-text">Taxes, insurance, management, maintenance, capex, vacancy.</div>
-            </div>
-
-            <hr>
-            <h3 class="h6 mb-3">Refinance Terms</h3>
-
-            <div class="row g-3">
-              <div class="col-6">
-                <label for="refi_ltv" class="form-label">Refi LTV (%)</label>
-                <input type="number" class="form-control" id="refi_ltv" name="refi_ltv_pct"
-                       step="1" min="1" max="99" required
-                       value="{{ form_data.refi_ltv_pct|default:'75' }}">
-              </div>
-              <div class="col-6">
-                <label for="refi_rate" class="form-label">Refi Rate (%)</label>
-                <input type="number" class="form-control" id="refi_rate" name="refi_interest_rate"
-                       step="0.01" min="0" max="30" required
-                       value="{{ form_data.refi_interest_rate|default:'7' }}">
-              </div>
-              <div class="col-6">
-                <label for="refi_term" class="form-label">Term (years)</label>
-                <input type="number" class="form-control" id="refi_term" name="refi_term_years"
-                       step="1" min="1" max="50" required
-                       value="{{ form_data.refi_term_years|default:'30' }}">
-              </div>
-              <div class="col-6">
-                <label for="closing_pct" class="form-label">Closing Costs (%)</label>
-                <input type="number" class="form-control" id="closing_pct" name="closing_costs_pct"
-                       step="0.01" min="0" max="10" required
-                       value="{{ form_data.closing_costs_pct|default:'2' }}">
-              </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100 mt-4">Calculate BRRRR</button>
-          </form>
-        </div>
-      </div>
+<div class="layout-2col">
+  <div class="card">
+    <h2 class="card-title">Deal inputs</h2>
+    <div class="form-group">
+      <label class="form-label" for="b-purchase">Purchase price ($)</label>
+      <input id="b-purchase" type="number" class="form-input num" value="120000" min="0" step="1000">
     </div>
-
-    <!-- Results -->
-    <div class="col-12 col-lg-7">
-      {% if result %}
-        <!-- Verdict Banner -->
-        <div class="brrrr-banner {% if result.is_full_cycle %}is-full-cycle{% elif result.verdict == 'Partial Recycle' %}is-partial{% else %}is-trap{% endif %} text-center">
-          <div class="brrrr-banner-label">Verdict: {{ result.verdict }}</div>
-          {% if result.is_full_cycle %}
-            <div class="brrrr-banner-sub">Infinite returns — all capital recovered!</div>
-          {% elif result.verdict == "Partial Recycle" %}
-            <div class="brrrr-banner-sub">Good deal — most capital recycled.</div>
-          {% else %}
-            <div class="brrrr-banner-sub">Too much capital left in the deal.</div>
-          {% endif %}
-        </div>
-
-        <!-- Key Metrics -->
-        <div class="row g-3 mb-4">
-          <div class="col-6 col-md-3">
-            <div class="card h-100">
-              <div class="card-body text-center">
-                <div class="text-muted small">Total Project Cost</div>
-                <div class="fs-5 fw-semibold">${{ result.total_project_cost|floatformat:0 }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="card h-100">
-              <div class="card-body text-center">
-                <div class="text-muted small">Max Refi Loan</div>
-                <div class="fs-5 fw-semibold">${{ result.max_refi_loan|floatformat:0 }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="card h-100">
-              <div class="card-body text-center">
-                <div class="text-muted small">Cash Left in Deal</div>
-                <div class="fs-5 fw-semibold {% if result.cash_left_in_deal <= 0 %}text-success{% elif result.cash_left_in_deal <= result.total_project_cost %}text-warning{% else %}text-danger{% endif %}">
-                  ${{ result.cash_left_in_deal|floatformat:0 }}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="card h-100">
-              <div class="card-body text-center">
-                <div class="text-muted small">Post-Refi CoC</div>
-                <div class="fs-5 fw-semibold">
-                  {% if result.post_refi_coc == "Infinity" %}∞{% else %}{{ result.post_refi_coc|floatformat:2 }}{% endif %}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Detailed Breakdown -->
-        <div class="card">
-          <div class="card-body">
-            <h3 class="h5 mb-3">Detailed Breakdown</h3>
-            <table class="table table-sm mb-0">
-              <tbody>
-                <tr>
-                  <td class="text-muted">Purchase Price</td>
-                  <td class="text-end">${{ result.purchase_price|floatformat:2 }}</td>
-                </tr>
-                <tr>
-                  <td class="text-muted">Rehab Cost</td>
-                  <td class="text-end">${{ result.rehab_cost|floatformat:2 }}</td>
-                </tr>
-                <tr>
-                  <td class="text-muted">After-Repair Value (ARV)</td>
-                  <td class="text-end fw-bold">${{ result.arv|floatformat:2 }}</td>
-                </tr>
-                <tr>
-                  <td class="text-muted">Max Refi Loan ({{ form_data.refi_ltv_pct|default:75 }}% LTV)</td>
-                  <td class="text-end">${{ result.max_refi_loan|floatformat:2 }}</td>
-                </tr>
-                <tr>
-                  <td class="text-muted">Cash Left in Deal</td>
-                  <td class="text-end {% if result.cash_left_in_deal <= 0 %}text-success{% else %}text-warning{% endif %}">
-                    ${{ result.cash_left_in_deal|floatformat:2 }}
-                  </td>
-                </tr>
-                <tr>
-                  <td class="text-muted">Post-Refi DSCR</td>
-                  <td class="text-end {% if result.post_refi_dscr >= 1.25 %}text-success{% else %}text-danger{% endif %}">
-                    {{ result.post_refi_dscr|floatformat:2 }}
-                    {% if result.post_refi_dscr < 1.25 %}
-                      <span class="badge bg-warning text-dark ms-1">Below 1.25</span>
-                    {% endif %}
-                  </td>
-                </tr>
-                <tr>
-                  <td class="text-muted">Post-Refi CoC</td>
-                  <td class="text-end">
-                    {% if result.post_refi_coc == "Infinity" %}
-                      <span class="text-success fw-bold">∞ (Infinite)</span>
-                    {% else %}
-                      {{ result.post_refi_coc|floatformat:4 }}
-                    {% endif %}
-                  </td>
-                </tr>
-                <tr>
-                  <td class="text-muted">Full Cycle</td>
-                  <td class="text-end">
-                    {% if result.is_full_cycle %}
-                      <span class="badge bg-success">Yes</span>
-                    {% else %}
-                      <span class="badge bg-secondary">No</span>
-                    {% endif %}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      {% else %}
-        <!-- Empty state -->
-        <div class="card">
-          <div class="card-body text-center py-5">
-            <h2 class="h5">Enter deal details to calculate</h2>
-            <p class="text-muted mb-0">
-              Fill in the form on the left and click "Calculate BRRRR" to see
-              whether this deal achieves Full Cycle, Partial Recycle, or is a
-              Capital Trap.
-            </p>
-          </div>
-        </div>
-      {% endif %}
+    <div class="form-group">
+      <label class="form-label" for="b-rehab">Rehab cost ($)</label>
+      <input id="b-rehab" type="number" class="form-input num" value="25000" min="0" step="1000">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-arv">After-repair value &mdash; ARV ($)</label>
+      <input id="b-arv" type="number" class="form-input num" value="185000" min="0" step="1000">
+      <p class="form-hint">Your estimate of market value after rehab is complete.</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-rent">Monthly rent post-rehab ($)</label>
+      <input id="b-rent" type="number" class="form-input num" value="1400" min="0" step="50">
+    </div>
+    <div class="form-divider"></div>
+    <p class="form-subsection-label">Refinance assumptions</p>
+    <div class="form-group">
+      <label class="form-label" for="b-ltv">Refi LTV (%)</label>
+      <input id="b-ltv" type="number" class="form-input num" value="75" min="0" max="90" step="5">
+      <p class="form-hint">Lenders typically offer 70-75% LTV on investment properties.</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-rate">Refi interest rate (%)</label>
+      <input id="b-rate" type="number" class="form-input num" value="7.0" min="0" max="30" step="0.25">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-closing">Closing costs (%)</label>
+      <input id="b-closing" type="number" class="form-input num" value="2.0" min="0" max="10" step="0.25">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-expenses">Annual operating expenses ($)</label>
+      <input id="b-expenses" type="number" class="form-input num" value="4200" min="0" step="100">
+      <p class="form-hint">Taxes + insurance + management + maintenance + CapEx per year.</p>
     </div>
   </div>
+
+  <div>
+    <div id="arv-prompt" class="brrrr-banner is-partial" hidden>
+      <div class="brrrr-banner-label">Enter an ARV to see results</div>
+      <div class="brrrr-banner-sub">The after-repair value is required to calculate the refinance loan amount.</div>
+    </div>
+
+    <div id="verdict-banner" class="brrrr-banner is-full-cycle">
+      <div id="verdict-label" class="brrrr-banner-label"></div>
+      <div id="verdict-sub"   class="brrrr-banner-sub"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Results</h2>
+      <table class="data-table" id="results-table">
+        <tr><td>Total project cost</td>           <td class="col-right num" id="r-total">--</td></tr>
+        <tr><td>Max refi loan (at LTV)</td>        <td class="col-right num" id="r-loan">--</td></tr>
+        <tr><td class="result-emphasis">Cash left in deal</td><td class="col-right num result-emphasis" id="r-cash-left">--</td></tr>
+        <tr><td>Cash out at refi</td>             <td class="col-right num" id="r-cash-out">--</td></tr>
+        <tr><td>Monthly mortgage (post-refi)</td> <td class="col-right num" id="r-mortgage">--</td></tr>
+        <tr><td>Post-refi NOI (annual)</td>       <td class="col-right num" id="r-noi">--</td></tr>
+        <tr><td>Post-refi DSCR</td>               <td class="col-right num" id="r-dscr">--</td></tr>
+        <tr><td>Post-refi CoC</td>                <td class="col-right num" id="r-coc">--</td></tr>
+      </table>
+    </div>
+
+    <p class="disclosure">Full Cycle = cash left &lt;= $0. Partial Recycle = 1-25% of project cost remaining. Capital Trap = &gt;25% locked in. DSCR &gt;= 1.25 required by most lenders for refi qualification.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var inputIds = ['b-purchase','b-rehab','b-arv','b-rent','b-ltv','b-rate','b-closing','b-expenses'];
+  function el(id) { return document.getElementById(id); }
+  function val(id) { return parseFloat(el(id).value) || 0; }
+  function fmtD(n) { return '$' + Math.round(n).toLocaleString(); }
+  function fmtP(n) { return (n * 100).toFixed(1) + '%'; }
+
+  function mortgage(principal, annualRate, years) {
+    if (principal <= 0) return 0;
+    if (annualRate === 0) return principal / (years * 12);
+    var r = annualRate / 12, n = years * 12;
+    return principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+  }
+
+  function calculate() {
+    var purchase = val('b-purchase');
+    var rehab    = val('b-rehab');
+    var arv      = val('b-arv');
+    var rent     = val('b-rent');
+    var ltv      = val('b-ltv')     / 100;
+    var rate     = val('b-rate')    / 100;
+    var closing  = val('b-closing') / 100;
+    var expenses = val('b-expenses');
+
+    var arvPrompt = el('arv-prompt');
+    var banner    = el('verdict-banner');
+    var table     = el('results-table');
+
+    if (arv <= 0) {
+      arvPrompt.hidden   = false;
+      banner.hidden      = true;
+      table.style.opacity = '0.35';
+      return;
+    }
+    arvPrompt.hidden    = true;
+    banner.hidden       = false;
+    table.style.opacity = '';
+
+    var closingCost = purchase * closing;
+    var totalCost   = purchase + rehab + closingCost;
+    var maxLoan     = arv * ltv;
+    var cashLeft    = totalCost - maxLoan;
+    var cashOut     = Math.max(0, maxLoan - purchase);
+    var mtg         = mortgage(maxLoan, rate, 30);
+    var annualDebt  = mtg * 12;
+    var noi         = (rent * 12) - expenses;
+    var dscr        = annualDebt > 0 ? noi / annualDebt : 0;
+    var annualCF    = noi - annualDebt;
+    var coc         = cashLeft > 0 ? annualCF / cashLeft : Infinity;
+    var threshold   = totalCost * 0.25;
+
+    var vText, vSub, vClass;
+    if (cashLeft <= 0) {
+      vText = 'Full Cycle'; vClass = 'is-full-cycle';
+      vSub  = 'All capital recycled -- effectively infinite return on remaining equity.';
+    } else if (cashLeft <= threshold) {
+      vText = 'Partial Recycle'; vClass = 'is-partial';
+      vSub  = fmtD(cashLeft) + ' remains in the deal (' + fmtP(cashLeft / totalCost) + ' of project cost).';
+    } else {
+      vText = 'Capital Trap'; vClass = 'is-trap';
+      vSub  = fmtD(cashLeft) + ' locked in (' + fmtP(cashLeft / totalCost) + '). Renegotiate price or increase ARV.';
+    }
+    if (dscr < 1.25 && annualDebt > 0) {
+      vSub += ' \u26A0 DSCR ' + dscr.toFixed(2) + ' is below 1.25 -- lender may not qualify this refi.';
+    }
+
+    banner.className             = 'brrrr-banner ' + vClass;
+    el('verdict-label').textContent = vText;
+    el('verdict-sub').textContent   = vSub;
+
+    el('r-total').textContent    = fmtD(totalCost);
+    el('r-loan').textContent     = fmtD(maxLoan);
+
+    var cashEl = el('r-cash-left');
+    cashEl.textContent = cashLeft <= 0 ? fmtD(cashLeft) + ' (full cycle)' : fmtD(cashLeft);
+    cashEl.className   = 'col-right num result-emphasis ' + (cashLeft <= 0 ? 'num-good' : cashLeft <= threshold ? 'num-warn' : 'num-bad');
+
+    el('r-cash-out').textContent = fmtD(cashOut);
+    el('r-mortgage').textContent = fmtD(mtg) + '/mo';
+    el('r-noi').textContent      = fmtD(noi);
+
+    var dscrEl = el('r-dscr');
+    dscrEl.textContent = dscr.toFixed(2);
+    dscrEl.className   = 'col-right num ' + (dscr >= 1.25 ? 'num-good' : 'num-bad');
+    el('r-coc').textContent = isFinite(coc) ? fmtP(coc) : '\u221E (full cycle)';
+  }
+
+  inputIds.forEach(function(id) { el(id).addEventListener('input', calculate); });
+  calculate();
+})();
+</script>
 {% endblock %}

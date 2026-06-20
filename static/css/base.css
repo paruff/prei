@@ -419,6 +419,22 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
   align-items: start;
 }
 
+/* ── Form helpers ────────────────────────────────────────────── */
+.form-divider {
+  border: none;
+  border-top: var(--border-default);
+  margin: var(--sp-4) 0;
+}
+.form-subsection-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-neutral-600);
+  margin-bottom: var(--sp-3);
+}
+.result-emphasis {
+  font-weight: var(--weight-semibold);
+}
+
 /* ── BRRRR verdict banner ───────────────────────────────────── */
 .brrrr-banner {
   border-radius: var(--radius-lg);
