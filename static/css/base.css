@@ -296,6 +296,7 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 .verdict-a { background: var(--color-verdict-a-bg); color: var(--color-verdict-a-text); }
 .verdict-b { background: var(--color-verdict-b-bg); color: var(--color-verdict-b-text); }
 .verdict-c { background: var(--color-verdict-c-bg); color: var(--color-verdict-c-text); }
+.verdict-moderate { background: var(--color-primary-bg); color: var(--color-primary-text); }
 
 /* ── Score bar ──────────────────────────────────────────────── */
 .score-bar-track {

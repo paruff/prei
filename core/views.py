@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import logging
 from io import BytesIO
 from collections.abc import Mapping
@@ -7,10 +8,12 @@ from decimal import Decimal, InvalidOperation
 from typing import Protocol, cast
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.db.models import Q
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q, Count
 from django.http import (
     Http404,
     HttpRequest,
@@ -23,6 +26,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.text import slugify
+from django.views import View
 from xhtml2pdf import pisa
 
 from .models import VrmProperty, UserInvestmentTargets
@@ -1092,28 +1096,68 @@ def investment_targets_edit(request: HttpRequest) -> HttpResponse:
     )
 
 
+class MarketRefreshView(LoginRequiredMixin, View):
+    """Secure market data refresh — only queries the authenticated user's ZIPs."""
+
+    def post(self, request):
+        user_zips = list(
+            Property.objects.filter(user=request.user)
+            .values_list("zip_code", flat=True)
+            .distinct()
+        )
+        from django.core import management
+
+        for zip_code in user_zips:
+            management.call_command(
+                "refresh_market_data", zip=zip_code, stdout=io.StringIO()
+            )
+        messages.success(
+            request, f"Market data refreshed for {len(user_zips)} ZIP code(s)."
+        )
+        return redirect("markets_list")
+
+    def get(self, request):
+        # GET not allowed — redirect silently
+        return redirect("markets_list")
+
+
 @login_required
 def markets_list(request: HttpRequest) -> HttpResponse:
-    """List all markets (ZIPs) with entered properties, showing market scores."""
+    """List markets (ZIPs) for the authenticated user's properties."""
     from core.services.market_scoring import score_market_by_zip
 
-    # Get all distinct ZIP codes that have at least one property
-    zips = (
-        Property.objects.values_list("zip_code", flat=True)
-        .distinct()
+    # Get distinct ZIP codes that have at least one of the user's properties
+    zip_counts = (
+        Property.objects.filter(user=request.user)
+        .values("zip_code")
+        .annotate(property_count=Count("id"))
         .exclude(zip_code="")
         .order_by("zip_code")
     )
 
     markets = []
-    for zip_code in zips:
+    for entry in zip_counts:
+        zip_code = entry["zip_code"]
         market_data = score_market_by_zip(zip_code)
+        market_data["property_count"] = entry["property_count"]
+        # Add MSA name from MarketSnapshot if available
+        try:
+            from core.models import MarketSnapshot
+
+            snapshot = MarketSnapshot.objects.filter(
+                zip_code=zip_code, area_type="zip"
+            ).order_by("-fetched_at").first()
+            market_data["msa_name"] = snapshot.msa_name if snapshot else ""
+        except Exception:
+            market_data["msa_name"] = ""
         markets.append(market_data)
+
+    has_market_data = len(markets) > 0
 
     return render(
         request,
         "markets/list.html",
-        {"markets": markets},
+        {"markets": markets, "has_market_data": has_market_data},
     )
 
 

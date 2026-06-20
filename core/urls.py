@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from .views import MarketRefreshView
 from .views_portfolio import portfolio_actuals_add, portfolio_dashboard
 
 urlpatterns = [
@@ -52,5 +53,6 @@ urlpatterns = [
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
     path("settings/investment-targets/", views.investment_targets_edit, name="investment_targets_edit"),
     path("markets/", views.markets_list, name="markets_list"),
+    path("markets/refresh/", MarketRefreshView.as_view(), name="market_refresh"),
     path("brrrr/", views.brrrr_calculator, name="brrrr_calculator"),
 ]
