@@ -49,6 +49,45 @@ class UnderwritingScore:
     score_grm: int = 0
     score_after_tax: int = 0
 
+    # ── Color-class properties ─────────────────────────────────────────────
+
+    @property
+    def coc_color_class(self) -> str:
+        """Return CSS class based on Cash-on-Cash thresholds."""
+        if self.cash_on_cash >= Decimal("0.08"):
+            return "num-good"
+        if self.cash_on_cash >= Decimal("0.05"):
+            return "num-warn"
+        return "num-bad"
+
+    @property
+    def cap_rate_color_class(self) -> str:
+        """Return CSS class based on cap rate threshold."""
+        return "num-good" if self.cap_rate >= Decimal("0.06") else "num-warn"
+
+    @property
+    def dscr_color_class(self) -> str:
+        """Return CSS class based on DSCR threshold."""
+        return "num-good" if self.dscr >= Decimal("1.25") else "num-bad"
+
+    @property
+    def grm_color_class(self) -> str:
+        """Return CSS class based on GRM thresholds."""
+        if self.grm <= Decimal("12"):
+            return "num-good"
+        if self.grm <= Decimal("16"):
+            return "num-warn"
+        return "num-bad"
+
+    @property
+    def verdict_label(self) -> str:
+        """Human-readable verdict label."""
+        return {
+            "Strong Buy": "Strong Buy",
+            "Conditional": "Conditional",
+            "Pass": "Pass",
+        }.get(self.verdict, self.verdict)
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

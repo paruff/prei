@@ -1,151 +1,137 @@
 {% extends "base.html" %}
-{% block title %}Property Details{% endblock %}
+{% load humanize %}
+{% block title %}{{ property.address }}{% endblock %}
+
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">{{ property.address }}</h1>
-    <div class="d-flex gap-2">
-      {% if can_edit_property %}
-        <a href="{% url 'property_edit' property.pk %}" class="btn btn-outline-primary btn-sm">Edit</a>
-      {% endif %}
-      {% if can_share_property %}
-        <a href="{% url 'property_share' property.pk %}" class="btn btn-outline-primary btn-sm">Share</a>
-      {% endif %}
-      <a href="{% url 'property_list' %}" class="btn btn-outline-secondary btn-sm">Back to Properties</a>
-    </div>
-  </div>
 
-  <div class="card mb-3">
-    <div class="card-body">
-      <div class="mb-1 text-muted">{{ property.city }}, {{ property.state }} {{ property.zip_code }}</div>
-      <div><strong>Purchase Price:</strong> ${{ property.purchase_price|floatformat:2 }}</div>
+<div class="detail-hero">
+  <div>
+    <div class="detail-hero-title-row">
+      <h1 class="page-title">{{ property.address }}</h1>
+      {% if score %}
+        {% include "components/verdict_badge.html" with verdict=score.verdict verdict_label=score.verdict_label %}
+      {% endif %}
     </div>
+    <p class="page-sub">{{ property.city }}, {{ property.state }} {{ property.zip_code }} &middot; {{ property.get_property_type_display }} &middot; ${{ property.purchase_price|intcomma }}</p>
   </div>
+  <div class="detail-hero-actions">
+    <a href="{% url 'property_edit' property.pk %}" class="btn">Edit</a>
+    <form method="post" action="{% url 'property_delete' property.pk %}" class="inline-form">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger"
+              onclick="return confirm('Delete this property? This cannot be undone.')">Delete</button>
+    </form>
+  </div>
+</div>
 
-  <!-- Tabs -->
-  <ul class="nav nav-tabs" id="propertyTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="kpis-tab" data-bs-toggle="tab" data-bs-target="#kpis" type="button" role="tab">KPIs</button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="projections-tab" data-bs-toggle="tab" data-bs-target="#projections" type="button" role="tab">10-Year Projections</button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="exit-tab" data-bs-toggle="tab" data-bs-target="#exit" type="button" role="tab">Exit Analysis</button>
-    </li>
+{% if score %}
+<div class="kpi-grid">
+  {% include "components/kpi_card.html" with label="Cash-on-Cash" value=score.cash_on_cash|floatformat:1|add:"%" sub="Target >= 8%" color_class=score.coc_color_class %}
+  {% include "components/kpi_card.html" with label="After-tax CoC" value=score.after_tax_coc|floatformat:1|add:"%" sub="Incl. depreciation" color_class="num-good" %}
+  {% include "components/kpi_card.html" with label="Cap rate" value=score.cap_rate|floatformat:1|add:"%" color_class=score.cap_rate_color_class %}
+  {% include "components/kpi_card.html" with label="DSCR" value=score.dscr|floatformat:2 sub="Min 1.25" color_class=score.dscr_color_class %}
+  {% include "components/kpi_card.html" with label="GRM" value=score.grm|floatformat:1 color_class=score.grm_color_class %}
+  {% include "components/kpi_card.html" with label="7-year IRR" value=score.projected_irr|floatformat:1|add:"%" color_class="num-good" %}
+</div>
+
+{% if score.flags %}
+<div class="card flag-list">
+  <p class="flag-list-label">Criteria not met</p>
+  <ul>
+    {% for flag in score.flags %}<li>&#x26A0; {{ flag }}</li>{% endfor %}
   </ul>
+</div>
+{% endif %}
+{% endif %}
 
-  <div class="tab-content mt-3" id="propertyTabContent">
-    <!-- KPIs Tab -->
-    <div class="tab-pane fade show active" id="kpis" role="tabpanel">
-      <div class="card">
-        <div class="card-body">
-          <h2 class="h5">Investment KPIs</h2>
-          <div class="row g-2 mt-2">
-            <div class="col-12 col-md-4"><strong>NOI:</strong> {% if analysis %}${{ analysis.noi|floatformat:2 }}{% else %}—{% endif %}</div>
-            <div class="col-12 col-md-4"><strong>Cap Rate:</strong> {% if analysis %}{{ analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</div>
-            <div class="col-12 col-md-4"><strong>Cash-on-Cash:</strong> {% if analysis %}{{ analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</div>
-            <div class="col-12 col-md-4"><strong>IRR:</strong> {% if analysis %}{{ analysis.irr|floatformat:4 }}{% else %}—{% endif %}</div>
-            <div class="col-12 col-md-4"><strong>DSCR:</strong> {% if analysis %}{{ analysis.dscr|floatformat:4 }}{% else %}—{% endif %}</div>
-          </div>
-        </div>
-      </div>
+<div class="tab-bar" role="tablist">
+  <button class="tab-btn is-active" data-tab="summary"    role="tab" aria-selected="true"  aria-controls="tab-summary">Summary</button>
+  <button class="tab-btn"           data-tab="projection" role="tab" aria-selected="false" aria-controls="tab-projection">10-year projection</button>
+</div>
+
+<div id="tab-summary" class="tab-panel" role="tabpanel">
+  <div class="layout-2col">
+    <div>
+      <h3 class="panel-heading">Income</h3>
+      <table class="data-table">
+        <tr><td>Gross monthly rent</td><td class="col-right num">${{ property.monthly_rent_gross|intcomma }}</td></tr>
+        <tr><td>Other income</td>      <td class="col-right num">${{ property.other_monthly_income|intcomma }}</td></tr>
+        <tr><td>Vacancy allowance</td> <td class="col-right num num-bad">-{{ property.vacancy_rate }}%</td></tr>
+      </table>
     </div>
-
-    <!-- 10-Year Projections Tab -->
-    <div class="tab-pane fade" id="projections" role="tabpanel">
-      {% if projections %}
-        <div class="card">
-          <div class="card-body">
-            <h2 class="h5">10-Year Cash Flow Projection</h2>
-            <div class="table-responsive mt-3">
-              <table class="table table-sm table-striped">
-                <thead>
-                  <tr>
-                    <th>Year</th>
-                    <th>Gross Rent</th>
-                    <th>Expenses</th>
-                    <th>NOI</th>
-                    <th>Mortgage</th>
-                    <th>Pre-Tax CF</th>
-                    <th>After-Tax CF</th>
-                    <th>Loan Balance</th>
-                    <th>Property Value</th>
-                    <th>Equity</th>
-                    <th>Cumulative CF</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for p in projections %}
-                    <tr>
-                      <td>{{ p.year }}</td>
-                      <td>${{ p.gross_rent|floatformat:2 }}</td>
-                      <td>${{ p.operating_expenses|floatformat:2 }}</td>
-                      <td>${{ p.noi|floatformat:2 }}</td>
-                      <td>${{ p.mortgage_payment_annual|floatformat:2 }}</td>
-                      <td>${{ p.pre_tax_cashflow|floatformat:2 }}</td>
-                      <td>${{ p.after_tax_cashflow|floatformat:2 }}</td>
-                      <td>${{ p.loan_balance|floatformat:2 }}</td>
-                      <td>${{ p.property_value|floatformat:2 }}</td>
-                      <td>${{ p.equity|floatformat:2 }}</td>
-                      <td>${{ p.cumulative_cashflow|floatformat:2 }}</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- After-Tax Disclaimer -->
-        <div class="alert alert-info mt-3" role="alert">
-          <small>
-            <strong>Note:</strong> After-tax calculations use a simplified model.
-            Does not apply PAL (Passive Activity Loss) rules or cost segregation.
-            Consult a CPA for accurate tax advice.
-          </small>
-        </div>
-      {% else %}
-        <div class="alert alert-warning">
-          Projections could not be computed. Ensure all property financial fields are populated.
-        </div>
-      {% endif %}
-    </div>
-
-    <!-- Exit Analysis Tab -->
-    <div class="tab-pane fade" id="exit" role="tabpanel">
-      {% if exit_analysis %}
-        <div class="card">
-          <div class="card-body">
-            <h2 class="h5">Exit Analysis (Year 10)</h2>
-            <div class="row g-3 mt-2">
-              <div class="col-12 col-md-6">
-                <table class="table table-sm">
-                  <tbody>
-                    <tr><td><strong>Gross Sale Price</strong></td><td>${{ exit_analysis.gross_sale_price|floatformat:2 }}</td></tr>
-                    <tr><td>Selling Costs (6%)</td><td>-${{ exit_analysis.selling_costs|floatformat:2 }}</td></tr>
-                    <tr><td>Loan Payoff</td><td>-${{ exit_analysis.loan_payoff|floatformat:2 }}</td></tr>
-                    <tr><td><strong>Net Proceeds (Before Tax)</strong></td><td>${{ exit_analysis.net_proceeds_before_tax|floatformat:2 }}</td></tr>
-                    <tr><td>Capital Gains Tax (20%)</td><td>-${{ exit_analysis.estimated_capital_gains_tax|floatformat:2 }}</td></tr>
-                    <tr class="table-success"><td><strong>Net Proceeds (After Tax)</strong></td><td><strong>${{ exit_analysis.net_proceeds_after_tax|floatformat:2 }}</strong></td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="col-12 col-md-6">
-                <table class="table table-sm">
-                  <tbody>
-                    <tr><td><strong>Total Return</strong></td><td><strong>${{ exit_analysis.total_return|floatformat:2 }}</strong></td></tr>
-                    <tr><td><strong>Annualized IRR</strong></td><td><strong>{{ exit_analysis.annualized_irr|floatformat:4 }}</strong></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      {% else %}
-        <div class="alert alert-warning">
-          Exit analysis could not be computed. Ensure all property financial fields are populated.
-        </div>
-      {% endif %}
+    <div>
+      <h3 class="panel-heading">Annual expenses</h3>
+      <table class="data-table">
+        <tr><td>Property taxes</td><td class="col-right num">${{ property.property_taxes_annual|intcomma }}</td></tr>
+        <tr><td>Insurance</td>     <td class="col-right num">${{ property.insurance_annual|intcomma }}</td></tr>
+        <tr><td>Management</td>    <td class="col-right num">{{ property.mgmt_fee_pct }}%</td></tr>
+        <tr><td>Maintenance</td>   <td class="col-right num">${{ property.maintenance_monthly }}/mo</td></tr>
+        <tr><td>CapEx</td>         <td class="col-right num">${{ property.capex_monthly }}/mo</td></tr>
+      </table>
     </div>
   </div>
+  <p class="disclosure">After-tax figures use a simplified 27.5-year straight-line depreciation model and do not apply passive activity loss (PAL) rules or cost segregation. Consult a CPA for your specific tax situation.</p>
+</div>
+
+<div id="tab-projection" class="tab-panel" role="tabpanel" hidden>
+  {% if projection %}
+  <div class="table-wrap">
+    <table class="data-table" aria-label="10-year hold period projection">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th class="col-right">Rent</th>
+          <th class="col-right">NOI</th>
+          <th class="col-right">Pre-tax CF</th>
+          <th class="col-right">After-tax CF</th>
+          <th class="col-right col-hide-mobile">Equity</th>
+          <th class="col-right col-hide-mobile">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for yr in projection %}
+        <tr>
+          <td class="num">{{ yr.year }}</td>
+          <td class="col-right num">${{ yr.gross_rent|floatformat:0|intcomma }}</td>
+          <td class="col-right num">${{ yr.noi|floatformat:0|intcomma }}</td>
+          <td class="col-right num {% if yr.pre_tax_cashflow > 0 %}num-good{% else %}num-bad{% endif %}">${{ yr.pre_tax_cashflow|floatformat:0|intcomma }}</td>
+          <td class="col-right num num-good">${{ yr.after_tax_cashflow|floatformat:0|intcomma }}</td>
+          <td class="col-right col-hide-mobile num">${{ yr.equity|floatformat:0|intcomma }}</td>
+          <td class="col-right col-hide-mobile num">${{ yr.property_value|floatformat:0|intcomma }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if exit %}
+  <div class="kpi-grid">
+    {% include "components/kpi_card.html" with label="Net proceeds (yr 7)" value=exit.net_proceeds_after_tax|floatformat:0|intcomma color_class="num-good" %}
+    {% include "components/kpi_card.html" with label="Annualized IRR"       value=exit.annualized_irr|floatformat:1|add:"%" color_class="num-good" %}
+    {% include "components/kpi_card.html" with label="Total return"          value=exit.total_return|floatformat:0|intcomma color_class="num-good" %}
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="disclosure">Projection data is not available for this property.</p>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var tabs   = document.querySelectorAll('.tab-btn');
+  var panels = document.querySelectorAll('.tab-panel');
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      tabs.forEach(function(t) { t.classList.remove('is-active'); t.setAttribute('aria-selected','false'); });
+      panels.forEach(function(p) { p.hidden = true; });
+      tab.classList.add('is-active');
+      tab.setAttribute('aria-selected','true');
+      var panel = document.getElementById('tab-' + tab.dataset.tab);
+      if (panel) panel.hidden = false;
+    });
+  });
+})();
+</script>
 {% endblock %}

@@ -474,6 +474,18 @@ def property_detail(request, pk: int):
         raise Http404
     user_role = _get_property_role(request.user, property_obj)
 
+    # Compute underwriting score
+    from core.services.scoring import score_listing_v2
+    from core.models import UserInvestmentTargets
+
+    score = None
+    targets = None
+    try:
+        targets, _ = UserInvestmentTargets.objects.get_or_create(user=property_obj.user)
+        score = score_listing_v2(property_obj, targets)
+    except Exception:
+        pass
+
     # Compute 10-year projections for the detail view
     projections = None
     exit_analysis = None
@@ -491,8 +503,10 @@ def property_detail(request, pk: int):
         {
             "property": property_obj,
             "analysis": getattr(property_obj, "analysis", None),
-            "projections": projections,
-            "exit_analysis": exit_analysis,
+            "score": score,
+            "targets": targets,
+            "projection": projections,
+            "exit": exit_analysis,
             "can_edit_property": user_role in {"owner", "team"},
             "can_share_property": user_role == "owner",
         },
