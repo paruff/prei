@@ -43,13 +43,7 @@
                 </td>
                 <td>
                   {% if property.underwriting_score %}
-                    {% if property.underwriting_score.verdict == "Strong Buy" %}
-                      <span class="badge bg-success">{{ property.underwriting_score.verdict }}</span>
-                    {% elif property.underwriting_score.verdict == "Conditional" %}
-                      <span class="badge bg-warning text-dark">{{ property.underwriting_score.verdict }}</span>
-                    {% else %}
-                      <span class="badge bg-secondary">{{ property.underwriting_score.verdict }}</span>
-                    {% endif %}
+                    {% include "components/verdict_badge.html" with verdict=property.underwriting_score.verdict verdict_label=property.underwriting_score.verdict %}
                   {% else %}—{% endif %}
                 </td>
                 <td>
