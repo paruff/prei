@@ -149,7 +149,9 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     # Mortgage
     down_pmt = pp * property_obj.down_payment_pct
     loan_amount = pp - down_pmt
-    monthly_pi = _monthly_mortgage(loan_amount, property_obj.interest_rate, property_obj.loan_term_years)
+    monthly_pi = _monthly_mortgage(
+        loan_amount, property_obj.interest_rate, property_obj.loan_term_years
+    )
     annual_pi = monthly_pi * Decimal(12)
 
     # Operating expenses
@@ -164,8 +166,6 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     mgmt_fee = effective_rent * property_obj.mgmt_fee_pct
     total_expenses = opex + mgmt_fee
     annual_noi = effective_rent - total_expenses
-    annual_debt_service = annual_pi
-
     # KPIs using utils functions
     from investor_app.finance.utils import (
         cap_rate as calc_cap_rate,
@@ -196,7 +196,9 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
         land_pct = Decimal("0.20")
     deprec = calculate_annual_depreciation(pp, land_value_pct=land_pct)
     pre_tax_cf = annual_cash_flow
-    after_tax = calculate_after_tax_cashflow(pre_tax_cf, deprec, targets.marginal_tax_rate)
+    after_tax = calculate_after_tax_cashflow(
+        pre_tax_cf, deprec, targets.marginal_tax_rate
+    )
 
     # Projected IRR via numpy_financial
     try:
@@ -232,7 +234,9 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     target_coc = targets.min_coc_pct
     if target_coc > 0 and coc >= Decimal("0"):
         coc_ratio = min(coc / target_coc, Decimal("1"))
-        score_coc = int((coc_ratio * Decimal(25)).to_integral_value(rounding=ROUND_HALF_UP))
+        score_coc = int(
+            (coc_ratio * Decimal(25)).to_integral_value(rounding=ROUND_HALF_UP)
+        )
     else:
         score_coc = 0
     if coc < target_coc:
@@ -244,7 +248,9 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     target_dscr = targets.min_dscr
     if target_dscr > 0 and dscr_val >= Decimal("0"):
         dscr_ratio = min(dscr_val / target_dscr, Decimal("1"))
-        score_dscr = int((dscr_ratio * Decimal(20)).to_integral_value(rounding=ROUND_HALF_UP))
+        score_dscr = int(
+            (dscr_ratio * Decimal(20)).to_integral_value(rounding=ROUND_HALF_UP)
+        )
     else:
         score_dscr = 0
     if dscr_val < target_dscr:
@@ -254,7 +260,9 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     target_cap = Decimal("0.06")
     if cap > 0:
         cap_ratio = min(cap / target_cap, Decimal("1"))
-        score_cap = int((cap_ratio * Decimal(15)).to_integral_value(rounding=ROUND_HALF_UP))
+        score_cap = int(
+            (cap_ratio * Decimal(15)).to_integral_value(rounding=ROUND_HALF_UP)
+        )
     else:
         score_cap = 0
     if cap < target_cap:
@@ -267,7 +275,9 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
             score_grm = 10
         else:
             ratio = target_grm / grm
-            score_grm = int((ratio * Decimal(10)).to_integral_value(rounding=ROUND_HALF_UP))
+            score_grm = int(
+                (ratio * Decimal(10)).to_integral_value(rounding=ROUND_HALF_UP)
+            )
     else:
         score_grm = 0
     if grm > target_grm:
@@ -279,7 +289,9 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
         flags.append("Negative after-tax cash flow")
 
     # ── Composite ─────────────────────────────────────────────────────────────
-    total = score_1pct + score_coc + score_dscr + score_cap + score_grm + score_after_tax
+    total = (
+        score_1pct + score_coc + score_dscr + score_cap + score_grm + score_after_tax
+    )
 
     # Cap at 40 if 1% rule fails and require_one_pct_rule is set
     if targets.require_one_pct_rule and not passes_1pct and total > 40:

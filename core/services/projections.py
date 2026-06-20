@@ -58,7 +58,9 @@ def _annual_mortgage_payment(
     loan_amount: Decimal, interest_rate_pct: Decimal, loan_term_years: int
 ) -> Decimal:
     """Annual principal + interest mortgage payment."""
-    monthly = calculate_monthly_mortgage(loan_amount, interest_rate_pct, loan_term_years)
+    monthly = calculate_monthly_mortgage(
+        loan_amount, interest_rate_pct, loan_term_years
+    )
     return (monthly * Decimal("12")).quantize(Decimal("0.01"))
 
 
@@ -173,13 +175,15 @@ def project_hold_period(
         # --- Expenses (inflation-adjusted, except mortgage) ---
         expense_factor = (one + to_decimal(annual_expense_inflation_pct)) ** (year - 1)
         inflated_taxes = (taxes_annual * expense_factor).quantize(Decimal("0.01"))
-        inflated_insurance = (insurance_annual * expense_factor).quantize(Decimal("0.01"))
+        inflated_insurance = (insurance_annual * expense_factor).quantize(
+            Decimal("0.01")
+        )
         inflated_hoa = (hoa_monthly * Decimal("12") * expense_factor).quantize(
             Decimal("0.01")
         )
-        inflated_maintenance = (maintenance_monthly * Decimal("12") * expense_factor).quantize(
-            Decimal("0.01")
-        )
+        inflated_maintenance = (
+            maintenance_monthly * Decimal("12") * expense_factor
+        ).quantize(Decimal("0.01"))
         inflated_capex = (capex_monthly * Decimal("12") * expense_factor).quantize(
             Decimal("0.01")
         )
@@ -208,9 +212,7 @@ def project_hold_period(
         prop_value = (
             pp * ((one + to_decimal(annual_appreciation_pct)) ** year)
         ).quantize(Decimal("0.01"))
-        loan_bal = _remaining_balance_after_year(
-            loan_amount, rate_pct, loan_term, year
-        )
+        loan_bal = _remaining_balance_after_year(loan_amount, rate_pct, loan_term, year)
         equity = prop_value - loan_bal
 
         projections.append(
@@ -231,7 +233,9 @@ def project_hold_period(
 
     # --- Exit analysis ---
     final_value = projections[-1].property_value
-    selling_costs = (final_value * to_decimal(selling_costs_pct)).quantize(Decimal("0.01"))
+    selling_costs = (final_value * to_decimal(selling_costs_pct)).quantize(
+        Decimal("0.01")
+    )
     loan_payoff = projections[-1].loan_balance
     net_before_tax = final_value - selling_costs - loan_payoff
 

@@ -210,12 +210,16 @@ class TestCalculateAnnualDepreciation:
 
     def test_zero_purchase_price_raises_error(self) -> None:
         """Test that zero purchase price raises ValueError."""
-        with pytest.raises(ValueError, match="purchase_price must be greater than zero"):
+        with pytest.raises(
+            ValueError, match="purchase_price must be greater than zero"
+        ):
             calculate_annual_depreciation(Decimal("0"), Decimal("0.20"))
 
     def test_negative_purchase_price_raises_error(self) -> None:
         """Test that negative purchase price raises ValueError."""
-        with pytest.raises(ValueError, match="purchase_price must be greater than zero"):
+        with pytest.raises(
+            ValueError, match="purchase_price must be greater than zero"
+        ):
             calculate_annual_depreciation(Decimal("-100000"), Decimal("0.20"))
 
     def test_land_value_pct_too_high_raises_error(self) -> None:

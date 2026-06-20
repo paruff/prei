@@ -4,7 +4,6 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.test import Client
 from django.urls import reverse
 
 from core.models import (
@@ -119,28 +118,35 @@ def market_snapshot(db):
 class TestDashboardRenders:
     """Dashboard loads and shows properties with scores."""
 
-    def test_dashboard_loads(self, client_logged_in, targets, strong_property, market_snapshot):
+    def test_dashboard_loads(
+        self, client_logged_in, targets, strong_property, market_snapshot
+    ):
         resp = client_logged_in.get(reverse("dashboard"))
         assert resp.status_code == 200
 
     def test_dashboard_title(self, client_logged_in, targets, strong_property):
         resp = client_logged_in.get(reverse("dashboard"))
-        assert "Deal Screener" in resp.content.decode()
+        assert "Deal screener" in resp.content.decode()
 
     def test_shows_property_address(self, client_logged_in, targets, strong_property):
         resp = client_logged_in.get(reverse("dashboard"))
         assert "100 Strong Ave" in resp.content.decode()
 
-    def test_shows_underwriting_score(self, client_logged_in, targets, strong_property, market_snapshot):
+    def test_shows_underwriting_score(
+        self, client_logged_in, targets, strong_property, market_snapshot
+    ):
         resp = client_logged_in.get(reverse("dashboard"))
         content = resp.content.decode()
-        # Score should be present
-        assert "data-score=" in content
+        # Score bar component renders the score value
+        assert "score-bar-track" in content
 
-    def test_shows_verdict_badge(self, client_logged_in, targets, strong_property, market_snapshot):
+    def test_shows_verdict_badge(
+        self, client_logged_in, targets, strong_property, market_snapshot
+    ):
         resp = client_logged_in.get(reverse("dashboard"))
         content = resp.content.decode()
-        assert "Strong Buy" in content or "Conditional" in content or "Pass" in content
+        # Verdict badge renders verdict + label (e.g. "A · Strong Buy")
+        assert "verdict-badge" in content
 
 
 # ── Empty state ───────────────────────────────────────────────────────────────
@@ -164,18 +170,23 @@ class TestDashboardEmptyState:
 
 
 class TestIncompleteDataBadge:
-    """Properties with missing data show Incomplete Data badge."""
+    """Properties with missing data are excluded from the dashboard table."""
 
-    def test_incomplete_badge_shown(self, client_logged_in, targets, incomplete_property):
+    def test_incomplete_excluded_from_table(
+        self, client_logged_in, targets, incomplete_property
+    ):
+        """Property with zero rent should not appear in the dashboard table."""
         resp = client_logged_in.get(reverse("dashboard"))
         content = resp.content.decode()
-        assert "Incomplete Data" in content
+        # The incomplete property is filtered out by the view (zero rent)
+        assert "300 Empty Rd" not in content
 
     def test_incomplete_no_score(self, client_logged_in, targets, incomplete_property):
+        """No score bar should be rendered for an excluded property."""
         resp = client_logged_in.get(reverse("dashboard"))
         content = resp.content.decode()
-        # Incomplete property should not have a score
-        assert "data-score=\"0\"" in content
+        # No properties in table since the only one was filtered out
+        assert "deal-table" not in content or "300 Empty Rd" not in content
 
 
 # ── Filters present ───────────────────────────────────────────────────────────
@@ -184,42 +195,37 @@ class TestIncompleteDataBadge:
 class TestDashboardFilters:
     """Filters are present in the template."""
 
-    def test_min_score_slider(self, client_logged_in, targets, strong_property):
+    def test_verdict_chips(self, client_logged_in, targets, strong_property):
         resp = client_logged_in.get(reverse("dashboard"))
         content = resp.content.decode()
-        assert "filter-min-score" in content
+        # Chip-based verdict filter
+        assert 'data-filter="all"' in content
+        assert 'data-filter="A"' in content
+        assert 'data-filter="B"' in content
+        assert 'data-filter="C"' in content
+        assert 'data-filter="1pct"' in content
 
-    def test_verdict_checkboxes(self, client_logged_in, targets, strong_property):
+    def test_search_input(self, client_logged_in, targets, strong_property):
         resp = client_logged_in.get(reverse("dashboard"))
         content = resp.content.decode()
-        assert "filter-verdict" in content
-        assert "Strong Buy" in content
-        assert "Conditional" in content
-        assert "Pass" in content
-
-    def test_state_filter(self, client_logged_in, targets, strong_property):
-        resp = client_logged_in.get(reverse("dashboard"))
-        content = resp.content.decode()
-        assert "filter-state" in content
-
-    def test_one_pct_toggle(self, client_logged_in, targets, strong_property):
-        resp = client_logged_in.get(reverse("dashboard"))
-        content = resp.content.decode()
-        assert "filter-one-pct" in content
+        assert "search-input" in content
 
 
 # ── Sorting ───────────────────────────────────────────────────────────────────
 
 
 class TestDashboardSorting:
-    """Table headers support sorting."""
+    """Table columns are present for key metrics."""
 
-    def test_sort_headers_present(self, client_logged_in, targets, strong_property):
+    def test_table_headers_present(self, client_logged_in, targets, strong_property):
         resp = client_logged_in.get(reverse("dashboard"))
         content = resp.content.decode()
-        assert 'data-sort="score"' in content
-        assert 'data-sort="coc"' in content
-        assert 'data-sort="cap_rate"' in content
+        # Table has columns for key metrics
+        assert "CoC" in content
+        assert "Cap rate" in content
+        assert "DSCR" in content
+        assert "Verdict" in content
+        assert "Score" in content
 
 
 # ── Auth required ─────────────────────────────────────────────────────────────

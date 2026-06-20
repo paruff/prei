@@ -162,8 +162,12 @@ class TestScoreListingV2Fields:
     def test_score_breakdown_sum(self, strong_property, targets, profile):
         result = score_listing_v2(strong_property, targets)
         breakdown_sum = (
-            result.score_1pct + result.score_coc + result.score_dscr
-            + result.score_cap + result.score_grm + result.score_after_tax
+            result.score_1pct
+            + result.score_coc
+            + result.score_dscr
+            + result.score_cap
+            + result.score_grm
+            + result.score_after_tax
         )
         # Breakdown sum may differ from total due to 1% rule cap
         assert breakdown_sum >= result.total_score

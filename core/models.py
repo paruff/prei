@@ -178,7 +178,9 @@ class SharedProperty(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["property", "team"], name="unique_property_team"),
+            models.UniqueConstraint(
+                fields=["property", "team"], name="unique_property_team"
+            ),
         ]
 
 
@@ -196,7 +198,9 @@ class PropertyShare(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["property", "shared_with"], name="unique_property_shared_with"),
+            models.UniqueConstraint(
+                fields=["property", "shared_with"], name="unique_property_shared_with"
+            ),
         ]
 
 
@@ -315,27 +319,40 @@ class MarketSnapshot(models.Model):
 
     # --- Phase 0: Census & BLS market indicators ---
     msa_name = models.CharField(
-        max_length=255, blank=True, default="",
+        max_length=255,
+        blank=True,
+        default="",
         help_text="Metropolitan Statistical Area name",
     )
     population = models.PositiveIntegerField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="Total population for ZIP/area",
     )
     population_growth_pct_5yr = models.DecimalField(
-        max_digits=7, decimal_places=4, null=True, blank=True,
+        max_digits=7,
+        decimal_places=4,
+        null=True,
+        blank=True,
         help_text="5-year population growth as fraction (e.g. 0.0234 = 2.34%)",
     )
     unemployment_rate = models.DecimalField(
-        max_digits=5, decimal_places=4, null=True, blank=True,
+        max_digits=5,
+        decimal_places=4,
+        null=True,
+        blank=True,
         help_text="Unemployment rate as fraction (e.g. 0.045 = 4.5%)",
     )
     median_household_income = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True,
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
         help_text="Median household income in dollars",
     )
     fetched_at = models.DateTimeField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="When this data was fetched from Census/BLS APIs",
     )
 
@@ -635,7 +652,9 @@ class GrowthArea(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["state", "city_name"], name="unique_state_city"),
+            models.UniqueConstraint(
+                fields=["state", "city_name"], name="unique_state_city"
+            ),
         ]
         ordering = ["-data_timestamp"]
 
@@ -801,7 +820,9 @@ class UserWatchlist(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["user", "property"], name="unique_user_watchlist_property"),
+            models.UniqueConstraint(
+                fields=["user", "property"], name="unique_user_watchlist_property"
+            ),
         ]
         ordering = ["-added_at"]
 
@@ -1023,9 +1044,7 @@ class Notification(models.Model):
 class UserProfile(models.Model):
     """Per-user investment preferences and tax settings."""
 
-    user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="profile"
-    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     marginal_tax_rate = models.DecimalField(
         max_digits=5,
         decimal_places=4,
@@ -1038,7 +1057,10 @@ class UserProfile(models.Model):
         decimal_places=4,
         default=Decimal("0.20"),
         help_text="Fraction of property value attributable to land (e.g. 0.20 for 20 %)",
-        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("0.99"))],
+        validators=[
+            MinValueValidator(Decimal("0")),
+            MaxValueValidator(Decimal("0.99")),
+        ],
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1128,11 +1150,15 @@ class MonthlyActuals(models.Model):
         help_text="Number of vacant days in the month",
     )
     actual_expenses = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0"),
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0"),
         help_text="Total operating expenses (taxes, insurance, HOA, etc.)",
     )
     actual_maintenance = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0"),
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0"),
         help_text="Maintenance and repair costs",
     )
     notes = models.TextField(blank=True, default="")
@@ -1151,9 +1177,7 @@ class MonthlyActuals(models.Model):
     def actual_noi(self) -> Decimal:
         """Net operating income for this month."""
         return (
-            self.actual_rent_collected
-            - self.actual_expenses
-            - self.actual_maintenance
+            self.actual_rent_collected - self.actual_expenses - self.actual_maintenance
         )
 
     @property

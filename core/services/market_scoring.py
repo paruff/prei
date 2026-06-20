@@ -103,17 +103,21 @@ def _score_market_from_snapshot(snapshot) -> Decimal:
 
     # Landlord friendliness (already 0-100)
     if snapshot.landlord_friendliness_score is not None:
-        scored_components.append((
-            snapshot.landlord_friendliness_score,
-            weights["landlord_friendliness"],
-        ))
+        scored_components.append(
+            (
+                snapshot.landlord_friendliness_score,
+                weights["landlord_friendliness"],
+            )
+        )
 
     # Employment diversity (already 0-100)
     if snapshot.employment_diversity_score is not None:
-        scored_components.append((
-            snapshot.employment_diversity_score,
-            weights["employment_diversity"],
-        ))
+        scored_components.append(
+            (
+                snapshot.employment_diversity_score,
+                weights["employment_diversity"],
+            )
+        )
 
     # Population growth
     if snapshot.population_growth_rate is not None:
@@ -155,9 +159,7 @@ def update_market_scores(zip_codes: list[str]) -> int:
 
     updated = 0
     for zip_code in zip_codes:
-        snapshots = MarketSnapshot.objects.filter(
-            zip_code=zip_code, area_type="zip"
-        )
+        snapshots = MarketSnapshot.objects.filter(zip_code=zip_code, area_type="zip")
         for snapshot in snapshots:
             snapshot.market_score = _score_market_from_snapshot(snapshot)
             snapshot.save(update_fields=["market_score"])
@@ -264,9 +266,11 @@ def score_market_by_zip(zip_code: str) -> dict:
 
     # ── Get MarketSnapshot for this ZIP ───────────────────────────────────────
     try:
-        snapshot = MarketSnapshot.objects.filter(
-            zip_code=zip_code, area_type="zip"
-        ).order_by("-fetched_at").first()
+        snapshot = (
+            MarketSnapshot.objects.filter(zip_code=zip_code, area_type="zip")
+            .order_by("-fetched_at")
+            .first()
+        )
     except MarketSnapshot.DoesNotExist:
         snapshot = None
 
@@ -377,7 +381,9 @@ def score_market_by_zip(zip_code: str) -> dict:
     if scores:
         total_weight = sum(w for _, _, w in scores)
         weighted_sum = sum(s * w for _, s, w in scores)
-        result["overall_score"] = int(weighted_sum / total_weight) if total_weight > 0 else 0
+        result["overall_score"] = (
+            int(weighted_sum / total_weight) if total_weight > 0 else 0
+        )
     else:
         result["overall_score"] = 0
 

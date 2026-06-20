@@ -5,6 +5,7 @@ Usage:
     python manage.py refresh_market_data --zip=90210 --state=VA --force
     python manage.py refresh_market_data --zip=90210 --zip=23220
 """
+
 from __future__ import annotations
 
 import os

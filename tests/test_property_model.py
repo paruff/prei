@@ -1,4 +1,5 @@
 """Tests for Property model validation and defaults (ISSUE 0-A)."""
+
 from __future__ import annotations
 
 from decimal import Decimal

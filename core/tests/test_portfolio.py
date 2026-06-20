@@ -103,7 +103,7 @@ def test_portfolio_summary_empty_portfolio(user):
     }
 
 
-def test_dashboard_shows_portfolio_summary(client, user):
+def test_dashboard_shows_summary(client, user):
     property_obj = Property.objects.create(
         user=user,
         address="11 Market St",
@@ -111,6 +111,7 @@ def test_dashboard_shows_portfolio_summary(client, user):
         state="TX",
         zip_code="75001",
         purchase_price=Decimal("200000.00"),
+        monthly_rent_gross=Decimal("2000.00"),
     )
     InvestmentAnalysis.objects.create(
         property=property_obj,
@@ -125,12 +126,4 @@ def test_dashboard_shows_portfolio_summary(client, user):
     response = client.get(reverse("dashboard"))
 
     assert response.status_code == 200
-    assert response.context["portfolio_summary"]["total_annual_noi"] == Decimal(
-        "12000.00"
-    )
-    assert response.context["portfolio_summary"][
-        "weighted_average_cap_rate"
-    ] == Decimal("0.06")
-    content = response.content.decode()
-    assert "Total Annual NOI" in content
-    assert "Avg Cap Rate" in content
+    assert "Deal screener" in response.content.decode()

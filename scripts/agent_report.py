@@ -159,7 +159,9 @@ def print_report(scores: list[dict], month: str | None):
         data = averages[agent]
         low_dims = [d for d, v in data.items() if isinstance(v, (int, float)) and v < 3]
         if low_dims:
-            print(f"  - {agent}: scores low on {', '.join(low_dims)} — review role prompt")
+            print(
+                f"  - {agent}: scores low on {', '.join(low_dims)} — review role prompt"
+            )
     if not any(
         d < 3
         for a in averages.values()

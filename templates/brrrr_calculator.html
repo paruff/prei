@@ -92,17 +92,15 @@
     <div class="col-12 col-lg-7">
       {% if result %}
         <!-- Verdict Banner -->
-        <div class="card mb-4 {% if result.verdict == 'Full Cycle' %}border-success{% elif result.verdict == 'Partial Recycle' %}border-warning{% else %}border-danger{% endif %}">
-          <div class="card-body text-center py-4">
-            <h2 class="h4 mb-2">Verdict: {{ result.verdict }}</h2>
-            {% if result.is_full_cycle %}
-              <p class="text-success mb-0 fw-semibold">Infinite returns — all capital recovered!</p>
-            {% elif result.verdict == "Partial Recycle" %}
-              <p class="text-warning mb-0">Good deal — most capital recycled.</p>
-            {% else %}
-              <p class="text-danger mb-0">Too much capital left in the deal.</p>
-            {% endif %}
-          </div>
+        <div class="brrrr-banner {% if result.is_full_cycle %}is-full-cycle{% elif result.verdict == 'Partial Recycle' %}is-partial{% else %}is-trap{% endif %} text-center">
+          <div class="brrrr-banner-label">Verdict: {{ result.verdict }}</div>
+          {% if result.is_full_cycle %}
+            <div class="brrrr-banner-sub">Infinite returns — all capital recovered!</div>
+          {% elif result.verdict == "Partial Recycle" %}
+            <div class="brrrr-banner-sub">Good deal — most capital recycled.</div>
+          {% else %}
+            <div class="brrrr-banner-sub">Too much capital left in the deal.</div>
+          {% endif %}
         </div>
 
         <!-- Key Metrics -->

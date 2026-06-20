@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from django.db import transaction
 
-from core.models import InvestmentAnalysis, OperatingExpense, Property, RentalIncome
+from core.models import InvestmentAnalysis, Property
 from investor_app.finance.utils import (
     cap_rate,
     cash_on_cash,
@@ -72,12 +72,10 @@ def _persist_analysis(
     )
 
     analysis.noi = annual_noi.quantize(Decimal("0.01"))
-    analysis.cap_rate = cap_rate(annual_noi, purchase_price).quantize(
+    analysis.cap_rate = cap_rate(annual_noi, purchase_price).quantize(Decimal("0.0001"))
+    analysis.cash_on_cash = cash_on_cash(annual_cash_flow, purchase_price).quantize(
         Decimal("0.0001")
     )
-    analysis.cash_on_cash = cash_on_cash(
-        annual_cash_flow, purchase_price
-    ).quantize(Decimal("0.0001"))
     analysis.dscr = dscr(annual_noi, annual_debt_service).quantize(Decimal("0.0001"))
     analysis.irr = irr(cashflows).quantize(Decimal("0.0001"))
     analysis.save()

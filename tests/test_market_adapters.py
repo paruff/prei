@@ -2,6 +2,7 @@
 
 All HTTP calls are mocked — no real API calls in CI.
 """
+
 from __future__ import annotations
 
 import os

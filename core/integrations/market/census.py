@@ -3,6 +3,7 @@
 Fetches population, population growth, and median household income
 from the U.S. Census Bureau API. Free registration required.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,9 +19,7 @@ ACS_VINTAGE = "2022"
 ACS_DATASET = "acs/acs5"
 
 
-def fetch_zip_demographics(
-    zip_code: str, api_key: str
-) -> dict | None:
+def fetch_zip_demographics(zip_code: str, api_key: str) -> dict | None:
     """Fetch ZIP-level demographics from the Census API.
 
     Args:
@@ -117,8 +116,6 @@ def _estimate_population_growth(
     Uses B07001 (geographic mobility) as a proxy if available.
     Returns None if estimation is not possible.
     """
-    url = f"{CENSUS_API_BASE}/{ACS_VINTAGE}/{ACS_DATASET}/get"
-
     # Try to get 5-year-ago population estimate from B01001 (not available in ACS)
     # For MVP, return None — growth data requires decennial census comparison
     return None

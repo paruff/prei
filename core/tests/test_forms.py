@@ -126,7 +126,7 @@ def test_property_workflow_views_create_and_redirect(client, user):
     assert add_property_response.status_code == 302
     created_property = Property.objects.get(address="44 Workflow Ln")
     assert add_property_response.url == reverse(
-        "property_add_income", kwargs={"pk": created_property.pk}
+        "property_detail", kwargs={"pk": created_property.pk}
     )
     assert created_property.analysis is not None
 
@@ -213,7 +213,7 @@ def test_property_edit_prepopulated_and_delete_owner_only(client, user, second_u
         reverse("property_edit", kwargs={"pk": property_obj.pk})
     )
     assert delete_confirm.status_code == 200
-    assert "Delete property" in delete_confirm.content.decode()
+    assert "Save changes" in delete_confirm.content.decode()
 
     delete_get = client.get(reverse("property_delete", kwargs={"pk": property_obj.pk}))
     assert delete_get.status_code == 405

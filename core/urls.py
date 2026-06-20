@@ -51,7 +51,11 @@ urlpatterns = [
     path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
     path("portfolio/actuals/add/", portfolio_actuals_add, name="portfolio_actuals_add"),
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
-    path("settings/investment-targets/", views.investment_targets_edit, name="investment_targets_edit"),
+    path(
+        "settings/investment-targets/",
+        views.investment_targets_edit,
+        name="investment_targets_edit",
+    ),
     path("markets/", views.markets_list, name="markets_list"),
     path("markets/refresh/", MarketRefreshView.as_view(), name="market_refresh"),
     path("brrrr/", views.brrrr_calculator, name="brrrr_calculator"),

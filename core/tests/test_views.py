@@ -1,4 +1,8 @@
+from decimal import Decimal
+
 from django.urls import reverse
+
+from core.models import UserInvestmentTargets
 
 
 def test_dashboard_redirects_anonymous(client):
@@ -24,6 +28,12 @@ def test_dashboard_returns_200_for_logged_in_user(client, user):
 
 
 def test_dashboard_shows_property_kpis(client, user, full_sfr):
+    UserInvestmentTargets.objects.create(
+        user=user,
+        min_coc_pct=Decimal("0.08"),
+        min_dscr=Decimal("1.25"),
+        max_grm=Decimal("12.00"),
+    )
     client.force_login(user)
 
     response = client.get(reverse("dashboard"))
@@ -31,9 +41,9 @@ def test_dashboard_shows_property_kpis(client, user, full_sfr):
 
     assert response.status_code == 200
     assert full_sfr["property"].address in content
-    # Dashboard now shows Deal Screener with portfolio summary cards
-    assert "Total Properties" in content
-    assert "Total Capital Invested" in content
+    # Dashboard shows Deal Screener with score bar for the property
+    assert "Deal screener" in content
+    assert "score-bar-track" in content
 
 
 def test_property_list_excludes_other_users_properties(

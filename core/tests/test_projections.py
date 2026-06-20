@@ -6,8 +6,6 @@ import pytest
 
 from core.models import Property
 from core.services.projections import (
-    ExitAnalysis,
-    YearlyProjection,
     project_hold_period,
 )
 

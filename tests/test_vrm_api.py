@@ -1,11 +1,11 @@
 """Tests for VRM Properties API and serializer."""
+
 from __future__ import annotations
 
 from decimal import Decimal
 from django.utils import timezone
 
 from django.test import TestCase, Client
-from rest_framework import status
 
 from core.models import VrmProperty
 from core.serializers import VrmPropertySerializer

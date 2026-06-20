@@ -41,7 +41,12 @@ from investor_app.finance.utils import (
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
 from core.services import compute_portfolio_summary
 from core.services.audit import log_action
-from .forms import OperatingExpenseForm, PropertyForm, RentalIncomeForm, InvestmentTargetsForm
+from .forms import (
+    OperatingExpenseForm,
+    PropertyForm,
+    RentalIncomeForm,
+    InvestmentTargetsForm,
+)
 from .models import (
     Listing,
     MarketSnapshot,
@@ -181,9 +186,7 @@ def dashboard(request):
         except Exception:
             continue
 
-        verdict_code, verdict_label = VERDICT_MAP.get(
-            score.verdict, ("C", "Pass")
-        )
+        verdict_code, verdict_label = VERDICT_MAP.get(score.verdict, ("C", "Pass"))
 
         properties.append(
             {
@@ -210,19 +213,13 @@ def dashboard(request):
     coc_values = [p["coc"] for p in properties if p["coc"] is not None]
     dscr_values = [p["dscr"] for p in properties if p["dscr"] is not None]
 
-    passes_one_pct_count = sum(
-        1 for p in properties if p["passes_one_pct"]
-    )
+    passes_one_pct_count = sum(1 for p in properties if p["passes_one_pct"])
 
     summary = {
         "total_count": len(properties),
-        "strong_buy_count": sum(
-            1 for p in properties if p["verdict"] == "A"
-        ),
+        "strong_buy_count": sum(1 for p in properties if p["verdict"] == "A"),
         "passes_one_pct_count": passes_one_pct_count,
-        "passes_one_pct_display": (
-            f"{passes_one_pct_count} / {len(properties)}"
-        ),
+        "passes_one_pct_display": (f"{passes_one_pct_count} / {len(properties)}"),
         "best_coc": max(coc_values) if coc_values else Decimal("0"),
         "avg_dscr": (
             sum(dscr_values) / len(dscr_values) if dscr_values else Decimal("0")
@@ -276,7 +273,9 @@ def property_list(request):
         property_obj.underwriting_score = None
         if targets:
             try:
-                property_obj.underwriting_score = score_listing_v2(property_obj, targets)
+                property_obj.underwriting_score = score_listing_v2(
+                    property_obj, targets
+                )
             except Exception:
                 pass
 
@@ -1031,19 +1030,57 @@ def export_pdf(request, pk: int) -> HttpResponse:
 
 
 US_STATES = [
-    ("AL", "Alabama"), ("AK", "Alaska"), ("AZ", "Arizona"), ("AR", "Arkansas"),
-    ("CA", "California"), ("CO", "Colorado"), ("CT", "Connecticut"), ("DE", "Delaware"),
-    ("DC", "District of Columbia"), ("FL", "Florida"), ("GA", "Georgia"), ("HI", "Hawaii"),
-    ("ID", "Idaho"), ("IL", "Illinois"), ("IN", "Indiana"), ("IA", "Iowa"),
-    ("KS", "Kansas"), ("KY", "Kentucky"), ("LA", "Louisiana"), ("ME", "Maine"),
-    ("MD", "Maryland"), ("MA", "Massachusetts"), ("MI", "Michigan"), ("MN", "Minnesota"),
-    ("MS", "Mississippi"), ("MO", "Missouri"), ("MT", "Montana"), ("NE", "Nebraska"),
-    ("NV", "Nevada"), ("NH", "New Hampshire"), ("NJ", "New Jersey"), ("NM", "New Mexico"),
-    ("NY", "New York"), ("NC", "North Carolina"), ("ND", "North Dakota"), ("OH", "Ohio"),
-    ("OK", "Oklahoma"), ("OR", "Oregon"), ("PA", "Pennsylvania"), ("RI", "Rhode Island"),
-    ("SC", "South Carolina"), ("SD", "South Dakota"), ("TN", "Tennessee"), ("TX", "Texas"),
-    ("UT", "Utah"), ("VT", "Vermont"), ("VA", "Virginia"), ("WA", "Washington"),
-    ("WV", "West Virginia"), ("WI", "Wisconsin"), ("WY", "Wyoming"),
+    ("AL", "Alabama"),
+    ("AK", "Alaska"),
+    ("AZ", "Arizona"),
+    ("AR", "Arkansas"),
+    ("CA", "California"),
+    ("CO", "Colorado"),
+    ("CT", "Connecticut"),
+    ("DE", "Delaware"),
+    ("DC", "District of Columbia"),
+    ("FL", "Florida"),
+    ("GA", "Georgia"),
+    ("HI", "Hawaii"),
+    ("ID", "Idaho"),
+    ("IL", "Illinois"),
+    ("IN", "Indiana"),
+    ("IA", "Iowa"),
+    ("KS", "Kansas"),
+    ("KY", "Kentucky"),
+    ("LA", "Louisiana"),
+    ("ME", "Maine"),
+    ("MD", "Maryland"),
+    ("MA", "Massachusetts"),
+    ("MI", "Michigan"),
+    ("MN", "Minnesota"),
+    ("MS", "Mississippi"),
+    ("MO", "Missouri"),
+    ("MT", "Montana"),
+    ("NE", "Nebraska"),
+    ("NV", "Nevada"),
+    ("NH", "New Hampshire"),
+    ("NJ", "New Jersey"),
+    ("NM", "New Mexico"),
+    ("NY", "New York"),
+    ("NC", "North Carolina"),
+    ("ND", "North Dakota"),
+    ("OH", "Ohio"),
+    ("OK", "Oklahoma"),
+    ("OR", "Oregon"),
+    ("PA", "Pennsylvania"),
+    ("RI", "Rhode Island"),
+    ("SC", "South Carolina"),
+    ("SD", "South Dakota"),
+    ("TN", "Tennessee"),
+    ("TX", "Texas"),
+    ("UT", "Utah"),
+    ("VT", "Vermont"),
+    ("VA", "Virginia"),
+    ("WA", "Washington"),
+    ("WV", "West Virginia"),
+    ("WI", "Wisconsin"),
+    ("WY", "Wyoming"),
 ]
 
 
@@ -1144,9 +1181,11 @@ def markets_list(request: HttpRequest) -> HttpResponse:
         try:
             from core.models import MarketSnapshot
 
-            snapshot = MarketSnapshot.objects.filter(
-                zip_code=zip_code, area_type="zip"
-            ).order_by("-fetched_at").first()
+            snapshot = (
+                MarketSnapshot.objects.filter(zip_code=zip_code, area_type="zip")
+                .order_by("-fetched_at")
+                .first()
+            )
             market_data["msa_name"] = snapshot.msa_name if snapshot else ""
         except Exception:
             market_data["msa_name"] = ""
@@ -1181,7 +1220,9 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
             "rehab_cost": request.POST.get("rehab_cost", ""),
             "arv": request.POST.get("arv", ""),
             "monthly_rent_post_rehab": request.POST.get("monthly_rent_post_rehab", ""),
-            "annual_operating_expenses": request.POST.get("annual_operating_expenses", ""),
+            "annual_operating_expenses": request.POST.get(
+                "annual_operating_expenses", ""
+            ),
             "refi_ltv_pct": request.POST.get("refi_ltv_pct", "75"),
             "refi_interest_rate": request.POST.get("refi_interest_rate", "7"),
             "refi_term_years": request.POST.get("refi_term_years", "30"),
@@ -1194,11 +1235,15 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
                 rehab_cost=Decimal(form_data["rehab_cost"]),
                 arv=Decimal(form_data["arv"]),
                 monthly_rent_post_rehab=Decimal(form_data["monthly_rent_post_rehab"]),
-                annual_operating_expenses=Decimal(form_data["annual_operating_expenses"]),
+                annual_operating_expenses=Decimal(
+                    form_data["annual_operating_expenses"]
+                ),
                 refi_ltv_pct=Decimal(form_data["refi_ltv_pct"]) / Decimal("100"),
-                refi_interest_rate=Decimal(form_data["refi_interest_rate"]) / Decimal("100"),
+                refi_interest_rate=Decimal(form_data["refi_interest_rate"])
+                / Decimal("100"),
                 refi_term_years=int(form_data["refi_term_years"]),
-                closing_costs_pct=Decimal(form_data["closing_costs_pct"]) / Decimal("100"),
+                closing_costs_pct=Decimal(form_data["closing_costs_pct"])
+                / Decimal("100"),
             )
         except (InvalidOperation, ValueError, ZeroDivisionError):
             # Invalid input — render form with no result

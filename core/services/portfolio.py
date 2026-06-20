@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from django.contrib.auth.models import User
 from django.db.models import Sum
@@ -337,9 +337,7 @@ def calculate_ytd_cashflow(
     monthly_projected_noi = (
         Decimal(str(analysis.noi)) / MONTHS_PER_YEAR if analysis else Decimal("0")
     )
-    monthly_debt_service = (
-        _get_annual_debt_service(property_obj) / MONTHS_PER_YEAR
-    )
+    monthly_debt_service = _get_annual_debt_service(property_obj) / MONTHS_PER_YEAR
     monthly_projected_cashflow = monthly_projected_noi - monthly_debt_service
 
     ytd_actual = Decimal("0")
@@ -363,7 +361,9 @@ def _get_annual_debt_service(property_obj: Property) -> Decimal:
     """Calculate annual debt service for a property."""
     from investor_app.finance.utils import calculate_monthly_mortgage, to_decimal
 
-    loan_amount = to_decimal(property_obj.purchase_price) * (Decimal("1") - to_decimal(property_obj.down_payment_pct))
+    loan_amount = to_decimal(property_obj.purchase_price) * (
+        Decimal("1") - to_decimal(property_obj.down_payment_pct)
+    )
     # convert fraction rate to percentage for calculate_monthly_mortgage
     rate_pct = to_decimal(property_obj.interest_rate) * Decimal("100")
     monthly_pmt = calculate_monthly_mortgage(
@@ -374,7 +374,9 @@ def _get_annual_debt_service(property_obj: Property) -> Decimal:
     return monthly_pmt * MONTHS_PER_YEAR
 
 
-def check_flag_for_attention(property_obj: Property, consecutive_months: int = 2) -> bool:
+def check_flag_for_attention(
+    property_obj: Property, consecutive_months: int = 2
+) -> bool:
     """Check if a property should be flagged for attention.
 
     Flag if actual CoC is more than 20% below underwritten CoC for consecutive months.
@@ -397,7 +399,9 @@ def check_flag_for_attention(property_obj: Property, consecutive_months: int = 2
     # Get recent actuals ordered by month descending
     recent_actuals = MonthlyActuals.objects.filter(
         prop=property_obj,
-    ).order_by("-month")[:consecutive_months]
+    ).order_by(
+        "-month"
+    )[:consecutive_months]
 
     if len(recent_actuals) < consecutive_months:
         return False
@@ -445,9 +449,13 @@ def compute_portfolio_performance(user: User) -> Dict[str, object]:
         analysis = getattr(prop, "analysis", None)
 
         # Get latest actuals
-        latest_actual = MonthlyActuals.objects.filter(
-            prop=prop,
-        ).order_by("-month").first()
+        latest_actual = (
+            MonthlyActuals.objects.filter(
+                prop=prop,
+            )
+            .order_by("-month")
+            .first()
+        )
 
         # Calculate underwritten monthly values
         underwritten_monthly_noi = (
@@ -465,7 +473,9 @@ def compute_portfolio_performance(user: User) -> Dict[str, object]:
         actual_monthly_noi = Decimal("0")
 
         if latest_actual:
-            underwritten_coc = Decimal(str(analysis.cash_on_cash)) if analysis else Decimal("0")
+            underwritten_coc = (
+                Decimal(str(analysis.cash_on_cash)) if analysis else Decimal("0")
+            )
             coc_variance = calculate_coc_variance(
                 actual_rent=latest_actual.actual_rent_collected,
                 actual_vacancy_days=latest_actual.actual_vacancy_days,
@@ -484,7 +494,8 @@ def compute_portfolio_performance(user: User) -> Dict[str, object]:
                 actual_maintenance=latest_actual.actual_maintenance,
                 underwritten_monthly_expenses=(
                     underwritten_monthly_noi + annual_debt_service / MONTHS_PER_YEAR
-                    if analysis else Decimal("0")
+                    if analysis
+                    else Decimal("0")
                 ),
             )
             actual_monthly_noi = latest_actual.actual_noi
@@ -493,7 +504,9 @@ def compute_portfolio_performance(user: User) -> Dict[str, object]:
         ytd = calculate_ytd_cashflow(prop, date.today().year)
 
         total_monthly_cashflow += underwritten_monthly_cashflow
-        total_equity += Decimal(str(prop.purchase_price)) * Decimal("0.7")  # Estimate 30% equity
+        total_equity += Decimal(str(prop.purchase_price)) * Decimal(
+            "0.7"
+        )  # Estimate 30% equity
 
         prop_detail = {
             "property": prop,

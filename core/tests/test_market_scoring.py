@@ -1,6 +1,5 @@
 """Tests for market scoring: Price-to-Rent ratio and overall market score."""
 
-from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -21,42 +20,32 @@ class TestCalculatePriceToRentRatio:
 
     def test_basic_ratio(self):
         """$200k home, $1,500/mo rent → P/R = 11.11."""
-        result = calculate_price_to_rent_ratio(
-            Decimal("200000"), Decimal("1500")
-        )
+        result = calculate_price_to_rent_ratio(Decimal("200000"), Decimal("1500"))
         expected = Decimal("200000") / (Decimal("1500") * 12)
         assert result == expected.quantize(Decimal("0.01"))
 
     def test_strong_market(self):
         """P/R < 12 is a strong cashflow market."""
         # $100k home, $1,200/mo → P/R = 6.94
-        result = calculate_price_to_rent_ratio(
-            Decimal("100000"), Decimal("1200")
-        )
+        result = calculate_price_to_rent_ratio(Decimal("100000"), Decimal("1200"))
         assert result < 12
 
     def test_moderate_market(self):
         """P/R 12–16 is moderate."""
         # $180k home, $1,200/mo → P/R = 12.50
-        result = calculate_price_to_rent_ratio(
-            Decimal("180000"), Decimal("1200")
-        )
+        result = calculate_price_to_rent_ratio(Decimal("180000"), Decimal("1200"))
         assert 12 <= result < 16
 
     def test_borderline_market(self):
         """P/R 16–20 is borderline."""
         # $250k home, $1,300/mo → P/R = 16.03
-        result = calculate_price_to_rent_ratio(
-            Decimal("250000"), Decimal("1300")
-        )
+        result = calculate_price_to_rent_ratio(Decimal("250000"), Decimal("1300"))
         assert 16 <= result <= 20
 
     def test_weak_market(self):
         """P/R > 20 is a weak cashflow market."""
         # $400k home, $1,500/mo → P/R = 22.22
-        result = calculate_price_to_rent_ratio(
-            Decimal("400000"), Decimal("1500")
-        )
+        result = calculate_price_to_rent_ratio(Decimal("400000"), Decimal("1500"))
         assert result > 20
 
     def test_zero_price_raises(self):
@@ -76,9 +65,7 @@ class TestCalculatePriceToRentRatio:
             calculate_price_to_rent_ratio(Decimal("200000"), Decimal("-1500"))
 
     def test_returns_decimal(self):
-        result = calculate_price_to_rent_ratio(
-            Decimal("200000"), Decimal("1500")
-        )
+        result = calculate_price_to_rent_ratio(Decimal("200000"), Decimal("1500"))
         assert isinstance(result, Decimal)
 
 
@@ -113,22 +100,26 @@ def user(db):
 def properties_in_zip(db, user, zip_78702):
     """Create properties in ZIP 78702 with known prices and rents."""
     props = []
-    for i, (price, rent) in enumerate([
-        (Decimal("200000"), Decimal("1500")),
-        (Decimal("250000"), Decimal("1800")),
-        (Decimal("180000"), Decimal("1400")),
-    ]):
-        props.append(Property.objects.create(
-            user=user,
-            address=f"{100 + i} Market St",
-            city="Austin",
-            state="TX",
-            zip_code="78702",
-            purchase_price=price,
-            monthly_rent_gross=rent,
-            property_taxes_annual=Decimal("2400"),
-            insurance_annual=Decimal("1200"),
-        ))
+    for i, (price, rent) in enumerate(
+        [
+            (Decimal("200000"), Decimal("1500")),
+            (Decimal("250000"), Decimal("1800")),
+            (Decimal("180000"), Decimal("1400")),
+        ]
+    ):
+        props.append(
+            Property.objects.create(
+                user=user,
+                address=f"{100 + i} Market St",
+                city="Austin",
+                state="TX",
+                zip_code="78702",
+                purchase_price=price,
+                monthly_rent_gross=rent,
+                property_taxes_annual=Decimal("2400"),
+                insurance_annual=Decimal("1200"),
+            )
+        )
     return props
 
 
@@ -236,8 +227,10 @@ class TestScoreMarketVerdictBands:
     def test_strong_band(self, db):
         """P/R < 12 → Strong."""
         # Create a property that gives P/R < 12
-        user = __import__("django.contrib.auth", fromlist=["get_user_model"]).get_user_model().objects.create_user(
-            username="strong_test", password="pass"
+        user = (
+            __import__("django.contrib.auth", fromlist=["get_user_model"])
+            .get_user_model()
+            .objects.create_user(username="strong_test", password="pass")
         )
         Property.objects.create(
             user=user,
@@ -260,8 +253,10 @@ class TestScoreMarketVerdictBands:
 
     def test_moderate_band(self, db):
         """P/R 12–16 → Moderate."""
-        user = __import__("django.contrib.auth", fromlist=["get_user_model"]).get_user_model().objects.create_user(
-            username="moderate_test", password="pass"
+        user = (
+            __import__("django.contrib.auth", fromlist=["get_user_model"])
+            .get_user_model()
+            .objects.create_user(username="moderate_test", password="pass")
         )
         Property.objects.create(
             user=user,
@@ -284,8 +279,10 @@ class TestScoreMarketVerdictBands:
 
     def test_borderline_band(self, db):
         """P/R 16–20 → Borderline."""
-        user = __import__("django.contrib.auth", fromlist=["get_user_model"]).get_user_model().objects.create_user(
-            username="borderline_test", password="pass"
+        user = (
+            __import__("django.contrib.auth", fromlist=["get_user_model"])
+            .get_user_model()
+            .objects.create_user(username="borderline_test", password="pass")
         )
         Property.objects.create(
             user=user,
@@ -308,8 +305,10 @@ class TestScoreMarketVerdictBands:
 
     def test_weak_band(self, db):
         """P/R > 20 → Weak."""
-        user = __import__("django.contrib.auth", fromlist=["get_user_model"]).get_user_model().objects.create_user(
-            username="weak_test", password="pass"
+        user = (
+            __import__("django.contrib.auth", fromlist=["get_user_model"])
+            .get_user_model()
+            .objects.create_user(username="weak_test", password="pass")
         )
         Property.objects.create(
             user=user,
