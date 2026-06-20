@@ -8,6 +8,7 @@ urlpatterns = [
     path("health/", views.health_check, name="health_check"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("properties/add/", views.property_add, name="property_add"),
+    path("properties/create/", views.property_add, name="property_create"),
     path("properties/", views.property_list, name="property_list"),
     path("properties/compare/", views.property_compare, name="property_compare"),
     path("properties/<int:pk>/edit/", views.property_edit, name="property_edit"),

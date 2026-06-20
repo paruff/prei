@@ -1,342 +1,101 @@
 {% extends "base.html" %}
-{% block title %}Deal Screener — Prei{% endblock %}
+{% load humanize %}
+{% block title %}Screener{% endblock %}
+
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Deal Screener</h1>
-    <a href="{% url 'property_add' %}" class="btn btn-primary btn-sm">Add Property</a>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Deal screener</h1>
+    <p class="page-sub">{{ summary.total_count }} propert{{ summary.total_count|pluralize:"y,ies" }} &middot; {{ summary.strong_buy_count }} strong buy</p>
   </div>
+  <a href="{% url 'property_create' %}" class="btn btn-primary">+ Add property</a>
+</div>
 
-  <!-- Portfolio Summary Cards -->
-  <div class="row g-3 mb-4">
-    <div class="col-12 col-md-6 col-lg-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Total Properties</div>
-          <div class="fs-4 fw-semibold">{{ portfolio_summary.total_properties }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-md-6 col-lg-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Total Capital Invested</div>
-          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_capital_invested|floatformat:2 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-md-6 col-lg-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Total Annual NOI</div>
-          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_annual_noi|floatformat:2 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-md-6 col-lg-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Avg Cap Rate</div>
-          <div class="fs-4 fw-semibold">{{ portfolio_summary.weighted_average_cap_rate|floatformat:4 }}</div>
-        </div>
-      </div>
-    </div>
+<div class="kpi-grid">
+  {% include "components/kpi_card.html" with label="Best CoC" value=summary.best_coc|floatformat:1|add:"%" sub="Target >= 8%" color_class="num-good" %}
+  {% include "components/kpi_card.html" with label="Avg DSCR" value=summary.avg_dscr|floatformat:2 sub="Minimum 1.25" %}
+  {% include "components/kpi_card.html" with label="1% rule pass" value=summary.passes_one_pct_display sub="Of tracked properties" %}
+  {% include "components/kpi_card.html" with label="Strong buy" value=summary.strong_buy_count|stringformat:"s" sub="Score >= 75 / 100" color_class="num-good" %}
+</div>
+
+<div class="filter-bar">
+  <input id="search-input" type="search" class="form-input filter-search" placeholder="Filter by address or market..." aria-label="Filter properties">
+  <div class="chip-group" role="group" aria-label="Verdict filter">
+    <button class="chip is-active" data-filter="all">All</button>
+    <button class="chip" data-filter="A">Strong buy</button>
+    <button class="chip" data-filter="B">Conditional</button>
+    <button class="chip" data-filter="C">Pass</button>
+    <button class="chip" data-filter="1pct">1% rule</button>
   </div>
+</div>
 
-  {% if scored_properties %}
-    <!-- Filters -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <!-- Min Score Slider -->
-          <div class="col-12 col-md-3">
-            <label for="filter-min-score" class="form-label">Min Score: <span id="min-score-display">0</span></label>
-            <input type="range" class="form-range" id="filter-min-score" min="0" max="100" value="0" step="5">
-          </div>
+{% if properties %}
+<div class="table-wrap">
+  <table class="data-table" id="deal-table" aria-label="Deal screener results">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th class="col-right">CoC</th>
+        <th class="col-right col-hide-mobile">Cap rate</th>
+        <th class="col-right col-hide-mobile">DSCR</th>
+        <th class="col-right col-hide-mobile">GRM</th>
+        <th>Verdict</th>
+        <th>Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in properties %}
+      <tr data-verdict="{{ p.verdict }}" data-onepct="{{ p.passes_one_pct|yesno:'true,false' }}" data-addr="{{ p.address|lower }} {{ p.city|lower }} {{ p.state|lower }}">
+        <td>
+          <a href="{% url 'property_detail' p.id %}" class="deal-link">
+            <div class="deal-address">{{ p.address }}</div>
+            <div class="deal-meta">{{ p.city }}, {{ p.state }} &middot; {{ p.property_type }}</div>
+          </a>
+        </td>
+        <td class="col-right num {% if p.coc >= 0.08 %}num-good{% elif p.coc >= 0.05 %}num-warn{% else %}num-bad{% endif %}">{{ p.coc|floatformat:1 }}%</td>
+        <td class="col-right col-hide-mobile num {% if p.cap_rate >= 0.06 %}num-good{% elif p.cap_rate >= 0.04 %}num-warn{% else %}num-bad{% endif %}">{{ p.cap_rate|floatformat:1 }}%</td>
+        <td class="col-right col-hide-mobile num {% if p.dscr >= 1.25 %}num-good{% elif p.dscr >= 1.0 %}num-warn{% else %}num-bad{% endif %}">{{ p.dscr|floatformat:2 }}</td>
+        <td class="col-right col-hide-mobile num {% if p.grm <= 12 %}num-good{% elif p.grm <= 16 %}num-warn{% else %}num-bad{% endif %}">{{ p.grm|floatformat:1 }}</td>
+        <td>{% include "components/verdict_badge.html" with verdict=p.verdict verdict_label=p.verdict_label %}</td>
+        <td>{% include "components/score_bar.html" with score=p.score verdict=p.verdict %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  {% include "components/empty_state.html" with title="No properties yet" body="Add your first property to start screening deals and see underwriting scores." action_url="/properties/add/" action_label="Add your first property" %}
+{% endif %}
+{% endblock %}
 
-          <!-- Verdict Checkboxes -->
-          <div class="col-12 col-md-4">
-            <label class="form-label">Verdict</label>
-            <div class="d-flex gap-3">
-              <div class="form-check">
-                <input class="form-check-input filter-verdict" type="checkbox" value="Strong Buy" id="verdict-strong" checked>
-                <label class="form-check-label" for="verdict-strong">Strong Buy</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input filter-verdict" type="checkbox" value="Conditional" id="verdict-conditional" checked>
-                <label class="form-check-label" for="verdict-conditional">Conditional</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input filter-verdict" type="checkbox" value="Pass" id="verdict-pass" checked>
-                <label class="form-check-label" for="verdict-pass">Pass</label>
-              </div>
-            </div>
-          </div>
+{% block extra_js %}
+<script>
+(function() {
+  var rows   = Array.from(document.querySelectorAll('#deal-table tbody tr'));
+  var chips  = document.querySelectorAll('.chip[data-filter]');
+  var search = document.getElementById('search-input');
+  var active = 'all';
 
-          <!-- State Filter -->
-          <div class="col-12 col-md-3">
-            <label for="filter-state" class="form-label">State</label>
-            <select class="form-select" id="filter-state">
-              <option value="">All States</option>
-              {% for state in states %}
-                <option value="{{ state }}">{{ state }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <!-- 1% Rule Toggle -->
-          <div class="col-12 col-md-2">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="filter-one-pct">
-              <label class="form-check-label" for="filter-one-pct">1% Rule Only</label>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Results count -->
-    <div class="mb-2">
-      <small class="text-muted" id="results-count">Showing {{ scored_properties|length }} properties</small>
-    </div>
-
-    <!-- Deal Screener Table -->
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle" id="deal-table">
-        <thead>
-          <tr>
-            <th style="cursor: pointer;" data-sort="address">Address ↕</th>
-            <th style="cursor: pointer;" data-sort="market_score">Market ↕</th>
-            <th style="cursor: pointer;" data-sort="one_pct">1% Rule ↕</th>
-            <th style="cursor: pointer;" data-sort="coc">CoC ↕</th>
-            <th style="cursor: pointer;" data-sort="dscr">DSCR ↕</th>
-            <th style="cursor: pointer;" data-sort="cap_rate">Cap Rate ↕</th>
-            <th style="cursor: pointer;" data-sort="score" class="table-primary">Score ↕</th>
-            <th>Verdict</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in scored_properties %}
-            <tr
-              data-score="{{ item.underwriting_score.total_score|default:'0' }}"
-              data-verdict="{{ item.underwriting_score.verdict|default:'Unknown' }}"
-              data-state="{{ item.property.state }}"
-              data-one-pct="{{ item.underwriting_score.passes_one_pct_rule|default:'False' }}"
-              data-coc="{{ item.underwriting_score.cash_on_cash|default:'0' }}"
-              data-dscr="{{ item.underwriting_score.dscr|default:'0' }}"
-              data-cap-rate="{{ item.underwriting_score.cap_rate|default:'0' }}"
-              data-market-score="{{ item.market_score.overall_score|default:'0' }}"
-              data-address="{{ item.property.address }}"
-            >
-              <td>
-                <a href="{% url 'property_detail' item.property.pk %}">{{ item.property.address }}</a>
-                <div class="small text-muted">{{ item.property.city }}, {{ item.property.state }} {{ item.property.zip_code }}</div>
-                {% if item.is_incomplete %}
-                  <span class="badge bg-secondary">Incomplete Data</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if item.market_score %}
-                  <span class="fw-bold">{{ item.market_score.overall_score }}</span>
-                  {% if item.market_score.price_to_rent_ratio %}
-                    <div class="small text-muted">P/R: {{ item.market_score.price_to_rent_ratio|floatformat:1 }}</div>
-                  {% endif %}
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if item.underwriting_score %}
-                  {% if item.underwriting_score.passes_one_pct_rule %}
-                    <span class="badge bg-success">Pass</span>
-                  {% else %}
-                    <span class="badge bg-danger">Fail</span>
-                  {% endif %}
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if item.underwriting_score %}
-                  <span class="{% if item.underwriting_score.cash_on_cash < 0 %}text-danger{% elif item.underwriting_score.cash_on_cash >= 0.08 %}text-success{% endif %}">
-                    {{ item.underwriting_score.cash_on_cash|floatformat:2 }}%
-                  </span>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if item.underwriting_score %}
-                  <span class="{% if item.underwriting_score.dscr < 1.0 %}text-danger{% elif item.underwriting_score.dscr >= 1.25 %}text-success{% endif %}">
-                    {{ item.underwriting_score.dscr|floatformat:2 }}
-                  </span>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if item.underwriting_score %}
-                  <span class="{% if item.underwriting_score.cap_rate < 0.06 %}text-warning{% elif item.underwriting_score.cap_rate >= 0.06 %}text-success{% endif %}">
-                    {{ item.underwriting_score.cap_rate|floatformat:2 }}%
-                  </span>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if item.underwriting_score %}
-                  <span class="fs-5 fw-bold">{{ item.underwriting_score.total_score }}</span>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if item.underwriting_score %}
-                  {% if item.underwriting_score.verdict == "Strong Buy" %}
-                    <span class="badge bg-success">{{ item.underwriting_score.verdict }}</span>
-                  {% elif item.underwriting_score.verdict == "Conditional" %}
-                    <span class="badge bg-warning text-dark">{{ item.underwriting_score.verdict }}</span>
-                  {% else %}
-                    <span class="badge bg-secondary">{{ item.underwriting_score.verdict }}</span>
-                  {% endif %}
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                <a href="{% url 'property_detail' item.property.pk %}" class="btn btn-outline-primary btn-sm">Details</a>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <div class="card">
-      <div class="card-body text-center py-5">
-        <h2 class="h5">No properties yet</h2>
-        <p class="text-muted mb-3">Add properties to see underwriting scores and market analysis.</p>
-        <a href="{% url 'property_add' %}" class="btn btn-primary">Add your first property</a>
-      </div>
-    </div>
-  {% endif %}
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const table = document.getElementById('deal-table');
-      if (!table) return;
-
-      const tbody = table.querySelector('tbody');
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      const minScoreSlider = document.getElementById('filter-min-score');
-      const minScoreDisplay = document.getElementById('min-score-display');
-      const verdictCheckboxes = document.querySelectorAll('.filter-verdict');
-      const stateFilter = document.getElementById('filter-state');
-      const onePctFilter = document.getElementById('filter-one-pct');
-      const resultsCount = document.getElementById('results-count');
-
-      // Sorting
-      let currentSort = { field: 'score', direction: 'desc' };
-
-      function getCellValue(row, field) {
-        switch(field) {
-          case 'address': return row.dataset.address || '';
-          case 'market_score': return parseFloat(row.dataset.marketScore) || 0;
-          case 'one_pct': return row.dataset.onePct === 'True' ? 1 : 0;
-          case 'coc': return parseFloat(row.dataset.coc) || 0;
-          case 'dscr': return parseFloat(row.dataset.dscr) || 0;
-          case 'cap_rate': return parseFloat(row.dataset.capRate) || 0;
-          case 'score': return parseFloat(row.dataset.score) || 0;
-          default: return 0;
-        }
-      }
-
-      function sortRows(field) {
-        if (currentSort.field === field) {
-          currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-          currentSort.field = field;
-          currentSort.direction = 'desc';
-        }
-
-        rows.sort((a, b) => {
-          let aVal = getCellValue(a, field);
-          let bVal = getCellValue(b, field);
-
-          if (field === 'address') {
-            aVal = aVal.toLowerCase();
-            bVal = bVal.toLowerCase();
-            return currentSort.direction === 'asc'
-              ? aVal.localeCompare(bVal)
-              : bVal.localeCompare(aVal);
-          }
-
-          return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
-        });
-
-        rows.forEach(row => tbody.appendChild(row));
-        updateSortIndicators();
-      }
-
-      function updateSortIndicators() {
-        table.querySelectorAll('th[data-sort]').forEach(th => {
-          const field = th.dataset.sort;
-          if (field === currentSort.field) {
-            th.textContent = th.textContent.replace(/ [↕↑↓]$/, '') +
-              (currentSort.direction === 'asc' ? ' ↑' : ' ↓');
-          } else {
-            th.textContent = th.textContent.replace(/ [↕↑↓]$/, '') + ' ↕';
-          }
-        });
-      }
-
-      // Filtering
-      function applyFilters() {
-        const minScore = parseInt(minScoreSlider.value);
-        const selectedVerdicts = Array.from(verdictCheckboxes)
-          .filter(cb => cb.checked)
-          .map(cb => cb.value);
-        const selectedState = stateFilter.value;
-        const onePctOnly = onePctFilter.checked;
-
-        let visibleCount = 0;
-
-        rows.forEach(row => {
-          const score = parseFloat(row.dataset.score) || 0;
-          const verdict = row.dataset.verdict;
-          const state = row.dataset.state;
-          const onePct = row.dataset.onePct;
-
-          const passScore = score >= minScore;
-          const passVerdict = selectedVerdicts.includes(verdict);
-          const passState = !selectedState || state === selectedState;
-          const passOnePct = !onePctOnly || onePct === 'True';
-
-          const visible = passScore && passVerdict && passState && passOnePct;
-          row.style.display = visible ? '' : 'none';
-          if (visible) visibleCount++;
-        });
-
-        resultsCount.textContent = 'Showing ' + visibleCount + ' of ' + rows.length + ' properties';
-      }
-
-      // Event listeners
-      minScoreSlider.addEventListener('input', function() {
-        minScoreDisplay.textContent = this.value;
-        applyFilters();
-      });
-
-      verdictCheckboxes.forEach(cb => cb.addEventListener('change', applyFilters));
-      stateFilter.addEventListener('change', applyFilters);
-      onePctFilter.addEventListener('change', applyFilters);
-
-      // Sort header clicks
-      table.querySelectorAll('th[data-sort]').forEach(th => {
-        th.addEventListener('click', () => sortRows(th.dataset.sort));
-      });
-
-      // Initial sort by score descending
-      sortRows('score');
+  function applyFilters() {
+    var q = search ? search.value.toLowerCase().trim() : '';
+    rows.forEach(function(row) {
+      var v      = row.dataset.verdict;
+      var onePct = row.dataset.onepct === 'true';
+      var addr   = row.dataset.addr || '';
+      var match  = active === 'all' || (active === '1pct' && onePct) || v === active;
+      row.style.display = (match && (!q || addr.includes(q))) ? '' : 'none';
     });
-  </script>
+  }
+
+  chips.forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      chips.forEach(function(c) { c.classList.remove('is-active'); });
+      chip.classList.add('is-active');
+      active = chip.dataset.filter;
+      applyFilters();
+    });
+  });
+  if (search) search.addEventListener('input', applyFilters);
+})();
+</script>
 {% endblock %}

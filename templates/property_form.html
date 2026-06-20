@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Edit property{% else %}Add property{% endif %}{% endblock %}
+
+{% block content %}
+<div style="max-width:680px;">
+
+  <div class="page-header" style="margin-bottom:1.5rem;">
+    <div>
+      <h1 class="page-title">{% if object %}Edit property{% else %}Add property{% endif %}</h1>
+      <p class="page-sub">All fields are used in the underwriting score calculation.</p>
+    </div>
+    <a href="{% url 'dashboard' %}" class="btn">Cancel</a>
+  </div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <!-- Section: Location -->
+    <div class="card" style="margin-bottom:var(--space-4);">
+      <h2 style="font-size:var(--text-base); font-weight:var(--weight-medium); margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--border-subtle);">Location</h2>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="id_address">Street address</label>
+          {{ form.address }}
+          {% if form.address.errors %}<div class="form-error">{{ form.address.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_property_type">Property type</label>
+          {{ form.property_type }}
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="id_city">City</label>
+          {{ form.city }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_state">State</label>
+          {{ form.state }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_zip_code">ZIP code</label>
+          {{ form.zip_code }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Purchase -->
+    <div class="card" style="margin-bottom:var(--space-4);">
+      <h2 style="font-size:var(--text-base); font-weight:var(--weight-medium); margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--border-subtle);">Purchase</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="id_purchase_price">Purchase price ($)</label>
+          {{ form.purchase_price }}
+          <p class="form-hint">The all-in acquisition price.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_sq_ft">Square footage</label>
+          {{ form.sq_ft }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_bedrooms">Bedrooms</label>
+          {{ form.bedrooms }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_year_built">Year built</label>
+          {{ form.year_built }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Income -->
+    <div class="card" style="margin-bottom:var(--space-4);">
+      <h2 style="font-size:var(--text-base); font-weight:var(--weight-medium); margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--border-subtle);">Income</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="id_monthly_rent_gross">Gross monthly rent ($)</label>
+          {{ form.monthly_rent_gross }}
+          <p class="form-hint">Total rent if 100% occupied.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_other_monthly_income">Other monthly income ($)</label>
+          {{ form.other_monthly_income }}
+          <p class="form-hint">Laundry, parking, storage. Enter 0 if none.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Expenses -->
+    <div class="card" style="margin-bottom:var(--space-4);">
+      <h2 style="font-size:var(--text-base); font-weight:var(--weight-medium); margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--border-subtle);">Annual expenses</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="id_property_taxes_annual">Property taxes ($/year)</label>
+          {{ form.property_taxes_annual }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_insurance_annual">Insurance ($/year)</label>
+          {{ form.insurance_annual }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_hoa_monthly">HOA ($/month)</label>
+          {{ form.hoa_monthly }}
+          <p class="form-hint">Enter 0 if no HOA.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_maintenance_monthly">Maintenance reserve ($/month)</label>
+          {{ form.maintenance_monthly }}
+          <p class="form-hint">Default: $150/month. Adjust for property age and condition.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_capex_monthly">CapEx reserve ($/month)</label>
+          {{ form.capex_monthly }}
+          <p class="form-hint">Default: $100/month for roof, HVAC, appliances.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Loan -->
+    <div class="card" style="margin-bottom:var(--space-4);">
+      <h2 style="font-size:var(--text-base); font-weight:var(--weight-medium); margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--border-subtle);">Loan</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="id_down_payment_pct">Down payment (%)</label>
+          {{ form.down_payment_pct }}
+          <p class="form-hint">Enter as percent: 20 = 20%</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_interest_rate">Interest rate (%)</label>
+          {{ form.interest_rate }}
+          <p class="form-hint">Enter as percent: 7.25 = 7.25%</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_loan_term_years">Loan term (years)</label>
+          {{ form.loan_term_years }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Assumptions -->
+    <div class="card" style="margin-bottom:var(--space-5);">
+      <h2 style="font-size:var(--text-base); font-weight:var(--weight-medium); margin-bottom:var(--space-1);">Assumptions</h2>
+      <p style="font-size:var(--text-xs); color:var(--color-neutral-500); margin-bottom:var(--space-4);">These defaults are conservative estimates. Adjust based on local market data.</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="id_vacancy_rate">Vacancy rate (%)</label>
+          {{ form.vacancy_rate }}
+          <p class="form-hint">Default: 8%. Adjust for local market vacancy.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_mgmt_fee_pct">Property management fee (%)</label>
+          {{ form.mgmt_fee_pct }}
+          <p class="form-hint">Default: 10%. Set 0 if self-managing.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:var(--space-3); justify-content:flex-end;">
+      <a href="{% url 'dashboard' %}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% if object %}Save changes{% else %}Save &amp; analyze{% endif %}
+      </button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

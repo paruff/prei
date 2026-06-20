@@ -10,7 +10,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.db.models import Q, Sum
+from django.db.models import Q
 from django.http import (
     Http404,
     HttpRequest,
@@ -138,34 +138,7 @@ def dashboard(request):
     if _is_client_only_user(request.user):
         return redirect("property_list")
 
-    properties = (
-        Property.objects.filter(
-            Q(user=request.user) | Q(property_shares__shared_with=request.user)
-        )
-        .select_related("analysis")
-        .distinct()
-        .order_by("-id")
-    )
-    portfolio_summary = compute_portfolio_summary(request.user)
-    state_allocation = list(
-        properties.values("state")
-        .annotate(total_value=Sum("purchase_price"))
-        .order_by("state")
-    )
-    state_allocation_labels = [
-        item["state"] or "Unknown"
-        for item in state_allocation
-        if item["total_value"] is not None
-    ]
-    state_allocation_values = [
-        str(item["total_value"])
-        for item in state_allocation
-        if item["total_value"] is not None
-    ]
-
-    # Compute underwriting scores for each property
     from core.services.scoring import score_listing_v2
-    from core.services.market_scoring import score_market_by_zip
     from core.models import UserInvestmentTargets
 
     try:
@@ -173,54 +146,91 @@ def dashboard(request):
     except UserInvestmentTargets.DoesNotExist:
         targets = None
 
-    # Collect unique states for filter dropdown
-    states = sorted(
-        properties.values_list("state", flat=True).distinct().exclude(state="")
+    properties_qs = (
+        Property.objects.filter(
+            Q(user=request.user) | Q(property_shares__shared_with=request.user)
+        )
+        .select_related("analysis")
+        .distinct()
+        .order_by("-id")
     )
 
-    scored_properties = []
-    for prop in properties:
-        score_data = {
-            "property": prop,
-            "underwriting_score": None,
-            "market_score": None,
-            "is_incomplete": False,
-        }
+    VERDICT_MAP = {
+        "Strong Buy": ("A", "Strong Buy"),
+        "Conditional": ("B", "Conditional"),
+        "Pass": ("C", "Pass"),
+    }
 
-        # Check for incomplete data
+    properties: list[dict] = []
+    for prop in properties_qs:
         if (
-            prop.monthly_rent_gross is None
+            targets is None
+            or prop.monthly_rent_gross is None
             or prop.monthly_rent_gross <= 0
             or prop.purchase_price is None
             or prop.purchase_price <= 0
         ):
-            score_data["is_incomplete"] = True
+            continue
 
-        # Compute underwriting score
-        if targets and not score_data["is_incomplete"]:
-            try:
-                score_data["underwriting_score"] = score_listing_v2(prop, targets)
-            except Exception:
-                pass
+        try:
+            score = score_listing_v2(prop, targets)
+        except Exception:
+            continue
 
-        # Compute market score
-        if prop.zip_code:
-            try:
-                score_data["market_score"] = score_market_by_zip(prop.zip_code)
-            except Exception:
-                pass
+        verdict_code, verdict_label = VERDICT_MAP.get(
+            score.verdict, ("C", "Pass")
+        )
 
-        scored_properties.append(score_data)
+        properties.append(
+            {
+                "id": prop.id,
+                "address": prop.address,
+                "city": prop.city,
+                "state": prop.state,
+                "property_type": prop.get_property_type_display(),
+                "score": score.total_score,
+                "verdict": verdict_code,
+                "verdict_label": verdict_label,
+                "coc": score.cash_on_cash,
+                "cap_rate": score.cap_rate,
+                "dscr": score.dscr,
+                "grm": score.grm,
+                "passes_one_pct": score.passes_one_pct_rule,
+            }
+        )
+
+    # Sort by score descending — best deals first
+    properties.sort(key=lambda p: p["score"], reverse=True)
+
+    # Compute summary
+    coc_values = [p["coc"] for p in properties if p["coc"] is not None]
+    dscr_values = [p["dscr"] for p in properties if p["dscr"] is not None]
+
+    passes_one_pct_count = sum(
+        1 for p in properties if p["passes_one_pct"]
+    )
+
+    summary = {
+        "total_count": len(properties),
+        "strong_buy_count": sum(
+            1 for p in properties if p["verdict"] == "A"
+        ),
+        "passes_one_pct_count": passes_one_pct_count,
+        "passes_one_pct_display": (
+            f"{passes_one_pct_count} / {len(properties)}"
+        ),
+        "best_coc": max(coc_values) if coc_values else Decimal("0"),
+        "avg_dscr": (
+            sum(dscr_values) / len(dscr_values) if dscr_values else Decimal("0")
+        ),
+    }
 
     return render(
         request,
         "dashboard.html",
         {
-            "scored_properties": scored_properties,
-            "portfolio_summary": portfolio_summary,
-            "state_allocation_labels": state_allocation_labels,
-            "state_allocation_values": state_allocation_values,
-            "states": states,
+            "properties": properties,
+            "summary": summary,
         },
     )
 
