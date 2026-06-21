@@ -4,6 +4,17 @@ SHELL := /bin/bash
 
 PYTHON ?= python
 ENV_FILE ?= .env
+REQUIREMENTS ?= requirements.txt
+
+# Check Django is installed; install deps if not (handles recovery containers
+# or incomplete devcontainer postCreateCommand).
+define ensure_django
+	@$(PYTHON) -c "import django" 2>/dev/null || { \
+		echo "Django not found — installing dependencies..."; \
+		pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && \
+		pip install -r $(REQUIREMENTS); \
+	}
+endef
 
 help:
 	@echo "Available targets:"
@@ -23,10 +34,12 @@ ensure-env:
 	fi
 
 dev: ensure-env
+	$(call ensure_django)
 	@$(PYTHON) manage.py migrate
 	@$(PYTHON) manage.py runserver 0.0.0.0:8000
 
 superuser: ensure-env
+	$(call ensure_django)
 	@$(PYTHON) manage.py createsuperuser
 
 lint:
@@ -34,9 +47,11 @@ lint:
 	@black --check .
 
 test: ensure-env
+	$(call ensure_django)
 	@$(PYTHON) -m pytest -q
 
 check: ensure-env
+	$(call ensure_django)
 	@$(PYTHON) manage.py check
 	@$(MAKE) lint
 	@$(MAKE) test
