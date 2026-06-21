@@ -1,7 +1,6 @@
-import hashlib
 import json
 import logging
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 import requests
 from django.core.cache import cache
@@ -10,7 +9,7 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 GREATSCHOOLS_API_BASE = "https://api.greatschools.org/schools/nearby"
-GREATSCHOOLS_CACHE_TTL = 2592000    # 30 days
+GREATSCHOOLS_CACHE_TTL = 2592000  # 30 days
 
 
 def get_school_rating(

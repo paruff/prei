@@ -14,8 +14,8 @@ from core.models import Listing
 logger = logging.getLogger(__name__)
 
 RENTCAST_API_BASE = "https://api.rentcast.io/v1/rent/long-term"
-RENTCAST_CACHE_TTL = 604800       # 7 days
-RENTCAST_DAILY_BUDGET = 100        # free tier limit
+RENTCAST_CACHE_TTL = 604800  # 7 days
+RENTCAST_DAILY_BUDGET = 100  # free tier limit
 
 
 def get_rent_estimate_for_listing(listing: Listing) -> Decimal:

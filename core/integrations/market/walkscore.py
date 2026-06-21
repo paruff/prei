@@ -1,4 +1,5 @@
 """Walk Score API adapter for walk/transit/bike scores."""
+
 import hashlib
 import json
 import logging
@@ -11,7 +12,7 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 WALKSCORE_API_BASE = "https://api.walkscore.com/score"
-WALKSCORE_CACHE_TTL = 2592000       # 30 days
+WALKSCORE_CACHE_TTL = 2592000  # 30 days
 
 
 def fetch_walk_score(
@@ -38,7 +39,9 @@ def fetch_walk_score(
     if cached is not None:
         return cached
 
-    url = f"{WALKSCORE_API_BASE}?address={quote(address)}&wsapikey={api_key}&format=json"
+    url = (
+        f"{WALKSCORE_API_BASE}?address={quote(address)}&wsapikey={api_key}&format=json"
+    )
 
     try:
         resp = requests.get(url, timeout=10)
