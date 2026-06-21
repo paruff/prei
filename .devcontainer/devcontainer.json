@@ -9,7 +9,13 @@
     "db"
   ],
   "workspaceFolder": "/workspaces/prei",
-  "features": {},
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    }
+  },
   "shutdownAction": "stopCompose",
   "forwardPorts": [
     8000,
