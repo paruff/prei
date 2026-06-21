@@ -12,9 +12,10 @@
 - Ask before risky changes.
 
 ## Project Identity
-- prei: real-estate analytics.
+- prei: passive real estate investment analytics for buy-and-hold investors.
 - Stack: Py3.11, Django 4.2, DRF, Postgres.
-- Constraints: Decimal money; service-layer boundaries.
+- Constraints: Decimal money; service-layer boundaries; no Bootstrap.
+- Design: custom design system with CSS custom properties (tokens.css + base.css).
 
 ## Never Do
 1. Finance math outside services/utils.
@@ -22,6 +23,9 @@
 3. Float persistence for currency.
 4. Auth/deps/migrations/workflows need approval.
 5. Direct push/merge to `main`.
+6. Use Bootstrap classes or inline `style=` attributes on layout elements.
+7. Hardcode hex colors in templates (exception: PDF export inline styles).
+8. Use `!important` in CSS — if a responsive rule is broken, fix the template.
 
 ## Token Budget Protocol
 Agent Mode: read files, write files, 2-sentence plan.

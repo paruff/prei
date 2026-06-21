@@ -1,6 +1,6 @@
-site_name: Real Estate Investor Documentation
+site_name: prei — Passive Real Estate Investment Analytics
 site_url: https://paruff.github.io/prei/
-site_description: Documentation for the Real Estate Investor property analytics application
+site_description: Documentation for prei — passive real estate investment analytics for buy-and-hold investors
 site_author: paruff
 repo_url: https://github.com/paruff/prei
 repo_name: paruff/prei
@@ -88,17 +88,24 @@ nav:
       - Getting Started: tutorials/getting-started.md
   - How-to Guides:
       - how-to-guides/index.md
+      - Analysis:
+          - Use the BRRRR Calculator: how-to-guides/use-brrrr-calculator.md
+          - Calculate Financial Metrics: how-to-guides/calculate-metrics.md
       - Property Management:
           - Add a Property: how-to-guides/add-property.md
           - Import Bulk Data: how-to-guides/import-data.md
       - Development:
           - Run Tests: how-to-guides/running-tests.md
+          - Code Quality: how-to-guides/code-quality.md
+          - Docker Local Setup: how-to-guides/docker-local-setup.md
   - Reference:
       - reference/index.md
       - Financial KPIs: reference/financial-kpis.md
+      - Data Sources: reference/data-sources.md
   - Explanation:
       - explanation/index.md
       - Architecture: explanation/architecture.md
+      - Design System: explanation/design-system.md
 
 extra:
   social:

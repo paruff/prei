@@ -1,15 +1,62 @@
-# Real Estate Investor — Property Analytics
+# prei — Passive Real Estate Investment Analytics
 
-A Django-based web application to analyze and track residential real estate investments (KPIs such as Cash-on-Cash, Cap Rate, NOI, IRR, DSCR, etc.). This repository contains the initial scaffold and CI for building the investment analytics web app.
+A Django-based web application for **personal passive real estate investors** — buy-and-hold
+investors who want to analyze single-family rentals, small multifamily properties, and BRRRR
+deals with professional-grade underwriting. No fluff, no auction monitoring, no market timing —
+just durable cash-flow analysis.
 
 ## ✨ Features
 
-- **Investment Analysis**: Calculate financial KPIs (Cash-on-Cash, Cap Rate, NOI, IRR, DSCR)
-- **Foreclosure Property Data**: Access foreclosure listings with detailed property information
-- **Real-Time Auction Monitoring**: WebSocket-based live updates for auction status changes
-- **Smart Alerts**: Configure custom alerts based on location, price range, and property type
-- **Watchlists**: Track specific properties of interest
-- **In-App Notifications**: Receive real-time notifications for auction updates and reminders
+- **Deal Screener Dashboard** — At-a-glance KPI grid (CoC, Cap Rate, DSCR, GRM, Score) with
+  color-coded verdicts for every property in your portfolio
+- **Property Entry Form** — Clean, responsive form with styled inputs, smart grids, and
+  real-time validation
+- **Property Detail Scorecard** — Full underwriting score breakdown with pass/fail flags,
+  verdict badge, and color-coded metrics
+- **BRRRR Calculator** — Fully client-side calculator with zero-ARV guard, verdict banner
+  (Full Cycle / Partial Recycle / Capital Trap), DSCR warning, and locale-formatted numbers
+- **Markets Page** — Price-to-rent ratio, population growth, employment diversity, and
+  overall market score per ZIP code; refresh scoped to your properties
+- **Underwriting Score v2** — Multi-signal scoring (1% Rule, CoC, DSCR, Cap Rate, GRM,
+  After-Tax CoC) with "Strong Buy" / "Conditional" / "Pass" verdict
+- **Investment Analysis** — Calculate financial KPIs (Cash-on-Cash, Cap Rate, NOI, IRR, DSCR)
+- **Hold Period Projections** — Year-by-year rent growth, equity build-up, appreciation
+  scenarios, and net sale proceeds
+- **Depreciation & Tax Modeling** — 27.5-year straight-line depreciation and after-tax cash
+  flow calculations
+- **Investment Targets** — Personalised target thresholds (min CoC, min DSCR, max GRM,
+  target hold years) that drive scoring
+
+## Custom UX/UI Design System (No Bootstrap)
+
+The entire UI is built on a bespoke design system — zero Bootstrap or third-party CSS frameworks:
+
+| Token | Purpose |
+|---|---|
+| `--font-sans` / `--font-mono` | Typography stack |
+| `--color-primary` / `--color-grow-*` | Semantic palette (action, success, caution, risk) |
+| `--color-verdict-*` | Underwriting verdict colors (A/B/C/moderate) |
+| `--surface-page` / `--surface-card` / `--surface-secondary` | Surface hierarchy |
+| `--radius-sm` / `--radius-md` / `--radius-lg` / `--radius-pill` | Corner rounding |
+| `--sp-1` through `--sp-8` | Spacing scale (4 px increments) |
+| `--text-xs` / `--text-sm` / `--text-base` / `--text-lg` / `--text-xl` | Type scale |
+| `--border-default` / `--border-subtle` | Border weights |
+
+**Components:** `.card`, `.kpi-grid`, `.data-table`, `.verdict-badge`, `.score-bar`, `.tab-bar`,
+`.layout-2col`, `.page-header`, `.filter-bar`, `.chip`, `.btn`, `.btn-primary`, `.form-input`,
+`.form-grid-2`/`3`/`2-1`/`2-1-1`, `.empty-state`, `.flag-list`, `.message`, `.brrrr-banner`,
+`.result-emphasis`, `.form-divider`, `.form-subsection-label`
+
+**Key rules:**
+- Widget base classes (`StyledNumberInput`, `StyledTextInput`, `StyledSelect`) auto-apply CSS
+  classes — no per-field `attrs` in templates
+- Color classes come from Python properties (`score.coc_color_class`) — no threshold comparisons
+  in templates
+- Tab switching uses `panel.hidden` — not `style.display`
+- No inline `style=` on layout elements (exceptions: `table.style.opacity` in JS, `width:score%`
+  in score bars, and PDF export inline styles)
+- No `!important` in CSS
+- Fully responsive: 4-column → 2-column → 1-column KPI grid at 640px / 400px breakpoints
 
 ## 🚀 Quick Start
 
@@ -43,7 +90,6 @@ Steps:
 3. Deploy the blueprint.
 
 Notes:
-
 - Static assets are collected during build (`python manage.py collectstatic --noinput`).
 - Database migrations run before each web deploy (`python manage.py migrate --noinput`).
 - The web service health check uses `GET /health/` and returns `{"status": "ok"}`.
@@ -170,94 +216,17 @@ Notes:
 - The root [docker-compose.yml](./docker-compose.yml) uses `image: ghcr.io/paruff/prei:latest`; it does not build the application image locally.
 - Published images default `RUN_MIGRATIONS=1`, so they run `python manage.py migrate --noinput` during container startup before Gunicorn begins serving requests.
 - For multi-replica or rolling deployments, set `RUN_MIGRATIONS=0` on replicas that should not apply migrations.
-- Run migrations from a dedicated one-shot instance/job instead of every replica, for example:
-  `docker run --rm --env-file .env ghcr.io/paruff/prei:latest python manage.py migrate`
-- The published image sets `HOME` and `MPLCONFIGDIR` to a dedicated writable runtime directory owned by the app user.
+- Run migrations from a dedicated one-shot instance/job instead of every replica.
 - Container healthchecks allow extra startup time for pre-start migration work before marking the service unhealthy.
-- If you want to build locally from the repository source, use the root [Dockerfile](./Dockerfile): `docker build -t prei:dev .`
-- Modern Docker uses `docker compose`; the legacy `docker-compose` binary may not be installed.
+- If you want to build locally from the repository source, use the root [Dockerfile](./Dockerfile).
+- `staticfiles/` is a build artifact (generated by `collectstatic`) and is gitignored.
 - In a Codespace or VS Code Dev Container, rebuild the container after changes to [.devcontainer/devcontainer.json](./.devcontainer/devcontainer.json) if you want the `docker` CLI available inside the workspace container.
-
-## Real-Time Auction Monitoring
-
-The application includes a real-time auction monitoring system with the following capabilities:
-
-### WebSocket Connection
-
-Connect to the WebSocket endpoint at `ws://localhost:8000/ws/auctions/` to receive real-time updates:
-
-```javascript
-const socket = new WebSocket('ws://localhost:8000/ws/auctions/');
-
-socket.onopen = () => {
-  console.log('Connected to auction updates');
-};
-
-socket.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Received:', data);
-};
-
-// Subscribe to a property
-socket.send(JSON.stringify({
-  type: 'subscribe',
-  propertyId: '123'
-}));
-
-// Heartbeat
-setInterval(() => {
-  socket.send(JSON.stringify({ type: 'ping' }));
-}, 30000);
-```
-
-### API Endpoints
-
-**Watchlist Management:**
-- `GET /api/v1/watchlist` - List watched properties
-- `POST /api/v1/watchlist` - Add property to watchlist
-- `DELETE /api/v1/watchlist/{id}` - Remove from watchlist
-
-**Alert Configuration:**
-- `GET /api/v1/alerts` - List user's alerts
-- `POST /api/v1/alerts` - Create new alert
-- `GET /api/v1/alerts/{id}` - Get alert details
-- `PUT /api/v1/alerts/{id}` - Update alert
-- `DELETE /api/v1/alerts/{id}` - Delete alert
-
-**Notifications:**
-- `GET /api/v1/notifications` - List notifications
-- `POST /api/v1/notifications/{id}/read` - Mark as read
-- `POST /api/v1/notifications/{id}/dismiss` - Dismiss notification
-
-**Notification Preferences:**
-- `GET /api/v1/notification-preferences` - Get preferences
-- `PUT /api/v1/notification-preferences` - Update preferences
-
-### Alert Configuration Example
-
-```json
-{
-  "name": "California Auctions",
-  "alertType": "new_auction",
-  "isActive": true,
-  "states": ["CA", "NV"],
-  "minOpeningBid": "200000.00",
-  "maxOpeningBid": "500000.00",
-  "radiusMiles": 50,
-  "centerLatitude": "34.0522",
-  "centerLongitude": "-118.2437"
-}
-```
-
-### Background Tasks
-
-Scheduled jobs run via GitHub Actions workflows rather than Celery. See `.github/workflows/` for available schedules.
 
 ## CI & tooling
 
 - **Linting & formatting:** ruff + black
 - **Type checking:** mypy (encouraged for new modules)
-- **Tests:** pytest + Django testing tools
+- **Tests:** pytest + Django testing tools — **897 passing, 1 skipped, 0 failing**
 - **Documentation:** MkDocs with Material theme
 - **CI:** GitHub Actions (see `.github/workflows/`) — workflows include DORA-friendly logging of deploy/test start/finish timestamps and commit SHA.
 
@@ -265,8 +234,9 @@ See the **[How-to Guides](https://paruff.github.io/prei/how-to-guides/)** for de
 
 ## Repository purpose
 
-- Host the web application and all related code, tests, infra config, and documentation for the investment/analysis product.
-- Keep the old scraper (if useful) in a standalone archival repo or in a `legacy-scraper/` directory only after explicit migration.
+- Host the web application and all related code, tests, infra config, and documentation for the
+  **passive residential real estate investment** analytics product.
+- Focus on buy-and-hold SFR / small multifamily analysis, BRRRR strategy, and market intelligence.
 
 ## Contributing
 
