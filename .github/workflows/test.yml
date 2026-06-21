@@ -37,6 +37,9 @@ jobs:
       - name: Run migrations
         run: python manage.py migrate --run-syncdb
 
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput
+
       - name: Run tests
         run: |
           set -o pipefail

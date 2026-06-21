@@ -48,6 +48,8 @@ jobs:
       - uses: ./.github/actions/python-setup
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput
       - name: Run tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')

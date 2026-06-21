@@ -4,15 +4,19 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from core.models import Property, RentalIncome, OperatingExpense
+from core.models import Property, RentalIncome, OperatingExpense, UserInvestmentTargets
 
 
 @pytest.fixture
 def user(db):
     User = get_user_model()
-    return User.objects.create_user(
+    user = User.objects.create_user(
         username="tester", email="tester@example.com", password="pass"
     )
+    UserInvestmentTargets.objects.create(
+        user=user,
+    )
+    return user
 
 
 def test_bdd_dashboard_flow(client, db, user):
@@ -25,6 +29,7 @@ def test_bdd_dashboard_flow(client, db, user):
         state="CA",
         zip_code="90000",
         purchase_price=Decimal("120000"),
+        monthly_rent_gross=Decimal("2000"),
     )
     # And rental income exists
     RentalIncome.objects.create(
@@ -47,5 +52,5 @@ def test_bdd_dashboard_flow(client, db, user):
     # Then I see content
     assert resp.status_code == 200
     html = resp.content.decode()
-    assert "Dashboard" in html
+    assert "Deal screener" in html
     assert "123 Main St" in html
