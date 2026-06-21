@@ -1,5 +1,9 @@
-"""Market data adapters (comps, rents, crime, schools).
+"""Market data adapters (comps, rents, crime, schools, walkscore).
 
-These provide dummy implementations for Phase 2 wiring. Replace with
-real provider integrations later.
+Provides:
+- fetch_rent_estimate: RentCast API rental estimates
+- fetch_school_rating: GreatSchools API school ratings
+- fetch_walk_score: Walk Score API walkability scores
+
+See individual modules for details.
 """

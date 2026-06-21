@@ -1,0 +1,141 @@
+{
+  "skill": "plan",
+  "status": "pass",
+  "tasks": [
+    {
+      "id": "TASK-1",
+      "title": "Implement RentCast adapter — fetch_rent_estimate",
+      "agent": "build",
+      "estimated_lines": 80,
+      "dependencies": [],
+      "skills": ["build", "code-generation"],
+      "acceptance_criteria": [
+        "fetch_rent_estimate(address, api_key) returns Decimal monthly rent on valid API response",
+        "fetch_rent_estimate returns None on empty api_key without making HTTP call",
+        "fetch_rent_estimate returns None on HTTP 4xx/5xx",
+        "fetch_rent_estimate returns None on connection error",
+        "fetch_rent_estimate returns None on budget exceeded (≥100 calls/day)",
+        "Successful response cached with 7-day TTL",
+        "Output is Decimal rounded to 2 decimal places",
+        "Existing get_rent_estimate_for_listing remains untouched"
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "Implement GreatSchools adapter — fetch_school_rating",
+      "agent": "build",
+      "estimated_lines": 60,
+      "dependencies": [],
+      "skills": ["build", "code-generation"],
+      "acceptance_criteria": [
+        "fetch_school_rating(zip_code, api_key) returns Decimal average rating on valid response",
+        "fetch_school_rating returns None on empty api_key without making HTTP call",
+        "fetch_school_rating returns None on HTTP failure",
+        "Successful response cached with 30-day TTL",
+        "Output is Decimal rounded to 1 decimal place",
+        "Empty school list returns None",
+        "Existing get_school_rating remains untouched"
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "Implement Walk Score adapter — fetch_walk_score",
+      "agent": "build",
+      "estimated_lines": 70,
+      "dependencies": [],
+      "skills": ["build", "code-generation"],
+      "acceptance_criteria": [
+        "fetch_walk_score(address, api_key) returns dict with walk_score, transit_score, bike_score",
+        "transit_score and bike_score are None when not in response",
+        "fetch_walk_score returns None on empty api_key without making HTTP call",
+        "fetch_walk_score returns None on HTTP failure",
+        "Successful response cached with 30-day TTL"
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "Update __init__.py, .env.example, and devcontainer.json",
+      "agent": "build",
+      "estimated_lines": 20,
+      "dependencies": [],
+      "skills": ["build"],
+      "acceptance_criteria": [
+        "__init__.py has updated docstring referencing all 3 new adapters",
+        ".env.example contains RENTCAST_API_KEY, GREATSCHOOLS_API_KEY, WALKSCORE_API_KEY placeholders",
+        ".devcontainer/devcontainer.json containerEnv includes all 3 new keys with empty string defaults"
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "Write tests for RentCast adapter",
+      "agent": "test",
+      "estimated_lines": 120,
+      "dependencies": ["TASK-1"],
+      "skills": ["test", "code-generation"],
+      "acceptance_criteria": [
+        "Tests cover: successful API response → Decimal",
+        "Tests cover: empty api_key → None, no HTTP call",
+        "Tests cover: HTTP 4xx/5xx → None",
+        "Tests cover: connection error → None",
+        "Tests cover: budget exceeded (counter ≥ 100) → None",
+        "Tests cover: cache hit returns cached without HTTP call",
+        "Tests cover: cache set with correct key and TTL",
+        "Tests cover: output precision (2 decimal places)"
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "Write tests for GreatSchools adapter",
+      "agent": "test",
+      "estimated_lines": 100,
+      "dependencies": ["TASK-2"],
+      "skills": ["test", "code-generation"],
+      "acceptance_criteria": [
+        "Tests cover: successful API response → Decimal average",
+        "Tests cover: empty api_key → None, no HTTP call",
+        "Tests cover: HTTP failure → None",
+        "Tests cover: cache hit returns cached without HTTP call",
+        "Tests cover: cache set with correct key and TTL",
+        "Tests cover: output precision (1 decimal place)",
+        "Tests cover: empty school list → None"
+      ]
+    },
+    {
+      "id": "TASK-7",
+      "title": "Write tests for Walk Score adapter",
+      "agent": "test",
+      "estimated_lines": 100,
+      "dependencies": ["TASK-3"],
+      "skills": ["test", "code-generation"],
+      "acceptance_criteria": [
+        "Tests cover: successful API response → dict with 3 keys",
+        "Tests cover: empty api_key → None, no HTTP call",
+        "Tests cover: HTTP failure → None",
+        "Tests cover: cache hit returns cached without HTTP call",
+        "Tests cover: cache set with correct key and TTL",
+        "Tests cover: transit_score and bike_score default to None when missing"
+      ]
+    }
+  ],
+  "dependency_graph": {
+    "nodes": ["TASK-1", "TASK-2", "TASK-3", "TASK-4", "TASK-5", "TASK-6", "TASK-7"],
+    "edges": [
+      ["TASK-1", "TASK-5"],
+      ["TASK-2", "TASK-6"],
+      ["TASK-3", "TASK-7"]
+    ]
+  },
+  "summary": {
+    "total_tasks": 7,
+    "total_estimated_lines": 550,
+    "parallel_groups": [
+      ["TASK-1", "TASK-2", "TASK-3", "TASK-4"],
+      ["TASK-5", "TASK-6", "TASK-7"]
+    ],
+    "critical_paths": [
+      ["TASK-1", "TASK-5"],
+      ["TASK-2", "TASK-6"],
+      ["TASK-3", "TASK-7"]
+    ]
+  }
+}
