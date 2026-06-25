@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict
@@ -14,6 +15,7 @@ from django.utils import timezone
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
@@ -2365,8 +2367,6 @@ class VrmPropertyImportAPI(APIView):
       a ``.json`` file upload
     """
 
-    from rest_framework.parsers import JSONParser, MultiPartParser
-
     parser_classes = [JSONParser, MultiPartParser]
 
     def post(self, request: Any) -> Response:
@@ -2376,12 +2376,11 @@ class VrmPropertyImportAPI(APIView):
         if request.FILES.get("file"):
             uploaded = request.FILES["file"]
             try:
-                import json as _json
-
-                data = _json.load(uploaded)
-            except Exception as exc:
+                data = json.load(uploaded)
+            except Exception:
+                logger.warning("VRM import: failed to parse uploaded file")
                 return Response(
-                    {"error": f"Could not parse uploaded file: {exc}"},
+                    {"error": "Could not parse uploaded file. Ensure it is valid JSON."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         else:
@@ -2402,7 +2401,14 @@ class VrmPropertyImportAPI(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        created, updated, errors = upsert_vrm_records(data)
+        try:
+            created, updated, errors = upsert_vrm_records(data)
+        except Exception:
+            logger.exception("VRM JSON import failed unexpectedly")
+            return Response(
+                {"error": "Import failed due to an internal error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         response_status = (
             status.HTTP_207_MULTI_STATUS if errors else status.HTTP_200_OK
