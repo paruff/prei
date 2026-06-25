@@ -2350,3 +2350,71 @@ class VrmPropertyScrapeAPI(APIView):
                 {"error": f"Scrape failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class VrmPropertyImportAPI(APIView):
+    """
+    POST /api/v1/vrm-properties/import/
+
+    Accept a JSON body that is either a single VRM property object or an array
+    of VRM property objects and upsert them into the VrmProperty table.
+
+    Supports both:
+    - ``Content-Type: application/json`` with a raw JSON body
+    - ``Content-Type: multipart/form-data`` with a ``file`` field containing
+      a ``.json`` file upload
+    """
+
+    from rest_framework.parsers import JSONParser, MultiPartParser
+
+    parser_classes = [JSONParser, MultiPartParser]
+
+    def post(self, request: Any) -> Response:
+        from core.integrations.sources.vrm_json_importer import upsert_vrm_records
+
+        # --- resolve payload ---
+        if request.FILES.get("file"):
+            uploaded = request.FILES["file"]
+            try:
+                import json as _json
+
+                data = _json.load(uploaded)
+            except Exception as exc:
+                return Response(
+                    {"error": f"Could not parse uploaded file: {exc}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            data = request.data
+
+        if isinstance(data, dict):
+            data = [data]
+
+        if not isinstance(data, list):
+            return Response(
+                {"error": "Payload must be a JSON array or a single JSON object."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(data) == 0:
+            return Response(
+                {"error": "Payload is an empty array — nothing to import."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created, updated, errors = upsert_vrm_records(data)
+
+        response_status = (
+            status.HTTP_207_MULTI_STATUS if errors else status.HTTP_200_OK
+        )
+        return Response(
+            {
+                "status": "completed",
+                "total": len(data),
+                "created": created,
+                "updated": updated,
+                "skipped": len(errors),
+                "errors": errors,
+            },
+            status=response_status,
+        )

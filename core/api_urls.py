@@ -121,4 +121,9 @@ urlpatterns = [
         api_views.VrmPropertyScrapeAPI.as_view(),
         name="vrm-properties-scrape",
     ),
+    path(
+        "v1/vrm-properties/import/",
+        api_views.VrmPropertyImportAPI.as_view(),
+        name="vrm-properties-import",
+    ),
 ]
