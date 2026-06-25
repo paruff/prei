@@ -1,13 +1,15 @@
 from django.urls import path
 
 from . import views
-from .views_portfolio import portfolio_dashboard
+from .views import MarketRefreshView
+from .views_portfolio import portfolio_actuals_add, portfolio_dashboard
 
 urlpatterns = [
     path("", views.home, name="home"),
     path("health/", views.health_check, name="health_check"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("properties/add/", views.property_add, name="property_add"),
+    path("properties/create/", views.property_add, name="property_create"),
     path("properties/", views.property_list, name="property_list"),
     path("properties/compare/", views.property_compare, name="property_compare"),
     path("properties/<int:pk>/edit/", views.property_edit, name="property_edit"),
@@ -47,4 +49,14 @@ urlpatterns = [
         name="report_property",
     ),
     path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
+    path("portfolio/actuals/add/", portfolio_actuals_add, name="portfolio_actuals_add"),
+    path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
+    path(
+        "settings/investment-targets/",
+        views.investment_targets_edit,
+        name="investment_targets_edit",
+    ),
+    path("markets/", views.markets_list, name="markets_list"),
+    path("markets/refresh/", MarketRefreshView.as_view(), name="market_refresh"),
+    path("brrrr/", views.brrrr_calculator, name="brrrr_calculator"),
 ]

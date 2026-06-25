@@ -100,6 +100,7 @@ def property_sfr(user, make_property):
         state="TX",
         zip_code="78702",
         purchase_price=Decimal("325000.00"),
+        monthly_rent_gross=Decimal("2400.00"),
         units=1,
         sqft=1725,
         notes="Austin SFR fixture",

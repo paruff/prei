@@ -1,6 +1,6 @@
 # Documentation Implementation Summary
 
-This document summarizes the Diátaxis documentation implementation for the Real Estate Investor project.
+This document summarizes the Diátaxis documentation implementation for the prei project.
 
 ## ✅ Completed Work
 
@@ -10,26 +10,30 @@ Created comprehensive documentation following the [Diátaxis framework](https://
 
 #### 📚 Tutorials (`docs/tutorials/`)
 **Learning-oriented** — Hands-on lessons for beginners
-- ✅ `getting-started.md` — Complete setup walkthrough with step-by-step instructions for local and Docker development
+- ✅ `getting-started.md` — Complete setup walkthrough with step-by-step instructions for local and Docker development, updated for custom design system and new features
 
 #### 🛠️ How-to Guides (`docs/how-to-guides/`)
 **Problem-oriented** — Practical solutions for specific tasks
 - ✅ `index.md` — Overview and navigation
+- ✅ `use-brrrr-calculator.md` — **New:** Complete guide to the client-side BRRRR calculator with verdict interpretation
 - ✅ `add-property.md` — Adding investment properties
 - ✅ `import-data.md` — Bulk CSV data import
 - ✅ `running-tests.md` — Test execution guide
 - ✅ `calculate-metrics.md` — Computing financial KPIs
 - ✅ `code-quality.md` — Running linters and formatters
+- ✅ `docker-local-setup.md` — Windows Docker setup guide
 
 #### 📖 Reference (`docs/reference/`)
 **Information-oriented** — Technical descriptions and specifications
 - ✅ `index.md` — Reference documentation overview
 - ✅ `financial-kpis.md` — Comprehensive financial calculation reference with formulas, examples, and implementation details
+- ✅ `data-sources.md` — **New:** Catalog of all data sources, external integrations, and derived metrics
 
 #### 💡 Explanation (`docs/explanation/`)
 **Understanding-oriented** — Background and design rationale
 - ✅ `index.md` — Explanation documentation overview
 - ✅ `architecture.md` — System design, component organization, and architectural decisions
+- ✅ `design-system.md` — **New:** Comprehensive design system reference (tokens, components, rules, responsive breakpoints)
 
 ### 2. MkDocs Configuration
 
@@ -58,12 +62,21 @@ Created comprehensive documentation following the [Diátaxis framework](https://
 
 ### 4. Repository Updates
 
-- ✅ Updated `README.md` with documentation links and quick start
-- ✅ Updated `.gitignore` to exclude `site/` directory
+- ✅ Updated `README.md` with new project focus, features, design system summary, and setup instructions
+- ✅ Updated `AGENTS.md` with revised project identity and "Never Do" rules
+- ✅ Updated `.gitignore` to exclude `site/` and `staticfiles/` directories
 - ✅ Added `docs/README.md` with documentation contribution guidelines
 - ✅ Added `docs/GITHUB_PAGES_SETUP.md` with setup instructions
 
-### 5. Content Quality
+### 5. Stale Documentation Removed
+
+- ✅ `IMPLEMENTATION_SUMMARY_AUCTION_MONITORING.md` — Auction monitoring is not a current focus
+- ✅ `IMPLEMENTATION_SUMMARY_CARRYING_COSTS.md` — Absorbed into current feature set
+- ✅ `IMPLEMENTATION_SUMMARY_ROI_AND_STRATEGIES.md` — Absorbed into current feature set
+- ✅ `docs/issues/tracking-product-strategy-pivot.md` — Strategy pivot absorbed into `docs/PRODUCT_STRATEGY.md`
+- ✅ `docs/issues/phase2-brrrr-strategy-support.md` — BRRRR is fully implemented
+
+### 6. Content Quality
 
 The documentation includes:
 - **Real examples** from the repository code
@@ -97,7 +110,7 @@ To publish the documentation to https://paruff.github.io/prei/, follow these ste
    - Click **Save**
 
 4. **Trigger Initial Deployment**
-   - The workflow will run automatically when this PR is merged to main
+   - The workflow will run automatically when changes are merged to main
    - Alternatively, manually trigger via **Actions** → **Documentation** → **Run workflow**
 
 5. **Verify Deployment**
@@ -109,33 +122,37 @@ See `docs/GITHUB_PAGES_SETUP.md` for detailed instructions and troubleshooting.
 
 ## 📊 Documentation Statistics
 
-- **Total pages created:** 11
+- **Total pages created:** 14
 - **Tutorials:** 1
-- **How-to guides:** 5
-- **Reference:** 2
-- **Explanation:** 2
-- **Supporting docs:** 2 (README, GitHub Pages setup)
-- **Total words:** ~15,000+
-- **Code examples:** 50+
+- **How-to guides:** 7
+- **Reference:** 3
+- **Explanation:** 3
+- **Supporting docs:** Various (README, AGENTS.md, CHANGE_IMPACT_MAP, etc.)
+- **Total words:** ~18,000+
+- **Code examples:** 60+
 
 ## 🎯 Coverage by Diátaxis Category
 
 ### Tutorials (Learning-Oriented)
-- ✅ Complete getting started guide
+- ✅ Complete getting started guide with custom design system references
 - 🔄 Future: Video walkthrough, interactive tutorials
 
 ### How-to Guides (Task-Oriented)
 - ✅ Property management (add, update, import)
 - ✅ Financial calculations
+- ✅ BRRRR calculator usage
 - ✅ Development tasks (tests, linting)
+- ✅ Docker local setup
 - 🔄 Future: Database operations, deployment, API usage
 
 ### Reference (Information-Oriented)
 - ✅ Financial KPI calculations (comprehensive)
+- ✅ Data sources catalog
 - 🔄 Future: Model documentation, API reference, configuration options
 
 ### Explanation (Understanding-Oriented)
 - ✅ Architecture overview (comprehensive)
+- ✅ Design system reference (comprehensive)
 - 🔄 Future: Technology choices, design decisions, domain knowledge
 
 ## 🚀 Local Testing
@@ -184,7 +201,7 @@ mkdocs build
 
 5. **Enhancements:**
    - Add diagrams (using Mermaid or PlantUML)
-   - Add screenshots of Django admin
+   - Add screenshots
    - Add video tutorials
    - Add interactive examples
    - Add PDF export option
@@ -229,5 +246,5 @@ For documentation issues or suggestions:
 
 ---
 
-**Status:** ✅ Documentation structure complete and ready for deployment
-**Next Action:** Enable GitHub Pages in repository settings (manual step)
+**Status:** ✅ Documentation structure complete and up to date with current project features
+**Next Action:** Run `mkdocs serve` locally to preview changes; enable GitHub Pages in repository settings

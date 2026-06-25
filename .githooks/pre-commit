@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit
+#
+# GitOps best-practice pre-commit hook.
+# Validates Dockerfiles, docker-compose, K8s manifests, and Kustomize files.
+#
+# Install:
+#   git config core.hooksPath .githooks
+#
+# To skip this hook (emergency):
+#   git commit --no-verify
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+VALIDATOR="$REPO_ROOT/scripts/gitops-validate.sh"
+
+if [ ! -f "$VALIDATOR" ]; then
+  echo "⚠ gitops-validate.sh not found — skipping GitOps checks"
+  exit 0
+fi
+
+# Collect staged files that are relevant to GitOps validation
+STAGED_FILES=()
+while IFS= read -r -d '' file; do
+  case "$file" in
+    *Dockerfile*|*docker-compose*|*.k8s.yaml|*.k8s.yml|*kustomization.yaml|*kustomization.yml)
+      STAGED_FILES+=("$file")
+      ;;
+    manifests/*|overlays/*)
+      if [[ "$file" == *.yaml || "$file" == *.yml ]]; then
+        STAGED_FILES+=("$file")
+      fi
+      ;;
+  esac
+done < <(git diff -z --cached --name-only --diff-filter=ACMR)
+
+# Also check .env files for secrets
+while IFS= read -r -d '' file; do
+  case "$file" in
+    *.env|.env*)
+      STAGED_FILES+=("$file")
+      ;;
+  esac
+done < <(git diff -z --cached --name-only --diff-filter=ACMR)
+
+# Run only if there are relevant files
+if [ ${#STAGED_FILES[@]} -eq 0 ]; then
+  echo "ℹ  No GitOps files staged — skipping GitOps validation"
+  exit 0
+fi
+
+echo "🔍 Running GitOps validation on ${#STAGED_FILES[@]} staged file(s)..."
+echo ""
+
+exec "$VALIDATOR" --files "${STAGED_FILES[@]}"

@@ -1,65 +1,86 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>{% block title %}Investor App{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-      crossorigin="anonymous"
-    />
-    <style>
-      .notification-status-dot {
-        top: 8px;
-        right: 8px;
-      }
-    </style>
-  </head>
-  <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-      <div class="container">
-        <a class="navbar-brand" href="{% url 'dashboard' %}">prei</a>
-        <div class="navbar-nav ms-auto">
-          {% if user.is_authenticated %}
-          <div class="nav-item dropdown">
-            <button
-              id="notificationBell"
-              type="button"
-              class="btn nav-link border-0 bg-transparent text-white position-relative"
-              aria-expanded="false"
-              aria-label="Notifications"
-            >
-              <span aria-hidden="true">🔔</span>
-              <span
-                id="notificationUnreadBadge"
-                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
-              >0</span>
-            </button>
-            <span id="notificationConnectionStatus" class="notification-status-dot position-absolute translate-middle p-1 border border-light rounded-circle bg-danger" aria-live="polite" aria-label="Notification connection failed"></span>
-            <div
-              id="notificationDropdown"
-              class="dropdown-menu dropdown-menu-end p-0"
-              style="width: 360px;"
-            >
-              <div class="px-3 py-2 border-bottom fw-semibold">Notifications</div>
-              <div id="notificationList" class="list-group list-group-flush"></div>
-            </div>
-          </div>
-          {% endif %}
-          <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
-          <a class="nav-link" href="{% url 'property_list' %}">Properties</a>
-          <a class="nav-link" href="{% url 'property_add' %}">Add Property</a>
-          <a class="nav-link" href="{% url 'logout' %}">Logout</a>
-        </div>
-      </div>
-    </nav>
-    <main class="container pb-4">
-      {% block content %}{% endblock %}
-    </main>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PREI{% endblock %} — Real Estate Investor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<nav class="topnav" aria-label="Main navigation">
+  <a href="{% url 'dashboard' %}" class="nav-brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 12 L8 4 L13 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="brand-name">PREI</span>
+  </a>
+
+  <div class="nav-links" id="nav-links" role="list">
+    <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Screener</a>
+    <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
+    <a href="{% url 'markets_list' %}" class="nav-link {% if request.resolver_match.url_name == 'markets_list' %}active{% endif %}">Markets</a>
+    <a href="{% url 'brrrr_calculator' %}" class="nav-link {% if request.resolver_match.url_name == 'brrrr_calculator' %}active{% endif %}">BRRRR</a>
+  </div>
+
+  <div class="nav-right">
     {% if user.is_authenticated %}
-    <script src="/static/js/notifications.js"></script>
+      <span class="avatar" aria-label="Signed in as {{ user.email }}">{{ user.email|first|upper }}</span>
+      <a href="{% url 'logout' %}" class="nav-link">Sign out</a>
+    {% else %}
+      <a href="{% url 'login' %}" class="nav-link">Sign in</a>
     {% endif %}
-  </body>
+    <button
+      class="nav-menu-toggle"
+      aria-label="Toggle navigation"
+      aria-expanded="false"
+      aria-controls="nav-links"
+      id="nav-toggle"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<main class="page-main" id="main-content">
+  {% if messages %}
+    <div class="message-list" role="alert" aria-live="polite">
+      {% for message in messages %}
+        <div class="message message-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="page-footer">
+  <span>PREI &copy; {% now "Y" %}</span>
+</footer>
+
+<script>
+(function() {
+  var toggle = document.getElementById('nav-toggle');
+  var links  = document.getElementById('nav-links');
+  if (!toggle || !links) return;
+  toggle.addEventListener('click', function() {
+    var open = links.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
 </html>

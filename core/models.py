@@ -16,11 +16,93 @@ class Property(models.Model):
     city = models.CharField(max_length=128)
     state = models.CharField(max_length=64)
     zip_code = models.CharField(max_length=16)
-    purchase_price = models.DecimalField(max_digits=12, decimal_places=2)
+    purchase_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
     purchase_date = models.DateField(null=True, blank=True)
     sqft = models.IntegerField(null=True, blank=True)
     units = models.IntegerField(default=1)
     notes = models.TextField(blank=True)
+
+    # --- Phase 0: MVP data-entry fields ---
+    PROPERTY_TYPE_CHOICES = [
+        ("SFR", "Single-Family Residence"),
+        ("duplex", "Duplex"),
+        ("triplex", "Triplex"),
+        ("fourplex", "Fourplex"),
+        ("small_multifamily", "Small Multifamily"),
+    ]
+
+    property_type = models.CharField(
+        max_length=32,
+        choices=PROPERTY_TYPE_CHOICES,
+        blank=True,
+        default="SFR",
+    )
+    bedrooms = models.PositiveIntegerField(null=True, blank=True)
+    bathrooms = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+
+    # Income
+    monthly_rent_gross = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    other_monthly_income = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+
+    # Expenses (annual / monthly)
+    property_taxes_annual = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    insurance_annual = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    hoa_monthly = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+
+    # Loan terms
+    down_payment_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.20"),
+        help_text="Fraction (e.g. 0.20 for 20%)",
+    )
+    interest_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.07"),
+        help_text="Annual rate as fraction (e.g. 0.07 for 7%)",
+    )
+    loan_term_years = models.PositiveIntegerField(default=30)
+
+    # Assumptions (defaults per issue spec)
+    vacancy_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.08"),
+        help_text="Fraction (e.g. 0.08 for 8%)",
+    )
+    mgmt_fee_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.10"),
+        help_text="Fraction (e.g. 0.10 for 10%)",
+    )
+    maintenance_monthly = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("150.00")
+    )
+    capex_monthly = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("100.00")
+    )
 
     def __str__(self) -> str:  # noqa: D401
         return f"{self.address}, {self.city}, {self.state} {self.zip_code}"
@@ -56,7 +138,9 @@ class TeamMember(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [["team", "user"]]
+        constraints = [
+            models.UniqueConstraint(fields=["team", "user"], name="unique_team_user"),
+        ]
 
     def __str__(self) -> str:  # noqa: D401
         return f"{self.user.username} in {self.team.name}"
@@ -93,7 +177,11 @@ class SharedProperty(models.Model):
     shared_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [["property", "team"]]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["property", "team"], name="unique_property_team"
+            ),
+        ]
 
 
 class PropertyShare(models.Model):
@@ -109,7 +197,11 @@ class PropertyShare(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [["property", "shared_with"]]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["property", "shared_with"], name="unique_property_shared_with"
+            ),
+        ]
 
 
 class RentalIncome(models.Model):
@@ -229,6 +321,46 @@ class MarketSnapshot(models.Model):
     city = models.CharField(max_length=128, blank=True, default="")
     state = models.CharField(max_length=64, blank=True, default="")
 
+    # --- Phase 0: Census & BLS market indicators ---
+    msa_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Metropolitan Statistical Area name",
+    )
+    population = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Total population for ZIP/area",
+    )
+    population_growth_pct_5yr = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="5-year population growth as fraction (e.g. 0.0234 = 2.34%)",
+    )
+    unemployment_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Unemployment rate as fraction (e.g. 0.045 = 4.5%)",
+    )
+    median_household_income = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Median household income in dollars",
+    )
+    fetched_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this data was fetched from Census/BLS APIs",
+    )
+
+    # --- Existing metrics ---
     rent_index = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0")
     )
@@ -523,7 +655,11 @@ class GrowthArea(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [["state", "city_name"]]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["state", "city_name"], name="unique_state_city"
+            ),
+        ]
         ordering = ["-data_timestamp"]
 
     def __str__(self) -> str:  # noqa: D401
@@ -687,7 +823,11 @@ class UserWatchlist(models.Model):
     notes = models.TextField(blank=True, default="")
 
     class Meta:
-        unique_together = [["user", "property"]]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "property"], name="unique_user_watchlist_property"
+            ),
+        ]
         ordering = ["-added_at"]
 
     def __str__(self) -> str:  # noqa: D401
@@ -905,3 +1045,149 @@ class Notification(models.Model):
 
             self.dismissed_at = timezone.now()
             self.save()
+
+
+class UserProfile(models.Model):
+    """Per-user investment preferences and tax settings."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    marginal_tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.24"),
+        help_text="Marginal income-tax rate as a fraction (e.g. 0.24 for 24 %)",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("1"))],
+    )
+    land_value_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.20"),
+        help_text="Fraction of property value attributable to land (e.g. 0.20 for 20 %)",
+        validators=[
+            MinValueValidator(Decimal("0")),
+            MaxValueValidator(Decimal("0.99")),
+        ],
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"Profile for {self.user.username}"
+
+
+class UserInvestmentTargets(models.Model):
+    """Per-user configurable underwriting thresholds and assumptions."""
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="investment_targets"
+    )
+
+    # Buy/no-buy thresholds
+    min_coc_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.08"),
+        help_text="Minimum Cash-on-Cash return as a fraction (e.g. 0.08 for 8 %)",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("1"))],
+    )
+    min_dscr = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("1.25"),
+        help_text="Minimum Debt Service Coverage Ratio (e.g. 1.25)",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("10"))],
+    )
+    max_grm = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("12.00"),
+        help_text="Maximum Gross Rent Multiplier — lower is better (e.g. 12.0)",
+        validators=[MinValueValidator(Decimal("1")), MaxValueValidator(Decimal("100"))],
+    )
+    require_one_pct_rule = models.BooleanField(
+        default=True,
+        help_text="If enabled, properties failing the 1% Rule are capped at 40 points",
+    )
+    target_hold_years = models.PositiveIntegerField(default=7)
+    annual_rent_growth_assumption = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.03"),
+        help_text="Assumed annual rent growth as a fraction",
+    )
+    annual_appreciation_assumption = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.03"),
+        help_text="Assumed annual appreciation as a fraction",
+    )
+    marginal_tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.24"),
+        help_text="Marginal income-tax rate as a fraction",
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("1"))],
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"Investment targets for {self.user.username}"
+
+
+class MonthlyActuals(models.Model):
+    """Monthly actual income and expense figures entered from PM reports.
+
+    Used for variance analysis comparing actuals to underwritten projections.
+    """
+
+    prop = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="monthly_actuals"
+    )
+    month = models.DateField(
+        help_text="First day of month, e.g. 2026-06-01",
+    )
+    actual_rent_collected = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    actual_vacancy_days = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of vacant days in the month",
+    )
+    actual_expenses = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0"),
+        help_text="Total operating expenses (taxes, insurance, HOA, etc.)",
+    )
+    actual_maintenance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0"),
+        help_text="Maintenance and repair costs",
+    )
+    notes = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("prop", "month")
+        ordering = ["-month"]
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"Actuals for {self.prop} — {self.month.strftime('%Y-%m')}"
+
+    @property
+    def actual_noi(self) -> Decimal:
+        """Net operating income for this month."""
+        return (
+            self.actual_rent_collected - self.actual_expenses - self.actual_maintenance
+        )
+
+    @property
+    def vacancy_rate(self) -> Decimal:
+        """Vacancy rate as a fraction of the month."""
+        days_in_month = 30  # Simplified; most months ~30 days
+        return Decimal(str(self.actual_vacancy_days)) / Decimal(str(days_in_month))

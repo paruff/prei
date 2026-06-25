@@ -233,9 +233,7 @@ http://127.0.0.1:8000/admin/
 1. Confirm containers are running: `docker compose ps`
 2. Confirm the app is healthy inside the container:
    ```powershell
-   docker debug prei-web-1
-   # then inside the debug shell:
-   wget -O- http://localhost:8000/api/health/
+   docker exec prei-web-1 wget -O- http://localhost:8000/api/health/
    # should return {"status":"ok"}
    ```
 3. Check logs: `docker compose logs web --tail 30`
@@ -262,7 +260,7 @@ Then fully quit and reopen the browser (don't just open a new tab).
 
 If still not working, clear cached images only (**not cookies**) from the last hour:
 
-**Brave:** `brave://settings/clearBrowserData`  
+**Brave:** `brave://settings/clearBrowserData`
 **Chrome:** `chrome://settings/clearBrowserData`
 
 > ⚠️ Do **not** clear All Time + Cookies unless you want to be logged out of every site.
@@ -303,4 +301,4 @@ docker compose down -v
 | `docker compose logs web --tail 30` | Recent web logs |
 | `docker compose ps` | Container status |
 | `docker stats --no-stream` | Memory/CPU snapshot |
-| `docker debug prei-web-1` | Debug shell inside web container |
+| `docker exec -it prei-web-1 bash` | Shell inside web container |

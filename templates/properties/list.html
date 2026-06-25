@@ -21,9 +21,9 @@
               <th style="width: 1%; white-space: nowrap;">Compare</th>
               <th>Address</th>
               <th>Purchase Price</th>
-              <th>NOI</th>
-              <th>Cap Rate</th>
-              <th>CoC</th>
+              <th>Score</th>
+              <th>Verdict</th>
+              <th>Top Flags</th>
               <th></th>
             </tr>
           </thead>
@@ -36,9 +36,25 @@
                 </td>
                 <td>{{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}</td>
                 <td>${{ property.purchase_price|floatformat:2 }}</td>
-                <td>{% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</td>
-                <td>{% if property.analysis %}{{ property.analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</td>
-                <td>{% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</td>
+                <td>
+                  {% if property.underwriting_score %}
+                    <span class="fw-bold">{{ property.underwriting_score.total_score }}</span>
+                  {% else %}—{% endif %}
+                </td>
+                <td>
+                  {% if property.underwriting_score %}
+                    {% include "components/verdict_badge.html" with verdict=property.underwriting_score.verdict verdict_label=property.underwriting_score.verdict %}
+                  {% else %}—{% endif %}
+                </td>
+                <td>
+                  {% if property.underwriting_score %}
+                    {% for flag in property.underwriting_score.flags|slice:":2" %}
+                      <div class="small text-muted">{{ flag }}</div>
+                    {% empty %}
+                      <span class="text-success small">No flags</span>
+                    {% endfor %}
+                  {% else %}—{% endif %}
+                </td>
                 <td>
                   <a href="{% url 'property_detail' property.pk %}">Details</a>
                   {% if property.access_role == "owner" or property.access_role == "team" %}

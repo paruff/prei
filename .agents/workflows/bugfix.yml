@@ -1,0 +1,90 @@
+# Bugfix Workflow — prei
+# Expedited path for production fixes. Skips planner for small fixes.
+# Read this before starting any bugfix. Follow each step in order.
+
+workflow: bugfix
+type: reference-checklist
+updated: 2026-06-08
+
+steps:
+
+  # ── Step 1: Triage ──────────────────────────────────────────
+  - step: triage
+    action: understand the bug
+    reads:
+      - error logs or reproduction steps
+      - relevant source files
+    questions:
+      - Is this a data issue, logic error, or crash?
+      - Is production data at risk right now?
+      - Does this affect financial calculations?
+    gates:
+      - Financial calculation bug → step 2 (fix immediately)
+      - Data corruption risk → step 2 (fix immediately)
+      - Cosmetic / low-impact → consider deferring
+
+  # ── Step 2: Fix ─────────────────────────────────────────────
+  - step: fix
+    agent: coder
+    action: minimal diff to fix the bug
+    rules:
+      - minimal_diff (no opportunistic refactoring)
+      - tests_required (regression test for the bug)
+      - service_boundaries
+    escalation:
+      on: fix requires migration, auth change, or new dependency
+      then: stop, escalate to human
+
+  # ── Step 3: Review ──────────────────────────────────────────
+  - step: review
+    agent: reviewer
+    action: validate the fix
+    checks:
+      - fix addresses root cause (not just symptom)
+      - no side effects introduced
+      - regression test present
+    output: PASS / FAIL
+    gates:
+      - FAIL → return to step 2
+      - PASS → proceed
+
+  # ── Step 4: Security (if applicable) ────────────────────────
+  - step: security
+    agent: security
+    when: bug involves auth, user data, or API endpoints
+    output: Risk score LOW/MED/HIGH
+    gates:
+      - HIGH → escalate to human
+
+  # ── Step 5: Verify ──────────────────────────────────────────
+  - step: verify
+    action: run_verification
+    command: make check
+    gates:
+      - FAIL → fix, return to step 2
+      - PASS → proceed
+
+  # ── Step 6: PR ──────────────────────────────────────────────
+  - step: create_pr
+    action: create PR (draft or ready)
+    target: main
+    label: bugfix
+    description_block:
+      - bug description and root cause
+      - fix summary (one sentence)
+      - regression test added
+      - whether production data needs remediation
+
+  # ── Step 7: Evaluate ────────────────────────────────────────
+  - step: evaluate
+    agent: human
+    action: score agent accuracy
+    when: after merge
+    file: .agents/memory/agent_scores.jsonl
+    protocol: .agents/skills/evaluation/SKILL.md
+    agents_to_score: [coder, reviewer, security, test-writer]
+    notes: skip planner (not used in bugfix workflow)
+
+# Escalation loop: step 2 ↔ step 1 (re-understand if fix doesn't work)
+# This workflow skips the planner — bugfixes are small and scoped.
+# If the bug fix expands beyond 3 files, switch to feature.yml workflow.

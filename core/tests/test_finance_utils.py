@@ -244,6 +244,45 @@ def test_compute_analysis_for_property_uses_analysis_hold_inputs(
     assert updated.irr != baseline.irr
 
 
+@pytest.mark.django_db
+def test_compute_analysis_irr_is_annualised(
+    property_sfr,
+    rental_income_sfr,
+    expense_property_tax_annual,
+    expense_insurance_annual,
+    expense_maintenance_monthly,
+    expense_management_monthly,
+    expense_capex_reserve_monthly,
+):
+    """IRR stored in InvestmentAnalysis must be an annual rate, not monthly.
+
+    build_cashflows() produces monthly cash flows, so irr() returns a monthly
+    rate.  compute_analysis_for_property() should annualise it before storing.
+    This test verifies the stored IRR is larger than the raw monthly IRR.
+    """
+    analysis = compute_analysis_for_property(property_sfr)
+
+    # Rebuild the monthly cash flows to get the raw monthly IRR
+    monthly_noi = analysis.noi / Decimal(12)
+    cashflows = build_cashflows(
+        purchase_price=Decimal(str(property_sfr.purchase_price)),
+        monthly_noi=monthly_noi,
+        hold_years=analysis.hold_years,
+        exit_cap_rate=Decimal(str(analysis.exit_cap_rate)),
+    )
+    monthly_irr = irr(cashflows)
+
+    # Annualised IRR should be strictly greater than monthly IRR (when positive)
+    if monthly_irr > 0:
+        assert analysis.irr > monthly_irr, (
+            f"Stored IRR {analysis.irr} should be annualised, "
+            f"but monthly IRR is {monthly_irr}"
+        )
+        # Verify the annualisation formula: (1 + m)^12 - 1
+        expected_annual = ((1 + monthly_irr) ** 12) - 1
+        assert_close(analysis.irr, expected_annual, rel_tol=0.001)
+
+
 def test_calculate_monthly_mortgage_basic():
     """Test mortgage calculation with known values."""
     # $280,000 loan at 7.5% for 30 years should be ~$1958.35

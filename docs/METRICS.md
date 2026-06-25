@@ -133,6 +133,6 @@ Total always-on tokens: 597
  121457 ./staticfiles/rest_framework/css/bootstrap.min.css
 
 ## Recommendations
-- Reduce always-on context further; move more policy details into .github/skills/.
+- Reduce always-on context further; move more policy details into .agents/skills/.
 - Run this audit weekly and before major instruction updates.
 - Prefer Ask/Edit mode before Agent mode for simple tasks to control burn rate.

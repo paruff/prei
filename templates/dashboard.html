@@ -1,133 +1,101 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% load humanize %}
+{% block title %}Screener{% endblock %}
+
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Dashboard</h1>
-    <a href="{% url 'property_add' %}" class="btn btn-primary btn-sm">Add Property</a>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Deal screener</h1>
+    <p class="page-sub">{{ summary.total_count }} propert{{ summary.total_count|pluralize:"y,ies" }} &middot; {{ summary.strong_buy_count }} strong buy</p>
   </div>
+  <a href="{% url 'property_create' %}" class="btn btn-primary">+ Add property</a>
+</div>
 
-  <div class="row g-3 mb-4">
-    <div class="col-12 col-md-6 col-lg-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Total Properties</div>
-          <div class="fs-4 fw-semibold">{{ portfolio_summary.total_properties }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-md-6 col-lg-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Total Capital Invested</div>
-          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_capital_invested|floatformat:2 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-md-6 col-lg-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Total Annual NOI</div>
-          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_annual_noi|floatformat:2 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-md-6 col-lg-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Weighted Average Cap Rate</div>
-          <div class="fs-4 fw-semibold">{{ portfolio_summary.weighted_average_cap_rate|floatformat:4 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-md-6 col-lg-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">Total Monthly Cash Flow</div>
-          <div class="fs-4 fw-semibold">${{ portfolio_summary.total_monthly_cash_flow|floatformat:2 }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-lg-8">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted mb-2">Portfolio Allocation by State</div>
-          <p class="small text-muted mb-2" id="portfolio-allocation-status">Loading chart…</p>
-          <canvas id="portfolio-allocation-chart" height="120"></canvas>
-        </div>
-      </div>
-    </div>
+<div class="kpi-grid">
+  {% include "components/kpi_card.html" with label="Best CoC" value=summary.best_coc|floatformat:1|add:"%" sub="Target >= 8%" color_class="num-good" %}
+  {% include "components/kpi_card.html" with label="Avg DSCR" value=summary.avg_dscr|floatformat:2 sub="Minimum 1.25" %}
+  {% include "components/kpi_card.html" with label="1% rule pass" value=summary.passes_one_pct_display sub="Of tracked properties" %}
+  {% include "components/kpi_card.html" with label="Strong buy" value=summary.strong_buy_count|stringformat:"s" sub="Score >= 75 / 100" color_class="num-good" %}
+</div>
+
+<div class="filter-bar">
+  <input id="search-input" type="search" class="form-input filter-search" placeholder="Filter by address or market..." aria-label="Filter properties">
+  <div class="chip-group" role="group" aria-label="Verdict filter">
+    <button class="chip is-active" data-filter="all">All</button>
+    <button class="chip" data-filter="A">Strong buy</button>
+    <button class="chip" data-filter="B">Conditional</button>
+    <button class="chip" data-filter="C">Pass</button>
+    <button class="chip" data-filter="1pct">1% rule</button>
   </div>
+</div>
 
-  {% if properties %}
-    <div class="row g-3">
-      {% for property in properties %}
-        <div class="col-12">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex justify-content-between flex-wrap gap-2">
-                <div>
-                  <h2 class="h5 mb-1">{{ property.address }}</h2>
-                  <div class="text-muted">{{ property.city }}, {{ property.state }} {{ property.zip_code }}</div>
-                </div>
-                <div>
-                  <a href="{% url 'property_detail' property.pk %}" class="btn btn-outline-primary btn-sm">View Details</a>
-                </div>
-              </div>
-              <div class="row mt-3 g-2">
-                <div class="col-6 col-md-3"><strong>Purchase Price:</strong> ${{ property.purchase_price|floatformat:2 }}</div>
-                <div class="col-6 col-md-3"><strong>NOI:</strong> {% if property.analysis %}${{ property.analysis.noi|floatformat:2 }}{% else %}—{% endif %}</div>
-                <div class="col-6 col-md-3"><strong>Cap Rate:</strong> {% if property.analysis %}{{ property.analysis.cap_rate|floatformat:4 }}{% else %}—{% endif %}</div>
-                <div class="col-6 col-md-3"><strong>CoC:</strong> {% if property.analysis %}{{ property.analysis.cash_on_cash|floatformat:4 }}{% else %}—{% endif %}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+{% if properties %}
+<div class="table-wrap">
+  <table class="data-table" id="deal-table" aria-label="Deal screener results">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th class="col-right">CoC</th>
+        <th class="col-right col-hide-mobile">Cap rate</th>
+        <th class="col-right col-hide-mobile">DSCR</th>
+        <th class="col-right col-hide-mobile">GRM</th>
+        <th>Verdict</th>
+        <th>Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in properties %}
+      <tr data-verdict="{{ p.verdict }}" data-onepct="{{ p.passes_one_pct|yesno:'true,false' }}" data-addr="{{ p.address|lower }} {{ p.city|lower }} {{ p.state|lower }}">
+        <td>
+          <a href="{% url 'property_detail' p.id %}" class="deal-link">
+            <div class="deal-address">{{ p.address }}</div>
+            <div class="deal-meta">{{ p.city }}, {{ p.state }} &middot; {{ p.property_type }}</div>
+          </a>
+        </td>
+        <td class="col-right num {% if p.coc >= 0.08 %}num-good{% elif p.coc >= 0.05 %}num-warn{% else %}num-bad{% endif %}">{{ p.coc|floatformat:1 }}%</td>
+        <td class="col-right col-hide-mobile num {% if p.cap_rate >= 0.06 %}num-good{% elif p.cap_rate >= 0.04 %}num-warn{% else %}num-bad{% endif %}">{{ p.cap_rate|floatformat:1 }}%</td>
+        <td class="col-right col-hide-mobile num {% if p.dscr >= 1.25 %}num-good{% elif p.dscr >= 1.0 %}num-warn{% else %}num-bad{% endif %}">{{ p.dscr|floatformat:2 }}</td>
+        <td class="col-right col-hide-mobile num {% if p.grm <= 12 %}num-good{% elif p.grm <= 16 %}num-warn{% else %}num-bad{% endif %}">{{ p.grm|floatformat:1 }}</td>
+        <td>{% include "components/verdict_badge.html" with verdict=p.verdict verdict_label=p.verdict_label %}</td>
+        <td>{% include "components/score_bar.html" with score=p.score verdict=p.verdict %}</td>
+      </tr>
       {% endfor %}
-    </div>
-  {% else %}
-    <div class="card">
-      <div class="card-body text-center py-5">
-        <h2 class="h5">No properties yet</h2>
-        <p class="text-muted mb-3">Start your portfolio to see KPI insights.</p>
-        <a href="{% url 'property_add' %}" class="btn btn-primary">Add your first property</a>
-      </div>
-    </div>
-  {% endif %}
-  {{ state_allocation_labels|json_script:"state-allocation-labels" }}
-  {{ state_allocation_values|json_script:"state-allocation-values" }}
-  <script>window.chartJsFailedToLoad = false;</script>
-  <script
-    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"
-    integrity="sha384-tgbB5AKnszdcfwcZtTfuhR3Ko1XZdlDfsLtkxiiAZiVkkXCkFmp+FQFh+V/UTo54"
-    crossorigin="anonymous"
-    onerror="window.chartJsFailedToLoad = true;"></script>
-  <script>
-    const stateAllocationLabels = JSON.parse(document.getElementById("state-allocation-labels").textContent);
-    // Converted from stringified Python Decimal to JS Number for Chart.js compatibility;
-    // minor float precision loss is acceptable for visualization only.
-    const stateAllocationValues = JSON.parse(document.getElementById("state-allocation-values").textContent).map(Number);
-    const allocationStatus = document.getElementById("portfolio-allocation-status");
-    const allocationChartCanvas = document.getElementById("portfolio-allocation-chart");
-    const chartLibraryLoaded = !window.chartJsFailedToLoad && typeof Chart !== "undefined";
-    if (allocationChartCanvas && stateAllocationLabels.length > 0 && chartLibraryLoaded) {
-      new Chart(allocationChartCanvas, {
-        type: "doughnut",
-        data: {
-          labels: stateAllocationLabels,
-          datasets: [{
-            label: "Property Value by State",
-            data: stateAllocationValues,
-          }],
-        },
-      });
-      if (allocationStatus) {
-        allocationStatus.textContent = "";
-      }
-    } else if (allocationStatus) {
-      allocationStatus.textContent =
-        stateAllocationLabels.length === 0
-          ? "No properties available for allocation yet."
-          : "Allocation chart is unavailable right now.";
-    }
-  </script>
+    </tbody>
+  </table>
+</div>
+{% else %}
+  {% include "components/empty_state.html" with title="No properties yet" body="Add your first property to start screening deals and see underwriting scores." action_url="/properties/add/" action_label="Add your first property" %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var rows   = Array.from(document.querySelectorAll('#deal-table tbody tr'));
+  var chips  = document.querySelectorAll('.chip[data-filter]');
+  var search = document.getElementById('search-input');
+  var active = 'all';
+
+  function applyFilters() {
+    var q = search ? search.value.toLowerCase().trim() : '';
+    rows.forEach(function(row) {
+      var v      = row.dataset.verdict;
+      var onePct = row.dataset.onepct === 'true';
+      var addr   = row.dataset.addr || '';
+      var match  = active === 'all' || (active === '1pct' && onePct) || v === active;
+      row.style.display = (match && (!q || addr.includes(q))) ? '' : 'none';
+    });
+  }
+
+  chips.forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      chips.forEach(function(c) { c.classList.remove('is-active'); });
+      chip.classList.add('is-active');
+      active = chip.dataset.filter;
+      applyFilters();
+    });
+  });
+  if (search) search.addEventListener('input', applyFilters);
+})();
+</script>
 {% endblock %}

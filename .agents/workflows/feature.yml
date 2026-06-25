@@ -1,0 +1,128 @@
+# Feature Workflow — prei
+# This is a reference checklist for feature implementation.
+# Read this before starting any feature. Follow each step in order.
+# Not machine-executed — agents and humans follow this as a protocol.
+
+workflow: feature
+type: reference-checklist
+updated: 2026-06-08
+
+steps:
+
+  # ── Step 1: Plan ──────────────────────────────────────────────
+  - step: plan
+    agent: planner
+    action: define_task_graph
+    reads:
+      - docs/ARCHITECTURE.md
+      - docs/CHANGE_IMPACT_MAP.md
+      - core/models.py
+    produces:
+      - task_list (ordered, with risk per task)
+      - risk_flags
+      - required_context_files
+    gates:
+      - If scope > 5 files → ask human before proceeding
+      - If any HIGH risk task → flag for human review
+
+  # ── Step 2: Implement ────────────────────────────────────────
+  - step: implement
+    agent: coder
+    action: implement tasks from task graph
+    reads:
+      - docs/ARCHITECTURE.md
+      - docs/CHANGE_IMPACT_MAP.md
+      - core/models.py
+    rules:
+      - service_boundaries
+      - decimal_money
+      - tests_required
+      - minimal_diff
+    escalation:
+      on: task mismatch, missing files, scope conflict, task conflict
+      emit: "### Escalation" block with task/issue/suggestion
+      then: stop, wait for replanned task graph
+
+  # ── Step 3: Review ───────────────────────────────────────────
+  - step: review
+    agent: reviewer
+    action: validate implementation
+    reads:
+      - docs/ARCHITECTURE.md
+    checks:
+      - architecture_boundaries
+      - decimal_currency
+      - test_coverage
+      - secrets_pii
+      - migrations
+      - docker_compose
+    output: PASS / FAIL with itemized issues
+    notes:
+      - reviewer does lightweight secrets/PII screen (secrets_pii check)
+      - deep security audit is step 4 — reviewer does not replace it
+      - reviewer focuses on architecture, currency, tests, migrations
+    gates:
+      - FAIL → return to step 2 with issue list
+      - PASS → proceed
+
+  # ── Step 4: Security (if applicable) ─────────────────────────
+  - step: security
+    agent: security
+    action: deep security audit
+    when: auth changes, new external deps, financial data handling, API endpoints
+    reads:
+      - investor_app/settings.py
+      - core/api_views.py
+      - core/serializers.py
+      - core/integrations/
+    output: Risk score LOW/MED/HIGH with findings
+    gates:
+      - HIGH → escalate to human, do not proceed
+      - MED → flag for human review, may proceed
+      - LOW → proceed
+
+  # ── Step 5: Human approve ────────────────────────────────────
+  - step: human_approve
+    agent: human
+    required_for:
+      - migrations
+      - auth_changes
+      - new_external_deps
+      - workflow_changes
+      - security HIGH findings
+    format: PR description with AI-Assisted Review Block
+
+  # ── Step 6: Verify ──────────────────────────────────────────
+  - step: verify
+    action: run_verification
+    command: make check
+    gates:
+      - FAIL → fix issues, return to step 2
+      - PASS → proceed
+
+  # ── Step 7: PR ──────────────────────────────────────────────
+  - step: create_pr
+    action: create draft PR
+    target: main
+    requires: human_approval
+    description_block:
+      - change_summary (one sentence)
+      - failure_modes (top 2-3)
+      - test_coverage (what's covered)
+      - architecture_check (boundaries respected)
+      - judgment_calls (needs human review)
+
+  # ── Step 8: Evaluate ────────────────────────────────────────
+  - step: evaluate
+    agent: human
+    action: score agent accuracy
+    when: after human review, before or after merge
+    file: .agents/memory/agent_scores.jsonl
+    protocol: .agents/skills/evaluation/SKILL.md
+    agents_to_score: [planner, coder, reviewer, security, test-writer]
+    notes: score each agent 1-5, log human_corrections, flag any ≤ 2
+
+# Escalation loop: step 2 ↔ step 1
+# If coder escalates → planner replans → coder resumes
+# If reviewer fails → coder fixes → reviewer re-checks
+# If security HIGH → human decides path forward

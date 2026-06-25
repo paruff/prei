@@ -53,7 +53,7 @@ def test_whitenoise_and_static_storage_are_configured() -> None:
     assert values["MIDDLEWARE"][0] == "django.middleware.security.SecurityMiddleware"
     assert values["MIDDLEWARE"][1] == "whitenoise.middleware.WhiteNoiseMiddleware"
     assert (
-        values["STATICFILES_STORAGE"]
+        values["STORAGES"]["staticfiles"]["BACKEND"]
         == "whitenoise.storage.CompressedManifestStaticFilesStorage"
     )
 
@@ -99,7 +99,7 @@ print(json.dumps({
     "SECURE_HSTS_INCLUDE_SUBDOMAINS": getattr(settings, "SECURE_HSTS_INCLUDE_SUBDOMAINS", None),
     "X_FRAME_OPTIONS": getattr(settings, "X_FRAME_OPTIONS", None),
     "MIDDLEWARE": getattr(settings, "MIDDLEWARE", None),
-    "STATICFILES_STORAGE": getattr(settings, "STATICFILES_STORAGE", None),
+    "STORAGES": getattr(settings, "STORAGES", None),
 }))
 """
     completed = subprocess.run(

@@ -3,11 +3,17 @@ from django.urls import reverse
 from decimal import Decimal
 from django.utils import timezone
 
-from core.models import Property, Listing
+from core.models import Property, Listing, UserInvestmentTargets
 
 
 @pytest.mark.django_db
 def test_dashboard_shows_analyze_link(client, user):
+    UserInvestmentTargets.objects.create(
+        user=user,
+        min_coc_pct=Decimal("0.08"),
+        min_dscr=Decimal("1.25"),
+        max_grm=Decimal("12.00"),
+    )
     p = Property.objects.create(
         user=user,
         address="1 Test Rd",
@@ -15,6 +21,7 @@ def test_dashboard_shows_analyze_link(client, user):
         state="TX",
         zip_code="00000",
         purchase_price=Decimal("100000"),
+        monthly_rent_gross=Decimal("1200"),
     )
     client.force_login(user)
     resp = client.get(reverse("dashboard"))

@@ -1,18 +1,31 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev superuser lint test check deploy-dev
+.PHONY: help ensure-env dev superuser lint test check deploy-dev gitops-validate gitops-hook-install
 
 PYTHON ?= python
 ENV_FILE ?= .env
+REQUIREMENTS ?= requirements.txt
+
+# Check Django is installed; install deps if not (handles recovery containers
+# or incomplete devcontainer postCreateCommand).
+define ensure_django
+	@$(PYTHON) -c "import django" 2>/dev/null || { \
+		echo "Django not found — installing dependencies..."; \
+		pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && \
+		pip install -r $(REQUIREMENTS); \
+	}
+endef
 
 help:
 	@echo "Available targets:"
-	@echo "  make dev         Run migrations and start the Django dev server in Codespaces/devcontainer"
-	@echo "  make superuser   Create a Django superuser in the current environment"
-	@echo "  make lint        Run Ruff and Black checks"
-	@echo "  make test        Run the test suite"
-	@echo "  make check       Run Django checks, lint, and tests"
-	@echo "  make deploy-dev  Start the image-based Docker stack on a Docker host"
+	@echo "  make dev              Run migrations and start the Django dev server"
+	@echo "  make superuser        Create a Django superuser"
+	@echo "  make lint             Run Ruff and Black checks"
+	@echo "  make test             Run the test suite"
+	@echo "  make check            Run Django checks, lint, and tests"
+	@echo "  make deploy-dev       Start Docker stack on Docker host"
+	@echo "  make gitops-validate  Run GitOps best-practice validation"
+	@echo "  make gitops-hook-install  Install GitOps pre-commit hook"
 
 ensure-env:
 	@if [[ ! -f $(ENV_FILE) ]]; then \
@@ -21,10 +34,12 @@ ensure-env:
 	fi
 
 dev: ensure-env
+	$(call ensure_django)
 	@$(PYTHON) manage.py migrate
 	@$(PYTHON) manage.py runserver 0.0.0.0:8000
 
 superuser: ensure-env
+	$(call ensure_django)
 	@$(PYTHON) manage.py createsuperuser
 
 lint:
@@ -32,9 +47,11 @@ lint:
 	@ruff format --check .
 
 test: ensure-env
+	$(call ensure_django)
 	@$(PYTHON) -m pytest -q
 
 check: ensure-env
+	$(call ensure_django)
 	@$(PYTHON) manage.py check
 	@$(MAKE) lint
 	@$(MAKE) test
@@ -49,3 +66,10 @@ deploy-dev: ensure-env
 	@docker compose up -d
 	@docker compose exec web $(PYTHON) manage.py migrate
 	@echo "Docker stack is running on port 8000"
+
+gitops-validate:
+	@./scripts/gitops-validate.sh
+
+gitops-hook-install:
+	@git config core.hooksPath .githooks
+	@echo "GitOps pre-commit hook installed (core.hooksPath = .githooks)"

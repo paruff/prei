@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Markets{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Markets</h1>
+    <p class="page-sub">Price-to-rent ratios and economic indicators for your tracked ZIPs.</p>
+  </div>
+  <form method="post" action="{% url 'market_refresh' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn">Refresh market data</button>
+  </form>
+</div>
+
+{% if not has_market_data %}
+  {% include "components/empty_state.html" with title="No market data yet" body="Add a property first. Market indicators load from Census and BLS for each ZIP you track." %}
+{% else %}
+<div class="table-wrap">
+  <table class="data-table" aria-label="Market indicators by ZIP code">
+    <thead>
+      <tr>
+        <th>ZIP / Market</th>
+        <th class="col-right">Properties</th>
+        <th class="col-right">P/R ratio</th>
+        <th>P/R verdict</th>
+        <th class="col-right col-hide-mobile">Unemployment</th>
+        <th class="col-right col-hide-mobile">Pop. growth 5yr</th>
+        <th class="col-right">Score</th>
+        <th class="col-right col-hide-mobile">Data age</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in markets %}
+      <tr>
+        <td>
+          <div class="deal-address">{{ m.zip_code }}</div>
+          <div class="deal-meta">{{ m.msa_name }}</div>
+        </td>
+        <td class="col-right num">{{ m.property_count }}</td>
+        <td class="col-right num {% if m.price_to_rent_ratio <= 12 %}num-good{% elif m.price_to_rent_ratio <= 16 %}num-warn{% else %}num-bad{% endif %}">
+          {% if m.price_to_rent_ratio %}{{ m.price_to_rent_ratio|floatformat:1 }}{% else %}&mdash;{% endif %}
+        </td>
+        <td>
+          {% if m.price_to_rent_verdict == 'Strong' %}
+            {% include "components/verdict_badge.html" with verdict="A" verdict_label="Strong" %}
+          {% elif m.price_to_rent_verdict == 'Borderline' %}
+            {% include "components/verdict_badge.html" with verdict="B" verdict_label="Borderline" %}
+          {% elif m.price_to_rent_verdict == 'Weak' %}
+            {% include "components/verdict_badge.html" with verdict="C" verdict_label="Weak" %}
+          {% elif m.price_to_rent_verdict == 'Moderate' %}
+            <span class="verdict-badge verdict-moderate">Moderate</span>
+          {% else %}
+            <span class="muted-text">&mdash;</span>
+          {% endif %}
+        </td>
+        <td class="col-right col-hide-mobile num {% if m.unemployment_rate <= 0.04 %}num-good{% elif m.unemployment_rate <= 0.06 %}num-warn{% else %}num-bad{% endif %}">
+          {% if m.unemployment_rate %}{{ m.unemployment_rate|floatformat:1 }}%{% else %}&mdash;{% endif %}
+        </td>
+        <td class="col-right col-hide-mobile num {% if m.population_growth_pct_5yr > 0 %}num-good{% else %}num-bad{% endif %}">
+          {% if m.population_growth_pct_5yr %}{{ m.population_growth_pct_5yr|floatformat:1 }}%{% else %}&mdash;{% endif %}
+        </td>
+        <td class="col-right num {% if m.overall_score >= 65 %}num-good{% elif m.overall_score >= 40 %}num-warn{% else %}num-bad{% endif %}">
+          {% if m.overall_score %}{{ m.overall_score }}{% else %}&mdash;{% endif %}
+        </td>
+        <td class="col-right col-hide-mobile muted-text">
+          {% if m.data_freshness_days is not None %}{{ m.data_freshness_days }}d{% else %}&mdash;{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="disclosure">P/R ratio: &lt;12 strong cashflow market &middot; 12-16 moderate &middot; 16-20 borderline &middot; &gt;20 appreciation market. Source: U.S. Census Bureau and Bureau of Labor Statistics. Refreshed every 30 days.</p>
+{% endif %}
+{% endblock %}

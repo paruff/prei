@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from decimal import Decimal
 
@@ -36,6 +37,54 @@ ALLOWED_HOSTS = [
     if host
 ]
 
+# ---------------------------------------------------------------------------
+# CSRF Trusted Origins & Proxy Headers
+# ---------------------------------------------------------------------------
+# Django 4+ requires CSRF_TRUSTED_ORIGINS when serving over HTTPS through a
+# TLS-terminating proxy (Codespaces, Render, Fly.io, etc.). Without this,
+# secure requests get: "Origin checking failed — {origin} does not match
+# any trusted origins."
+#
+# Build the list from four sources:
+#   1. The CSRF_TRUSTED_ORIGINS env var (comma-separated, for explicit config)
+#   2. GitHub Codespace preview URL (auto-detected from env)
+#   3. ALLOWED_HOSTS entries with https:// prefix
+#   4. Sensible local-dev fallbacks (localhost, 127.0.0.1)
+# ---------------------------------------------------------------------------
+CSRF_TRUSTED_ORIGINS = list(
+    map(str.strip, env("CSRF_TRUSTED_ORIGINS", default="").split(","))
+)
+CSRF_TRUSTED_ORIGINS = [o for o in CSRF_TRUSTED_ORIGINS if o]
+
+# Auto-detect GitHub Codespace URL for port-forwarding.
+# Pattern: https://{CODESPACE_NAME}-{PORT}.{GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}
+codespace_name = os.environ.get("CODESPACE_NAME")
+codespace_domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN")
+if codespace_name and codespace_domain:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{codespace_name}-8000.{codespace_domain}")
+
+# Add https:// variants of all ALLOWED_HOSTS for behind-proxy scenarios
+CSRF_TRUSTED_ORIGINS.extend(
+    f"https://{host}" for host in ALLOWED_HOSTS if host not in ("*",)
+)
+
+# Always trust local origins for dev (both HTTP and HTTPS variants for
+# browsers that auto-upgrade via HSTS or localStorage HTTPS redirects)
+for origin in (
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://localhost:8000",
+    "https://127.0.0.1:8000",
+):
+    if origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
+
+# Signal that Django is behind a TLS-terminating proxy (Codespaces, Render,
+# Fly.io, load balancers). This tells Django to trust the X-Forwarded-Proto
+# header so that request.is_secure() returns True and redirects use https://.
+# Removed in settings_test.py to keep test behaviour predictable.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 if not DEBUG:
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
     SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
@@ -56,6 +105,9 @@ DATABASES = {
     )
 }
 
+LOGIN_REDIRECT_URL = "/dashboard/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
+
 TIME_ZONE = env("TIME_ZONE", default="UTC")
 USE_TZ = True
 
@@ -68,6 +120,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     "rest_framework",
     "core",
 ]
@@ -106,7 +159,12 @@ WSGI_APPLICATION = "investor_app.wsgi.application"
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

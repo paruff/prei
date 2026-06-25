@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}BRRRR calculator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">BRRRR calculator</h1>
+    <p class="page-sub">Buy &middot; Rehab &middot; Rent &middot; Refinance &middot; Repeat</p>
+  </div>
+</div>
+
+<div class="layout-2col">
+  <div class="card">
+    <h2 class="card-title">Deal inputs</h2>
+    <div class="form-group">
+      <label class="form-label" for="b-purchase">Purchase price ($)</label>
+      <input id="b-purchase" type="number" class="form-input num" value="120000" min="0" step="1000">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-rehab">Rehab cost ($)</label>
+      <input id="b-rehab" type="number" class="form-input num" value="25000" min="0" step="1000">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-arv">After-repair value &mdash; ARV ($)</label>
+      <input id="b-arv" type="number" class="form-input num" value="185000" min="0" step="1000">
+      <p class="form-hint">Your estimate of market value after rehab is complete.</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-rent">Monthly rent post-rehab ($)</label>
+      <input id="b-rent" type="number" class="form-input num" value="1400" min="0" step="50">
+    </div>
+    <div class="form-divider"></div>
+    <p class="form-subsection-label">Refinance assumptions</p>
+    <div class="form-group">
+      <label class="form-label" for="b-ltv">Refi LTV (%)</label>
+      <input id="b-ltv" type="number" class="form-input num" value="75" min="0" max="90" step="5">
+      <p class="form-hint">Lenders typically offer 70-75% LTV on investment properties.</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-rate">Refi interest rate (%)</label>
+      <input id="b-rate" type="number" class="form-input num" value="7.0" min="0" max="30" step="0.25">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-closing">Closing costs (%)</label>
+      <input id="b-closing" type="number" class="form-input num" value="2.0" min="0" max="10" step="0.25">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="b-expenses">Annual operating expenses ($)</label>
+      <input id="b-expenses" type="number" class="form-input num" value="4200" min="0" step="100">
+      <p class="form-hint">Taxes + insurance + management + maintenance + CapEx per year.</p>
+    </div>
+  </div>
+
+  <div>
+    <div id="arv-prompt" class="brrrr-banner is-partial" hidden>
+      <div class="brrrr-banner-label">Enter an ARV to see results</div>
+      <div class="brrrr-banner-sub">The after-repair value is required to calculate the refinance loan amount.</div>
+    </div>
+
+    <div id="verdict-banner" class="brrrr-banner is-full-cycle">
+      <div id="verdict-label" class="brrrr-banner-label"></div>
+      <div id="verdict-sub"   class="brrrr-banner-sub"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Results</h2>
+      <table class="data-table" id="results-table">
+        <tr><td>Total project cost</td>           <td class="col-right num" id="r-total">--</td></tr>
+        <tr><td>Max refi loan (at LTV)</td>        <td class="col-right num" id="r-loan">--</td></tr>
+        <tr><td class="result-emphasis">Cash left in deal</td><td class="col-right num result-emphasis" id="r-cash-left">--</td></tr>
+        <tr><td>Cash out at refi</td>             <td class="col-right num" id="r-cash-out">--</td></tr>
+        <tr><td>Monthly mortgage (post-refi)</td> <td class="col-right num" id="r-mortgage">--</td></tr>
+        <tr><td>Post-refi NOI (annual)</td>       <td class="col-right num" id="r-noi">--</td></tr>
+        <tr><td>Post-refi DSCR</td>               <td class="col-right num" id="r-dscr">--</td></tr>
+        <tr><td>Post-refi CoC</td>                <td class="col-right num" id="r-coc">--</td></tr>
+      </table>
+    </div>
+
+    <p class="disclosure">Full Cycle = cash left &lt;= $0. Partial Recycle = 1-25% of project cost remaining. Capital Trap = &gt;25% locked in. DSCR &gt;= 1.25 required by most lenders for refi qualification.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var inputIds = ['b-purchase','b-rehab','b-arv','b-rent','b-ltv','b-rate','b-closing','b-expenses'];
+  function el(id) { return document.getElementById(id); }
+  function val(id) { return parseFloat(el(id).value) || 0; }
+  function fmtD(n) { return '$' + Math.round(n).toLocaleString(); }
+  function fmtP(n) { return (n * 100).toFixed(1) + '%'; }
+
+  function mortgage(principal, annualRate, years) {
+    if (principal <= 0) return 0;
+    if (annualRate === 0) return principal / (years * 12);
+    var r = annualRate / 12, n = years * 12;
+    return principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+  }
+
+  function calculate() {
+    var purchase = val('b-purchase');
+    var rehab    = val('b-rehab');
+    var arv      = val('b-arv');
+    var rent     = val('b-rent');
+    var ltv      = val('b-ltv')     / 100;
+    var rate     = val('b-rate')    / 100;
+    var closing  = val('b-closing') / 100;
+    var expenses = val('b-expenses');
+
+    var arvPrompt = el('arv-prompt');
+    var banner    = el('verdict-banner');
+    var table     = el('results-table');
+
+    if (arv <= 0) {
+      arvPrompt.hidden   = false;
+      banner.hidden      = true;
+      table.style.opacity = '0.35';
+      return;
+    }
+    arvPrompt.hidden    = true;
+    banner.hidden       = false;
+    table.style.opacity = '';
+
+    var closingCost = purchase * closing;
+    var totalCost   = purchase + rehab + closingCost;
+    var maxLoan     = arv * ltv;
+    var cashLeft    = totalCost - maxLoan;
+    var cashOut     = Math.max(0, maxLoan - purchase);
+    var mtg         = mortgage(maxLoan, rate, 30);
+    var annualDebt  = mtg * 12;
+    var noi         = (rent * 12) - expenses;
+    var dscr        = annualDebt > 0 ? noi / annualDebt : 0;
+    var annualCF    = noi - annualDebt;
+    var coc         = cashLeft > 0 ? annualCF / cashLeft : Infinity;
+    var threshold   = totalCost * 0.25;
+
+    var vText, vSub, vClass;
+    if (cashLeft <= 0) {
+      vText = 'Full Cycle'; vClass = 'is-full-cycle';
+      vSub  = 'All capital recycled -- effectively infinite return on remaining equity.';
+    } else if (cashLeft <= threshold) {
+      vText = 'Partial Recycle'; vClass = 'is-partial';
+      vSub  = fmtD(cashLeft) + ' remains in the deal (' + fmtP(cashLeft / totalCost) + ' of project cost).';
+    } else {
+      vText = 'Capital Trap'; vClass = 'is-trap';
+      vSub  = fmtD(cashLeft) + ' locked in (' + fmtP(cashLeft / totalCost) + '). Renegotiate price or increase ARV.';
+    }
+    if (dscr < 1.25 && annualDebt > 0) {
+      vSub += ' \u26A0 DSCR ' + dscr.toFixed(2) + ' is below 1.25 -- lender may not qualify this refi.';
+    }
+
+    banner.className             = 'brrrr-banner ' + vClass;
+    el('verdict-label').textContent = vText;
+    el('verdict-sub').textContent   = vSub;
+
+    el('r-total').textContent    = fmtD(totalCost);
+    el('r-loan').textContent     = fmtD(maxLoan);
+
+    var cashEl = el('r-cash-left');
+    cashEl.textContent = cashLeft <= 0 ? fmtD(cashLeft) + ' (full cycle)' : fmtD(cashLeft);
+    cashEl.className   = 'col-right num result-emphasis ' + (cashLeft <= 0 ? 'num-good' : cashLeft <= threshold ? 'num-warn' : 'num-bad');
+
+    el('r-cash-out').textContent = fmtD(cashOut);
+    el('r-mortgage').textContent = fmtD(mtg) + '/mo';
+    el('r-noi').textContent      = fmtD(noi);
+
+    var dscrEl = el('r-dscr');
+    dscrEl.textContent = dscr.toFixed(2);
+    dscrEl.className   = 'col-right num ' + (dscr >= 1.25 ? 'num-good' : 'num-bad');
+    el('r-coc').textContent = isFinite(coc) ? fmtP(coc) : '\u221E (full cycle)';
+  }
+
+  inputIds.forEach(function(id) { el(id).addEventListener('input', calculate); });
+  calculate();
+})();
+</script>
+{% endblock %}

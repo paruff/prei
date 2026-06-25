@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import logging
 from io import BytesIO
 from collections.abc import Mapping
@@ -7,10 +8,12 @@ from decimal import Decimal, InvalidOperation
 from typing import Protocol, cast
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
-from django.db.models import Q, Sum
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q, Count
 from django.http import (
     Http404,
     HttpRequest,
@@ -23,7 +26,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.text import slugify
+from django.views import View
 from xhtml2pdf import pisa
+
+from .models import VrmProperty, UserInvestmentTargets
 
 from investor_app.finance.utils import (
     compute_analysis_for_property,
@@ -35,7 +41,12 @@ from investor_app.finance.utils import (
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
 from core.services import compute_portfolio_summary
 from core.services.audit import log_action
-from .forms import OperatingExpenseForm, PropertyForm, RentalIncomeForm
+from .forms import (
+    OperatingExpenseForm,
+    PropertyForm,
+    RentalIncomeForm,
+    InvestmentTargetsForm,
+)
 from .models import (
     Listing,
     MarketSnapshot,
@@ -136,36 +147,91 @@ def dashboard(request):
     if _is_client_only_user(request.user):
         return redirect("property_list")
 
-    properties = (
-        Property.objects.filter(user=request.user)
+    from core.services.scoring import score_listing_v2
+    from core.models import UserInvestmentTargets
+
+    try:
+        targets = UserInvestmentTargets.objects.get(user=request.user)
+    except UserInvestmentTargets.DoesNotExist:
+        targets = None
+
+    properties_qs = (
+        Property.objects.filter(
+            Q(user=request.user) | Q(property_shares__shared_with=request.user)
+        )
         .select_related("analysis")
+        .distinct()
         .order_by("-id")
     )
-    portfolio_summary = compute_portfolio_summary(request.user)
-    state_allocation = list(
-        properties.values("state")
-        .annotate(total_value=Sum("purchase_price"))
-        .order_by("state")
-    )
-    state_allocation_labels = [
-        item["state"] or "Unknown"
-        for item in state_allocation
-        if item["total_value"] is not None
-    ]
-    state_allocation_values = [
-        str(item["total_value"])
-        for item in state_allocation
-        if item["total_value"] is not None
-    ]
+
+    VERDICT_MAP = {
+        "Strong Buy": ("A", "Strong Buy"),
+        "Conditional": ("B", "Conditional"),
+        "Pass": ("C", "Pass"),
+    }
+
+    properties: list[dict] = []
+    for prop in properties_qs:
+        if (
+            targets is None
+            or prop.monthly_rent_gross is None
+            or prop.monthly_rent_gross <= 0
+            or prop.purchase_price is None
+            or prop.purchase_price <= 0
+        ):
+            continue
+
+        try:
+            score = score_listing_v2(prop, targets)
+        except Exception:
+            continue
+
+        verdict_code, verdict_label = VERDICT_MAP.get(score.verdict, ("C", "Pass"))
+
+        properties.append(
+            {
+                "id": prop.id,
+                "address": prop.address,
+                "city": prop.city,
+                "state": prop.state,
+                "property_type": prop.get_property_type_display(),
+                "score": score.total_score,
+                "verdict": verdict_code,
+                "verdict_label": verdict_label,
+                "coc": score.cash_on_cash,
+                "cap_rate": score.cap_rate,
+                "dscr": score.dscr,
+                "grm": score.grm,
+                "passes_one_pct": score.passes_one_pct_rule,
+            }
+        )
+
+    # Sort by score descending — best deals first
+    properties.sort(key=lambda p: p["score"], reverse=True)
+
+    # Compute summary
+    coc_values = [p["coc"] for p in properties if p["coc"] is not None]
+    dscr_values = [p["dscr"] for p in properties if p["dscr"] is not None]
+
+    passes_one_pct_count = sum(1 for p in properties if p["passes_one_pct"])
+
+    summary = {
+        "total_count": len(properties),
+        "strong_buy_count": sum(1 for p in properties if p["verdict"] == "A"),
+        "passes_one_pct_count": passes_one_pct_count,
+        "passes_one_pct_display": (f"{passes_one_pct_count} / {len(properties)}"),
+        "best_coc": max(coc_values) if coc_values else Decimal("0"),
+        "avg_dscr": (
+            sum(dscr_values) / len(dscr_values) if dscr_values else Decimal("0")
+        ),
+    }
 
     return render(
         request,
         "dashboard.html",
         {
             "properties": properties,
-            "portfolio_summary": portfolio_summary,
-            "state_allocation_labels": state_allocation_labels,
-            "state_allocation_values": state_allocation_values,
+            "summary": summary,
         },
     )
 
@@ -187,12 +253,31 @@ def property_list(request):
             property_id__in=property_ids,
         ).values_list("property_id", "role")
     )
+
+    # Compute underwriting score for each property
+    from core.services.scoring import score_listing_v2
+    from core.models import UserInvestmentTargets
+
+    try:
+        targets = UserInvestmentTargets.objects.get(user=request.user)
+    except UserInvestmentTargets.DoesNotExist:
+        targets = None
+
     for property_obj in properties:
         property_obj.access_role = (
             "owner"
             if property_obj.user_id == request.user.id
             else share_roles_by_property_id.get(property_obj.id, "client")
         )
+        # Attach scoring data
+        property_obj.underwriting_score = None
+        if targets:
+            try:
+                property_obj.underwriting_score = score_listing_v2(
+                    property_obj, targets
+                )
+            except Exception:
+                pass
 
     return render(
         request,
@@ -391,12 +476,40 @@ def property_detail(request, pk: int):
     if not is_owner_or_shared(request.user, property_obj, min_role="client"):
         raise Http404
     user_role = _get_property_role(request.user, property_obj)
+
+    # Compute underwriting score
+    from core.services.scoring import score_listing_v2
+    from core.models import UserInvestmentTargets
+
+    score = None
+    targets = None
+    try:
+        targets, _ = UserInvestmentTargets.objects.get_or_create(user=property_obj.user)
+        score = score_listing_v2(property_obj, targets)
+    except Exception:
+        pass
+
+    # Compute 10-year projections for the detail view
+    projections = None
+    exit_analysis = None
+    try:
+        from core.services.projections import project_hold_period
+
+        projections, exit_analysis = project_hold_period(property_obj, hold_years=10)
+    except Exception:
+        # Projections are optional; don't break the page if they fail
+        pass
+
     return render(
         request,
         "properties/detail.html",
         {
             "property": property_obj,
             "analysis": getattr(property_obj, "analysis", None),
+            "score": score,
+            "targets": targets,
+            "projection": projections,
+            "exit": exit_analysis,
             "can_edit_property": user_role in {"owner", "team"},
             "can_share_property": user_role == "owner",
         },
@@ -414,11 +527,11 @@ def property_add(request):
             property_obj.user = request.user
             property_obj.save()
             compute_analysis_for_property(property_obj)
-            return redirect("property_add_income", pk=property_obj.pk)
+            return redirect("property_detail", pk=property_obj.pk)
     else:
         form = PropertyForm()
 
-    return render(request, "properties/add.html", {"form": form})
+    return render(request, "property_form.html", {"form": form})
 
 
 @login_required
@@ -438,10 +551,10 @@ def property_edit(request, pk: int):
 
     return render(
         request,
-        "properties/edit.html",
+        "property_form.html",
         {
             "form": form,
-            "property": property_obj,
+            "object": property_obj,
             "can_delete_property": user_role == "owner",
         },
     )
@@ -914,3 +1027,230 @@ def export_pdf(request, pk: int) -> HttpResponse:
     response = HttpResponse(pdf_result.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+US_STATES = [
+    ("AL", "Alabama"),
+    ("AK", "Alaska"),
+    ("AZ", "Arizona"),
+    ("AR", "Arkansas"),
+    ("CA", "California"),
+    ("CO", "Colorado"),
+    ("CT", "Connecticut"),
+    ("DE", "Delaware"),
+    ("DC", "District of Columbia"),
+    ("FL", "Florida"),
+    ("GA", "Georgia"),
+    ("HI", "Hawaii"),
+    ("ID", "Idaho"),
+    ("IL", "Illinois"),
+    ("IN", "Indiana"),
+    ("IA", "Iowa"),
+    ("KS", "Kansas"),
+    ("KY", "Kentucky"),
+    ("LA", "Louisiana"),
+    ("ME", "Maine"),
+    ("MD", "Maryland"),
+    ("MA", "Massachusetts"),
+    ("MI", "Michigan"),
+    ("MN", "Minnesota"),
+    ("MS", "Mississippi"),
+    ("MO", "Missouri"),
+    ("MT", "Montana"),
+    ("NE", "Nebraska"),
+    ("NV", "Nevada"),
+    ("NH", "New Hampshire"),
+    ("NJ", "New Jersey"),
+    ("NM", "New Mexico"),
+    ("NY", "New York"),
+    ("NC", "North Carolina"),
+    ("ND", "North Dakota"),
+    ("OH", "Ohio"),
+    ("OK", "Oklahoma"),
+    ("OR", "Oregon"),
+    ("PA", "Pennsylvania"),
+    ("RI", "Rhode Island"),
+    ("SC", "South Carolina"),
+    ("SD", "South Dakota"),
+    ("TN", "Tennessee"),
+    ("TX", "Texas"),
+    ("UT", "Utah"),
+    ("VT", "Vermont"),
+    ("VA", "Virginia"),
+    ("WA", "Washington"),
+    ("WV", "West Virginia"),
+    ("WI", "Wisconsin"),
+    ("WY", "Wyoming"),
+]
+
+
+@login_required
+def vrm_properties_list(request: HttpRequest) -> HttpResponse:
+    """List VRM properties with state/zip filtering."""
+    state = request.GET.get("state", "").strip().upper()
+    zip_code = request.GET.get("zip", "").strip()
+
+    queryset = VrmProperty.objects.all()
+
+    if state:
+        queryset = queryset.filter(state=state)
+    if zip_code:
+        queryset = queryset.filter(zip_code=zip_code)
+
+    queryset = queryset.order_by("-last_seen_at")[:100]
+
+    return render(
+        request,
+        "vrm_properties/list.html",
+        {
+            "properties": queryset,
+            "states": US_STATES,
+            "selected_state": state,
+            "selected_zip": zip_code,
+            "total_count": VrmProperty.objects.count(),
+            "filtered_count": queryset.count(),
+        },
+    )
+
+
+@login_required
+def investment_targets_edit(request: HttpRequest) -> HttpResponse:
+    """Edit the current user's investment targets (underwriting thresholds)."""
+    targets, _created = UserInvestmentTargets.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = InvestmentTargetsForm(request.POST, instance=targets)
+        if form.is_valid():
+            form.save()
+            return redirect("investment_targets_edit")
+    else:
+        form = InvestmentTargetsForm(instance=targets)
+
+    return render(
+        request,
+        "investment_targets/edit.html",
+        {"form": form, "targets": targets},
+    )
+
+
+class MarketRefreshView(LoginRequiredMixin, View):
+    """Secure market data refresh — only queries the authenticated user's ZIPs."""
+
+    def post(self, request):
+        user_zips = list(
+            Property.objects.filter(user=request.user)
+            .values_list("zip_code", flat=True)
+            .distinct()
+        )
+        from django.core import management
+
+        for zip_code in user_zips:
+            management.call_command(
+                "refresh_market_data", zip=zip_code, stdout=io.StringIO()
+            )
+        messages.success(
+            request, f"Market data refreshed for {len(user_zips)} ZIP code(s)."
+        )
+        return redirect("markets_list")
+
+    def get(self, request):
+        # GET not allowed — redirect silently
+        return redirect("markets_list")
+
+
+@login_required
+def markets_list(request: HttpRequest) -> HttpResponse:
+    """List markets (ZIPs) for the authenticated user's properties."""
+    from core.services.market_scoring import score_market_by_zip
+
+    # Get distinct ZIP codes that have at least one of the user's properties
+    zip_counts = (
+        Property.objects.filter(user=request.user)
+        .values("zip_code")
+        .annotate(property_count=Count("id"))
+        .exclude(zip_code="")
+        .order_by("zip_code")
+    )
+
+    markets = []
+    for entry in zip_counts:
+        zip_code = entry["zip_code"]
+        market_data = score_market_by_zip(zip_code)
+        market_data["property_count"] = entry["property_count"]
+        # Add MSA name from MarketSnapshot if available
+        try:
+            from core.models import MarketSnapshot
+
+            snapshot = (
+                MarketSnapshot.objects.filter(zip_code=zip_code, area_type="zip")
+                .order_by("-fetched_at")
+                .first()
+            )
+            market_data["msa_name"] = snapshot.msa_name if snapshot else ""
+        except Exception:
+            market_data["msa_name"] = ""
+        markets.append(market_data)
+
+    has_market_data = len(markets) > 0
+
+    return render(
+        request,
+        "markets/list.html",
+        {"markets": markets, "has_market_data": has_market_data},
+    )
+
+
+def brrrr_calculator(request: HttpRequest) -> HttpResponse:
+    """Standalone BRRRR calculator page — no login required.
+
+    Accepts POST with deal inputs and renders the BRRRRAnalysis result.
+    GET renders an empty form.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from core.services.brrrr import calculate_brrrr
+
+    result = None
+    form_data: dict[str, str] = {}
+
+    if request.method == "POST":
+        # Collect form values
+        form_data = {
+            "purchase_price": request.POST.get("purchase_price", ""),
+            "rehab_cost": request.POST.get("rehab_cost", ""),
+            "arv": request.POST.get("arv", ""),
+            "monthly_rent_post_rehab": request.POST.get("monthly_rent_post_rehab", ""),
+            "annual_operating_expenses": request.POST.get(
+                "annual_operating_expenses", ""
+            ),
+            "refi_ltv_pct": request.POST.get("refi_ltv_pct", "75"),
+            "refi_interest_rate": request.POST.get("refi_interest_rate", "7"),
+            "refi_term_years": request.POST.get("refi_term_years", "30"),
+            "closing_costs_pct": request.POST.get("closing_costs_pct", "2"),
+        }
+
+        try:
+            result = calculate_brrrr(
+                purchase_price=Decimal(form_data["purchase_price"]),
+                rehab_cost=Decimal(form_data["rehab_cost"]),
+                arv=Decimal(form_data["arv"]),
+                monthly_rent_post_rehab=Decimal(form_data["monthly_rent_post_rehab"]),
+                annual_operating_expenses=Decimal(
+                    form_data["annual_operating_expenses"]
+                ),
+                refi_ltv_pct=Decimal(form_data["refi_ltv_pct"]) / Decimal("100"),
+                refi_interest_rate=Decimal(form_data["refi_interest_rate"])
+                / Decimal("100"),
+                refi_term_years=int(form_data["refi_term_years"]),
+                closing_costs_pct=Decimal(form_data["closing_costs_pct"])
+                / Decimal("100"),
+            )
+        except (InvalidOperation, ValueError, ZeroDivisionError):
+            # Invalid input — render form with no result
+            result = None
+
+    return render(
+        request,
+        "brrrr_calculator.html",
+        {"result": result, "form_data": form_data},
+    )

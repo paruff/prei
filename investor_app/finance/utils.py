@@ -85,9 +85,19 @@ def score_listing_v1(listing: Listing) -> Decimal:
 
     Higher score is better. This is a simple heuristic for MVP.
 
-    Deprecated: use score_listing_v2 for passive investing use cases.
-    Will be removed after all callers are migrated.
+    .. deprecated::
+        Use :func:`core.services.scoring.score_listing_v2` for
+        underwriting-grade scores.  Will be removed after all callers
+        are migrated.
     """
+    import warnings as _warnings
+
+    _warnings.warn(
+        "score_listing_v1 is deprecated; use core.services.scoring.score_listing_v2 "
+        "for investor-grade underwriting scores.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     price = to_decimal(listing.price) if listing.price is not None else Decimal("0")
     sq_ft = Decimal(listing.sq_ft or 0)
     # price per square foot (lower is better)
@@ -660,7 +670,14 @@ def compute_analysis_for_property(prop: Property) -> InvestmentAnalysis:
         hold_years=hold_years,
         exit_cap_rate=to_decimal(exit_cap_rate),
     )
-    analysis.irr = irr(cashflows).quantize(Decimal("0.0001"))
+    monthly_irr = irr(cashflows)
+    # build_cashflows produces monthly cash flows, so irr() returns a monthly
+    # rate.  Annualise it so the stored value matches real-estate conventions.
+    if monthly_irr > 0:
+        annual_irr = ((1 + monthly_irr) ** 12) - 1
+    else:
+        annual_irr = monthly_irr
+    analysis.irr = annual_irr.quantize(Decimal("0.0001"))
     analysis.save()
     return analysis
 
@@ -2111,3 +2128,115 @@ def brrrr_coc_return(
     if flow == Decimal("0"):
         return Decimal("0")
     return flow / left
+
+
+# ── Simplified Depreciation & After-Tax Calculations ─────────────────────────
+# These are user-friendly wrappers around the lower-level functions above.
+# They accept a land-value percentage instead of an absolute land value, and
+# take a single pre-tax cash flow figure rather than NOI / debt-service args.
+
+
+def calculate_annual_depreciation(
+    purchase_price: Decimal,
+    land_value_pct: Decimal = Decimal("0.20"),
+) -> Decimal:
+    """Calculate annual straight-line depreciation for residential real estate.
+
+    Uses the IRS 27.5-year straight-line schedule on the improvement value
+    (purchase price minus land).
+
+    Args:
+        purchase_price: Total purchase price of the property (must be > 0).
+        land_value_pct: Fraction of purchase price attributable to land,
+            expressed as a decimal (e.g. ``Decimal("0.20")`` for 20 %).
+            Must be in the range [0, 1).  Defaults to 0.20 (20 %), a
+            reasonable conservative estimate for most US residential properties.
+
+    Returns:
+        Annual depreciation deduction as a Decimal.
+
+    Raises:
+        ValueError: If ``purchase_price`` <= 0.
+        ValueError: If ``land_value_pct`` is outside [0, 1).
+
+    Example:
+        >>> calculate_annual_depreciation(Decimal("200000"), Decimal("0.20"))
+        Decimal("5818.181818181818181818181818")
+    """
+    pp = to_decimal(purchase_price)
+    lvp = to_decimal(land_value_pct)
+
+    if pp <= Decimal("0"):
+        raise ValueError(
+            f"purchase_price must be greater than zero (received {purchase_price})"
+        )
+    if lvp < Decimal("0") or lvp >= Decimal("1"):
+        raise ValueError(
+            f"land_value_pct must be in [0, 1) (received {land_value_pct})"
+        )
+
+    improvement_value = pp * (Decimal("1") - lvp)
+    return improvement_value / Decimal("27.5")
+
+
+def calculate_after_tax_cashflow(
+    pre_tax_annual_cashflow: Decimal,
+    annual_depreciation: Decimal,
+    marginal_tax_rate: Decimal,
+) -> Decimal:
+    """Calculate after-tax cash flow including the depreciation tax shield.
+
+    This is a simplified model that does **not** account for passive activity
+    loss (PAL) rules, cost segregation, or other advanced tax strategies.
+    A UI disclaimer should note this limitation.
+
+    Formula::
+
+        taxable_income = pre_tax_annual_cashflow - annual_depreciation
+
+        if taxable_income < 0:          # paper loss
+            tax_savings = abs(taxable_income) × marginal_tax_rate
+            after_tax = pre_tax_annual_cashflow + tax_savings
+        else:                           # taxable profit
+            tax_owed = taxable_income × marginal_tax_rate
+            after_tax = pre_tax_annual_cashflow - tax_owed
+
+    Args:
+        pre_tax_annual_cashflow: Annual pre-tax cash flow from the property
+            (NOI minus debt service).  Can be negative.
+        annual_depreciation: Annual depreciation deduction (e.g. from
+            :func:`calculate_annual_depreciation`).
+        marginal_tax_rate: Investor's marginal income-tax rate as a decimal
+            in [0, 1] (e.g. ``Decimal("0.32")`` for 32 %).
+
+    Returns:
+        After-tax annual cash flow as a Decimal.
+
+    Raises:
+        ValueError: If ``marginal_tax_rate`` is outside [0, 1].
+
+    Example:
+        >>> calculate_after_tax_cashflow(
+        ...     Decimal("6000"), Decimal("5818"), Decimal("0.32")
+        ... )
+        Decimal("5941.76")
+    """
+    cashflow = to_decimal(pre_tax_annual_cashflow)
+    depreciation = to_decimal(annual_depreciation)
+    rate = to_decimal(marginal_tax_rate)
+
+    if rate < Decimal("0") or rate > Decimal("1"):
+        raise ValueError(
+            f"marginal_tax_rate must be in [0, 1] (received {marginal_tax_rate})"
+        )
+
+    taxable_income = cashflow - depreciation
+
+    if taxable_income < 0:
+        # Paper loss → tax savings (depreciation tax shield)
+        tax_savings = abs(taxable_income) * rate
+        return cashflow + tax_savings
+    else:
+        # Taxable profit → tax owed
+        tax_owed = taxable_income * rate
+        return cashflow - tax_owed

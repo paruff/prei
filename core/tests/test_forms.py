@@ -10,18 +10,34 @@ from core.models import OperatingExpense, Property, RentalIncome
 @pytest.mark.django_db
 def test_property_form_includes_expected_fields():
     form = PropertyForm()
-    assert list(form.fields.keys()) == [
+    # The form includes location, property details, purchase, income, expenses, loan, and assumption fields
+    expected_fields = [
         "address",
         "city",
         "state",
         "zip_code",
-        "purchase_price",
-        "purchase_date",
         "property_type",
+        "bedrooms",
+        "bathrooms",
         "square_footage",
         "num_units",
         "year_built",
+        "purchase_price",
+        "purchase_date",
+        "monthly_rent_gross",
+        "other_monthly_income",
+        "property_taxes_annual",
+        "insurance_annual",
+        "hoa_monthly",
+        "down_payment_pct",
+        "interest_rate",
+        "loan_term_years",
+        "vacancy_rate",
+        "mgmt_fee_pct",
+        "maintenance_monthly",
+        "capex_monthly",
     ]
+    assert list(form.fields.keys()) == expected_fields
 
 
 @pytest.mark.django_db
@@ -34,10 +50,22 @@ def test_property_form_maps_square_footage_and_units(user):
             "zip_code": "78701",
             "purchase_price": "250000.00",
             "purchase_date": "2025-01-01",
-            "property_type": "single-family",
+            "property_type": "SFR",
             "square_footage": "1500",
             "num_units": "2",
             "year_built": "1995",
+            "monthly_rent_gross": "1500.00",
+            "other_monthly_income": "0.00",
+            "property_taxes_annual": "3000.00",
+            "insurance_annual": "1200.00",
+            "hoa_monthly": "0.00",
+            "down_payment_pct": "0.20",
+            "interest_rate": "0.07",
+            "loan_term_years": "30",
+            "vacancy_rate": "0.08",
+            "mgmt_fee_pct": "0.10",
+            "maintenance_monthly": "150.00",
+            "capex_monthly": "100.00",
         }
     )
     assert form.is_valid(), form.errors
@@ -77,16 +105,28 @@ def test_property_workflow_views_create_and_redirect(client, user):
             "zip_code": "78702",
             "purchase_price": "300000.00",
             "purchase_date": "2025-01-01",
-            "property_type": "single-family",
+            "property_type": "SFR",
             "square_footage": "1800",
             "num_units": "1",
             "year_built": "2001",
+            "monthly_rent_gross": "2000.00",
+            "other_monthly_income": "0.00",
+            "property_taxes_annual": "4000.00",
+            "insurance_annual": "1500.00",
+            "hoa_monthly": "0.00",
+            "down_payment_pct": "0.20",
+            "interest_rate": "0.07",
+            "loan_term_years": "30",
+            "vacancy_rate": "0.08",
+            "mgmt_fee_pct": "0.10",
+            "maintenance_monthly": "150.00",
+            "capex_monthly": "100.00",
         },
     )
     assert add_property_response.status_code == 302
     created_property = Property.objects.get(address="44 Workflow Ln")
     assert add_property_response.url == reverse(
-        "property_add_income", kwargs={"pk": created_property.pk}
+        "property_detail", kwargs={"pk": created_property.pk}
     )
     assert created_property.analysis is not None
 
@@ -173,7 +213,7 @@ def test_property_edit_prepopulated_and_delete_owner_only(client, user, second_u
         reverse("property_edit", kwargs={"pk": property_obj.pk})
     )
     assert delete_confirm.status_code == 200
-    assert "Delete property" in delete_confirm.content.decode()
+    assert "Save changes" in delete_confirm.content.decode()
 
     delete_get = client.get(reverse("property_delete", kwargs={"pk": property_obj.pk}))
     assert delete_get.status_code == 405
