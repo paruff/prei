@@ -55,6 +55,10 @@ staticfiles/
 site/
 test_db.sqlite3
 
+# Third-party npm package artifacts (install via package manager, not commit)
+package/
+*.tgz
+
 # graphify knowledge graph build output
 graphify-out/
 graphify-out/*.json
