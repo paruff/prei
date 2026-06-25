@@ -62,7 +62,7 @@ assignees: []
 
 - [ ] All acceptance criteria met
 - [ ] Unit tests written and passing
-- [ ] `ruff check . && black --check . && pytest -q` passes
+- [ ] `ruff check . && ruff format --check . && pytest -q` passes
 - [ ] AI-Assisted Review Block completed in PR
 - [ ] No architecture boundary violations
 - [ ] `docs/API_SURFACE.md` updated if new public functions were added

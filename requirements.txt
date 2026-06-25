@@ -12,7 +12,6 @@ pytest-bdd>=7.0
 pytest-asyncio>=1.4.0
 ruff>=0.4.0
 mypy>=0.991
-black>=24.1
 django-stubs>=6.0.3
 djangorestframework-stubs>=3.16.9
 types-psycopg2>=2.9

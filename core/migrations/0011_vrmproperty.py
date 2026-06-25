@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("core", "0010_investmentanalysis_exit_cap_rate_and_more"),
     ]

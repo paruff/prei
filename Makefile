@@ -29,7 +29,7 @@ superuser: ensure-env
 
 lint:
 	@ruff check .
-	@black --check .
+	@ruff format --check .
 
 test: ensure-env
 	@$(PYTHON) -m pytest -q

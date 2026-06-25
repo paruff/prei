@@ -411,12 +411,15 @@ class TestEnrichVrmDetailsCommand:
         not_found_error = requests.HTTPError("Not Found")
         not_found_error.response = Mock(status_code=404)
 
-        with patch(
-            "core.management.commands.enrich_vrm_details.VrmScraper.fetch_property_detail",
-            side_effect=[not_found_error, "<html></html>"],
-        ), patch(
-            "core.management.commands.enrich_vrm_details.VrmScraper.extract_property_details_from_html",
-            return_value={"year_built": 2001},
+        with (
+            patch(
+                "core.management.commands.enrich_vrm_details.VrmScraper.fetch_property_detail",
+                side_effect=[not_found_error, "<html></html>"],
+            ),
+            patch(
+                "core.management.commands.enrich_vrm_details.VrmScraper.extract_property_details_from_html",
+                return_value={"year_built": 2001},
+            ),
         ):
             call_command("enrich_vrm_details", "--state", "VA")
 

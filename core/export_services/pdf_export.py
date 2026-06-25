@@ -157,8 +157,8 @@ class PDFExportService:
         # Key metrics
         metrics_text = f"""
         <b>Property Overview:</b><br/>
-        Purchase Price: ${property_data.get('purchasePrice', 0):,.2f}<br/>
-        Property Type: {property_data.get('propertyType', 'N/A')}<br/>
+        Purchase Price: ${property_data.get("purchasePrice", 0):,.2f}<br/>
+        Property Type: {property_data.get("propertyType", "N/A")}<br/>
         """
 
         if "investmentMetrics" in analysis:
@@ -166,8 +166,8 @@ class PDFExportService:
             metrics_text += f"""
             <br/>
             <b>Investment Metrics:</b><br/>
-            Cash-on-Cash Return: {metrics.get('cocReturn', 0):.1f}%<br/>
-            Cap Rate: {metrics.get('capRate', 0):.1f}%<br/>
+            Cash-on-Cash Return: {metrics.get("cocReturn", 0):.1f}%<br/>
+            Cap Rate: {metrics.get("capRate", 0):.1f}%<br/>
             """
 
         elements.append(Paragraph(metrics_text, self.styles["Normal"]))
@@ -183,9 +183,9 @@ class PDFExportService:
 
         # Property details text
         details_text = f"""
-        <b>Address:</b> {property_data.get('address', 'N/A')}<br/>
-        <b>Property Type:</b> {property_data.get('propertyType', 'N/A')}<br/>
-        <b>Purchase Price:</b> ${property_data.get('purchasePrice', 0):,.2f}<br/>
+        <b>Address:</b> {property_data.get("address", "N/A")}<br/>
+        <b>Property Type:</b> {property_data.get("propertyType", "N/A")}<br/>
+        <b>Purchase Price:</b> ${property_data.get("purchasePrice", 0):,.2f}<br/>
         """
 
         if property_data.get("squareFeet"):
