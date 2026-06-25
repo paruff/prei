@@ -115,12 +115,12 @@ class ParseVrmJsonRecordTest(TestCase):
     def test_missing_asset_id_raises(self):
         record = dict(RECORD_FOR_SALE)
         del record["asset_id"]
-        with self.assertRaises(ValueError, msg="asset_id"):
+        with self.assertRaisesRegex(ValueError, "asset_id"):
             parse_vrm_json_record(record)
 
     def test_missing_url_raises(self):
         record = dict(RECORD_FOR_SALE, url="")
-        with self.assertRaises(ValueError, msg="url"):
+        with self.assertRaisesRegex(ValueError, "url"):
             parse_vrm_json_record(record)
 
     def test_status_normalization(self):

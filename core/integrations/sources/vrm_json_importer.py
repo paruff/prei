@@ -71,7 +71,7 @@ def parse_vrm_json_record(record: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Record missing required field: asset_id")
     url = record.get("url") or ""
     if not url:
-        raise ValueError(f"Record asset_id={asset_id} missing required field: url")
+        raise ValueError("Record missing required field: url")
 
     is_auction = bool(record.get("is_auction", False))
     listing_type = (

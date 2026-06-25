@@ -2377,7 +2377,7 @@ class VrmPropertyImportAPI(APIView):
             uploaded = request.FILES["file"]
             try:
                 data = json.load(uploaded)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 logger.warning("VRM import: failed to parse uploaded file")
                 return Response(
                     {"error": "Could not parse uploaded file. Ensure it is valid JSON."},
