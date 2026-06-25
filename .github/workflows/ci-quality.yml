@@ -46,6 +46,8 @@ jobs:
           echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v6
       - uses: ./.github/actions/python-setup
+      - name: Install system dependencies
+        run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
       - name: Run tests
@@ -69,6 +71,8 @@ jobs:
           echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v6
       - uses: ./.github/actions/python-setup
+      - name: Install system dependencies
+        run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Mypy
