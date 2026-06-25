@@ -43,7 +43,7 @@
 
 ## Checklist
 
-- [ ] `ruff check . && black --check . && pytest -q` passes (lint + format + tests)
+- [ ] `ruff check . && ruff format --check . && pytest -q` passes (lint + format + tests)
 - [ ] PR is < 400 changed lines, OR `large-pr-approved` label has been applied by a human
 - [ ] No secrets or credentials in any changed file
 - [ ] New features are behind a feature flag (if applicable)

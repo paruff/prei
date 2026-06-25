@@ -21,4 +21,4 @@ Keep this file minimal to control token spend. Load details from `.agents/skills
 - Model routing: `.agents/skills/model-routing/SKILL.md`
 
 ## Validation baseline
-Run: `make check`
+Run: `python -m ruff check . && python -m ruff format --check . && python -m pytest -q`

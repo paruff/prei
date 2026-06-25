@@ -210,7 +210,11 @@ class RentalIncome(models.Model):
     )
     monthly_rent = models.DecimalField(max_digits=10, decimal_places=2)
     effective_date = models.DateField()
-    vacancy_rate = models.DecimalField(max_digits=5, decimal_places=4, default=settings.FINANCE_DEFAULTS["vacancy_rate"])  # type: ignore[index]
+    vacancy_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=settings.FINANCE_DEFAULTS["vacancy_rate"],
+    )  # type: ignore[index]
 
     def effective_gross_income(self) -> Decimal:
         vr = Decimal(self.vacancy_rate)
@@ -906,11 +910,13 @@ class AuctionAlert(models.Model):
             from math import asin, cos, radians, sin, sqrt
 
             # Haversine formula for distance calculation
-            lat1, lon1 = radians(float(self.center_latitude)), radians(
-                float(self.center_longitude)
+            lat1, lon1 = (
+                radians(float(self.center_latitude)),
+                radians(float(self.center_longitude)),
             )
-            lat2, lon2 = radians(float(property.latitude)), radians(
-                float(property.longitude)
+            lat2, lon2 = (
+                radians(float(property.latitude)),
+                radians(float(property.longitude)),
             )
 
             dlat = lat2 - lat1
