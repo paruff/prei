@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict
@@ -14,6 +15,7 @@ from django.utils import timezone
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
@@ -2350,3 +2352,75 @@ class VrmPropertyScrapeAPI(APIView):
                 {"error": f"Scrape failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class VrmPropertyImportAPI(APIView):
+    """
+    POST /api/v1/vrm-properties/import/
+
+    Accept a JSON body that is either a single VRM property object or an array
+    of VRM property objects and upsert them into the VrmProperty table.
+
+    Supports both:
+    - ``Content-Type: application/json`` with a raw JSON body
+    - ``Content-Type: multipart/form-data`` with a ``file`` field containing
+      a ``.json`` file upload
+    """
+
+    parser_classes = [JSONParser, MultiPartParser]
+
+    def post(self, request: Any) -> Response:
+        from core.integrations.sources.vrm_json_importer import upsert_vrm_records
+
+        # --- resolve payload ---
+        if request.FILES.get("file"):
+            uploaded = request.FILES["file"]
+            try:
+                data = json.load(uploaded)
+            except (json.JSONDecodeError, ValueError):
+                logger.warning("VRM import: failed to parse uploaded file")
+                return Response(
+                    {
+                        "error": "Could not parse uploaded file. Ensure it is valid JSON."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            data = request.data
+
+        if isinstance(data, dict):
+            data = [data]
+
+        if not isinstance(data, list):
+            return Response(
+                {"error": "Payload must be a JSON array or a single JSON object."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(data) == 0:
+            return Response(
+                {"error": "Payload is an empty array — nothing to import."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            created, updated, errors = upsert_vrm_records(data)
+        except Exception:
+            logger.exception("VRM JSON import failed unexpectedly")
+            return Response(
+                {"error": "Import failed due to an internal error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        response_status = status.HTTP_207_MULTI_STATUS if errors else status.HTTP_200_OK
+        return Response(
+            {
+                "status": "completed",
+                "total": len(data),
+                "created": created,
+                "updated": updated,
+                "skipped": len(errors),
+                "errors": errors,
+            },
+            status=response_status,
+        )

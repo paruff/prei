@@ -10,7 +10,6 @@ from django.core.cache import cache
 
 from core.models import Listing
 
-
 logger = logging.getLogger(__name__)
 
 RENTCAST_API_BASE = "https://api.rentcast.io/v1/rent/long-term"
@@ -50,10 +49,10 @@ def fetch_rent_estimate(
 
     cached = cache.get(cache_key)
     if cached is not None:
-        return cached
+        return cached  # type: ignore[no-any-return]
 
     counter_key = f"rentcast_calls_{date.today().isoformat()}"
-    today_count = cache.get_or_set(counter_key, 0, timeout=86400)
+    today_count = int(cache.get_or_set(counter_key, 0, timeout=86400) or 0)
     if today_count >= RENTCAST_DAILY_BUDGET:
         logger.warning("RentCast daily budget exhausted (%s calls)", today_count)
         return None

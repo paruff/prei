@@ -37,7 +37,7 @@ def fetch_walk_score(
 
     cached = cache.get(cache_key)
     if cached is not None:
-        return cached
+        return cached  # type: ignore[no-any-return]
 
     url = (
         f"{WALKSCORE_API_BASE}?address={quote(address)}&wsapikey={api_key}&format=json"

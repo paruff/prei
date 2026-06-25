@@ -41,6 +41,29 @@
   </div>
 </div>
 
+<!-- Import JSON Form -->
+<div class="card mb-4">
+  <div class="card-header">
+    <strong>Import from JSON</strong>
+    <small class="text-muted ms-2">Upload a VRM JSON export file (array of property objects)</small>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-6">
+        <label for="json-file-input" class="form-label">JSON File</label>
+        <input type="file" id="json-file-input" class="form-control" accept=".json,application/json">
+      </div>
+      <div class="col-md-3">
+        <button type="button" class="btn btn-primary w-100" id="import-btn"
+                onclick="triggerImport()">
+          Import JSON
+        </button>
+      </div>
+    </div>
+    <div id="import-status" class="alert mt-3 d-none" role="alert"></div>
+  </div>
+</div>
+
 <!-- Scrape Status -->
 <div id="scrape-status" class="alert d-none" role="alert"></div>
 
@@ -111,6 +134,54 @@
 {% endif %}
 
 <script>
+function triggerImport() {
+  var fileInput = document.getElementById('json-file-input');
+  var btn = document.getElementById('import-btn');
+  var statusEl = document.getElementById('import-status');
+
+  if (!fileInput.files || !fileInput.files[0]) {
+    alert('Please select a JSON file to import.');
+    return;
+  }
+
+  var formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  btn.disabled = true;
+  btn.textContent = 'Importing...';
+  statusEl.className = 'alert alert-info mt-3';
+  statusEl.textContent = 'Importing properties...';
+  statusEl.classList.remove('d-none');
+
+  fetch('/api/v1/vrm-properties/import/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+    body: formData
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.status === 'completed') {
+      var msg = 'Import complete! ' + data.created + ' created, ' + data.updated + ' updated';
+      if (data.skipped > 0) { msg += ', ' + data.skipped + ' skipped'; }
+      if (data.errors && data.errors.length) { msg += ': ' + data.errors.join('; '); }
+      statusEl.className = data.skipped > 0 ? 'alert alert-warning mt-3' : 'alert alert-success mt-3';
+      statusEl.textContent = msg + '. Reloading...';
+      setTimeout(function() { location.reload(); }, 1800);
+    } else {
+      statusEl.className = 'alert alert-danger mt-3';
+      statusEl.textContent = 'Error: ' + (data.error || JSON.stringify(data));
+      btn.disabled = false;
+      btn.textContent = 'Import JSON';
+    }
+  })
+  .catch(function(err) {
+    statusEl.className = 'alert alert-danger mt-3';
+    statusEl.textContent = 'Network error: ' + err.message;
+    btn.disabled = false;
+    btn.textContent = 'Import JSON';
+  });
+}
+
 function triggerScrape() {
   var state = document.getElementById('state').value;
   if (!state) {
