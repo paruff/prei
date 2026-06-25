@@ -2380,7 +2380,9 @@ class VrmPropertyImportAPI(APIView):
             except (json.JSONDecodeError, ValueError):
                 logger.warning("VRM import: failed to parse uploaded file")
                 return Response(
-                    {"error": "Could not parse uploaded file. Ensure it is valid JSON."},
+                    {
+                        "error": "Could not parse uploaded file. Ensure it is valid JSON."
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         else:
@@ -2410,9 +2412,7 @@ class VrmPropertyImportAPI(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        response_status = (
-            status.HTTP_207_MULTI_STATUS if errors else status.HTTP_200_OK
-        )
+        response_status = status.HTTP_207_MULTI_STATUS if errors else status.HTTP_200_OK
         return Response(
             {
                 "status": "completed",

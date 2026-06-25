@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.utils import timezone
 
 from core.models import VrmProperty
+
+logger = logging.getLogger(__name__)
 
 _ACRES_TO_SF = Decimal("43560")
 
@@ -119,7 +122,15 @@ def upsert_vrm_records(
         try:
             fields = parse_vrm_json_record(record)
         except ValueError as exc:
-            errors.append(f"Record {idx}: {exc}")
+            logger.warning("VRM import: record %d failed validation: %s", idx, exc)
+            # Derive a safe user-facing message from the record, not from the exception
+            _required = [f for f in ("asset_id", "url") if not record.get(f)]
+            user_msg = (
+                "missing required field: " + _required[0]
+                if _required
+                else "validation error"
+            )
+            errors.append(f"Record {idx}: {user_msg}")
             continue
 
         vrm_id = fields.pop("vrm_property_id")

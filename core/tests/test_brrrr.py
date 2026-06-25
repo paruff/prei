@@ -11,7 +11,6 @@ from decimal import Decimal
 
 from core.services.brrrr import BRRRRAnalysis, calculate_brrrr
 
-
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------

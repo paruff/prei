@@ -5,7 +5,6 @@ from decimal import Decimal
 import requests
 from django.core.cache import cache
 
-
 logger = logging.getLogger(__name__)
 
 GREATSCHOOLS_API_BASE = "https://api.greatschools.org/schools/nearby"
@@ -44,7 +43,7 @@ def fetch_school_rating(
 
     cached = cache.get(cache_key)
     if cached is not None:
-        return cached
+        return cached  # type: ignore[no-any-return]
 
     url = f"{GREATSCHOOLS_API_BASE}?zip={zip_code}&key={api_key}"
 

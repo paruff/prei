@@ -11,7 +11,6 @@ from core.services.market_scoring import (
     score_market,
 )
 
-
 # ── calculate_price_to_rent_ratio ─────────────────────────────────────────────
 
 
