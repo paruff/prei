@@ -60,8 +60,10 @@ validate_dockerfile() {
   local file="$1"
   header "Dockerfile: $file"
 
-  # Must not run as root (USER directive)
-  if ! grep -qE '^\s*USER\s+\S+' "$file"; then
+  # Must not run as root (USER directive) - skip for devcontainer Dockerfiles
+  if [[ "$file" == .devcontainer/Dockerfile* ]]; then
+    info "$file: Skipping USER root check (devcontainer base image)"
+  elif ! grep -qE '^\s*USER\s+\S+' "$file"; then
     fail "$file: No USER directive — container runs as root"
   else
     local user_line
