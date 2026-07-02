@@ -22,6 +22,11 @@ WORKDIR /app
 FROM base AS deps
 # Allow pip to write to /root/.cache/pip so the BuildKit cache mount is effective
 ENV PIP_NO_CACHE_DIR=0
+# Install Cairo dependencies required by svglib>=1.6.0 (pycairo build)
+# build-essential provides gcc needed to compile pycairo C extension
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libcairo2-dev build-essential && \
+    rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip "setuptools>=82" "wheel>=0.46.2" && \

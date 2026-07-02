@@ -62,6 +62,6 @@ assignees: []
 
 - [ ] Bug is fixed and steps to reproduce pass
 - [ ] Regression test added
-- [ ] `ruff check . && black --check . && pytest -q` passes
+- [ ] `ruff check . && ruff format --check . && pytest -q` passes
 - [ ] `docs/KNOWN_LIMITATIONS.md` updated to remove this limitation (if it was listed)
 - [ ] Root cause noted in PR description
