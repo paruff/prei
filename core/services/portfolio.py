@@ -399,9 +399,7 @@ def check_flag_for_attention(
     # Get recent actuals ordered by month descending
     recent_actuals = MonthlyActuals.objects.filter(
         prop=property_obj,
-    ).order_by(
-        "-month"
-    )[:consecutive_months]
+    ).order_by("-month")[:consecutive_months]
 
     if len(recent_actuals) < consecutive_months:
         return False
