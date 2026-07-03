@@ -89,14 +89,31 @@ def fetch_comps_for_listing(
     if not isinstance(sales_data, dict):
         return []
 
-    sale_entries = sales_data.get("saleHistory", sales_data.get("property", []))
+    # ATTOM /sale/snapshot returns {"property": [{"saleHistory": [...]}]}.
+    # Normalise: extract sale entries from inside the property array.
+    raw_properties = sales_data.get("property", [])
+    if isinstance(raw_properties, dict):
+        raw_properties = [raw_properties]
 
-    if isinstance(sale_entries, dict):
-        # Some ATTOM responses wrap sales in a single-object dict.
-        sale_entries = [sale_entries]
+    sale_entries: list = []
+    if isinstance(raw_properties, list):
+        for prop in raw_properties:
+            prop_sales = prop.get("saleHistory", [])
+            if isinstance(prop_sales, dict):
+                prop_sales = [prop_sales]
+            if isinstance(prop_sales, list):
+                sale_entries.extend(prop_sales)
 
-    if not isinstance(sale_entries, list) or not sale_entries:
-        logger.info("comps: no sale history returned for %s", address1)
+    # Also check for saleHistory at the top level (alternative response format).
+    top_sales = sales_data.get("saleHistory", [])
+    if isinstance(top_sales, dict):
+        top_sales = [top_sales]
+    if isinstance(top_sales, list):
+        # Prepend so top-level entries come first.
+        sale_entries = list(top_sales) + sale_entries
+
+    if not sale_entries:
+        logger.info("comps: no sale history entries found for %s", address1)
         return []
 
     comps: List[Dict[str, Any]] = []
