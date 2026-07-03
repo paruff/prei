@@ -57,12 +57,12 @@ def test_render_blueprint_has_required_services_and_web_commands() -> None:
     assert "startCommand: gunicorn investor_app.wsgi:application" in render_yaml
     assert "healthCheckPath: /health/" in render_yaml
     assert "key: DEBUG" in web_section, "DEBUG env var missing from prei-web service"
-    assert (
-        "key: ALLOWED_HOSTS" in web_section
-    ), "ALLOWED_HOSTS env var missing from prei-web service"
-    assert (
-        "key: SECRET_KEY" in web_section
-    ), "SECRET_KEY env var missing from prei-web service"
+    assert "key: ALLOWED_HOSTS" in web_section, (
+        "ALLOWED_HOSTS env var missing from prei-web service"
+    )
+    assert "key: SECRET_KEY" in web_section, (
+        "SECRET_KEY env var missing from prei-web service"
+    )
 
     # Redis and Celery services must not be present (MVP simplification)
     assert "name: prei-worker" not in render_yaml

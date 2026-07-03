@@ -176,7 +176,15 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
                 zip_code,
                 exc_info=True,
             )
-            comps = get_comps_for_listing(listing)
+            try:
+                comps = get_comps_for_listing(listing)
+            except Exception:
+                logger.error(
+                    "market_data: get_comps_for_listing fallback also failed for zip=%s",
+                    zip_code,
+                    exc_info=True,
+                )
+                comps = []
 
         if comps:
             try:
