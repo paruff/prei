@@ -428,7 +428,7 @@ def test_refresh_market_snapshot_schools_fails_logged(caplog):
     assert snap.school_rating == Decimal("0")
     assert snap.crime_score == Decimal("2.5")
     assert MarketSnapshot.objects.filter(zip_code="78701").count() == 1
-    _assert_error_logged(caplog, "get_school_rating")
+    _assert_error_logged(caplog, "school_rating adapter failed")
 
 
 @pytest.mark.django_db
@@ -459,7 +459,7 @@ def test_refresh_market_snapshot_rents_fails_logged(caplog):
     assert snap.rent_index == Decimal("0")
     assert snap.crime_score == Decimal("2.5")
     assert MarketSnapshot.objects.filter(zip_code="78701").count() == 1
-    _assert_error_logged(caplog, "get_rent_estimate_for_listing")
+    _assert_error_logged(caplog, "rent adapter failed")
 
 
 @pytest.mark.django_db
@@ -490,4 +490,4 @@ def test_refresh_market_snapshot_comps_fails_logged(caplog):
     assert snap.price_trend == Decimal("0")
     assert snap.rent_index == Decimal("1500.00")
     assert MarketSnapshot.objects.filter(zip_code="78701").count() == 1
-    _assert_error_logged(caplog, "get_comps_for_listing")
+    _assert_error_logged(caplog, "fetch_comps_for_listing failed")
