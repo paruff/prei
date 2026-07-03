@@ -91,7 +91,6 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
         logger.error(
             "market_data: get_crime_score failed for zip_code=%s",
             zip_code,
-            exc_info=True,
         )
 
     # --- school rating (live GreatSchools → dummy fallback) ---------------
@@ -120,7 +119,6 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
         logger.error(
             "market_data: school_rating adapter failed for zip=%s",
             zip_code,
-            exc_info=True,
         )
 
     # --- rent index and price trend (require a listing) -------------------
@@ -155,7 +153,8 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
                 rent_index = get_rent_estimate_for_listing(listing)
         except Exception:
             logger.error(
-                "market_data: rent adapter failed for zip=%s", zip_code, exc_info=True
+                "market_data: rent adapter failed for zip=%s",
+                zip_code,
             )
 
         # price trend (live ATTOM comps → dummy fallback)
@@ -174,7 +173,6 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
             logger.error(
                 "market_data: fetch_comps_for_listing failed for zip=%s",
                 zip_code,
-                exc_info=True,
             )
             try:
                 comps = get_comps_for_listing(listing)
@@ -182,7 +180,6 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
                 logger.error(
                     "market_data: get_comps_for_listing fallback also failed for zip=%s",
                     zip_code,
-                    exc_info=True,
                 )
                 comps = []
 
@@ -198,7 +195,6 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
                 logger.error(
                     "market_data: price_trend calculation failed for zip=%s",
                     zip_code,
-                    exc_info=True,
                 )
 
     source_tag = _build_source_tag(*source_flags)
