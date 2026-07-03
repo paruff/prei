@@ -39,9 +39,9 @@ steps:
       - tests_required
       - minimal_diff
     escalation:
-      on: task mismatch, missing files, scope conflict, task conflict
-      emit: "### Escalation" block with task/issue/suggestion
-      then: stop, wait for replanned task graph
+      on: "task mismatch, missing files, scope conflict, task conflict"
+      emit: "### Escalation block with task/issue/suggestion"
+      then: "stop, wait for replanned task graph"
 
   # ── Step 3: Review ───────────────────────────────────────────
   - step: review

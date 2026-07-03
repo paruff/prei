@@ -97,11 +97,11 @@ Track monthly in `docs/DEVEX_LOG.md`. Five dimensions, scored 1–5:
 Repository: /tmp/workspace/paruff/prei
 
 ## Always-on context files
-File                                     Lines    Tokens    
+File                                     Lines    Tokens
 ---------------------------------------- -------- ----------
-AGENTS.md                                48       319       
-.github/copilot-instructions.md          24       278       
-CLAUDE.md                                0        0         
+AGENTS.md                                48       319
+.github/copilot-instructions.md          24       278
+CLAUDE.md                                0        0
 
 Total always-on lines: 72
 Total always-on tokens: 597

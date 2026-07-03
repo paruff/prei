@@ -66,3 +66,6 @@ graphify-out/*.html
 graphify-out/*.md
 graphify-out/cache/
 graphify-out/memory/
+
+# Headroom AI memory cache
+.headroom/

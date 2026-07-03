@@ -26,9 +26,9 @@ from investor_app.finance.utils import (
 
 def assert_close(actual: Decimal, expected: Decimal, rel_tol: float = 0.02) -> None:
     """Assert two Decimal values are within rel_tol of each other."""
-    assert math.isclose(float(actual), float(expected), rel_tol=rel_tol), (
-        f"Expected {expected}, got {actual}"
-    )
+    assert math.isclose(
+        float(actual), float(expected), rel_tol=rel_tol
+    ), f"Expected {expected}, got {actual}"
 
 
 # ── NOI tests ─────────────────────────────────────────────────────────────────

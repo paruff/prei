@@ -49,8 +49,10 @@ def load_scores(month_filter: str | None = None) -> list[dict]:
 
 def compute_averages(scores: list[dict]) -> dict:
     """Compute average scores per agent per dimension."""
-    totals = defaultdict(lambda: defaultdict(list))
-    counts = defaultdict(int)
+    totals: defaultdict[str, defaultdict[str, list[float]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    counts: defaultdict[str, int] = defaultdict(int)
 
     for entry in scores:
         for agent, dims in entry.get("agents", {}).items():
@@ -59,7 +61,7 @@ def compute_averages(scores: list[dict]) -> dict:
                 if isinstance(value, (int, float)):
                     totals[agent][dim].append(value)
 
-    averages = {}
+    averages: dict[str, dict[str, float | int]] = {}
     for agent in AGENTS:
         if agent not in totals:
             continue
@@ -83,7 +85,7 @@ def collect_corrections(scores: list[dict]) -> list[str]:
 
 def correction_patterns(corrections: list[str]) -> dict[str, int]:
     """Identify common correction patterns."""
-    patterns = defaultdict(int)
+    patterns: defaultdict[str, int] = defaultdict(int)
 
     keywords = {
         "migration": "missed migration",

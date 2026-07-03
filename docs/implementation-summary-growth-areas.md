@@ -86,7 +86,7 @@ class GrowthArea(models.Model):
     latitude = DecimalField(max_digits=9, decimal_places=6, null=True)
     longitude = DecimalField(max_digits=9, decimal_places=6, null=True)
     data_timestamp = DateTimeField()
-    
+
     Meta:
         unique_together = [["state", "city_name"]]
         ordering = ["-data_timestamp"]

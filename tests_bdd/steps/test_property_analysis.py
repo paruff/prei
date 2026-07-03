@@ -75,7 +75,7 @@ def add_property(
 ) -> Property:
     """Create the property for the investor workflow."""
     return Property.objects.create(
-        user=logged_in_user,
+        user=logged_in_user,  # type: ignore[misc]
         address=address,
         city="Austin",
         state="TX",

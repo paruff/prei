@@ -130,8 +130,8 @@ fetch_rent_estimate(address: str, api_key: str, zip_code: str | None = None) -> 
 | Success | `Decimal` | Monthly rent estimate, 2 decimal places (e.g. `Decimal("1850.00")`) |
 | Failure | `None` | Any error condition |
 
-**HTTP:** `GET https://api.rentcast.io/v1/rent/long-term`  
-**Auth:** Header `X-Api-Key: {api_key}`  
+**HTTP:** `GET https://api.rentcast.io/v1/rent/long-term`
+**Auth:** Header `X-Api-Key: {api_key}`
 **Response shape:**
 ```json
 {"data": {"rent": 1850.00, "squareFootage": 1200}}
@@ -153,8 +153,8 @@ fetch_school_rating(zip_code: str, api_key: str) -> Decimal | None
 | Success | `Decimal` | Mean school rating, 1 decimal place (0–10 scale, e.g. `Decimal("7.3")`) |
 | Failure | `None` | Any error condition |
 
-**HTTP:** `GET https://api.greatschools.org/schools/nearby?zip={zip}&key={key}`  
-**Auth:** Query param `key`  
+**HTTP:** `GET https://api.greatschools.org/schools/nearby?zip={zip}&key={key}`
+**Auth:** Query param `key`
 **Response shape:**
 ```json
 [
@@ -179,8 +179,8 @@ fetch_walk_score(address: str, api_key: str) -> dict | None
 | Success | `dict` | `{"walk_score": int, "transit_score": int \| None, "bike_score": int \| None}` |
 | Failure | `None` | Any error condition |
 
-**HTTP:** `GET https://api.walkscore.com/score?address={address}&wsapikey={key}&format=json`  
-**Auth:** Query param `wsapikey`  
+**HTTP:** `GET https://api.walkscore.com/score?address={address}&wsapikey={key}&format=json`
+**Auth:** Query param `wsapikey`
 **Response shape:**
 ```json
 {

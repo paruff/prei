@@ -152,18 +152,18 @@ All adapters normalize data to the `ForeclosureProperty` model defined in `core/
 class ForeclosureProperty(models.Model):
     property_id = models.CharField(max_length=128, unique=True)
     data_source = models.CharField(max_length=64)  # "ATTOM" or "HUD"
-    
+
     # Address
     street = models.CharField(max_length=255)
     city = models.CharField(max_length=128)
     state = models.CharField(max_length=2)
     zip_code = models.CharField(max_length=16)
-    
+
     # Foreclosure details
     foreclosure_status = models.CharField(max_length=32)
     opening_bid = models.DecimalField(...)
     auction_date = models.DateField(...)
-    
+
     # Property details
     bedrooms = models.PositiveIntegerField()
     bathrooms = models.DecimalField(...)

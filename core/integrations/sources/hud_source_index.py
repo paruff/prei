@@ -128,5 +128,5 @@ def _find_closest_heading(anchor: Tag) -> str:
         if name and name.lower() in {"h1", "h2", "h3", "h4", "h5", "h6"}:
             text = element.get_text(strip=True)
             if text:
-                return text
+                return text  # type: ignore[no-any-return]
     return "Uncategorized"

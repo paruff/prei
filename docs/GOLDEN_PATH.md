@@ -55,14 +55,14 @@ For any new KPI calculation:
 # finance/utils.py — pure function
 def calculate_cap_rate(noi: Decimal, purchase_price: Decimal) -> Decimal:
     """Calculate Cap Rate as NOI / Purchase Price.
-    
+
     Args:
         noi: Net Operating Income (must be >= 0)
         purchase_price: Property purchase price (must be > 0)
-    
+
     Returns:
         Cap rate as a decimal (e.g. 0.08 for 8%)
-    
+
     Raises:
         ValueError: If purchase_price is zero or negative
     """

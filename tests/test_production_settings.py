@@ -110,4 +110,4 @@ print(json.dumps({
         capture_output=True,
         text=True,
     )
-    return json.loads(completed.stdout)
+    return json.loads(completed.stdout)  # type: ignore[no-any-return]
