@@ -94,7 +94,27 @@ Format: `### [LIMIT-ID] Short description` followed by location, impact, workaro
 
 ---
 
-### [LIMIT-07] Remaining `exc_info=True` calls not covered by CodeQL fix
+### [LIMIT-08] GrowthArea vs MarketSnapshot split — inconsistent fallback between HTML view and API
+
+**Location:** `core/views.py:672` (HTML `growth_areas()`), `core/api_views.py:225` (API `growth_areas_list()`)
+
+**Impact:** The HTML `/growth/` page and the `/api/growth-areas/` endpoint both serve growth-area data, but they diverge on fallback behavior:
+- **HTML view** falls back to `MarketSnapshot` (ZIP-level) when `GrowthArea` (city-level) is empty.
+- **API endpoint** returns an empty array with `"No growth data available"` when `GrowthArea` is empty — no `MarketSnapshot` fallback.
+
+This means a user who runs the API pre-`populate_growth_areas` gets empty results, while the HTML page still shows data. After `populate_growth_areas` is run, both use `GrowthArea` and are consistent.
+
+**Root cause:** DECISION-1 specified that both endpoints should read from `GrowthArea` as the primary source. The HTML view's `MarketSnapshot` fallback was kept for transitional backward compatibility during alpha while `populate_growth_areas` might not have been run yet. The API was built without this transitional fallback, creating the inconsistency.
+
+**Workaround:** Run `python manage.py populate_growth_areas --list-cities` to confirm city data is loaded. If populated, both endpoints use `GrowthArea` and are consistent. If not yet populated, the HTML view still serves `MarketSnapshot`-derived data while the API returns empty.
+
+**Recommended fix (post-MVP):** Either (a) add `MarketSnapshot` fallback to the API endpoint for consistency with the HTML view, or (b) remove the `MarketSnapshot` fallback from the HTML view and document that `populate_growth_areas` must be run before growth features are available. Option (b) is cleaner long-term — `GrowthArea` is a semantic superset of `MarketSnapshot` for the growth use case.
+
+**Fix tracked in:** Not yet filed. Depends on whether the alpha deployment runs `populate_growth_areas` automatically.
+
+---
+
+### [LIMIT-09] Remaining `exc_info=True` calls not covered by CodeQL fix
 
 **Location:** `core/services/projections.py:269`, `core/management/commands/fetch_hud_source_index.py:139`
 
