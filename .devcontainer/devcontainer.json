@@ -1,12 +1,9 @@
 {
-  "name": "prei Django 4.2 LTS",
-  "dockerComposeFile": [
-    "docker-compose.yml"
-  ],
+  "name": "prei — Django 5.2 (SQLite dev, Postgres optional)",
+  "dockerComposeFile": "docker-compose.yml",
   "service": "web",
   "runServices": [
-    "web",
-    "db"
+    "web"
   ],
   "workspaceFolder": "/workspaces/prei",
   "features": {
@@ -18,29 +15,28 @@
   },
   "shutdownAction": "stopCompose",
   "forwardPorts": [
-    8000,
-    5432
+    8000
   ],
   "portsAttributes": {
     "8000": {
       "label": "Django app",
       "onAutoForward": "notify"
-    },
-    "5432": {
-      "label": "PostgreSQL"
     }
   },
   "containerEnv": {
     "DJANGO_SETTINGS_MODULE": "investor_app.settings",
-    "DATABASE_URL": "postgres://prei:prei@db:5432/prei",
+    "DATABASE_URL": "sqlite:///db.sqlite3",
     "SECRET_KEY": "dev-secret-key-change-me",
     "DEBUG": "True",
     "ALLOWED_HOSTS": "*",
-    "RENTCAST_API_KEY": "",
-    "GREATSCHOOLS_API_KEY": "",
-    "WALKSCORE_API_KEY": ""
+    "RUN_MIGRATIONS": "1"
   },
-  "postCreateCommand": "pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && pip install -r requirements.txt && python manage.py migrate",
+  "remoteEnv": {
+    "CODESPACE_NAME": "${localEnv:CODESPACE_NAME}",
+    "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN": "${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}",
+    "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN_GITHUB_DEV": "${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN_GITHUB_DEV}"
+  },
+  "postCreateCommand": "pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && pip install -r requirements.txt && python manage.py migrate --noinput",
   "postStartCommand": "python manage.py check",
   "customizations": {
     "vscode": {
