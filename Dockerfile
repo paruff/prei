@@ -46,7 +46,7 @@ COPY . .
 
 # Never run as root
 RUN addgroup --system app && adduser --system --group app
-RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app/.runtime
+RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app
 USER app
 ENV HOME=/app/.runtime \
     MPLCONFIGDIR=/app/.runtime/matplotlib \

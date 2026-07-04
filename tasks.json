@@ -2,245 +2,81 @@
   "skill": "plan",
   "status": "draft",
   "notes": [
-    "This plan was authored by Claude, outside opencode, based on direct inspection of the current repo state (not assumptions). Two things in here need YOUR decision before a coding agent should touch them — see 'open_decisions' below.",
-    "Agent names below use 'coder' and 'test-writer' to match the roles currently defined in opencode.json. The prior tasks.json in this repo used 'build'/'test' instead — that naming mismatch is unresolved; confirm which is correct for your current opencode config before running this.",
-    "Any BLS series ID, Census ACS variable code, or crime API endpoint marked '[VERIFY]' below is not confirmed against current API docs. Do not let a coding agent guess at these — have it (or you) check the live docs first."
+    "Written by Claude, outside opencode. I have NOT seen the actual exception message (the pasted log cuts off before the 'ExceptionType: message' line) — TASK-1 must run and be reviewed before TASK-2/3 are trusted as the right fix.",
+    "Same caveat as before: I don't have verified information about a model called 'DeepSeek v4 flash' — plan is written to be explicit/model-agnostic rather than assuming a particular reasoning style.",
+    "'agent' values use opencode.json's roles (planner/coder/test-writer) per your existing config."
   ],
-  "open_decisions": [
-    {
-      "id": "DECISION-1",
-      "question": "GrowthArea (city-level, has composite_score) and MarketSnapshot (ZIP-level, populated by refresh_market_data) are disconnected. The HTML /growth/ page reads MarketSnapshot; the API growth_areas_list endpoint reads GrowthArea. Populating GrowthArea (this plan) will NOT change what /growth/ shows.",
-      "options": [
-        "A) Keep both models, both purposes distinct (API = metro-level growth ranking, HTML = ZIP-level snapshot browsing). No merge needed, just document the split clearly.",
-        "B) Make /growth/ HTML page also read GrowthArea once populated (small view change).",
-        "C) Deprecate one model in favor of the other long-term (bigger refactor, not in this plan)."
-      ],
-      "default_assumption_in_this_plan": "None taken — TASK-B5 is a no-op placeholder until you pick an option."
-    },
-    {
-      "id": "DECISION-2",
-      "question": "crime.py has no real adapter at all (fully hardcoded dummy). Unlike rents/schools/walkscore, there's no already-built fetch_* function to wire up — this needs a new integration picked from scratch.",
-      "options": [
-        "A) FBI Crime Data Explorer API — I believe this may not require a key for basic access via api.usa.gov, but I am not certain of current auth requirements or endpoint stability. [VERIFY before committing to this]",
-        "B) A paid crime-index API (e.g. one requiring its own key/budget like ATTOM) — more reliable but adds another API key + cost line to track.",
-        "C) Skip real crime data for MVP; leave dummy but relabel it clearly in the UI as 'placeholder' rather than presenting it as real."
-      ],
-      "default_assumption_in_this_plan": "TASK-A1 is written as a spike/investigation task first, not a direct implementation, because I can't confirm option A's key requirements."
-    }
-  ],
+  "confirmed_root_cause": {
+    "claim": "CONFIRMED via docker compose logs: sqlite3.OperationalError: unable to open database file. BASE_DIR (investor_app/settings.py line 9) resolves to /app. Dockerfile COPY . . runs as root, then only 'chown -R app:app /app/.runtime' is run before USER app — /app itself stays root-owned, so the non-root 'app' user cannot create /app/db.sqlite3.",
+    "confidence": "High — confirmed by actual exception text, not inferred.",
+    "fix": "Change 'RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app/.runtime' to 'RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app' in the Dockerfile.",
+    "trade_off_note": "This grants the app user write access to the whole /app tree, not just the DB file. Acceptable for an alpha; if that's a concern later, use a dedicated chowned data/ subdirectory and point DATABASES at it instead — bigger change, not needed right now."
+  },
   "tasks": [
     {
-      "id": "TASK-A1",
-      "title": "SPIKE: Confirm a real crime-data source and its auth requirements",
+      "id": "TASK-1",
+      "title": "[DONE] Capture and report the full, unmuted crash traceback",
       "agent": "planner",
       "estimated_lines": 0,
       "dependencies": [],
       "skills": ["research"],
+      "status": "complete",
       "acceptance_criteria": [
-        "Written finding (comment or short doc) confirming: exact API base URL, whether an API key is required, rate limits, and geography level supported (ZIP vs county vs city)",
-        "No code written in this task — investigation only",
-        "If no free/reliable source is found, explicitly recommend DECISION-2 option C (relabel dummy as placeholder) instead of building against an unverified API"
+        "CONFIRMED: sqlite3.OperationalError: unable to open database file, raised via Django's ensure_connection -> get_new_connection -> Database.connect chain",
+        "Container status showed 'Running (0 seconds ago)', consistent with a crash-loop under restart: unless-stopped"
       ]
     },
     {
-      "id": "TASK-A2",
-      "title": "Implement real crime.py adapter based on TASK-A1 findings",
+      "id": "TASK-2",
+      "title": "Fix Dockerfile ownership so the app user can write the SQLite DB",
       "agent": "coder",
-      "estimated_lines": 70,
-      "dependencies": ["TASK-A1"],
+      "estimated_lines": 2,
+      "dependencies": ["TASK-1"],
       "skills": ["code-generation"],
       "acceptance_criteria": [
-        "New fetch_crime_score(zip_code, api_key=None) added, following the existing pattern in rents.py/schools.py (cache check, graceful None on missing key/HTTP failure)",
-        "Existing get_crime_score() dummy function left untouched and unchanged for backward compatibility",
-        "Result cached with a TTL consistent with data source's actual update frequency (do not reuse 30-day TTL from schools.py without checking whether crime data source updates more/less often)"
+        "Change `RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app/.runtime` to `RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app` in the Dockerfile",
+        "Rebuild image (`docker compose build`) and re-run `docker compose up` — confirm gunicorn starts, container status stays 'Up' (not restarting), and http://localhost:8000/ responds",
+        "Note the accepted trade-off: this grants the app user write access to the whole /app tree, not just db.sqlite3 — acceptable for alpha; revisit with a dedicated data/ dir + updated BASE_DIR-relative DATABASES path later if tightening permissions matters"
       ]
     },
     {
-      "id": "TASK-A3",
-      "title": "Implement real comps.py adapter using existing ATTOMAdapter",
-      "agent": "coder",
-      "estimated_lines": 60,
-      "dependencies": [],
-      "skills": ["code-generation"],
-      "acceptance_criteria": [
-        "New fetch_comps_for_listing(listing, api_key=None) added, calling ATTOMAdapter().fetch_sales_history(address) and/or fetch_avm_detail(address) — reuses ATTOM_API_KEY, no new key required",
-        "Returns list of dicts matching the existing dummy's shape: {address, price, sq_ft, ppsf} so callers don't need to change",
-        "Existing get_comps_for_listing() dummy function left untouched",
-        "Handles ATTOMAPIError/ATTOMRateLimitError by returning empty list, not raising, consistent with market_data.py's try/except wrapping pattern"
-      ]
-    },
-    {
-      "id": "TASK-A4",
-      "title": "Wire refresh_market_snapshot() to real rent + school adapters",
-      "agent": "coder",
-      "estimated_lines": 40,
-      "dependencies": [],
-      "skills": ["code-generation"],
-      "acceptance_criteria": [
-        "core/services/market_data.py calls fetch_rent_estimate(address, api_key, zip_code) when RENTCAST_API_KEY is set in environment; falls back to existing dummy get_rent_estimate_for_listing() when key is absent",
-        "Same pattern for fetch_school_rating(zip_code, api_key) / GREATSCHOOLS_API_KEY / get_school_rating()",
-        "Fallback-to-dummy path is logged at WARNING level so it's visible in logs when real data isn't being used",
-        "No behavior change when API keys are absent (safe to merge before you've registered for RentCast/GreatSchools)"
-      ]
-    },
-    {
-      "id": "TASK-A5",
-      "title": "Wire refresh_market_snapshot() to real crime + comps adapters",
-      "agent": "coder",
-      "estimated_lines": 30,
-      "dependencies": ["TASK-A2", "TASK-A3"],
-      "skills": ["code-generation"],
-      "acceptance_criteria": [
-        "Same key-present/fallback-to-dummy pattern as TASK-A4, applied to crime and comps",
-        "MarketSnapshot rows created via this path are distinguishable from dummy-sourced ones (e.g. a data_source or is_placeholder-style field, or at minimum a log line) — exact mechanism up to implementer, but silence is not acceptable given this was flagged as a credibility issue"
-      ]
-    },
-    {
-      "id": "TASK-A6",
-      "title": "Tests for TASK-A2 through TASK-A5",
+      "id": "TASK-4",
+      "title": "Add a real container-startup test that would catch this class of bug",
       "agent": "test-writer",
-      "estimated_lines": 150,
-      "dependencies": ["TASK-A2", "TASK-A3", "TASK-A4", "TASK-A5"],
+      "estimated_lines": 40,
+      "dependencies": ["TASK-2"],
       "skills": ["test"],
       "acceptance_criteria": [
-        "Mirrors the existing test pattern for rents/schools/walkscore (see core/tests/ — exact filenames not confirmed by me, locate via `pytest --collect-only`)",
-        "Covers: missing key -> dummy fallback with WARNING log; HTTP failure -> dummy fallback; successful real response -> real value persisted",
-        "No live API calls in tests — mock requests/ATTOMAdapter calls"
+        "tests/test_container_startup.py currently only asserts string content of the Dockerfile/entrypoint/render.yaml — it does not actually build or run the container",
+        "Add a test (marked slow/integration, skippable in fast CI runs if needed) that actually builds the image and runs `docker run --rm <image> python manage.py migrate --noinput` (or equivalent) as the non-root user, asserting exit code 0 — this would have caught the actual failure, unlike the existing string-matching tests",
+        "If a full docker build in CI is too slow/costly for your setup, at minimum add a test that checks file-system write permissions for the 'app' user against wherever the SQLite file will be created — flag this trade-off explicitly rather than silently skipping real verification"
       ]
     },
     {
-      "id": "TASK-A7",
-      "title": "Update core/integrations/README.md to document market/ adapters",
-      "agent": "docs-agent",
-      "estimated_lines": 40,
-      "dependencies": ["TASK-A2", "TASK-A3", "TASK-A4", "TASK-A5"],
-      "skills": ["docs"],
-      "acceptance_criteria": [
-        "README currently documents only ATTOM + HUD + health monitor — add a section covering core/integrations/market/ (census, bls, rents, schools, walkscore, crime, comps) with real vs dummy status for each, post-this-plan",
-        "Explicitly state which adapters require which env var keys"
-      ]
-    },
-    {
-      "id": "TASK-B1",
-      "title": "Extend census.py to compute real population + income growth (two-vintage comparison)",
+      "id": "TASK-5",
+      "title": "Fix healthcheck path mismatch between Docker and Render configs (unrelated to the crash, found while investigating)",
       "agent": "coder",
-      "estimated_lines": 60,
+      "estimated_lines": 5,
       "dependencies": [],
       "skills": ["code-generation"],
       "acceptance_criteria": [
-        "New function (e.g. fetch_place_growth_metrics) calls the existing ACS endpoint twice at two vintages (e.g. current ACS_VINTAGE and one 5 years prior) for the same geography, using variables B01001_001E (population) and B19013_001E (income) — same pattern already used in fetch_zip_demographics, just called twice and diffed",
-        "Uses Census geography level 'place' (city) or 'metropolitan statistical area', not 'zip code tabulation area' — GrowthArea is city/metro-level, not ZIP-level, so the existing ZCTA geography param must be changed, not reused as-is",
-        "Reuses existing CENSUS_API_KEY — no new key",
-        "_estimate_population_growth's current always-returns-None behavior is superseded by this real calculation for the GrowthArea path (ZIP-level fetch_zip_demographics can be left as-is for MarketSnapshot)"
-      ]
-    },
-    {
-      "id": "TASK-B2",
-      "title": "SPIKE + implement: BLS employment growth (not just unemployment rate)",
-      "agent": "coder",
-      "estimated_lines": 50,
-      "dependencies": [],
-      "skills": ["research", "code-generation"],
-      "acceptance_criteria": [
-        "[VERIFY] Confirm the correct BLS LAUS series ID suffix for employment level (not the 0000000003 unemployment-rate suffix already used in bls.py) against BLS's series ID documentation before writing code — I do not have this confirmed",
-        "New function fetches employment level at two time points for the same geography and computes % growth, mirroring the two-call pattern in TASK-B1",
-        "Reuses existing BLS_API_KEY — no new key",
-        "If county/metro-level BLS series require a different ID scheme than the state-level LAUS series already used (e.g. QCEW), document that difference in a code comment rather than silently mixing schemes"
-      ]
-    },
-    {
-      "id": "TASK-B3",
-      "title": "Housing demand proxy from Census ACS housing occupancy data",
-      "agent": "coder",
-      "estimated_lines": 40,
-      "dependencies": [],
-      "skills": ["code-generation"],
-      "acceptance_criteria": [
-        "This is an explicitly proposed heuristic, not an official 'housing demand index' — label it as such in code comments and any UI",
-        "[VERIFY] variable codes before use: ACS table B25002 (Occupancy Status) — B25002_001E total units, B25002_003E vacant units — confirm against the Census variables list for whichever ACS vintage is used, e.g. https://api.census.gov/data/{vintage}/acs/acs5/variables.html",
-        "Proposed formula: lower vacancy rate + higher population growth (from TASK-B1) => higher demand index; exact weighting is a product decision, not something I'm asserting is correct — implementer/you should sanity-check output against a few known-tight vs known-soft markets before trusting it",
-        "Reuses existing CENSUS_API_KEY"
-      ]
-    },
-    {
-      "id": "TASK-B4",
-      "title": "Management command: populate_growth_areas",
-      "agent": "coder",
-      "estimated_lines": 100,
-      "dependencies": ["TASK-B1", "TASK-B2", "TASK-B3"],
-      "skills": ["code-generation"],
-      "acceptance_criteria": [
-        "Follows the existing refresh_market_data.py command pattern: argparse for --state and --city (or a list file), cache-freshness check, update_or_create upsert, styled stdout output",
-        "Calls TASK-B1/B2/B3 functions and upserts GrowthArea rows (state, city_name, metro_area, population_growth_rate, employment_growth_rate, median_income_growth, housing_demand_index, data_timestamp)",
-        "housing_demand_index on the model is an IntegerField — output from TASK-B3 must be scaled/rounded to an int, document the scale chosen (e.g. 0-100) since none is defined in the current model",
-        "No new API keys required — command should fail clearly with a CommandError if CENSUS_API_KEY or BLS_API_KEY is missing, same style as refresh_market_data.py's warnings"
-      ]
-    },
-    {
-      "id": "TASK-B5",
-      "title": "Resolve or document the GrowthArea/MarketSnapshot split (blocked on DECISION-1)",
-      "agent": "planner",
-      "estimated_lines": 0,
-      "dependencies": ["TASK-B4"],
-      "skills": ["research"],
-      "acceptance_criteria": [
-        "Do not start this task until DECISION-1 above is answered by the human",
-        "If option B chosen: update core/views.py growth_areas() to read from GrowthArea instead of/in addition to MarketSnapshot",
-        "If option A chosen: this task becomes documentation-only — add a comment/doc explaining the intentional split so future contributors don't 'fix' it by accident"
-      ]
-    },
-    {
-      "id": "TASK-B6",
-      "title": "Tests for TASK-B1 through TASK-B4",
-      "agent": "test-writer",
-      "estimated_lines": 130,
-      "dependencies": ["TASK-B4"],
-      "skills": ["test"],
-      "acceptance_criteria": [
-        "Mocks all Census/BLS HTTP calls — no live API calls in tests",
-        "Covers: successful two-vintage growth calculation, missing data in one vintage (partial failure -> None or 0, decide and document which), missing API key -> command fails clearly",
-        "Covers management command upsert behavior (create vs update) mirroring existing test_market_adapters.py conventions"
+        "Dockerfile/docker-compose.yml healthcheck hits /api/health/ ; render.yaml's healthCheckPath is /health/ ; core/urls.py only registers a health_check view at /health/ (not /api/health/) — confirm which path actually exists and make Docker/Compose consistent with it",
+        "This is a separate, lower-priority bug from the login crash — does not need to block TASK-1/2, but is real and would silently mark the container 'unhealthy' even if gunicorn is running"
       ]
     }
   ],
   "dependency_graph": {
-    "nodes": [
-      "TASK-A1", "TASK-A2", "TASK-A3", "TASK-A4", "TASK-A5", "TASK-A6", "TASK-A7",
-      "TASK-B1", "TASK-B2", "TASK-B3", "TASK-B4", "TASK-B5", "TASK-B6"
-    ],
+    "nodes": ["TASK-1", "TASK-2", "TASK-4", "TASK-5"],
     "edges": [
-      ["TASK-A1", "TASK-A2"],
-      ["TASK-A2", "TASK-A5"],
-      ["TASK-A3", "TASK-A5"],
-      ["TASK-A2", "TASK-A6"],
-      ["TASK-A3", "TASK-A6"],
-      ["TASK-A4", "TASK-A6"],
-      ["TASK-A5", "TASK-A6"],
-      ["TASK-A2", "TASK-A7"],
-      ["TASK-A3", "TASK-A7"],
-      ["TASK-A4", "TASK-A7"],
-      ["TASK-A5", "TASK-A7"],
-      ["TASK-B1", "TASK-B4"],
-      ["TASK-B2", "TASK-B4"],
-      ["TASK-B3", "TASK-B4"],
-      ["TASK-B4", "TASK-B5"],
-      ["TASK-B4", "TASK-B6"]
+      ["TASK-1", "TASK-2"],
+      ["TASK-2", "TASK-4"]
     ]
   },
   "summary": {
-    "total_tasks": 13,
-    "total_estimated_lines": 670,
-    "parallel_groups": [
-      ["TASK-A1", "TASK-A3", "TASK-A4", "TASK-B1", "TASK-B2", "TASK-B3"],
-      ["TASK-A2"],
-      ["TASK-A5"],
-      ["TASK-A6", "TASK-A7", "TASK-B4"],
-      ["TASK-B5", "TASK-B6"]
-    ],
-    "critical_path": ["TASK-A1", "TASK-A2", "TASK-A5", "TASK-A6"],
-    "new_api_keys_required": {
-      "phase_a_dummy_adapters": "RENTCAST_API_KEY and GREATSCHOOLS_API_KEY (free, placeholders already in .env.example — you need to actually register and fill values in). Crime source depends on TASK-A1 outcome — possibly none, possibly one, unconfirmed. Comps needs no new key (reuses ATTOM_API_KEY).",
-      "phase_b_growth_area": "None. Reuses CENSUS_API_KEY and BLS_API_KEY."
-    }
+    "total_tasks": 4,
+    "blocking_task": "None remaining — TASK-1 is confirmed, TASK-2 is a 1-line fix ready to implement",
+    "unconfirmed_items": [
+      "Whether TASK-5's healthcheck mismatch (/api/health/ vs /health/) is actually causing any user-visible symptom, versus being a latent bug found incidentally — still worth fixing either way"
+    ]
   }
 }

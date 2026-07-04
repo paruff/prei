@@ -1,10 +1,10 @@
-# Known Limitations — [PROJECT NAME]
+# Known Limitations — prei
 
 > DORA AI Cap 3: This document is loaded as context before every code generation session.
 > Agents read this file and do not make listed issues worse.
 > Human-curated. Updated when new limitations are discovered or resolved.
 
------
+---
 
 ## How to Use This File
 
@@ -16,19 +16,104 @@ If your implementation would worsen a listed issue, flag it in your PR rather th
 **For developers:** When you discover a new limitation, add it here immediately.
 Format: `### [LIMIT-ID] Short description` followed by location, impact, workaround, and tracking issue.
 
------
+---
 
 ## Active Limitations
 
-### [LIMIT-01] [PLACEHOLDER — short description]
+### [LIMIT-01] FBI Crime Data Explorer (CDE) API — adapter returns dummy values
 
-**Location:** `core/[path/to/file.py]`
-**Impact:** [Who is affected and how]
-**Workaround:** [Current mitigation, or “None”]
-**Fix tracked in:** #[ISSUE-NUMBER] (or “Not yet filed”)
+**Location:** `core/integrations/market/crime.py`
 
------
+**Impact:** Crime scores shown in the UI are state-based dummy values (TX=2.5, CA=3.5, others=3.0), not real data. Users cannot make informed decisions using crime metrics.
+
+**Workaround:** The UI labels the crime score as "placeholder — estimated from state averages." The existing `get_crime_score()` function signature is stable and backward-compatible; any future live adapter can replace the body without changing callers.
+
+**Root cause:** The FBI CDE API at `api.usa.gov/crime/fbi/cde/` is gated behind `api.data.gov`, requiring a registered API key. A real key returns HTTP 404 on the same endpoints where `DEMO_KEY` gives meaningful error messages, suggesting either (a) incorrect endpoint path, (b) geography-level parameters that differ from the documentation, or (c) the CDE API has been superseded. SPIKE completed 2026-07-03; no viable path found in one session.
+
+**Fix tracked in:** DECISION-2A (deferred). Not yet filed as a GitHub issue.
+
+---
+
+### [LIMIT-02] Housing Demand Index uses a vacancy-rate heuristic, not a real demand metric
+
+**Location:** `core/integrations/sources/census.py` — `fetch_housing_demand_index()`
+
+**Impact:** The index estimates demand from ACS vacancy data + population growth bonus, not from a genuine housing-demand survey or listing market data. Formula: `(1 - vacancy_rate) * 100 + up_to_20_points_population_growth_bonus`, clamped to [0, 100].
+
+**Workaround:** Clearly labelled as "heuristic" in any UI display. The value is suitable for relative ranking (city A vs city B) but not as an absolute demand metric.
+
+**Fix tracked in:** Not yet filed. A future phase could source a real demand index (e.g., Zillow market heat index, Realtor.com demand metrics) when an API becomes available.
+
+---
+
+### [LIMIT-03] CodeQL-driven removal of `exc_info=True` reduces debuggability
+
+**Location:** `core/services/market_data.py` (8 calls), `core/integrations/market/schools.py` (1 call), `core/integrations/sources/attom_adapter.py` (2 calls)
+
+**Impact:** `exc_info=True` was removed from 11 `logger.error()` calls because CodeQL flagged them as potential secret/PII leaks (exception messages could contain API keys in URLs or request data). These log lines no longer include tracebacks, making it harder to diagnose failures in those code paths.
+
+**Workaround:** For alpha, developers can reproduce issues locally with `DEBUG=True` to get full tracebacks on stderr. Two other `exc_info=True` calls remain in `core/services/projections.py:269` and `core/management/commands/fetch_hud_source_index.py:139` — these were not flagged because they log to `logger.warning()` (less sensitive contexts). Do not add `exc_info=True` back to the affected calls without a sanitisation layer.
+
+**Fix tracked in:** Post-MVP — implement a `sanitized_exc_info` helper that redacts URLs, API keys, and PII from exception messages before logging.
+
+---
+
+### [LIMIT-04] GrowthArea `composite_score` is a Python `@property`, not a DB column
+
+**Location:** `core/models.py:674-688` (property definition), `core/views.py:680` (Python sort)
+
+**Impact:** Sorting GrowthAreas by `composite_score` happens in Python memory via `sorted(..., key=lambda ga: ga.composite_score, reverse=True)`. With the current 73 pre-configured cities this is instantaneous, but it will not scale to thousands of entries. No DB index can support this sort, and pagination queries cannot filter/sort by score on the database side.
+
+**Workaround:** Acceptable for alpha. When the city list grows beyond ~500 entries, `composite_score` should be promoted to a persisted `Decimal` field with a DB index, recomputed on a schedule or via a trigger. This also enables efficient `WHERE composite_score >= X` filtering.
+
+**Fix tracked in:** Not yet filed. Track as a post-MVP scalability concern.
+
+---
+
+### [LIMIT-05] SQLite is the default database; Postgres reserved for post-MVP production
+
+**Location:** `.env` (DATABASE_URL default), `docker-compose.yml` (Postgres service commented out)
+
+**Impact:** SQLite lacks concurrent-write support, row-level locking, and many Postgres-specific features (array columns, full-text search, `PGroonga`/`pgvector`, etc.). Under concurrent user load, write contention will cause `database is locked` errors. The Postgres service in `docker-compose.yml` is commented out and requires manual activation.
+
+**Workaround:** For alpha/single-user local dev, SQLite is sufficient. To switch to Postgres: uncomment `DATABASE_URL` and `POSTGRES_*` in `.env`, uncomment the `db` service in `docker-compose.yml`, and rebuild. A migration (systematic data migration, not just schema) will be needed for the switch.
+
+**Fix tracked in:** Not yet filed. Tracked as "post-MVP production deployment" prerequisite.
+
+---
+
+### [LIMIT-06] Production settings tests must explicitly set secure defaults to override `.env`
+
+**Location:** `tests/test_production_settings.py`
+
+**Impact:** The test subprocess imports `investor_app.settings` directly, which reads `.env` via `environ.Env.read_env()`. Since `.env` sets `SECURE_SSL_REDIRECT=False` for local HTTP development, the test must explicitly pass expected secure values in its env dict to verify the `if not DEBUG:` block's defaults. Without this, the test reflects `.env` values, not the code defaults.
+
+**Workaround:** As of commit fixing this issue, the two affected test calls (`test_debug_false_enforces_secure_defaults` and `test_debug_false_enforces_secure_defaults_in_production`) explicitly pass `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_HSTS_SECONDS`, and `SECURE_HSTS_INCLUDE_SUBDOMAINS` in their env dicts. If `.env` gains new security-related entries, add them to the test's explicit env as well.
+
+**Fix tracked in:** A deeper fix would be to have the test subprocess override `env_file` or skip `.env` reading entirely for the test scenario. However, that would require changing `settings.py`, which has its own risks. Current workaround is acceptable.
+
+---
+
+### [LIMIT-07] Remaining `exc_info=True` calls not covered by CodeQL fix
+
+**Location:** `core/services/projections.py:269`, `core/management/commands/fetch_hud_source_index.py:139`
+
+**Impact:** Two `exc_info=True` calls remain in the codebase. `projections.py` logs IRR computation failures (no PII risk — inputs are Decimal cashflows). `fetch_hud_source_index.py` logs a file-load failure with the exception type and message, including `exc_info=True` (low risk — file path and OS error only).
+
+**Workaround:** These are low-risk because they do not log URLs, request data, or user input. However, if these code paths are ever refactored to include user-supplied values in the log message, `exc_info=True` should be replaced with a sanitised alternative.
+
+**Fix tracked in:** Not yet filed. Inclusion in the post-MVP sanitised-logging helper (see LIMIT-03) is recommended.
+
+---
 
 ## Resolved Limitations
 
-<!-- Move entries here when fixed. Include fix date and PR. -->
+### [LIMIT-R01] Docker container permissions — `app` user could not write `db.sqlite3`
+
+**Fixed in:** `Dockerfile` line 49 — changed `chown -R app:app /app/.runtime` to `chown -R app:app /app`.
+
+**Impact before fix:** The container ran as `app` user, but `db.sqlite3` at `BASE_DIR` was owned by root. Attempts to write to the database caused a `PermissionError`, making the container non-functional without volume-mount workarounds.
+
+**Fix date:** 2026-07-03 (included in PR #196).
+
+**Note:** The fix grants the `app` user write access to the entire `/app` tree, not just `/app/.runtime`. This is acceptable for alpha. If a finer-grained permission model is needed later (defence in depth), create a dedicated `/app/data/` subdirectory and chown only that directory.
