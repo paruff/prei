@@ -9,6 +9,7 @@ services:
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
       HOME: /app/.runtime
       MPLCONFIGDIR: /app/.runtime/matplotlib
+      ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
     ports: ["8000:8000"]
     # SQLite default — no external db service required.
     # Uncomment `depends_on` and the `db` service below for Postgres.
