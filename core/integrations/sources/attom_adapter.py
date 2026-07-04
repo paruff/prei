@@ -231,9 +231,9 @@ class ATTOMAdapter:
         except requests.exceptions.Timeout:
             logger.error("ATTOM API request timeout for %s", log_context)
             raise ATTOMAPIError("Request timeout")
-        except requests.exceptions.RequestException as e:
-            logger.error("ATTOM API request error for %s: %s", log_context, str(e))
-            raise ATTOMAPIError(f"Request failed: {str(e)}")
+        except requests.exceptions.RequestException:
+            logger.error("ATTOM API request error for %s", log_context)
+            raise ATTOMAPIError("Request failed")
 
     def normalize_property(self, attom_data: Dict[str, Any]) -> Dict[str, Any]:
         """

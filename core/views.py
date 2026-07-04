@@ -29,7 +29,7 @@ from django.utils.text import slugify
 from django.views import View
 from xhtml2pdf import pisa
 
-from .models import VrmProperty, UserInvestmentTargets
+from .models import VrmProperty, UserInvestmentTargets, GrowthArea
 
 from investor_app.finance.utils import (
     compute_analysis_for_property,
@@ -670,11 +670,23 @@ def property_share(request, pk: int):
 
 
 def growth_areas(request):
-    # Simple mock analytics: top MarketSnapshots by price_trend and rent_index
-    snapshots = MarketSnapshot.objects.all()[:50]
-    top_growth = sorted(
-        snapshots, key=lambda s: (s.price_trend, s.rent_index), reverse=True
-    )[:10]
+    # Read from GrowthArea model (city/metro-level growth metrics)
+    # Fall back to MarketSnapshot for backward compatibility if GrowthArea is empty
+    growth_areas_qs = GrowthArea.objects.all()[:200]
+
+    if growth_areas_qs.exists():
+        top_growth = sorted(
+            growth_areas_qs,
+            key=lambda ga: ga.composite_score,
+            reverse=True,
+        )[:20]
+    else:
+        # Fallback: use MarketSnapshot (ZIP-level) if GrowthArea not yet populated
+        snapshots = MarketSnapshot.objects.all()[:50]
+        top_growth = sorted(
+            snapshots, key=lambda s: (s.price_trend, s.rent_index), reverse=True
+        )[:10]
+
     # Flag undervalued listings globally as a placeholder
     undervalued = find_undervalued(Listing.objects.all()[:200])
     return render(

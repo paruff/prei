@@ -393,6 +393,12 @@ class MarketSnapshot(models.Model):
     )
 
     updated_at = models.DateTimeField(auto_now=True)
+    data_source = models.CharField(
+        max_length=64,
+        blank=True,
+        default="dummy",
+        help_text="Adapter source for this snapshot (e.g. 'rentcast', 'dummy', 'mixed')",
+    )
 
     class Meta:
         ordering = ["-price_trend", "-rent_index"]

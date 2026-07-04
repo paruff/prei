@@ -1,18 +1,101 @@
-# Foreclosure Data Integrations
+# Data Integrations
 
-This module provides data source integrations for fetching foreclosure property data from external sources.
+This module provides data source integrations for fetching foreclosure and market data from external sources.
 
 ## Overview
 
-The integrations module supports multiple data sources:
+The integrations module supports multiple data source categories:
+
+### Foreclosure Data Sources
 
 1. **ATTOM API** - Commercial foreclosure and property data API
 2. **HUD Home Store** - Government foreclosure listings web scraper
 3. **Health Monitoring** - Data source health checks and quality monitoring
 
-## Features
+### Market Data Sources (`core/integrations/market/`)
 
-### ATTOM API Integration (`sources/attom_adapter.py`)
+| Adapter | Module | Status | Key Required | Returns |
+|---|---|---|---|---|
+| **Rent Estimate** | `market/rents.py` | 🟢 Live (RentCast) | `RENTCAST_API_KEY` | `Decimal` rent or `None` |
+| **School Rating** | `market/schools.py` | 🟢 Live (GreatSchools) | `GREATSCHOOLS_API_KEY` | `Decimal` rating or `None` |
+| **Walk Score** | `market/walkability.py` | 🟢 Live (Walk Score API) | `WALKSCORE_API_KEY` | `dict` with scores or `None` |
+| **Comps** | `market/comps.py` | 🟡 Live→Dummy fallback (ATTOM) | `ATTOM_API_KEY` | `List[dict]` comps or `[]` |
+| **Crime** | `market/crime.py` | 🔴 Dummy only (see DECISION-2) | None needed | `Decimal` dummy score |
+| **Census Demographics** | `market/demographics.py` | 🟢 Live (Census API) | `CENSUS_API_KEY` | `dict` demographics or `None` |
+| **BLS Unemployment** | `market/employment.py` | 🟢 Live (BLS API) | `BLS_API_KEY` | `Decimal` rate or `None` |
+
+## Market Data Integrations
+
+### Rent Estimate (`market/rents.py`)
+
+Uses the RentCast API to fetch rental estimates for a property address. Returns `Decimal` or `None`.
+
+**Real adapter:** `fetch_rent_estimate(address, zip_code, api_key)` — calls RentCast API, caches results for 24h.
+**Dummy fallback:** `get_rent_estimate_for_listing(listing)` — returns a hardcoded estimate (1% of price).
+
+```bash
+RENTCAST_API_KEY=your_api_key_here
+```
+
+### School Rating (`market/schools.py`)
+
+Uses the GreatSchools API to fetch school ratings for a ZIP code. Returns `Decimal` (average of all schools) or `None`.
+
+**Real adapter:** `fetch_school_rating(zip_code, api_key)` — calls GreatSchools API, caches results for 24h.
+**Dummy fallback:** `get_school_rating(zip_code)` — returns a hardcoded 6.0 rating.
+
+```bash
+GREATSCHOOLS_API_KEY=your_api_key_here
+```
+
+### Walk Score (`market/walkability.py`)
+
+Uses the Walk Score API to fetch walk/transit/bike scores. Returns a dict or `None`.
+
+**Real adapter:** `fetch_walk_score(address, api_key)` — calls Walk Score API.
+
+```bash
+WALKSCORE_API_KEY=your_api_key_here
+```
+
+### Comps (`market/comps.py`)
+
+Fetches comparable sales using the ATTOM API sales history endpoint (reuses `ATTOM_API_KEY`). Returns `List[Dict]` or `[]` on failure.
+
+**Real adapter:** `fetch_comps_for_listing(listing, api_key=None)` — calls ATTOM `/sale/snapshot`.
+**Dummy fallback:** `get_comps_for_listing(listing)` — generates synthetic comps at 90%/100%/110% of listing price.
+
+### Crime (`market/crime.py`)
+
+**Dummy only.** Per DECISION-2 (see `crime.py` module docstring), no live crime data integration is recommended. The FBI Crime Data Explorer API requires a registered api.data.gov key, and its terms of service and geography-level capabilities are unverifiable without an active key.
+
+Returns `Decimal("1.0")` for TX, `Decimal("7.0")` for CA, `Decimal("3.0")` otherwise.
+
+### Census Demographics (`market/demographics.py`)
+
+Uses Census API to fetch population and growth data for a ZIP code. Returns dict or `None`.
+
+```bash
+CENSUS_API_KEY=your_api_key_here
+```
+
+### BLS Unemployment (`market/employment.py`)
+
+Uses BLS API to fetch unemployment rate for a state. Returns `Decimal` fraction or `None`.
+
+```bash
+BLS_API_KEY=your_api_key_here
+```
+
+### Service Layer (`core/services/market_data.py`)
+
+The `refresh_market_snapshot(zip_code)` function orchestrates all adapters with a live→dummy fallback pattern:
+
+1. Calls the real adapter first (if its API key is set)
+2. Falls back to the dummy adapter on `None` or empty return
+3. Sets the `data_source` field on `MarketSnapshot` — `"dummy"` if all dummy, or comma-separated adapter names (e.g. `"rentcast,greatschools"`) for live sources
+
+## Features
 
 The ATTOM adapter provides:
 - **Authentication** - Secure API key management via environment variables
@@ -51,6 +134,13 @@ print(f"Total cost: ${stats['total_cost']}")
 ATTOM_API_KEY=your_api_key_here
 ATTOM_COST_PER_CALL=0.01          # Cost per API call
 ATTOM_MONTHLY_BUDGET=1000.00       # Monthly budget limit
+
+# Market data API keys (optional — dummy fallbacks used when not set)
+RENTCAST_API_KEY=your_rentcast_key
+GREATSCHOOLS_API_KEY=your_greatschools_key
+WALKSCORE_API_KEY=your_walkscore_key
+CENSUS_API_KEY=your_census_api_key
+BLS_API_KEY=your_bls_api_key
 ```
 
 ### HUD Home Store Scraper (`sources/hud_scraper.py`)
@@ -121,9 +211,12 @@ All integrations have comprehensive unit tests:
 
 ```bash
 # Run all integration tests
-pytest core/tests/test_attom_adapter.py      # 25 tests
-pytest core/tests/test_hud_scraper.py        # 30 tests
-pytest core/tests/test_health_monitor.py     # 14 tests
+pytest core/tests/test_attom_adapter.py      # ATTOM adapter
+pytest core/tests/test_hud_scraper.py        # HUD scraper
+pytest core/tests/test_health_monitor.py     # Health monitoring
+pytest core/tests/test_market_adapters_v2.py # RentCast, GreatSchools, WalkScore
+pytest tests/test_market_adapters_v2.py      # Comps + market_data wiring
+pytest tests/test_market_adapters.py         # Census, BLS, snapshot cache
 ```
 
 ## Security
@@ -202,11 +295,14 @@ class ForeclosureProperty(models.Model):
 
 ## Architecture Decisions
 
-1. **Caching Strategy** - 24-hour cache for ATTOM API to balance freshness and cost
-2. **Error Handling** - Fail gracefully with logging; don't stop processing on individual errors
-3. **Type Safety** - Use Decimal for currency to avoid floating-point errors
-4. **Testing** - Comprehensive unit tests with mocked external dependencies
-5. **Security** - Environment-based configuration; no secrets in code
+1. **Caching Strategy** - 24-hour cache for ATTOM/RentCast/GreatSchools APIs to balance freshness and cost
+2. **Live→Dummy Fallback** - All market adapters try the real API first, then fall back to deterministic dummy data, then default to 0. This ensures `refresh_market_snapshot` never fails
+3. **data_source Tracking** - `MarketSnapshot.data_source` distinguishes `"dummy"` snapshots from live-sourced ones (e.g. `"rentcast,greatschools"`) to avoid silent quality degradation
+4. **Crime is Dummy** - FBI CDE API requires a registered api.data.gov key with unverifiable TOS; crime adapter is intentionally dummy-only (DECISION-2 Option C)
+5. **Error Handling** - Fail gracefully with logging; don't stop processing on individual errors
+6. **Type Safety** - Use Decimal for currency to avoid floating-point errors
+7. **Testing** - Comprehensive unit tests with mocked external dependencies
+8. **Security** - Environment-based configuration; no secrets in code
 
 ## Contributing
 
