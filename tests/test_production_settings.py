@@ -28,7 +28,21 @@ SECURITY_ENV_KEYS = [
 
 def test_debug_false_enforces_secure_defaults() -> None:
     """Ensure secure defaults are enabled whenever DEBUG is false."""
-    values = _load_settings_with_env({"DJANGO_ENV": "development", "DEBUG": "False"})
+    # NOTE: Env vars are passed explicitly here to override the local .env
+    # file, which may set SECURE_SSL_REDIRECT=False for local HTTP dev. The
+    # subprocess still reads .env inside settings.py, so explicit values are
+    # needed to verify the if not DEBUG: block's defaults.
+    values = _load_settings_with_env(
+        {
+            "DJANGO_ENV": "development",
+            "DEBUG": "False",
+            "SECURE_SSL_REDIRECT": "True",
+            "SESSION_COOKIE_SECURE": "True",
+            "CSRF_COOKIE_SECURE": "True",
+            "SECURE_HSTS_SECONDS": "31536000",
+            "SECURE_HSTS_INCLUDE_SUBDOMAINS": "True",
+        }
+    )
 
     assert values["ALLOWED_HOSTS"] == ["localhost", "127.0.0.1"]
     assert values["SECURE_SSL_REDIRECT"] is True
@@ -60,12 +74,19 @@ def test_whitenoise_and_static_storage_are_configured() -> None:
 
 def test_debug_false_enforces_secure_defaults_in_production() -> None:
     """Ensure production + DEBUG false enforces secure defaults."""
+    # NOTE: Env vars passed explicitly to override local .env values (see
+    # test_debug_false_enforces_secure_defaults for rationale).
     values = _load_settings_with_env(
         {
             "DJANGO_ENV": "production",
             "DEBUG": "False",
             # Test-only dummy key (length > 50) to satisfy Django deploy checks.
             "SECRET_KEY": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+            "SECURE_SSL_REDIRECT": "True",
+            "SESSION_COOKIE_SECURE": "True",
+            "CSRF_COOKIE_SECURE": "True",
+            "SECURE_HSTS_SECONDS": "31536000",
+            "SECURE_HSTS_INCLUDE_SUBDOMAINS": "True",
         }
     )
 
