@@ -61,9 +61,7 @@ def _assert_error_logged(caplog: pytest.LogCaptureFixture, *keywords: str) -> No
         all(kw.lower() in record.message.lower() for kw in keywords)
         for record in caplog.records
         if record.levelno >= logging.ERROR
-    ), (
-        f"No ERROR log found containing all keywords {keywords!r}. Records: {[r.message for r in caplog.records]}"
-    )
+    ), f"No ERROR log found containing all keywords {keywords!r}. Records: {[r.message for r in caplog.records]}"
 
 
 # ---------------------------------------------------------------------------
