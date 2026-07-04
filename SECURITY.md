@@ -224,7 +224,7 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
 ```
 
-Note: If the app sits behind a TLS-terminating proxy (e.g., Render, Fly.io), set `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")` instead of `SECURE_SSL_REDIRECT`.
+Note: If the app sits behind a TLS-terminating proxy (e.g., Render), set `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")` instead of `SECURE_SSL_REDIRECT`.
 
 ---
 

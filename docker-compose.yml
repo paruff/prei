@@ -12,7 +12,8 @@ services:
       ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
       # Override .env DATABASE_URL to use SQLite (default for local dev)
       # Absolute path ensures writable location regardless of bind mounts
-      DATABASE_URL: sqlite:////app/db.sqlite3
+      # Use /app/.runtime/ — it's created and chowned to the app user in the Dockerfile
+      DATABASE_URL: sqlite:////app/.runtime/db.sqlite3
     ports: ["8000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import sys, urllib.request;\ntry: urllib.request.urlopen('http://localhost:8000/api/health/')\nexcept Exception as e: print(f'health check failed: {e}', file=sys.stderr); sys.exit(1)"]
