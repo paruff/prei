@@ -25,7 +25,7 @@
   },
   "containerEnv": {
     "DJANGO_SETTINGS_MODULE": "investor_app.settings",
-    "DATABASE_URL": "sqlite:///db.sqlite3",
+    "DATABASE_URL": "sqlite:////app/db.sqlite3",
     "SECRET_KEY": "dev-secret-key-change-me",
     "DEBUG": "True",
     "ALLOWED_HOSTS": "*",
