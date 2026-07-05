@@ -14,7 +14,7 @@
             <td>{{ s.rent_index }}</td>
             <td>{{ s.price_trend|floatformat:2 }}</td>
             <td>
-              <a href="/search?state={{ s.state }}&zip={{ s.zip_code }}">View Properties</a>
+              <a href="{% url 'search_listings' %}?state={{ s.state }}&zip={{ s.zip_code }}">View Properties</a>
               |
               <a href="#" onclick="fetchHUD('{{ s.state }}','{{ s.zip_code }}'); return false;">Pull HUD</a>
             </td>
@@ -25,7 +25,7 @@
     </tbody>
   </table>
 
-  <h2 style="margin-top:2rem">Undervalued Listings (CMA)</h2>
+  <h2 class="mt-section">Undervalued Listings (CMA)</h2>
   <table>
     <thead>
       <tr><th>Address</th><th>City</th><th>State</th><th>PPSF</th><th>Link</th></tr>

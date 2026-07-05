@@ -106,8 +106,8 @@
   {% if exit %}
   <div class="kpi-grid">
     {% include "components/kpi_card.html" with label="Net proceeds (yr 7)" value=exit.net_proceeds_after_tax|floatformat:0|intcomma color_class="num-good" %}
-    {% include "components/kpi_card.html" with label="Annualized IRR"       value=exit.annualized_irr|floatformat:1|add:"%" color_class="num-good" %}
-    {% include "components/kpi_card.html" with label="Total return"          value=exit.total_return|floatformat:0|intcomma color_class="num-good" %}
+    {% include "components/kpi_card.html" with label="Annualized IRR" value=exit.annualized_irr|floatformat:1|add:"%" color_class="num-good" %}
+    {% include "components/kpi_card.html" with label="Total return" value=exit.total_return|floatformat:0|intcomma color_class="num-good" %}
   </div>
   {% endif %}
   {% else %}

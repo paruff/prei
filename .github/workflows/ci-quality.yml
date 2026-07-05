@@ -3,6 +3,7 @@ name: Tier 1 Governance — PR Gates
 on:
   pull_request:
     branches: [main, develop]
+    types: [opened, edited, synchronize, reopened]
 
 concurrency:
   group: tier-1-${{ github.event.pull_request.number || github.ref }}
@@ -12,6 +13,46 @@ permissions:
   contents: read
 
 jobs:
+  pr-title:
+    name: "📝 PR Title — Conventional Commit"
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^[a-z][a-z0-9/._-]*
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            did not match the pattern. Start with a lowercase letter, optionally
+            followed by lowercase letters, digits, or / . _ - characters.
+          wip: true
+          validateSingleCommit: false
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
   lint:
     name: "🔍 Tier 1 — Lint"
     runs-on: ubuntu-latest
@@ -23,11 +64,37 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
       - name: Install dependencies
-        run: pip install ruff
+        run: pip install ruff bandit
       - name: Ruff
         run: ruff check .
       - name: Ruff format
         run: ruff format --check .
+      - name: Bandit (Python security lint)
+        run: bandit -r core/ investor_app/ -x ".venv,migrations" -f txt
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  secrets:
+    name: "🔑 Tier 1 — Secrets Scan"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: "job-finish"
         if: always()
         run: |
@@ -50,6 +117,20 @@ jobs:
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
+      - name: Django system checks
+        run: python manage.py check
+        env:
+          DJANGO_SETTINGS_MODULE: investor_app.settings
+          SECRET_KEY: ci-check-secret-key
+          DEBUG: "True"
+          DATABASE_URL: sqlite:///tmp/test_db.sqlite3
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run --noinput
+        env:
+          DJANGO_SETTINGS_MODULE: investor_app.settings
+          SECRET_KEY: ci-check-secret-key
+          DEBUG: "True"
+          DATABASE_URL: sqlite:///tmp/test_db.sqlite3
       - name: Collect static files
         run: python manage.py collectstatic --noinput
       - name: Run tests
@@ -87,7 +168,7 @@ jobs:
 
   tier-1-summary:
     name: "✅ Tier 1 Complete"
-    needs: [lint, tests, typecheck]
+    needs: [pr-title, lint, secrets, tests, typecheck]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -97,7 +178,9 @@ jobs:
           echo "sha: ${{ github.sha }}"
       - name: Check Tier 1 gates
         run: |
-          if [ "${{ needs.lint.result }}" != "success" ] ||
+          if [ "${{ needs.pr-title.result }}" != "success" ] ||
+             [ "${{ needs.lint.result }}" != "success" ] ||
+             [ "${{ needs.secrets.result }}" != "success" ] ||
              [ "${{ needs.tests.result }}" != "success" ] ||
              [ "${{ needs.typecheck.result }}" != "success" ]; then
             echo "❌ Tier 1 governance failed"

@@ -419,6 +419,21 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
   align-items: start;
 }
 
+/* ── Utility spacing (replaces inline styles) ────────────────── */
+.mb-form { margin-bottom: var(--sp-4); }
+.mt-section { margin-top: var(--sp-8); }
+.ml-link { margin-left: var(--sp-2); }
+
+/* ── Score number ──────────────────────────────────────────── */
+.score-num {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--sp-1);
+}
+
+/* ── Table checkbox column ─────────────────────────────────── */
+.col-checkbox { width: 1%; white-space: nowrap; }
+
 /* ── Form helpers ────────────────────────────────────────────── */
 .form-divider {
   border: none;

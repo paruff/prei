@@ -1,19 +1,29 @@
 # Pre-commit hooks to prevent CI/CD pipeline failures
 # Install: pip install pre-commit && pre-commit install
 # Run: pre-commit run --all-files
+#
+# When updating tool versions here, keep them in sync with:
+#   - .github/workflows/ci-quality.yml (CI lint/test/typecheck)
+#   - requirements.txt (pip-resolved versions)
+#   - Makefile (local dev targets)
+#
+# To find the latest rev for a hook:
+#   pre-commit autoupdate --repo https://github.com/<owner>/<repo>
 
 repos:
   # --- ruff: fast Python linter & formatter ---
+  # Version must match pip-resolved version from requirements.txt (ruff>=0.15.15)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.6
+    rev: v0.15.20
     hooks:
       - id: ruff
         args: [--fix, --show-fixes]
       - id: ruff-format
 
   # --- mypy: static type checking ---
+  # Version should match pip-resolved version from requirements.txt (mypy>=0.991)
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
+    rev: v1.19.0
     hooks:
       - id: mypy
         additional_dependencies:
@@ -53,12 +63,12 @@ repos:
 
   # --- Conventional commits ---
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v3.28.0
+    rev: v4.16.4
     hooks:
       - id: commitizen
         stages: [commit-msg]
 
-  # --- Python package validation (pyproject.toml if exists) ---
+  # --- Python security lint (bandit) ---
   - repo: https://github.com/pycqa/bandit
     rev: 1.8.0
     hooks:
@@ -67,7 +77,7 @@ repos:
         exclude: ^migrations/
         pass_filenames: true
 
-  # --- Check for merge conflicts ---
+  # --- General-purpose file checks ---
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -78,6 +88,15 @@ repos:
       - id: check-json
       - id: check-added-large-files
         args: [--maxkb=500]
+      - id: debug-statements              # catch stray print(), breakpoint(), pdb.set_trace()
+      - id: check-case-conflict           # catch files differing only in case (macOS vs Linux)
+      - id: detect-private-key            # catch accidentally committed private keys
+      - id: mixed-line-ending             # enforce consistent line endings
+        args: [--fix=lf]
+      - id: name-tests-test               # enforce test_ prefix on test files
+        args: [--django]
+      - id: check-yaml
+        exclude: ^mkdocs\.yml$
 
   # --- Dockerfile linting ---
   - repo: https://github.com/hadolint/hadolint
@@ -87,12 +106,19 @@ repos:
         args: [--failure-threshold, error]
         files: Dockerfile
 
-  # --- YAML check (separate to exclude mkdocs.yml which needs custom tags) ---
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+  # --- Django template linting ---
+  # Catches: inline styles (H021), hardcoded URLs (D018), unclosed tags, etc.
+  # Silently ignores HTML entity references (H023), SEO meta suggestions (H030/H031),
+  # and unnamed endblocks (T003) — these are style preferences, not bugs.
+  - repo: https://github.com/djlint/djlint
+    rev: v1.40.3
     hooks:
-      - id: check-yaml
-        exclude: ^mkdocs\.yml$
+      - id: djlint
+        args:
+          - --quiet
+          - --profile=django
+          - --ignore=H023,H030,H031,T003
+        files: \.html$
 
   # --- Requirements.txt pinning check ---
   - repo: local

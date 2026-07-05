@@ -94,9 +94,9 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
     web = compose.get("services", {}).get("web", {})
     hc = web.get("healthcheck", {})
 
-    assert (
-        hc.get("start_period") == "90s"
-    ), "healthcheck start_period should be 90s for migration time"
+    assert hc.get("start_period") == "90s", (
+        "healthcheck start_period should be 90s for migration time"
+    )
     assert hc.get("retries") == 5, "healthcheck retries should be 5 for migration time"
     assert hc.get("interval") == "30s"
     assert hc.get("timeout") == "10s"
