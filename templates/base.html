@@ -29,6 +29,8 @@
     <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
     <a href="{% url 'markets_list' %}" class="nav-link {% if request.resolver_match.url_name == 'markets_list' %}active{% endif %}">Markets</a>
     <a href="{% url 'brrrr_calculator' %}" class="nav-link {% if request.resolver_match.url_name == 'brrrr_calculator' %}active{% endif %}">BRRRR</a>
+    <a href="{% url 'growth_areas' %}" class="nav-link {% if request.resolver_match.url_name == 'growth_areas' %}active{% endif %}">Growth Areas</a>
+    <a href="{% url 'vrm_properties_list' %}" class="nav-link {% if request.resolver_match.url_name == 'vrm_properties_list' %}active{% endif %}">VRM Foreclosures</a>
   </div>
 
   <div class="nav-right">
