@@ -177,9 +177,9 @@ def _wait_for_health(url: str = HEALTH_URL, timeout: int = HEALTH_TIMEOUT) -> No
             resp = urllib.request.urlopen(url, timeout=10)
             if resp.status == 200:
                 body = json.loads(resp.read().decode())
-                assert (
-                    body.get("status") == "ok"
-                ), f"Health endpoint returned unexpected body: {body}"
+                assert body.get("status") == "ok", (
+                    f"Health endpoint returned unexpected body: {body}"
+                )
                 elapsed = HEALTH_TIMEOUT - (deadline - time.monotonic())
                 logger.info("Container healthy after %.0f s", elapsed)
                 return
@@ -269,9 +269,9 @@ class TestDockerContainerSmoke:
         conn.request("GET", "/accounts/login/")
         resp = conn.getresponse()
         body = resp.read().decode()
-        assert (
-            resp.status == 200
-        ), f"GET /accounts/login/ returned {resp.status} {resp.reason}"
+        assert resp.status == 200, (
+            f"GET /accounts/login/ returned {resp.status} {resp.reason}"
+        )
         # Verify we got actual HTML content, not an error page
         assert (
             "csrf" in body.lower()
