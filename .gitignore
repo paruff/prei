@@ -46,6 +46,7 @@ staticfiles/
 # Environment variables
 .env
 .env.local
+.env.ci
 
 # Pytest
 .pytest_cache/
