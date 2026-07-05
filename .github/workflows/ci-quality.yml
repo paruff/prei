@@ -22,7 +22,7 @@ jobs:
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-      - uses: amannn/action-semantic-pull-request@v5
+      - uses: amannn/action-semantic-pull-request@v6.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
