@@ -136,13 +136,17 @@ def test_compose_runtime_env_vars_set() -> None:
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
     """Verify RUN_MIGRATIONS=0 skips the migrate command before exec."""
     calls = _run_entrypoint_with_fake_python(tmp_path, run_migrations="0")
-    assert calls == ["-c print('ok')"]
+    assert calls == ["manage.py collectstatic --noinput", "-c print('ok')"]
 
 
 def test_entrypoint_runs_migrations_by_default(tmp_path: Path) -> None:
     """Verify migrations run before exec when RUN_MIGRATIONS is unset."""
     calls = _run_entrypoint_with_fake_python(tmp_path)
-    assert calls == ["manage.py migrate --noinput", "-c print('ok')"]
+    assert calls == [
+        "manage.py migrate --noinput",
+        "manage.py collectstatic --noinput",
+        "-c print('ok')",
+    ]
 
 
 # ---------------------------------------------------------------------------
