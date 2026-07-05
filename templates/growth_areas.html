@@ -14,7 +14,7 @@
             <td>{{ s.rent_index }}</td>
             <td>{{ s.price_trend|floatformat:2 }}</td>
             <td>
-              <a href="{% url 'vrm_properties_list' %}?state={{ s.state }}&zip={{ s.zip_code }}">View Foreclosures</a>
+              <a href="{% url 'vrm_properties_list' %}?state={{ s.state }}">View Foreclosures</a>
             </td>
           </tr>
       {% empty %}
