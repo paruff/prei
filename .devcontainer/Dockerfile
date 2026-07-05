@@ -18,6 +18,7 @@ FROM mcr.microsoft.com/devcontainers/python:1-${PYTHON_VERSION}-bookworm
 # devcontainer features (docker-in-docker, common-utils) from installing.
 RUN rm -f /etc/apt/sources.list.d/yarn.list \
     && apt-get update \
+    && apt-get install -y --no-install-recommends libcairo2-dev build-essential pkg-config \
     && apt-get upgrade -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
