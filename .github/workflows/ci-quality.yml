@@ -11,6 +11,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   pr-title:
@@ -70,7 +71,7 @@ jobs:
       - name: Ruff format
         run: ruff format --check .
       - name: Bandit (Python security lint)
-        run: bandit -r core/ investor_app/ -x ".venv,migrations" -f txt
+        run: bandit -r core/ investor_app/ -x ".venv,migrations" -c .bandit -f txt
       - name: "job-finish"
         if: always()
         run: |
