@@ -17,8 +17,6 @@ jobs:
   pr-title:
     name: "📝 PR Title — Conventional Commit"
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: read
     steps:
       - name: "job-start"
         run: |
