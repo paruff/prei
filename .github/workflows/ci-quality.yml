@@ -22,30 +22,39 @@ jobs:
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-      - uses: amannn/action-semantic-pull-request@v6.1.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate PR title
+        uses: actions/github-script@v8
         with:
-          types: |
-            feat
-            fix
-            docs
-            style
-            refactor
-            perf
-            test
-            build
-            ci
-            chore
-            revert
-          requireScope: false
-          subjectPattern: ^[a-z][a-z0-9/._-]*
-          subjectPatternError: |
-            The subject "{subject}" found in the pull request title "{title}"
-            did not match the pattern. Start with a lowercase letter, optionally
-            followed by lowercase letters, digits, or / . _ - characters.
-          wip: true
-          validateSingleCommit: false
+          script: |
+            const title = context.payload.pull_request.title;
+
+            // Skip validation for WIP/draft PRs
+            const wipPrefix = /^(WIP:|\[WIP\])\s/i;
+            if (wipPrefix.test(title)) {
+              core.info(`WIP prefix detected, skipping validation for: "${title}"`);
+              return;
+            }
+
+            const types = ['feat', 'fix', 'docs', 'style', 'refactor', 'perf', 'test', 'build', 'ci', 'chore', 'revert'];
+            // Conventional Commits: type(optional-scope)!: subject
+            // subject: start with lowercase letter, then lowercase letters/digits/-/./_/
+            const pattern = new RegExp(
+              `^(${types.join('|')})(\\([a-z0-9/._-]+\\))?!?:\\s[a-z][a-z0-9/._-]*`
+            );
+
+            if (!pattern.test(title)) {
+              const msg =
+                `PR title "${title}" does not follow Conventional Commits format.\n\n` +
+                `Expected: type(optional-scope): description\n` +
+                `Allowed types: ${types.join(', ')}\n\n` +
+                `The subject must start with a lowercase letter, followed by ` +
+                `lowercase letters, digits, or / . _ - characters.\n\n` +
+                `Examples:\n  "feat(ui): add button"\n  "fix: resolve timeout"\n  ` +
+                `"chore(ci): bump dependency version"`;
+              core.setFailed(msg);
+            } else {
+              core.info(`PR title "${title}" follows Conventional Commits format.`);
+            }
       - name: "job-finish"
         if: always()
         run: |
