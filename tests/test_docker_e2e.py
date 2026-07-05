@@ -23,6 +23,7 @@ from __future__ import annotations
 import http.client
 import json
 import logging
+import os
 import shutil
 import subprocess
 import time
@@ -87,12 +88,40 @@ def _compose(*args: str) -> None:
         result.check_returncode()
 
 
+# Minimum environment variables required to start the container in CI when
+# the real .env file is not available (it is gitignored by design).
+_CI_ENV_MINIMAL = """\
+SECRET_KEY=ci-test-secret-key-not-for-production
+DJANGO_ENV=development
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+LOG_LEVEL=INFO
+"""
+
+
+def _ensure_env_file() -> str:
+    """Return path to an env file.
+
+    If ``.env`` exists (local dev), return it as-is.
+    Otherwise create ``.env.ci`` with the minimum variables needed to start
+    the container.  The caller is responsible for cleaning up ``.env.ci``.
+    """
+    if os.path.exists(".env"):
+        return ".env"
+    env_path = ".env.ci"
+    with open(env_path, "w") as f:
+        f.write(_CI_ENV_MINIMAL)
+    logger.info("Created %s with minimal env vars for CI", env_path)
+    return env_path
+
+
 def _docker_run() -> subprocess.CompletedProcess:
     """Start a detached container from the built image.
 
     Uses a non-default host port so it does not conflict with any
     already-running ``prei`` container.
     """
+    env_file = _ensure_env_file()
     cmd = [
         "docker",
         "run",
@@ -103,7 +132,7 @@ def _docker_run() -> subprocess.CompletedProcess:
         "-p",
         f"{HOST_PORT}:{CONTAINER_PORT}",
         "--env-file",
-        ".env",
+        env_file,
         "-e",
         "RUN_MIGRATIONS=1",
         IMAGE_TAG,
@@ -131,6 +160,14 @@ def _docker_stop() -> None:
     logger.info("Container %s stopped.", CONTAINER_NAME)
 
 
+def _cleanup_env_file() -> None:
+    """Remove the temporary CI env file if one was created."""
+    env_ci = ".env.ci"
+    if os.path.exists(env_ci):
+        os.remove(env_ci)
+        logger.info("Cleaned up %s", env_ci)
+
+
 def _wait_for_health(url: str = HEALTH_URL, timeout: int = HEALTH_TIMEOUT) -> None:
     """Poll *url* until it returns 200 or *timeout* seconds elapse."""
     deadline = time.monotonic() + timeout
@@ -140,9 +177,9 @@ def _wait_for_health(url: str = HEALTH_URL, timeout: int = HEALTH_TIMEOUT) -> No
             resp = urllib.request.urlopen(url, timeout=10)
             if resp.status == 200:
                 body = json.loads(resp.read().decode())
-                assert (
-                    body.get("status") == "ok"
-                ), f"Health endpoint returned unexpected body: {body}"
+                assert body.get("status") == "ok", (
+                    f"Health endpoint returned unexpected body: {body}"
+                )
                 elapsed = HEALTH_TIMEOUT - (deadline - time.monotonic())
                 logger.info("Container healthy after %.0f s", elapsed)
                 return
@@ -197,6 +234,7 @@ def docker_container():
 
     # Teardown
     _docker_stop()
+    _cleanup_env_file()
 
 
 # ---------------------------------------------------------------------------
@@ -231,9 +269,9 @@ class TestDockerContainerSmoke:
         conn.request("GET", "/accounts/login/")
         resp = conn.getresponse()
         body = resp.read().decode()
-        assert (
-            resp.status == 200
-        ), f"GET /accounts/login/ returned {resp.status} {resp.reason}"
+        assert resp.status == 200, (
+            f"GET /accounts/login/ returned {resp.status} {resp.reason}"
+        )
         # Verify we got actual HTML content, not an error page
         assert (
             "csrf" in body.lower()

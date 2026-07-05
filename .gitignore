@@ -46,6 +46,7 @@ staticfiles/
 # Environment variables
 .env
 .env.local
+.env.ci
 
 # Pytest
 .pytest_cache/
@@ -78,3 +79,4 @@ cross-validation-report.md
 review-report.md
 test-report.md
 verification-output.md
+verification-report.md

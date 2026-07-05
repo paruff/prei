@@ -94,9 +94,9 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
     web = compose.get("services", {}).get("web", {})
     hc = web.get("healthcheck", {})
 
-    assert (
-        hc.get("start_period") == "90s"
-    ), "healthcheck start_period should be 90s for migration time"
+    assert hc.get("start_period") == "90s", (
+        "healthcheck start_period should be 90s for migration time"
+    )
     assert hc.get("retries") == 5, "healthcheck retries should be 5 for migration time"
     assert hc.get("interval") == "30s"
     assert hc.get("timeout") == "10s"
@@ -136,13 +136,17 @@ def test_compose_runtime_env_vars_set() -> None:
 def test_entrypoint_skips_migrations_when_disabled(tmp_path: Path) -> None:
     """Verify RUN_MIGRATIONS=0 skips the migrate command before exec."""
     calls = _run_entrypoint_with_fake_python(tmp_path, run_migrations="0")
-    assert calls == ["-c print('ok')"]
+    assert calls == ["manage.py collectstatic --noinput", "-c print('ok')"]
 
 
 def test_entrypoint_runs_migrations_by_default(tmp_path: Path) -> None:
     """Verify migrations run before exec when RUN_MIGRATIONS is unset."""
     calls = _run_entrypoint_with_fake_python(tmp_path)
-    assert calls == ["manage.py migrate --noinput", "-c print('ok')"]
+    assert calls == [
+        "manage.py migrate --noinput",
+        "manage.py collectstatic --noinput",
+        "-c print('ok')",
+    ]
 
 
 # ---------------------------------------------------------------------------
