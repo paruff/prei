@@ -3,7 +3,7 @@
 {% block content %}
   <h1>Analyze Property</h1>
   {% if error %}
-    <p style="color:red">{{ error }}</p>
+    <p class="message-error">{{ error }}</p>
   {% else %}
     <h2>{{ property }}</h2>
     <p><a href="{% url 'report_property' property.id %}">Open Property Report</a></p>
@@ -17,7 +17,7 @@
     </ul>
 
     <h3>Carry Costs (What-if)</h3>
-    <form method="post" style="margin-bottom:1rem">
+    <form method="post" class="mb-form">
       {% csrf_token %}
       <label>Taxes (monthly) <input type="number" step="0.01" name="taxes" value="{{ carry_costs.taxes|default:0 }}" /></label>
       <label>Insurance (monthly) <input type="number" step="0.01" name="insurance" value="{{ carry_costs.insurance|default:0 }}" /></label>

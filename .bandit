@@ -1,0 +1,13 @@
+# Bandit configuration for prei
+# See https://bandit.readthedocs.io/en/latest/config.html
+
+# Skip rules that flag safe patterns used intentionally in this project:
+#   B101: assert_used — pytest uses assert in tests; not production code
+#   B105/B106: hardcoded_password — "Pass" is a verdict label, testpass123 is test data
+#   B110: try_except_pass — intentional config fallback to defaults
+#   B112: try_except_continue — intentional skip of individual property scoring
+#         errors without crashing the list view
+#   B310: urlopen — used for known trusted external data source (HUD)
+#   B311: random — used for web scraping delays, not crypto
+#   B324: hashlib — MD5 used for cache key generation only, not security
+skips: [B101, B105, B106, B110, B112, B310, B311, B324]

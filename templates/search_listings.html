@@ -2,7 +2,7 @@
 {% block title %}Find Properties{% endblock %}
 {% block content %}
   <h1>Find Properties</h1>
-  <form method="get" style="margin-bottom:1rem">
+  <form method="get" class="mb-form">
     <label>Query <input type="text" name="q" value="{{ q }}" /></label>
     <label>ZIP <input type="text" name="zip" value="{{ zip }}" /></label>
     <label>State <input type="text" name="state" value="{{ state }}" /></label>
@@ -18,7 +18,7 @@
   </form>
 
   {% if request.user.is_authenticated %}
-  <form method="post" style="margin-bottom:1rem">
+  <form method="post" class="mb-form">
     {% csrf_token %}
     <input type="hidden" name="min_price" value="" />
     <input type="hidden" name="max_price" value="" />
@@ -30,7 +30,7 @@
     {% for s in saved %}
       <li>
         {{ s.name }} — {{ s.state }} {{ s.zip_code }} (q={{ s.query }})
-        <a href="?saved_id={{ s.id }}&sort={{ sort }}" style="margin-left:0.5rem">Apply</a>
+        <a href="?saved_id={{ s.id }}&sort={{ sort }}" class="ml-link">Apply</a>
       </li>
     {% empty %}
       <li>No saved searches yet.</li>
