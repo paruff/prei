@@ -38,7 +38,7 @@ Built on a bespoke design system — zero Bootstrap or third-party CSS framework
 | Environment | Name | Best For | Database | Start Command |
 |---|---|---|---|---|
 | **local** | **dev** | Daily development on your machine | SQLite (`db.sqlite3`) | `docker compose up -d` |
-| **devcontainer** | **test** | GitHub Codespaces / VS Code Dev Container | SQLite (`/app/db.sqlite3`) | Open in Codespace → `make dev` |
+| **devcontainer** | **test** | GitHub Codespaces / VS Code Dev Container | SQLite (`/home/vscode/db.sqlite3`) | Open in Codespace → `make dev` |
 | **render** | **prod** | Production deployment | PostgreSQL (managed) | Click "Deploy to Render" button |
 
 ### Local Development (dev)

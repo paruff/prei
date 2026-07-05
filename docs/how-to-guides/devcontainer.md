@@ -43,8 +43,8 @@ The `.devcontainer/devcontainer.json` configures:
 
 - **Base image:** Built from root `Dockerfile` (Python 3.12, non-root `app` user)
 - **Compose file:** Uses root `docker-compose.yml` (SQLite, no Postgres)
-- **Environment variables:**
-  - `DATABASE_URL=sqlite:////app/db.sqlite3` (absolute path — writable by `app` user)
+  - **Environment variables:**
+    - `DATABASE_URL=sqlite:////home/vscode/db.sqlite3` (absolute path — writable by `vscode` user)
   - `DEBUG=True`, `ALLOWED_HOSTS=*`, `SECRET_KEY=dev-secret-key-change-me`
   - `RUN_MIGRATIONS=1`
 - **Post-create:** `pip install -r requirements.txt && python manage.py migrate --noinput`
@@ -55,9 +55,9 @@ The `.devcontainer/devcontainer.json` configures:
 
 ## Database
 
-- **SQLite** at `/app/db.sqlite3` (inside container, not the bind-mounted workspace)
+- **SQLite** at `/home/vscode/db.sqlite3` (inside container, not the bind-mounted workspace)
 - Persists across container restarts but **not** across Codespace rebuilds
-- To reset: delete `/app/db.sqlite3` and re-run `make dev`
+- To reset: delete `/home/vscode/db.sqlite3` and re-run `make dev`
 
 ---
 
@@ -95,8 +95,8 @@ Created by `make dev` via `seed_data` management command.
 - If using custom domain, add to `ALLOWED_HOSTS` in `.env`
 
 ### Database "unable to open database file"
-- Fixed in devcontainer.json: `DATABASE_URL=sqlite:////app/db.sqlite3` (absolute path)
-- The `/app` directory is chowned to `app:app` at image build time
+- Fixed in devcontainer.json: `DATABASE_URL=sqlite:////home/vscode/db.sqlite3` (absolute path)
+- The Dev Container uses `mcr.microsoft.com/devcontainers/python` (not the root Dockerfile) and runs as `vscode`, so `/home/vscode/` is the writable home directory
 
 ### Changes not reflecting
 - Dev container mounts workspace at `/workspaces/prei` but Django runs from `/app`
@@ -121,4 +121,4 @@ Created by `make dev` via `seed_data` management command.
 └─────────────────────────────────────────────────────┘
 ```
 
-The source is mounted at `/workspaces/prei` for git/editor access, but the **runtime** code lives at `/app` (copied during `docker build`). This is why `DATABASE_URL` uses `/app/db.sqlite3`.
+The source is mounted at `/workspaces/prei` for git/editor access, but the **runtime** code lives at `/app` (copied during `docker build`). The Dev Container uses its own Dockerfile (`.devcontainer/Dockerfile`) based on `mcr.microsoft.com/devcontainers/python:1-3.12-bookworm`. The database goes to `/home/vscode/db.sqlite3` — the `vscode` user's home directory — because the devcontainer runs as `vscode`, not `app`.
