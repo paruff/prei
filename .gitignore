@@ -73,6 +73,7 @@ graphify-out/memory/
 # Agent build / CI / review artifacts
 build-report.md
 ci-diagnosis.md
+ci-fix-report.md
 cross-validation-report.md
 review-report.md
 test-report.md
