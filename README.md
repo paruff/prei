@@ -49,6 +49,8 @@ cd prei
 cp .env.example .env
 # Edit .env — set SECRET_KEY, DJANGO_ENV=development
 docker compose up -d
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py seed_data
 # Open http://127.0.0.1:8000
 ```
 
@@ -62,9 +64,10 @@ docker compose up -d
    ```bash
    make dev
    ```
+   > `make dev` runs `migrate` and `seed_data` automatically — the demo user will be created for you.
 3. Open forwarded port 8000 → `http://localhost:8000`
 
-Demo login: `demo@prei.dev` / `DemoPass123!`
+**Demo login:** `demo@prei.dev` / `DemoPass123!`
 
 ### Deploy to Render (prod)
 
