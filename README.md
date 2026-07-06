@@ -49,11 +49,11 @@ cd prei
 cp .env.example .env
 # Edit .env — set SECRET_KEY, DJANGO_ENV=development
 docker compose up -d
-docker compose exec web python manage.py migrate
-docker compose exec web python manage.py seed_data
 # Open http://127.0.0.1:8000
+# Login: demo@prei.dev / DemoPass123!
 ```
 
+> `docker compose up -d` automatically runs migrations and seeds the demo user — no extra steps.
 > **Windows users:** See [Local Docker Setup Guide](docs/how-to-guides/local-dev.md) for WSL2/memory config.
 
 ### Dev Container / Codespaces (test)

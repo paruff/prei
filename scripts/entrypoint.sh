@@ -5,6 +5,9 @@ if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
     python manage.py migrate --noinput
 fi
 
+# Seed demo user and sample properties (idempotent — safe to run on every start)
+python manage.py seed_data
+
 # Collect static files for WhiteNoise manifest (required by CompressedManifestStaticFilesStorage)
 python manage.py collectstatic --noinput
 

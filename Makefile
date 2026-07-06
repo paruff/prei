@@ -48,10 +48,6 @@ superuser: ensure-env
 	$(call ensure_django)
 	@$(PYTHON) manage.py createsuperuser
 
-seed: ensure-env
-	$(call ensure_django)
-	@$(PYTHON) manage.py seed_data
-
 lint:
 	@ruff check .
 	@ruff format --check .
@@ -73,7 +69,7 @@ deploy-dev: ensure-env
 		echo "For image-based deployment, rebuild the devcontainer after enabling Docker or run this target on a Docker host."; \
 		exit 1; \
 	fi
-@docker compose up -d
+	@docker compose up -d
 	@docker compose exec web $(PYTHON) manage.py migrate
 	@docker compose exec web $(PYTHON) manage.py seed_data
 	@echo "Docker stack is running on port 8000"
