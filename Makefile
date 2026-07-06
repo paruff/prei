@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev superuser lint test check deploy-dev gitops-validate gitops-hook-install
+.PHONY: help ensure-env dev seed superuser lint test check deploy-dev gitops-validate gitops-hook-install
 
 PYTHON ?= python
 ENV_FILE ?= .env
@@ -18,7 +18,8 @@ endef
 
 help:
 	@echo "Available targets:"
-	@echo "  make dev              Run migrations and start the Django dev server"
+	@echo "  make dev              Run migrate + seed_data and start the Django dev server"
+	@echo "  make seed             Seed demo user and sample properties"
 	@echo "  make superuser        Create a Django superuser"
 	@echo "  make lint             Run Ruff and Black checks"
 	@echo "  make test             Run the test suite"
@@ -36,7 +37,12 @@ ensure-env:
 dev: ensure-env
 	$(call ensure_django)
 	@$(PYTHON) manage.py migrate
+	@$(PYTHON) manage.py seed_data
 	@$(PYTHON) manage.py runserver 0.0.0.0:8000
+
+seed: ensure-env
+	$(call ensure_django)
+	@$(PYTHON) manage.py seed_data
 
 superuser: ensure-env
 	$(call ensure_django)
@@ -65,6 +71,7 @@ deploy-dev: ensure-env
 	fi
 	@docker compose up -d
 	@docker compose exec web $(PYTHON) manage.py migrate
+	@docker compose exec web $(PYTHON) manage.py seed_data
 	@echo "Docker stack is running on port 8000"
 
 gitops-validate:
