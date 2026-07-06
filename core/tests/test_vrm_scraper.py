@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
@@ -13,6 +14,73 @@ from django.utils import timezone
 
 from core.integrations.sources.vrm_scraper import VrmScraper
 from core.models import VrmProperty
+
+
+# ---------------------------------------------------------------------------
+# Helpers to build test HTML containing the embedded JSON model
+# that the VRM site now serves.
+# ---------------------------------------------------------------------------
+
+_EMPTY_HTML = "<html><head></head><body></body></html>"
+
+
+def _page_html(
+    properties: list[dict],
+    total_pages: int = 2,
+    page: int = 1,
+    count: int = 0,
+) -> str:
+    """Wrap a list of JSON property dicts in a minimal HTML page that
+    includes the ``propertySearchResultsModelJson`` script tag just as
+    the live VRM site does.
+    """
+    if not count:
+        count = len(properties)
+    model = {
+        "properties": properties,
+        "totalPages": total_pages,
+        "currentPage": page,
+        "count": count,
+    }
+    return f"""<html><head></head><body>
+<script>
+var propertySearchResultsModelJson = {json.dumps(model)};
+</script>
+</body></html>"""
+
+
+def _make_prop(
+    asset_id: int,
+    address: str = "369 Charles St",
+    city: str = "Winchester",
+    state: str = "VA",
+    zip_code: str = "22601",
+    list_price: float = 175000.0,
+    bedrooms: int = 3,
+    bathrooms: float = 2.0,
+    square_footage: int = 1504,
+    status: str = "For Sale",
+    vendee: bool = True,
+    is_auction: bool = False,
+    is_online_auction: bool = True,
+) -> dict:
+    """Build a JSON property dict matching the VRM site's model."""
+    return {
+        "assetId": asset_id,
+        "addressLine1": address,
+        "addressLine2": None,
+        "city": city,
+        "state": state,
+        "zip": zip_code,
+        "listPrice": list_price,
+        "bedrooms": bedrooms,
+        "bathrooms": bathrooms,
+        "squareFootage": square_footage,
+        "assetListingStatus": status,
+        "isVendeeFinancing": vendee,
+        "isAuction": is_auction,
+        "isOnlineAuction": is_online_auction,
+    }
 
 
 class TestVrmScraper:
@@ -27,31 +95,17 @@ class TestVrmScraper:
 
     def test_collect_state_listings_fetches_all_pages(self) -> None:
         """Scraper should detect total pages and fetch all pages for a state."""
-        page_1_html = """
-        <html><body>
-            <div class="search-results-count">17 Results</div>
-            <a class="property-card-link" href="/Property-For-Sale/18581/one">
-                <div class="property-address">369 Charles St, Winchester, VA 22601</div>
-                <div class="property-price">$175,000</div>
-                <span class="beds">3 Beds</span>
-                <span class="baths">2 Baths</span>
-                <span class="sqft">1,504 Sq Ft</span>
-                <span class="status-badge">For Sale</span>
-            </a>
-        </body></html>
-        """
-        page_2_html = """
-        <html><body>
-            <a class="property-card-link" href="/Property-For-Sale/18582/two">
-                <div class="property-address">1 Main St, Richmond, VA 23220</div>
-                <div class="property-price">$200,000</div>
-                <span class="beds">4 Beds</span>
-                <span class="baths">2.5 Baths</span>
-                <span class="sqft">2,000 Sq Ft</span>
-                <span class="status-badge">Pending</span>
-            </a>
-        </body></html>
-        """
+        page_1_html = _page_html(
+            [_make_prop(18581, "369 Charles St", list_price=175000.0)],
+            total_pages=2,
+            count=2,
+        )
+        page_2_html = _page_html(
+            [_make_prop(18582, "1 Main St", city="Richmond", list_price=200000.0)],
+            total_pages=2,
+            page=2,
+            count=2,
+        )
 
         scraper = VrmScraper(delay_seconds=0)
 
@@ -67,21 +121,25 @@ class TestVrmScraper:
         assert get_mock.call_count == 2
 
     def test_extract_properties_from_html_extracts_required_fields(self) -> None:
-        """Parser should extract required fields from listing cards."""
-        html = """
-        <html><body>
-            <a class="property-card-link" href="/Property-For-Sale/18581/369-charles-st">
-                <div class="property-address">369 Charles St, Winchester, VA 22601</div>
-                <div class="property-price">$175,000</div>
-                <span class="beds">3 Beds</span>
-                <span class="baths">2 Baths</span>
-                <span class="sqft">1,504 Sq Ft</span>
-                <span class="status-badge">For Sale</span>
-                <img alt="Vendee" src="/images/vendee.png" />
-                <span class="auction-badge">Online Auction</span>
-            </a>
-        </body></html>
-        """
+        """Parser should extract required fields from embedded JSON model."""
+        html = _page_html(
+            [
+                _make_prop(
+                    asset_id=18581,
+                    address="369 Charles St",
+                    city="Winchester",
+                    state="VA",
+                    zip_code="22601",
+                    list_price=175000.0,
+                    bedrooms=3,
+                    bathrooms=2.0,
+                    square_footage=1504,
+                    status="For Sale",
+                    vendee=True,
+                    is_online_auction=True,
+                )
+            ],
+        )
 
         scraper = VrmScraper(delay_seconds=0)
         properties = scraper.extract_properties_from_html(html)
@@ -100,13 +158,21 @@ class TestVrmScraper:
         assert property_data["status"] == VrmProperty.Status.FOR_SALE
         assert property_data["vendee_eligible"] is True
         assert property_data["listing_type"] == VrmProperty.ListingType.ONLINE_AUCTION
-        assert (
-            property_data["vrm_listing_url"]
-            == "https://vrmproperties.com/Property-For-Sale/18581/369-charles-st"
+
+    def test_extract_total_pages_reads_from_json_model(self) -> None:
+        """Total pages should be read from the embedded JSON model."""
+        html = _page_html(
+            [_make_prop(18581)],
+            total_pages=3,
+            count=40,
         )
 
+        scraper = VrmScraper(delay_seconds=0)
+
+        assert scraper.extract_total_pages(html) == 3
+
     def test_extract_total_pages_falls_back_to_page_text(self) -> None:
-        """Total pages should be computed from body text when selectors are missing."""
+        """Total pages should fall back to body text when JSON model is absent."""
         html = "<html><body>Showing 1-16 of 33 results for state VA</body></html>"
 
         scraper = VrmScraper(delay_seconds=0)
@@ -129,6 +195,75 @@ class TestVrmScraper:
             "https://vrmproperties.com/Property-For-Sale/18581/example",
             timeout=30,
         )
+
+    def test_extract_properties_handles_zero_price(self) -> None:
+        """Properties with listPrice=0 should produce None, not $0."""
+        html = _page_html(
+            [_make_prop(30001, list_price=0.0, status="Coming Soon")],
+        )
+
+        scraper = VrmScraper(delay_seconds=0)
+        properties = scraper.extract_properties_from_html(html)
+
+        assert len(properties) == 1
+        assert properties[0]["list_price"] is None
+        assert properties[0]["status"] == VrmProperty.Status.COMING_SOON
+
+    def test_extract_properties_skips_bad_asset_id(self) -> None:
+        """Properties without a valid assetId should be skipped."""
+        html = _page_html(
+            [
+                {"assetId": None, "addressLine1": "No ID"},
+                _make_prop(40001, "Good St"),
+                {"addressLine1": "No assetId at all"},
+            ],
+        )
+
+        scraper = VrmScraper(delay_seconds=0)
+        properties = scraper.extract_properties_from_html(html)
+
+        assert len(properties) == 1
+        assert properties[0]["vrm_property_id"] == 40001
+
+    def test_extract_properties_builds_listing_url(self) -> None:
+        """The listing URL should be constructed from property components."""
+        html = _page_html(
+            [_make_prop(18581, "369 Charles St")],
+        )
+
+        scraper = VrmScraper(delay_seconds=0)
+        properties = scraper.extract_properties_from_html(html)
+
+        assert (
+            properties[0]["vrm_listing_url"]
+            == "https://vrmproperties.com/Property-For-Sale/18581/369-charles-st-winchester-va-22601"
+        )
+
+    def test_extract_properties_handles_duplicates(self) -> None:
+        """Duplicate assetIds should be deduplicated."""
+        html = _page_html(
+            [
+                _make_prop(50001, "First St"),
+                _make_prop(50001, "Duplicate St"),  # same assetId
+                _make_prop(50002, "Unique St"),
+            ],
+        )
+
+        scraper = VrmScraper(delay_seconds=0)
+        properties = scraper.extract_properties_from_html(html)
+
+        assert len(properties) == 2
+        # First one wins
+        assert properties[0]["address"] == "First St"
+
+    def test_extract_properties_returns_empty_when_no_json_model(self) -> None:
+        """Pages without the JSON model should return an empty list."""
+        html = "<html><body><p>No data here</p></body></html>"
+
+        scraper = VrmScraper(delay_seconds=0)
+        properties = scraper.extract_properties_from_html(html)
+
+        assert properties == []
 
     def test_extract_property_details_from_html_parses_expected_fields(self) -> None:
         """Detail parser should extract enrichment fields from detail-page HTML."""

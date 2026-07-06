@@ -13,6 +13,20 @@
   <div class="message message-error">{{ error }}</div>
 {% endif %}
 
+{% if not api_keys_configured %}
+  <div class="message message-warning">
+    <strong>API keys not configured.</strong>
+    {% if not census_key_configured and not bls_key_configured %}
+      Both <code>CENSUS_API_KEY</code> and <code>BLS_API_KEY</code> are missing from your environment.
+    {% elif not census_key_configured %}
+      <code>CENSUS_API_KEY</code> is missing.
+    {% elif not bls_key_configured %}
+      <code>BLS_API_KEY</code> is missing.
+    {% endif %}
+    Set them in your <code>.env</code> file to enable growth analysis.
+  </div>
+{% endif %}
+
 <form method="post" id="explorer-form" novalidate>
   {% csrf_token %}
   <div class="card mb-form">
@@ -27,10 +41,16 @@
       </select>
     </div>
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary" id="submit-btn">
+      <button type="submit" class="btn btn-primary" id="submit-btn"
+              {% if not api_keys_configured %}disabled title="Configure CENSUS_API_KEY and BLS_API_KEY to enable analysis"{% endif %}>
         <span class="btn-text">Analyze State</span>
         <span class="spinner" aria-hidden="true"></span>
       </button>
+      {% if not api_keys_configured %}
+        <p class="form-hint mt-1">
+          ⚠️ Analysis requires Census and BLS API keys.
+        </p>
+      {% endif %}
     </div>
   </div>
 </form>
