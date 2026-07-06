@@ -421,6 +421,8 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 
 /* ── Utility spacing (replaces inline styles) ────────────────── */
 .mb-form { margin-bottom: var(--sp-4); }
+.mb-4 { margin-bottom: var(--sp-4); }
+.mt-3 { margin-top: var(--sp-3); }
 .mt-section { margin-top: var(--sp-8); }
 .ml-link { margin-left: var(--sp-2); }
 
@@ -449,6 +451,22 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 .result-emphasis {
   font-weight: var(--weight-semibold);
 }
+
+/* ── Spinner / Loading state ─────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-neutral-200);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.btn-loading .spinner { margin-right: var(--sp-2); }
+.btn-loading { pointer-events: none; opacity: 0.8; }
 
 /* ── BRRRR verdict banner ───────────────────────────────────── */
 .brrrr-banner {

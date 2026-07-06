@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Growth Area Explorer{% endblock %}
+{% load humanize %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Growth Area Explorer</h1>
+    <p class="page-sub">Discover top growth places in a state — live Census/BLS data pull</p>
+  </div>
+</div>
+
+<form method="post" id="explorer-form" novalidate>
+  {% csrf_token %}
+  <div class="card mb-form">
+    <div class="card-title">Select State</div>
+    <div class="form-group mb-form">
+      <label for="id_state" class="form-label">State</label>
+      <select name="state" id="id_state" class="form-input" required>
+        <option value="">— Choose a state —</option>
+        {% for code, name in US_STATES %}
+          <option value="{{ code }}">{{ name }} ({{ code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" id="submit-btn">
+        <span class="btn-text">Analyze State</span>
+        <span class="spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</form>
+
+{% if results is not None %}
+  <div class="mt-section">
+    <h2>Results for {{ results|first.growth_area.state_display|default:selected_state }}
+        {% if emp_growth is not None %} <span class="ml-link" title="Employment growth reflects statewide data">📍 State-level employment growth</span>{% endif %}</h2>
+    <p class="empty-state-body mb-4">
+      {% if emp_growth is not None %}
+        <strong>State employment growth (5yr):</strong> {{ emp_growth|mul:100|floatformat:2 }}%
+        <span class="ml-link" title="Employment growth reflects statewide data">ℹ️ State-level figure</span>
+      {% endif %}
+    </p>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Population</th>
+            <th>Pop Growth (5yr)</th>
+            <th>Emp Growth (5yr)*</th>
+            <th>Income Growth (5yr)</th>
+            <th>Housing Demand</th>
+            <th>Composite Score</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+            <tr>
+              <td class="col-right">{{ forloop.counter }}</td>
+              <td>{{ r.place_name }}</td>
+              <td>{{ r.growth_area.state }}</td>
+              <td class="col-right num">{{ r.population|intcomma }}</td>
+              <td class="col-right num">{{ r.growth_area.population_growth_rate|mul:100|floatformat:2 }}%</td>
+              <td class="col-right num">{{ r.growth_area.employment_growth_rate|mul:100|floatformat:2 }}%</td>
+              <td class="col-right num">{{ r.growth_area.median_income_growth|mul:100|floatformat:2 }}%</td>
+              <td class="col-right">{{ r.growth_area.housing_demand_index }}</td>
+              <td class="col-right score-num num-good">{{ r.growth_area.composite_score|floatformat:2 }}</td>
+              <td>
+                <a href="{% url 'vrm_properties_list' %}?state={{ r.growth_area.state }}" class="btn">View Foreclosures</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="10" class="empty-state">No places discovered for this state.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="form-hint mt-3">
+      * Employment growth is a <strong>state-level</strong> figure from BLS LAUS — same value for all places in the state.
+    </p>
+  </div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const form = document.getElementById('explorer-form');
+  const btn = document.getElementById('submit-btn');
+  if (!form || !btn) return;
+
+  form.addEventListener('submit', function() {
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+    const textSpan = btn.querySelector('.btn-text');
+    if (textSpan) textSpan.textContent = 'Analyzing…';
+  });
+})();
+</script>
+{% endblock %}
