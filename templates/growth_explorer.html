@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Growth Area Explorer{% endblock %}
-{% load humanize %}
+{% load humanize math_filters %}
 {% block content %}
 <div class="page-header">
   <div>
@@ -8,6 +8,10 @@
     <p class="page-sub">Discover top growth places in a state — live Census/BLS data pull</p>
   </div>
 </div>
+
+{% if error %}
+  <div class="message message-error">{{ error }}</div>
+{% endif %}
 
 <form method="post" id="explorer-form" novalidate>
   {% csrf_token %}
@@ -17,7 +21,7 @@
       <label for="id_state" class="form-label">State</label>
       <select name="state" id="id_state" class="form-input" required>
         <option value="">— Choose a state —</option>
-        {% for code, name in US_STATES %}
+        {% for code, name in states %}
           <option value="{{ code }}">{{ name }} ({{ code }})</option>
         {% endfor %}
       </select>
@@ -33,7 +37,7 @@
 
 {% if results is not None %}
   <div class="mt-section">
-    <h2>Results for {{ results|first.growth_area.state_display|default:selected_state }}
+    <h2>Results for {% if results.0 %}{{ results.0.growth_area.state }}{% else %}{{ selected_state }}{% endif %}
         {% if emp_growth is not None %} <span class="ml-link" title="Employment growth reflects statewide data">📍 State-level employment growth</span>{% endif %}</h2>
     <p class="empty-state-body mb-4">
       {% if emp_growth is not None %}
