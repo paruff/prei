@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -364,6 +364,138 @@ def fetch_place_growth_metrics(
         if income_growth is not None
         else None,
     }
+
+
+def discover_places_in_state(
+    state_code: str,
+    api_key: str,
+    limit: int = 20,
+) -> list[dict[str, object]]:
+    """Discover the top N places in a state by population via the Census ACS API.
+
+    Uses the Census "place" geography with a wildcard query to fetch population
+    for ALL places in a given state in a single API call. Results are sorted by
+    population descending and the top ``limit`` are returned.
+
+    Census place geography supports wildcard via::
+
+        for=place:*
+        in=state:<state_fips>
+
+    This is confirmed against live api.census.gov documentation — the place
+    geography entry in /data/2022/acs/acs5/geography.json has:
+        "requires": ["state"],
+        "wildcard": ["state"],
+        "optionalWithWCFor": "state"
+
+    Note on employment_growth_rate:
+        The employment growth rate returned by bls.fetch_employment_growth() is
+        a STATE-level figure, not place-level. Every place discovered by this
+        function will share the same employment growth figure when GrowthArea
+        rows are built from them.
+
+    Args:
+        state_code: 2-letter US state code (e.g. "CA").
+        api_key: Census API key (free registration at api.census.gov).
+        limit: Maximum number of places to return, sorted by population desc.
+
+    Returns:
+        List of dicts with keys:
+            - place_code (str): Census place FIPS code (e.g. "44000").
+            - place_name (str): Place name without state suffix (e.g. "Los Angeles").
+            - population (int): Total population from B01001_001E.
+        Empty list on any error.
+    """
+    if not api_key:
+        logger.warning("Census API key not provided")
+        return []
+
+    state_code = state_code.strip().upper()
+    if state_code not in STATE_FIPS:
+        logger.error("Invalid state code for place discovery: %s", state_code)
+        return []
+
+    state_fips = STATE_FIPS[state_code]
+    variables = "B01001_001E,NAME"
+
+    url = f"{CENSUS_API_BASE}/{ACS_VINTAGE}/{ACS_DATASET}/get"
+    params: dict[str, str] = {
+        "get": variables,
+        "for": "place:*",
+        "in": f"state:{state_fips}",
+        "key": api_key,
+    }
+
+    try:
+        resp = requests.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        logger.error(
+            "Census API request failed for places in state=%s: %s",
+            state_code,
+            exc,
+        )
+        return []
+
+    try:
+        data = resp.json()
+    except (ValueError, TypeError) as exc:
+        logger.error(
+            "Census API returned invalid JSON for places in state=%s: %s",
+            state_code,
+            exc,
+        )
+        return []
+
+    if not isinstance(data, list) or len(data) < 2:
+        logger.warning(
+            "Census API returned unexpected structure for places in state=%s",
+            state_code,
+        )
+        return []
+
+    headers = data[0]
+    try:
+        pop_idx = headers.index("B01001_001E")
+        name_idx = headers.index("NAME")
+        place_idx = headers.index("place")
+    except ValueError as exc:
+        logger.error(
+            "Census API response missing expected column for state=%s: %s",
+            state_code,
+            exc,
+        )
+        return []
+
+    places: list[dict[str, object]] = []
+    for row in data[1:]:
+        raw_pop = row[pop_idx]
+        raw_name = row[name_idx]
+        raw_place = row[place_idx]
+
+        # Census returns "-1" or "null" for suppressed/missing data
+        if raw_pop in ("null", "-1", ""):
+            continue
+
+        try:
+            population = int(raw_pop)
+        except (ValueError, TypeError):
+            continue
+
+        # NAME format: "Los Angeles city, California" — extract place name only
+        place_name = raw_name.split(",")[0].strip() if raw_name else ""
+
+        places.append(
+            {
+                "place_code": raw_place,
+                "place_name": place_name,
+                "population": population,
+            }
+        )
+
+    # Sort by population descending and return top `limit`
+    places.sort(key=lambda p: cast(int, p["population"]), reverse=True)
+    return places[:limit]
 
 
 def fetch_housing_demand_index(
