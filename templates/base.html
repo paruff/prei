@@ -25,13 +25,21 @@
   </a>
 
   <div class="nav-links" id="nav-links" role="list">
-    <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Screener</a>
-    <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
-    <a href="{% url 'markets_list' %}" class="nav-link {% if request.resolver_match.url_name == 'markets_list' %}active{% endif %}">Markets</a>
-    <a href="{% url 'brrrr_calculator' %}" class="nav-link {% if request.resolver_match.url_name == 'brrrr_calculator' %}active{% endif %}">BRRRR</a>
-    <a href="{% url 'growth_areas' %}" class="nav-link {% if request.resolver_match.url_name == 'growth_areas' %}active{% endif %}">Growth Areas</a>
-    <a href="{% url 'growth_explorer' %}" class="nav-link {% if request.resolver_match.url_name == 'growth_explorer' %}active{% endif %}">Growth Explorer</a>
-    <a href="{% url 'vrm_properties_list' %}" class="nav-link {% if request.resolver_match.url_name == 'vrm_properties_list' %}active{% endif %}">VRM Foreclosures</a>
+    <div class="nav-group">
+      <span class="nav-group-label" role="presentation">Buy</span>
+      <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Screener</a>
+      <a href="{% url 'growth_explorer' %}" class="nav-link {% if request.resolver_match.url_name == 'growth_explorer' %}active{% endif %}">Growth Explorer</a>
+      <a href="{% url 'vrm_properties_list' %}" class="nav-link {% if request.resolver_match.url_name == 'vrm_properties_list' %}active{% endif %}">VRM Foreclosures</a>
+      <a href="{% url 'brrrr_calculator' %}" class="nav-link {% if request.resolver_match.url_name == 'brrrr_calculator' %}active{% endif %}">BRRRR</a>
+    </div>
+    <div class="nav-group">
+      <span class="nav-group-label" role="presentation">Maintain</span>
+      <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
+    </div>
+    <div class="nav-group">
+      <span class="nav-group-label" role="presentation">Sell</span>
+      <a href="{% url 'sell_index' %}" class="nav-link {% if request.resolver_match.url_name == 'sell_index' %}active{% endif %}">Disposition</a>
+    </div>
   </div>
 
   <div class="nav-right">
