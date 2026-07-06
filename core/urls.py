@@ -60,4 +60,5 @@ urlpatterns = [
     path("markets/", views.markets_list, name="markets_list"),
     path("markets/refresh/", MarketRefreshView.as_view(), name="market_refresh"),
     path("brrrr/", views.brrrr_calculator, name="brrrr_calculator"),
+    path("sell/", views.sell_index, name="sell_index"),
 ]

@@ -1399,3 +1399,8 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
         "brrrr_calculator.html",
         {"result": result, "form_data": form_data},
     )
+
+
+def sell_index(request: HttpRequest) -> HttpResponse:
+    """Sell/Disposition stub page — placeholder for future disposition tools."""
+    return render(request, "sell_index.html")
