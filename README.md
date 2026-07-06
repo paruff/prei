@@ -119,7 +119,7 @@ mkdocs serve
 
 - **Lint/Format:** ruff
 - **Type Check:** mypy
-- **Tests:** pytest (897 passing)
+- **Tests:** pytest + Makefile validation (no duplicate targets, proper syntax)
 - **Docs:** MkDocs Material
 - **CI:** GitHub Actions (`.github/workflows/`) — DORA-friendly logging
 
