@@ -714,14 +714,36 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
     """
     from os import getenv
 
+    census_api_key = getenv("CENSUS_API_KEY", "")
+    bls_api_key = getenv("BLS_API_KEY", "")
+    api_keys_configured = bool(census_api_key and bls_api_key)
+
     if request.method == "GET":
         return render(
             request,
             "growth_explorer.html",
-            {"states": US_STATES},
+            {
+                "states": US_STATES,
+                "api_keys_configured": api_keys_configured,
+                "census_key_configured": bool(census_api_key),
+                "bls_key_configured": bool(bls_api_key),
+            },
         )
 
     # POST — synchronous analysis
+    if not api_keys_configured:
+        return render(
+            request,
+            "growth_explorer.html",
+            {
+                "states": US_STATES,
+                "api_keys_configured": False,
+                "census_key_configured": bool(census_api_key),
+                "bls_key_configured": bool(bls_api_key),
+                "error": "API keys not configured. Set CENSUS_API_KEY and BLS_API_KEY in your environment.",
+            },
+        )
+
     state = request.POST.get("state", "").strip().upper()
     if not state or state not in [s[0] for s in US_STATES]:
         return render(
@@ -729,29 +751,10 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             "growth_explorer.html",
             {
                 "states": US_STATES,
+                "api_keys_configured": api_keys_configured,
+                "census_key_configured": bool(census_api_key),
+                "bls_key_configured": bool(bls_api_key),
                 "error": "Invalid state selected.",
-            },
-        )
-
-    census_api_key = getenv("CENSUS_API_KEY", "")
-    bls_api_key = getenv("BLS_API_KEY", "")
-
-    if not census_api_key:
-        return render(
-            request,
-            "growth_explorer.html",
-            {
-                "states": US_STATES,
-                "error": "CENSUS_API_KEY not configured.",
-            },
-        )
-    if not bls_api_key:
-        return render(
-            request,
-            "growth_explorer.html",
-            {
-                "states": US_STATES,
-                "error": "BLS_API_KEY not configured.",
             },
         )
 
