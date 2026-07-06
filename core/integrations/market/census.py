@@ -15,11 +15,140 @@ import requests
 logger = logging.getLogger(__name__)
 
 CENSUS_API_BASE = "https://api.census.gov/data"
-# American Community Survey 5-Year (most recent available)
-ACS_VINTAGE = "2022"
 ACS_DATASET = "acs/acs5"
-# 5-year prior vintage for growth calculation
-ACS_VINTAGE_PRIOR = "2017"
+
+# ---------------------------------------------------------------------------
+# GA-5: Auto-detected ACS vintages
+# ---------------------------------------------------------------------------
+# These are populated lazily by _auto_detect_acs_vintages().  The module-level
+# constants below are the *fallback* defaults used when the Census data.json
+# API is unreachable.  Most callers should use get_acs_vintages() instead of
+# reading ACS_VINTAGE / ACS_VINTAGE_PRIOR directly – it returns the
+# auto-detected vintages (cached after the first call).
+#
+# Fallback defaults (updated July 2026):
+_ACS_VINTAGE_FALLBACK: str = "2024"
+_ACS_VINTAGE_PRIOR_FALLBACK: str = "2019"
+
+# Module-level cache for auto-detected vintages (populated once).
+# The _auto_detect_acs_vintages() function caches its result here so that
+# subsequent calls in the same process avoid a redundant HTTP request.
+_acs_vintage_cache: dict[str, str] | None = None
+
+
+def get_acs_vintages() -> tuple[str, str]:
+    """Return (current_vintage, prior_vintage) for ACS 5-year comparisons.
+
+    Auto-detects the latest available ACS 5-Year Detailed Tables vintage
+    from the Census data.json API on first call, then caches the result.
+    Falls back to hardcoded defaults if the API is unreachable or the
+    response cannot be parsed.
+
+    Returns:
+        Tuple of (current_vintage, prior_vintage) as strings.
+    """
+    global _acs_vintage_cache
+    if _acs_vintage_cache is not None:
+        c = _acs_vintage_cache
+        return c["current"], c["prior"]
+
+    try:
+        result = _fetch_latest_acs_vintages()
+        if result is not None:
+            _acs_vintage_cache = result
+            v = result
+            logger.info(
+                "Auto-detected ACS vintages: current=%s, prior=%s",
+                v["current"],
+                v["prior"],
+            )
+            return v["current"], v["prior"]
+    except Exception:
+        logger.exception("Failed to auto-detect ACS vintages; using fallback defaults")
+
+    # Fallback
+    _acs_vintage_cache = {
+        "current": _ACS_VINTAGE_FALLBACK,
+        "prior": _ACS_VINTAGE_PRIOR_FALLBACK,
+    }
+    return _ACS_VINTAGE_FALLBACK, _ACS_VINTAGE_PRIOR_FALLBACK
+
+
+def _fetch_latest_acs_vintages() -> dict[str, str] | None:
+    """Query Census /data.json for the latest ACS 5-Year Detailed Tables vintage.
+
+    Returns:
+        dict with keys "current" and "prior", or None on failure.
+    """
+    url = f"{CENSUS_API_BASE}/data.json"
+    try:
+        resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+        catalog = resp.json()
+    except requests.RequestException as exc:
+        logger.warning("Census /data.json request failed: %s", exc)
+        return None
+    except (ValueError, TypeError) as exc:
+        logger.warning("Census /data.json parse error: %s", exc)
+        return None
+
+    datasets = catalog.get("dataset", [])
+    if not datasets:
+        logger.warning("Census /data.json has no datasets")
+        return None
+
+    # Find all ACS 5-Year Detailed Tables vintages.
+    # The identifier field uses opaque IDs (e.g. https://api.census.gov/data/id/ACSDP1Y2010),
+    # so we match on distribution[0].accessURL which contains the actual API path
+    # (e.g. http://api.census.gov/data/2024/acs/acs5).
+    # Filter: accessURL contains "/acs/acs5" AND title includes "Detailed Tables".
+    acs_vintages: set[int] = set()
+    for ds in datasets:
+        title = ds.get("title", "")
+        vintage_str = ds.get("c_vintage", "")
+        dist = ds.get("distribution", [{}])
+        access_url = (
+            dist[0].get("accessURL", "") if isinstance(dist, list) and dist else ""
+        )
+
+        # Match ACS 5-Year Detailed Tables (not PUMS, not profiles)
+        if "/acs/acs5" not in access_url.lower():
+            continue
+        if "detailed table" not in title.lower():
+            continue
+        if not vintage_str:
+            continue
+
+        try:
+            v = int(vintage_str)
+        except (ValueError, TypeError):
+            continue
+        acs_vintages.add(v)
+
+    if not acs_vintages:
+        logger.warning("No ACS 5-Year Detailed Tables vintages found in /data.json")
+        return None
+
+    latest = max(acs_vintages)
+    # Find the prior vintage: nearest to (latest - 5) that exists
+    # ACS 5-year releases skip some years (e.g., 2018 is not published).
+    target_prior = latest - 5
+    # Walk up to 3 years forward/backward from the target
+    candidates = [y for y in acs_vintages if target_prior - 2 <= y <= target_prior + 2]
+    prior = max(candidates) if candidates else (latest - 5)
+
+    return {
+        "current": str(latest),
+        "prior": str(prior),
+    }
+
+
+# For backwards compatibility – code that reads the module constant directly
+# will still work, but new code should call get_acs_vintages().
+# These are updated to sensible defaults as of July 2026 and will be
+# overridden at runtime by auto-detection when get_acs_vintages() is called.
+ACS_VINTAGE: str = _ACS_VINTAGE_FALLBACK
+ACS_VINTAGE_PRIOR: str = _ACS_VINTAGE_PRIOR_FALLBACK
 
 # State FIPS codes for Census "place" geography
 STATE_FIPS = {
@@ -95,7 +224,9 @@ def fetch_zip_demographics(zip_code: str, api_key: str) -> dict | None:
         logger.warning("Census API key not provided")
         return None
 
-    url = f"{CENSUS_API_BASE}/{ACS_VINTAGE}/{ACS_DATASET}/get"
+    current_vintage, _ = get_acs_vintages()
+    # NOTE: The Census API changed in 2024. The old /get suffix path is deprecated.
+    url = f"{CENSUS_API_BASE}/{current_vintage}/{ACS_DATASET}"
 
     # B01001_001E = total population
     # B19013_001E = median household income
@@ -189,7 +320,9 @@ def _fetch_acs_data(
         logger.warning("Census API key not provided")
         return None
 
-    url = f"{CENSUS_API_BASE}/{vintage}/{ACS_DATASET}/get"
+    # NOTE: The Census API changed in 2024. The old /get suffix path is deprecated.
+    # Parameters are now passed directly in the query string without /get.
+    url = f"{CENSUS_API_BASE}/{vintage}/{ACS_DATASET}"
 
     params: dict[str, str] = {
         "get": variables,
@@ -199,11 +332,41 @@ def _fetch_acs_data(
     if state_fips:
         params["in"] = f"state:{state_fips}"
 
-    try:
-        resp = requests.get(url, params=params, timeout=30)
-        resp.raise_for_status()
-    except requests.RequestException as exc:
-        logger.error("Census API request failed for geography=%s: %s", geography, exc)
+    # Retry up to 2 times on transient 503 / timeout errors (Census API is flaky)
+    import time
+
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        if attempt > 0:
+            backoff = 2**attempt  # 2s, 4s
+            logger.info(
+                "Retrying Census API request (attempt %d/%d) after %ds",
+                attempt + 1,
+                3,
+                backoff,
+            )
+            time.sleep(backoff)
+        try:
+            resp = requests.get(url, params=params, timeout=30)
+            resp.raise_for_status()
+            last_exc = None
+            break
+        except requests.RequestException as exc:
+            last_exc = exc
+            logger.warning(
+                "Census API request failed (attempt %d/3) for geography=%s: %s",
+                attempt + 1,
+                geography,
+                exc,
+            )
+            continue
+
+    if last_exc is not None:
+        logger.error(
+            "Census API request failed after 3 attempts for geography=%s: %s",
+            geography,
+            last_exc,
+        )
         return None
 
     try:
@@ -307,34 +470,41 @@ def fetch_place_growth_metrics(
         return None
 
     state_fips = STATE_FIPS[state_code]
-    variables = "B01001_001E,B19013_001E"
+    current_vintage, prior_vintage = get_acs_vintages()
+    variables = "B01001_001E,B19013_001E,B25001_001E"
     geography = f"place:{place_code}"
 
-    # Fetch current vintage (2022)
+    # Fetch current vintage
     current_data = _fetch_acs_data(
-        ACS_VINTAGE, variables, geography, api_key, state_fips
+        current_vintage, variables, geography, api_key, state_fips
     )
     if not current_data:
         return None
 
-    # Fetch prior vintage (2017) for 5-year comparison
+    # Fetch prior vintage for comparison
     prior_data = _fetch_acs_data(
-        ACS_VINTAGE_PRIOR, variables, geography, api_key, state_fips
+        prior_vintage, variables, geography, api_key, state_fips
     )
     if not prior_data:
         return None
 
     # Parse both responses
-    current_parsed = _parse_acs_response(current_data, ["B01001_001E", "B19013_001E"])
-    prior_parsed = _parse_acs_response(prior_data, ["B01001_001E", "B19013_001E"])
+    current_parsed = _parse_acs_response(
+        current_data, ["B01001_001E", "B19013_001E", "B25001_001E"]
+    )
+    prior_parsed = _parse_acs_response(
+        prior_data, ["B01001_001E", "B19013_001E", "B25001_001E"]
+    )
     if not current_parsed or not prior_parsed:
         return None
 
     try:
         current_pop = int(current_parsed["B01001_001E"])
         current_income = Decimal(current_parsed["B19013_001E"])
+        current_units = int(current_parsed.get("B25001_001E", 0) or 0)
         prior_pop = int(prior_parsed["B01001_001E"])
         prior_income = Decimal(prior_parsed["B19013_001E"])
+        prior_units = int(prior_parsed.get("B25001_001E", 0) or 0)
     except (InvalidOperation, ValueError, TypeError) as exc:
         logger.error("Census API parse error for place=%s: %s", place_code, exc)
         return None
@@ -352,6 +522,14 @@ def fetch_place_growth_metrics(
     else:
         income_growth = (current_income - prior_income) / prior_income
 
+    if prior_units == 0:
+        logger.warning("Prior housing units is zero for place=%s", place_code)
+        units_growth = None
+    else:
+        units_growth = (Decimal(current_units) - Decimal(prior_units)) / Decimal(
+            prior_units
+        )
+
     return {
         "population_current": current_pop,
         "population_prior": prior_pop,
@@ -362,6 +540,11 @@ def fetch_place_growth_metrics(
         "median_income_prior": prior_income,
         "median_income_growth_rate": income_growth.quantize(Decimal("0.01"))
         if income_growth is not None
+        else None,
+        "housing_units_current": current_units,
+        "housing_units_prior": prior_units,
+        "housing_units_growth_rate": units_growth.quantize(Decimal("0.01"))
+        if units_growth is not None
         else None,
     }
 
@@ -416,9 +599,10 @@ def discover_places_in_state(
         return []
 
     state_fips = STATE_FIPS[state_code]
+    current_vintage, _ = get_acs_vintages()
     variables = "B01001_001E,NAME"
 
-    url = f"{CENSUS_API_BASE}/{ACS_VINTAGE}/{ACS_DATASET}/get"
+    url = f"{CENSUS_API_BASE}/{current_vintage}/{ACS_DATASET}"
     params: dict[str, str] = {
         "get": variables,
         "for": "place:*",
@@ -498,6 +682,39 @@ def discover_places_in_state(
     return places[:limit]
 
 
+def compute_supply_constraint_index(
+    population_growth_rate: Decimal | None,
+    housing_units_growth_rate: Decimal | None,
+) -> int | None:
+    """Compute a supply constraint heuristic index (0-100).
+
+    A high score means population is growing faster than housing units,
+    indicating supply tightness — positive for existing property owners.
+    A low score means housing supply is growing faster than population.
+
+    Formula:
+        diff = population_growth_rate - housing_units_growth_rate
+        index = max(0, min(100, round(diff * 500 + 50)))
+
+    This centres at 50 (neutral), with each percentage point of gap
+    adding/subtracting ~5 points.
+
+    Args:
+        population_growth_rate: Fractional growth rate (e.g. 0.05 = 5%).
+        housing_units_growth_rate: Fractional growth rate for housing units.
+
+    Returns:
+        Integer index 0-100, or None if either input is None.
+    """
+    if population_growth_rate is None or housing_units_growth_rate is None:
+        return None
+
+    diff = population_growth_rate - housing_units_growth_rate
+    raw = diff * Decimal("500") + Decimal("50")
+    clamped = max(Decimal("0"), min(Decimal("100"), raw))
+    return int(clamped.quantize(Decimal("1")))
+
+
 def fetch_housing_demand_index(
     state_code: str,
     place_code: str,
@@ -531,6 +748,7 @@ def fetch_housing_demand_index(
         return None
 
     state_fips = STATE_FIPS[state_code]
+    current_vintage, _ = get_acs_vintages()
 
     # Fetch occupancy data (current vintage)
     # B25002_001E = total housing units
@@ -538,7 +756,7 @@ def fetch_housing_demand_index(
     variables = "B25002_001E,B25002_003E"
     geography = f"place:{place_code}"
 
-    data = _fetch_acs_data(ACS_VINTAGE, variables, geography, api_key, state_fips)
+    data = _fetch_acs_data(current_vintage, variables, geography, api_key, state_fips)
     if not data:
         return None
 

@@ -2,26 +2,37 @@
 {% block title %}Economically Growing Areas{% endblock %}
 {% block content %}
   <h1>Economically Growing Areas</h1>
-  <h2>Top Growth Markets</h2>
-  <table>
-    <thead>
-      <tr><th>Area</th><th>Rent Index</th><th>Price Trend %</th></tr>
-    </thead>
-    <tbody>
-      {% for s in top_growth %}
-          <tr>
-            <td>{% if s.zip_code %}{{ s.zip_code }}{% else %}{{ s.city }}, {{ s.state }}{% endif %}</td>
-            <td>{{ s.rent_index }}</td>
-            <td>{{ s.price_trend|floatformat:2 }}</td>
-            <td>
-              <a href="{% url 'vrm_properties_list' %}?state={{ s.state }}">View Foreclosures</a>
-            </td>
-          </tr>
-      {% empty %}
-        <tr><td colspan="3">No market snapshots available.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+  {% if top_growth %}
+    <h2>Top Growth Markets</h2>
+    <table>
+      <thead>
+        <tr><th>Area</th><th>Rent Index</th><th>Price Trend %</th></tr>
+      </thead>
+      <tbody>
+        {% for s in top_growth %}
+            <tr>
+              <td>{% if s.zip_code %}{{ s.zip_code }}{% else %}{{ s.city }}, {{ s.state }}{% endif %}</td>
+              <td>{{ s.rent_index }}</td>
+              <td>{{ s.price_trend|floatformat:2 }}</td>
+              <td>
+                <a href="{% url 'vrm_properties_list' %}?state={{ s.state }}">View Foreclosures</a>
+              </td>
+            </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state-card" role="status">
+      <div class="empty-state-icon" aria-hidden="true">📊</div>
+      <h3>No growth data available yet</h3>
+      <p>Growth area data is populated by querying Census and BLS APIs. Use the <strong>Growth Area Explorer</strong> to discover and analyze top growth places in any state.</p>
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Open Growth Area Explorer</a>
+        <a href="{% url 'markets_list' %}" class="btn btn-outline-secondary">View Market Snapshots</a>
+      </div>
+    </div>
+  {% endif %}
 
   <h2 class="mt-section">Undervalued Listings (CMA)</h2>
   <table>

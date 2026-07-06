@@ -1,8 +1,90 @@
 # Design & Plan: Alpha → MVP (Phase 1 close-out + Phase 2 verification)
 
-Companion to `specification-alpha-mvp.md`. Covers only Phase 1 (close-out) and Phase 2
+Companion to `specification.md`. Covers only Phase 1 (close-out) and Phase 2
 (verification) in implementation detail, per that spec's scoping — Phases 3/4 are
 intentionally not designed yet.
+
+## Appendix A: Growth Area Explorer Design
+
+This appendix covers the Growth Area Explorer as Stage 1 of the purchase pipeline.
+See `specification.md` §1.1 for the business context and methodology decisions.
+
+### A.1 Purchase Pipeline Architecture
+
+```
+                    ┌──────────────────────┐
+                    │  Growth Area Explorer │  ← Stage 1: WHICH CITY?
+                    │  (/growth-explorer/)  │
+                    └──────────┬───────────┘
+                               │ user selects a city
+                               ▼
+                    ┌──────────────────────┐
+                    │  Market Deep-Dive     │  ← Stage 2: WHICH NEIGHBORHOOD?
+                    │  (ZIP-level data)     │     (not yet implemented)
+                    └──────────┬───────────┘
+                               │ user selects a ZIP/neighborhood
+                               ▼
+                    ┌──────────────────────┐
+                    │  Property Search      │  ← Stage 3: WHICH PROPERTY?
+                    │  (VRM / ATTOM)        │
+                    └──────────┬───────────┘
+                               │ user selects a property
+                               ▼
+                    ┌──────────────────────┐
+                    │  Underwriting         │  ← Stage 4: GOOD DEAL?
+                    │  (calc suite)         │
+                    └──────────────────────┘
+```
+
+### A.2 Data Sources
+
+| Source | Data | Granularity | Status |
+|---|---|---|---|
+| Census ACS | Population, income, housing occupancy | Place (city) | ✅ Integrated |
+| Census ACS (query) | Building permits (BPS series) | Place (city) | ❌ Not yet used |
+| BLS LAUS | Employment | State | ✅ Integrated |
+| ATTOM | Property-level rent/sale comps | Property/ZIP | ✅ Integrated (elsewhere) |
+| MarketSnapshot | ZIP-level rent index, price trend, population | ZIP | ✅ Model exists, 0 rows |
+| GreatSchools/API | School ratings | ZIP/School district | ❌ Not integrated |
+| FBI crime data | Crime stats | City/MSA | ❌ DECISION-2 pending |
+
+### A.3 Scoring Methodology
+
+**Current approach (may change):**
+
+```
+composite_score = pop_growth * 0.25 + emp_growth * 0.35
+                + income_growth * 0.25 + housing_demand_index * 0.15
+```
+
+**Recommendation:** Keep current as default; add user-configurable weights in the UI.
+The model stores raw factors; scoring is computed at display time.
+
+**Critical bug to fix:** The `composite_score` property does not guard against `None`
+values. If any factor is None, it crashes with TypeError. The view must validate all
+factors before computing a score, or the property must handle None gracefully.
+
+### A.4 Key Decisions (resolving the pending ones from the prior plan)
+
+| Decision | Answer | Rationale |
+|---|---|---|
+| DECISION-1: GrowthArea vs MarketSnapshot split | **GrowthArea is primary; MarketSnapshot is secondary overlay.** GrowthArea (city-level) drives the top-of-funnel area discovery. MarketSnapshot (ZIP-level) provides granular rent/price data for Stage 2 deep-dive. Both remain; they serve different pipeline stages. | City-level screening first, ZIP-level drill-down second — they're sequential, not competing. |
+| DECISION-2: Crime data source | **Deferred.** Adding crime data is valuable but requires evaluation of data quality, update frequency, and API cost. FBI UCR data is free but lags by 1-2 years. Revisit as a Phase 3 enhancement. | Not blocking the purchase pipeline. |
+
+### A.5 Pre-population Strategy
+
+Two complementary approaches:
+1. **Management command** (`populate_growth_areas`) — batch-populates 73 major cities. Should be run once before first use (or as a CI/data-pipeline step).
+2. **Live POST flow** (`growth_explorer` view) — discovers any U.S. city on demand via Census place wildcard query. Works for any state, not just the 73 pre-seeded cities.
+
+**Trade-off:** The POST flow is slow (sequential API calls for ~20 places = 20 Census + 1 BLS). For a fast initial experience, pre-populate. For depth on any state, use the live explorer.
+
+### A.6 Risk Items
+
+1. **Census API rate limits/quota** — free Census key allows 500 calls/day. A single state analysis makes 21-41 calls. Scale: ~12-24 full state analyses per day.
+2. **ACS vintage staleness** — ACS_VINTAGE = "2022" is hardcoded. Should auto-detect latest available vintage.
+3. **Empty-state UX** — when GrowthArea and MarketSnapshot are both empty, the user sees "No market snapshots available" or a blank results table. Need helpful empty states (e.g., "Try Analyze State above to discover growth cities using Census/BLS data").
+4. **JavaScript failure on POST** — the form's submit handler shows "Analyzing…" but if the POST request fails (network error, timeout), the button stays disabled with no recovery. Add error handling or timeout fallback.
 
 ## 1. Sequencing (do in this order)
 

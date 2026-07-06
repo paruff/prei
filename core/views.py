@@ -684,7 +684,7 @@ def growth_areas(request):
     if growth_areas_qs.exists():
         top_growth = sorted(
             growth_areas_qs,
-            key=lambda ga: ga.composite_score,
+            key=lambda ga: ga.composite_score or Decimal("0"),
             reverse=True,
         )[:20]
     else:
@@ -766,6 +766,9 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             "growth_explorer.html",
             {
                 "states": US_STATES,
+                "api_keys_configured": api_keys_configured,
+                "census_key_configured": bool(census_api_key),
+                "bls_key_configured": bool(bls_api_key),
                 "error": f"No places found for state {state}.",
             },
         )
@@ -787,6 +790,23 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
         pop_growth = census_data.get("population_growth_rate")
         income_growth = census_data.get("median_income_growth_rate")
 
+        # Validate growth rates are not None (DecimalField does not accept None).
+        # Treat None as 0 (neutral/no growth) rather than skipping the place.
+        if pop_growth is None:
+            logger.warning(
+                "Population growth rate is None for %s, %s — defaulting to 0",
+                place_name,
+                state,
+            )
+            pop_growth = Decimal("0")
+        if income_growth is None:
+            logger.warning(
+                "Income growth rate is None for %s, %s — defaulting to 0",
+                place_name,
+                state,
+            )
+            income_growth = Decimal("0")
+
         housing_demand = fetch_housing_demand_index(
             state_code=state,
             place_code=place_code,
@@ -796,6 +816,9 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
         if housing_demand is None:
             housing_demand = 50  # neutral default
 
+        # Safe default for employment growth if BLS API returned None
+        safe_emp_growth = emp_growth if emp_growth is not None else Decimal("0")
+
         # Upsert GrowthArea (unique on state + city_name)
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
@@ -803,7 +826,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             defaults={
                 "metro_area": place_name,
                 "population_growth_rate": pop_growth,
-                "employment_growth_rate": emp_growth,
+                "employment_growth_rate": safe_emp_growth,
                 "median_income_growth": income_growth,
                 "housing_demand_index": housing_demand,
                 "data_timestamp": timezone.now(),
@@ -817,8 +840,11 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             }
         )
 
-    # 4. Sort by composite_score descending
-    results.sort(key=lambda r: r["growth_area"].composite_score, reverse=True)
+    # 4. Sort by composite_score descending (None scores sort last)
+    results.sort(
+        key=lambda r: r["growth_area"].composite_score or Decimal("-999"),
+        reverse=True,
+    )
 
     return render(
         request,

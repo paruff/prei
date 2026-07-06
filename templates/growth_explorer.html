@@ -199,6 +199,14 @@
         <div class="empty-state-icon" aria-hidden="true">🔍</div>
         <h3>No places discovered</h3>
         <p>Census returned no populated places for <strong>{{ selected_state }}</strong>.</p>
+        <div class="message message-info mt-2 mb-3">
+          <strong>Possible causes:</strong>
+          <ul class="mb-0 ps-3 mt-1">
+            <li>The Census API key may not have permission for this query. Verify your <code>CENSUS_API_KEY</code> in <code>.env</code>.</li>
+            <li>The ACS data vintage may need updating. Check that the vintage (currently 2023) is available for this geography.</li>
+            <li>The state may have very few Census-classified "places" (incorporated cities/towns).</li>
+          </ul>
+        </div>
         <div class="d-flex flex-wrap gap-2 mt-3">
           <a href="{% url 'growth_explorer' %}" class="btn btn-outline-primary">Try another state</a>
           <a href="{% url 'vrm_properties_list' %}?state={{ selected_state }}" class="btn btn-outline-secondary">Browse VRM Properties for {{ selected_state }}</a>
@@ -222,6 +230,17 @@
   const select = document.getElementById('id_state');
   if (!form || !btn || !select) return;
 
+  /** Re-enable the form after an error or timeout. */
+  function resetForm() {
+    btn.classList.remove('btn-loading');
+    btn.disabled = false;
+    select.disabled = false;
+    const textSpan = btn.querySelector('.btn-text');
+    if (textSpan) textSpan.textContent = 'Analyze State';
+    const statusEl = document.getElementById('analysis-status');
+    if (statusEl) statusEl.remove();
+  }
+
   form.addEventListener('submit', function() {
     // Visual feedback
     btn.classList.add('btn-loading');
@@ -232,25 +251,39 @@
     // Disable select to prevent changes during request
     select.disabled = true;
 
-    // Show a progress indicator (optional enhancement)
+    // Show a progress indicator
     const statusEl = document.createElement('div');
     statusEl.id = 'analysis-status';
     statusEl.className = 'form-hint mt-2';
     statusEl.innerHTML = '⏳ Running Census API calls… this takes ~15–45 seconds.';
     form.appendChild(statusEl);
+
+    // Set a timeout safety net: if the request takes > 120 seconds,
+    // re-enable the form so the user can retry instead of being stuck.
+    setTimeout(function() {
+      if (btn.disabled) {
+        resetForm();
+        // Only replace the status text if it still exists (request may complete shortly after)
+        const staleStatus = document.getElementById('analysis-status');
+        if (staleStatus) {
+          staleStatus.innerHTML = '⚠️ Request timed out. Please try again.';
+          staleStatus.className = 'form-hint mt-2 text-warning';
+        }
+      }
+    }, 120000);
   });
 
   // Re-enable if user navigates back (bfcache)
   window.addEventListener('pageshow', function(event) {
     if (event.persisted) {
-      btn.classList.remove('btn-loading');
-      btn.disabled = false;
-      select.disabled = false;
-      const textSpan = btn.querySelector('.btn-text');
-      if (textSpan) textSpan.textContent = 'Analyze State';
-      const statusEl = document.getElementById('analysis-status');
-      if (statusEl) statusEl.remove();
+      resetForm();
     }
+  });
+
+  // Handle client-side network errors: if the page receives a popstate
+  // or the request is aborted, allow retry.
+  window.addEventListener('pagehide', function() {
+    // Page is being navigated away from — clean up if we return via bfcache
   });
 })();
 </script>

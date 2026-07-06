@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import os
 from datetime import timedelta
+from decimal import Decimal
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from core.integrations.market.bls import fetch_employment_growth
 from core.integrations.market.census import (
+    compute_supply_constraint_index,
     fetch_housing_demand_index,
     fetch_place_growth_metrics,
 )
@@ -61,12 +63,11 @@ MAJOR_CITIES = [
     ("AZ", "Phoenix", "55000"),
     ("MA", "Boston", "07000"),
     ("CO", "Denver", "20000"),
-    ("TN", "Nashville", "52000"),
+    ("TN", "Nashville", "52006"),
     ("TN", "Memphis", "48000"),
     ("MO", "Kansas City", "38000"),
     ("MO", "St. Louis", "65000"),
-    ("IN", "Indianapolis", "36000"),
-    ("WA", "Seattle", "63000"),
+    ("IN", "Indianapolis", "36003"),
     ("NV", "Las Vegas", "40000"),
     ("DC", "Washington", "50000"),
     ("OR", "Portland", "59000"),
@@ -180,6 +181,11 @@ class Command(BaseCommand):
         skipped = 0
         errors = 0
 
+        # State-level BLS cache: avoids duplicate API calls for cities in the same state.
+        # BLS employment growth is state-level, not city-level, so we cache per state_code.
+        # This also helps stay within BLS free-tier rate limits (~25 requests/day unregistered).
+        _bls_cache: dict[str, Decimal | None] = {}
+
         for state_code, city_name, place_code in targets:
             self.stdout.write(
                 f"Processing {city_name}, {state_code} (place={place_code})..."
@@ -221,13 +227,16 @@ class Command(BaseCommand):
 
                 pop_growth = census_data.get("population_growth_rate")
                 income_growth = census_data.get("median_income_growth_rate")
+                units_growth = census_data.get("housing_units_growth_rate")
 
-                # 2. BLS: employment growth (state-level)
-                emp_growth = fetch_employment_growth(
-                    state_code=state_code,
-                    api_key=bls_api_key,
-                    years_back=5,
-                )
+                # 2. BLS: employment growth (state-level, cached per state)
+                if state_code not in _bls_cache:
+                    _bls_cache[state_code] = fetch_employment_growth(
+                        state_code=state_code,
+                        api_key=bls_api_key,
+                        years_back=5,
+                    )
+                emp_growth = _bls_cache[state_code]
 
                 if emp_growth is None:
                     self.stdout.write(
@@ -252,7 +261,20 @@ class Command(BaseCommand):
                     )
                     housing_demand = 50  # neutral default
 
-                # 4. Upsert GrowthArea
+                # 4. Supply constraint index (GA-6)
+                supply_constraint = compute_supply_constraint_index(
+                    population_growth_rate=pop_growth,
+                    housing_units_growth_rate=units_growth,
+                )
+                if supply_constraint is None:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"  Supply constraint index unavailable for {city_name}, {state_code}"
+                        )
+                    )
+                    supply_constraint = 50  # neutral default
+
+                # 5. Upsert GrowthArea
                 growth_area, created = GrowthArea.objects.update_or_create(
                     state=state_code,
                     city_name=city_name,
@@ -262,16 +284,18 @@ class Command(BaseCommand):
                         "employment_growth_rate": emp_growth,
                         "median_income_growth": income_growth,
                         "housing_demand_index": housing_demand,
+                        "supply_constraint_index": supply_constraint,
                         "data_timestamp": timezone.now(),
                     },
                 )
 
                 action = "Created" if created else "Updated"
+                emp_str = f"{emp_growth}" if emp_growth is not None else "N/A"
                 self.stdout.write(
                     self.style.SUCCESS(
                         f"  {action} GrowthArea: pop_growth={pop_growth}, "
-                        f"emp_growth={emp_growth}, income_growth={income_growth}, "
-                        f"housing_demand={housing_demand}"
+                        f"emp_growth={emp_str}, income_growth={income_growth}, "
+                        f"housing_demand={housing_demand}, supply={supply_constraint}"
                     )
                 )
                 refreshed += 1

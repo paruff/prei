@@ -20,14 +20,69 @@
 
 **Definition:** everything from "here's a property/market" to "should I buy it, at what price."
 
+The end-to-end purchase pipeline has three stages that pass data forward:
+
+```
+Area Discovery ──→ Market Deep-Dive ──→ Property Underwriting
+   (which city?)      (neighborhood/ZIP)    (is this deal good?)
+```
+
 ### Already implemented (per `PRODUCT_STRATEGY.md`, cross-checked against models/services)
 - Property entry, NOI/Cap Rate/CoC/DSCR/GRM, Underwriting Score v2, depreciation, after-tax IRR, hold-period projection, BRRRR calculator, market intelligence (Census/BLS), investment targets.
 
+### 1.1 Area Discovery — Growth Area Explorer (this spec)
+
+The **Growth Area Explorer** is Stage 1 of the purchase pipeline. Its job is to answer: *"In which metropolitan area or city should I look for investment properties?"*
+
+#### Current implementation
+| Component | Status | Notes |
+|---|---|---|
+| `GrowthArea` model | ✅ Exists (core/models.py:643) | City-level; composite_score @property |
+| `growth_explorer` view (POST) | ✅ Exists (core/views.py:706) | Calls Census + BLS APIs for any state |
+| `growth_explorer.html` template | ✅ Exists | Full UI with form, table, loading state |
+| `growth_areas` view (GET, fallback) | ✅ Exists (core/views.py:679) | Reads GrowthArea, falls back to MarketSnapshot |
+| `growth_areas.html` template | ✅ Exists | Simpler table; uses MarketSnapshot fields |
+| `populate_growth_areas` mgmt command | ✅ Exists | Pre-seeds 73 major cities with place codes |
+| Census integration | ✅ Exists | `core/integrations/market/census.py` |
+| BLS integration | ✅ Exists | `core/integrations/market/bls.py` |
+| API endpoint | ✅ Exists | `/api/v1/real-estate/growth-areas` |
+| Tests | ✅ Exists | 3 test files covering view, model, API |
+| **Data in DB** | ❌ **EMPTY** | GrowthArea count = 0, MarketSnapshot count = 0 |
+| **Scoring methodology validation** | ❌ **UNVALIDATED** | Weights are arbitrary, no empirical basis |
+| **Pipeline integration** | ❌ **PARTIAL** | Links to VRM browse; no watchlist or compare |
+
+#### Methodology decisions
+
+The current composite score uses four factors with fixed weights:
+
+| Factor | Weight | Source | Granularity |
+|---|---|---|---|
+| Population growth rate | 0.25 | Census ACS (5yr vintage compare) | Place (city) |
+| Employment growth rate | 0.35 | BLS LAUS | State-level only |
+| Median income growth | 0.25 | Census ACS (5yr vintage compare) | Place (city) |
+| Housing demand index | 0.15 | Census ACS occupancy data | Place (city) |
+
+**Known problems with this methodology:**
+1. **Arbitrary weights** — no empirical or theoretical basis for the factor weights.
+2. **Missing leading indicators** — no school quality, crime, climate risk, construction pipeline, rent-to-price ratio, zoning regulation, or supply constraint data.
+3. **Geographic granularity gap** — city-level data masks neighborhood-level variation. Stage 2 (Market Deep-Dive) should handle ZIP/neighborhood granularity.
+4. **State-level employment** — all cities in one state share the same employment growth figure, making it useless for intra-state comparison.
+5. **Data age** — ACS_VINTAGE = "2022" is hardcoded; growth trends may have shifted.
+6. **Scoring may crash** — composite_score property does not guard against None values in its factors.
+
+**Recommended direction (from discovery):**
+- Keep the current four-factor approach as a default but **add user-adjustable weight sliders** so investors can weight factors according to their strategy.
+- **Add supply-constraint proxy** (building permit data from Census or local sources) — a market with high demand AND low supply is the sweet spot.
+- **Add rent-to-price ratio** as a cash-flow viability filter (from MarketSnapshot or ATTOM).
+- **Link to Stage 2** — clicking a city should show ZIP-level rent/price/demand detail before jumping to property search.
+- **Pre-populate** via the management command OR fix the POST flow so it reliably writes data.
+
 ### Remaining gaps (this phase, in priority order)
-1. **Login works reliably in local/dev.** Root cause identified: `DJANGO_ENV=production` + `DEBUG=False` forces `SESSION_COOKIE_SECURE=True`, breaking cookies over plain HTTP. Fix: ensure `.env` has `DJANGO_ENV=development`/`DEBUG=True` for local use; document this prominently (README already mentions it but a first-run script would prevent the mistake).
-2. **Remove `investor_app`** (confirmed dead/unregistered) or explicitly document why it's kept, to stop it confusing future contributors or agents about which `Property` model is real.
-3. **Resolve the two pending decisions from the prior market-data plan** (crime data source choice; GrowthArea vs MarketSnapshot split) — these were left open on purpose and should be closed before Phase 1 is called "done," since growth-area screening is part of the purchase workflow.
-4. **Populate `docs/KNOWN_LIMITATIONS.md`** with real entries (starting with the two above) instead of the placeholder.
+1. **Growth Area Explorer data pipeline** — DB is empty (0 rows in GrowthArea and MarketSnapshot). The POST flow at `/growth-explorer/` should work, but either API calls are failing or the user hasn't submitted the form. Fix the root cause so data flows reliably.
+2. **Login works reliably in local/dev.** Root cause identified: `DJANGO_ENV=production` + `DEBUG=False` forces `SESSION_COOKIE_SECURE=True`, breaking cookies over plain HTTP. Fix: ensure `.env` has `DJANGO_ENV=development`/`DEBUG=True` for local use; document this prominently (README already mentions it but a first-run script would prevent the mistake).
+3. **Remove `investor_app`** (confirmed dead/unregistered) or explicitly document why it's kept, to stop it confusing future contributors or agents about which `Property` model is real.
+4. **Resolve the two pending decisions from the prior market-data plan** (crime data source choice; GrowthArea vs MarketSnapshot split) — these were left open on purpose and should be closed before Phase 1 is called "done," since growth-area screening is part of the purchase workflow.
+5. **Populate `docs/KNOWN_LIMITATIONS.md`** with real entries (starting with the two above) instead of the placeholder.
 
 ### Acceptance criteria — Phase 1 close-out
 - AC1: Fresh clone + `.env.example` copy + documented steps → successful login without manual settings debugging.

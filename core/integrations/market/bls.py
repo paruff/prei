@@ -15,61 +15,64 @@ logger = logging.getLogger(__name__)
 
 BLS_API_BASE = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
 
-# State FIPS codes for BLS series IDs
-# BLS LAUS series format: LAUST{FIPS}000000000X
+# State FIPS codes (2-digit) for BLS state-level series IDs
+# BLS LAUS series format: LAUST{SS}000000000X
+# Where SS = 2-digit state FIPS (e.g., "06" for California)
 # Measure codes: 0000000003 = unemployment rate, 0000000005 = employment level
+# NOTE: The prior code incorrectly used 5-digit county FIPS codes ("06001" for CA)
+# instead of 2-digit state FIPS codes ("06" for CA). This has been corrected.
 STATE_FIPS = {
-    "AL": "01001",
-    "AK": "02001",
-    "AZ": "04001",
-    "AR": "05001",
-    "CA": "06001",
-    "CO": "08001",
-    "CT": "09001",
-    "DE": "10001",
-    "DC": "11001",
-    "FL": "12001",
-    "GA": "13001",
-    "HI": "15001",
-    "ID": "16001",
-    "IL": "17001",
-    "IN": "18001",
-    "IA": "19001",
-    "KS": "20001",
-    "KY": "21001",
-    "LA": "22001",
-    "ME": "23001",
-    "MD": "24001",
-    "MA": "25001",
-    "MI": "26001",
-    "MN": "27001",
-    "MS": "28001",
-    "MO": "29001",
-    "MT": "30001",
-    "NE": "31001",
-    "NV": "32001",
-    "NH": "33001",
-    "NJ": "34001",
-    "NM": "35001",
-    "NY": "36001",
-    "NC": "37001",
-    "ND": "38001",
-    "OH": "39001",
-    "OK": "40001",
-    "OR": "41001",
-    "PA": "42001",
-    "RI": "44001",
-    "SC": "45001",
-    "SD": "46001",
-    "TN": "47001",
-    "TX": "48001",
-    "UT": "49001",
-    "VT": "50001",
-    "VA": "51001",
-    "WA": "53001",
-    "WV": "54001",
-    "WI": "55001",
-    "WY": "56001",
+    "AL": "01",
+    "AK": "02",
+    "AZ": "04",
+    "AR": "05",
+    "CA": "06",
+    "CO": "08",
+    "CT": "09",
+    "DE": "10",
+    "DC": "11",
+    "FL": "12",
+    "GA": "13",
+    "HI": "15",
+    "ID": "16",
+    "IL": "17",
+    "IN": "18",
+    "IA": "19",
+    "KS": "20",
+    "KY": "21",
+    "LA": "22",
+    "ME": "23",
+    "MD": "24",
+    "MA": "25",
+    "MI": "26",
+    "MN": "27",
+    "MS": "28",
+    "MO": "29",
+    "MT": "30",
+    "NE": "31",
+    "NV": "32",
+    "NH": "33",
+    "NJ": "34",
+    "NM": "35",
+    "NY": "36",
+    "NC": "37",
+    "ND": "38",
+    "OH": "39",
+    "OK": "40",
+    "OR": "41",
+    "PA": "42",
+    "RI": "44",
+    "SC": "45",
+    "SD": "46",
+    "TN": "47",
+    "TX": "48",
+    "UT": "49",
+    "VT": "50",
+    "VA": "51",
+    "WA": "53",
+    "WV": "54",
+    "WI": "55",
+    "WY": "56",
 }
 
 
@@ -94,9 +97,11 @@ def fetch_unemployment_rate(state_code: str, api_key: str) -> Decimal | None:
         return None
 
     # Use statewide seasonally adjusted unemployment rate
-    # Series format: LAUST{FIPS}0000000003 (SA = seasonally adjusted)
+    # Series format: LAUST{SS}0000000000003
+    # Where SS = 2-digit state FIPS, and the 13-digit suffix encodes
+    # the measure type (0000000000003 = unemployment rate).
     fips = STATE_FIPS[state_code]
-    series_id = f"LAUST{fips}0000000003"
+    series_id = f"LAUST{fips}0000000000003"
 
     return _fetch_bls_value(series_id, api_key, state_code)
 
@@ -128,8 +133,11 @@ def fetch_employment_growth(
         return None
 
     fips = STATE_FIPS[state_code]
-    # Employment level measure code = 0000000005
-    series_id = f"LAUST{fips}0000000005"
+    # Employment level measure code = 0000000000005
+    # Series format: LAUST{SS}0000000000005
+    # Where SS = 2-digit state FIPS and the 13-digit suffix encodes
+    # the measure type (0000000000005 = employment level).
+    series_id = f"LAUST{fips}0000000000005"
 
     # Calculate year range
     from datetime import datetime
@@ -144,7 +152,9 @@ def fetch_employment_growth(
         "startyear": start_year,
         "endyear": end_year,
     }
-    params = {"key": api_key}
+    # BLS API v2 uses "registrationkey" (not "key") for authentication.
+    # Pass it in the POST body as the API docs require.
+    params = {"registrationkey": api_key}
 
     try:
         resp = requests.post(
@@ -240,7 +250,8 @@ def _fetch_bls_value(series_id: str, api_key: str, state_code: str) -> Decimal |
         "startyear": "2023",
         "endyear": "2024",
     }
-    params = {"key": api_key}
+    # BLS API v2 uses "registrationkey" (not "key") for authentication.
+    params = {"registrationkey": api_key}
 
     try:
         resp = requests.post(

@@ -59,7 +59,7 @@ class ATTOMAdapter:
 
         self.session = requests.Session()
         headers: Dict[str, str] = {
-            "apikey": self.api_key or "",
+            "APIKey": self.api_key or "",
             "Accept": "application/json",
         }
         self.session.headers.update(headers)

@@ -41,12 +41,14 @@ class TestGrowthAreaModel:
             employment_growth_rate=Decimal("4.0"),
             median_income_growth=Decimal("3.0"),
             housing_demand_index=80,
+            supply_constraint_index=50,
             data_timestamp=timezone.now(),
         )
 
-        # Expected: (2.0 * 0.25) + (4.0 * 0.35) + (3.0 * 0.25) + (80 * 0.15)
-        # = 0.5 + 1.4 + 0.75 + 12 = 14.65
-        expected_score = Decimal("14.65")
+        # Expected (GA-6 weights): pop 0.20, emp 0.35, income 0.20, housing 0.10, supply 0.15
+        # (2.0 * 0.20) + (4.0 * 0.35) + (3.0 * 0.20) + (80 * 0.10) + (50 * 0.15)
+        # = 0.4 + 1.4 + 0.6 + 8 + 7.5 = 17.9
+        expected_score = Decimal("17.9")
         assert area.composite_score == expected_score
 
     def test_composite_score_with_zero_values(self):
@@ -59,6 +61,7 @@ class TestGrowthAreaModel:
             employment_growth_rate=Decimal("0"),
             median_income_growth=Decimal("0"),
             housing_demand_index=0,
+            supply_constraint_index=0,
             data_timestamp=timezone.now(),
         )
 
@@ -74,12 +77,14 @@ class TestGrowthAreaModel:
             employment_growth_rate=Decimal("-2.0"),
             median_income_growth=Decimal("-1.5"),
             housing_demand_index=50,
+            supply_constraint_index=50,
             data_timestamp=timezone.now(),
         )
 
-        # Expected: (-1.0 * 0.25) + (-2.0 * 0.35) + (-1.5 * 0.25) + (50 * 0.15)
-        # = -0.25 + -0.7 + -0.375 + 7.5 = 6.175
-        expected_score = Decimal("6.175")
+        # Expected (GA-6 weights): pop 0.20, emp 0.35, income 0.20, housing 0.10, supply 0.15
+        # (-1.0 * 0.20) + (-2.0 * 0.35) + (-1.5 * 0.20) + (50 * 0.10) + (50 * 0.15)
+        # = -0.2 + -0.7 + -0.3 + 5 + 7.5 = 11.3
+        expected_score = Decimal("11.3")
         assert area.composite_score == expected_score
 
     def test_string_representation(self):

@@ -647,9 +647,12 @@ class GrowthArea(models.Model):
     city_name = models.CharField(max_length=255)
     metro_area = models.CharField(max_length=255, blank=True)
     population_growth_rate = models.DecimalField(max_digits=6, decimal_places=2)
-    employment_growth_rate = models.DecimalField(max_digits=6, decimal_places=2)
+    employment_growth_rate = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
     median_income_growth = models.DecimalField(max_digits=6, decimal_places=2)
     housing_demand_index = models.IntegerField()
+    supply_constraint_index = models.IntegerField(default=50, null=True, blank=True)
     latitude = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True
     )
@@ -672,18 +675,37 @@ class GrowthArea(models.Model):
         return f"{self.city_name}, {self.state}"
 
     @property
-    def composite_score(self) -> Decimal:
-        """Calculate composite growth score based on weighted metrics."""
-        pop_weight = Decimal("0.25")
+    def composite_score(self) -> Decimal | None:
+        """Calculate composite growth score based on weighted metrics.
+
+        Returns None if none of the weighted factors are available (all are None/zero).
+        Missing factors are treated as 0 so a partial score is still computable.
+
+        Weights (revised GA-6):
+          - Population growth rate:  0.20  (place-level, Census ACS)
+          - Employment growth rate:  0.35  (state-level, BLS LAUS)
+          - Median income growth:    0.20  (place-level, Census ACS)
+          - Housing demand index:    0.10  (place-level, Census ACS occupancy)
+          - Supply constraint index: 0.15  (place-level, Census ACS housing-unit growth)
+        """
+        pop_weight = Decimal("0.20")
         emp_weight = Decimal("0.35")
-        income_weight = Decimal("0.25")
-        housing_weight = Decimal("0.15")
+        income_weight = Decimal("0.20")
+        housing_weight = Decimal("0.10")
+        supply_weight = Decimal("0.15")
+
+        pop_rate = self.population_growth_rate or Decimal("0")
+        emp_rate = self.employment_growth_rate or Decimal("0")
+        income_rate = self.median_income_growth or Decimal("0")
+        housing_idx = Decimal(self.housing_demand_index or 0)
+        supply_idx = Decimal(self.supply_constraint_index or 0)
 
         score = (
-            self.population_growth_rate * pop_weight
-            + self.employment_growth_rate * emp_weight
-            + self.median_income_growth * income_weight
-            + Decimal(self.housing_demand_index) * housing_weight
+            pop_rate * pop_weight
+            + emp_rate * emp_weight
+            + income_rate * income_weight
+            + housing_idx * housing_weight
+            + supply_idx * supply_weight
         )
         return score
 

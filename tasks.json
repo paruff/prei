@@ -2,9 +2,9 @@
   "skill": "plan",
   "status": "draft",
   "notes": [
-    "Written by Claude, outside opencode. I have NOT seen the actual exception message (the pasted log cuts off before the 'ExceptionType: message' line) — TASK-1 must run and be reviewed before TASK-2/3 are trusted as the right fix.",
-    "Same caveat as before: I don't have verified information about a model called 'DeepSeek v4 flash' — plan is written to be explicit/model-agnostic rather than assuming a particular reasoning style.",
-    "'agent' values use opencode.json's roles (planner/coder/test-writer) per your existing config."
+    "This file contains two independent plans: (A) Docker/SQLite crash fix (TASK-1 through TASK-5), and (B) Growth Area Explorer methodology & data pipeline (GA-1 through GA-6). They are independent and can be worked in any order.",
+    "'agent' values use opencode.json's roles (planner/coder/test-writer) per your existing config.",
+    "Workflow A (Discovery) has been completed: discovery-brief.md, specification.md (updated §1.1), design.md (updated Appendix A) are ready. This task list documents the implementation path but should not be built until the user confirms the methodology direction."
   ],
   "confirmed_root_cause": {
     "claim": "CONFIRMED via docker compose logs: sqlite3.OperationalError: unable to open database file. BASE_DIR (investor_app/settings.py line 9) resolves to /app. Dockerfile COPY . . runs as root, then only 'chown -R app:app /app/.runtime' is run before USER app — /app itself stays root-owned, so the non-root 'app' user cannot create /app/db.sqlite3.",
@@ -33,6 +33,7 @@
       "estimated_lines": 2,
       "dependencies": ["TASK-1"],
       "skills": ["code-generation"],
+      "status": "pending",
       "acceptance_criteria": [
         "Change `RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app/.runtime` to `RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app` in the Dockerfile",
         "Rebuild image (`docker compose build`) and re-run `docker compose up` — confirm gunicorn starts, container status stays 'Up' (not restarting), and http://localhost:8000/ responds",
@@ -46,6 +47,7 @@
       "estimated_lines": 40,
       "dependencies": ["TASK-2"],
       "skills": ["test"],
+      "status": "pending",
       "acceptance_criteria": [
         "tests/test_container_startup.py currently only asserts string content of the Dockerfile/entrypoint/render.yaml — it does not actually build or run the container",
         "Add a test (marked slow/integration, skippable in fast CI runs if needed) that actually builds the image and runs `docker run --rm <image> python manage.py migrate --noinput` (or equivalent) as the non-root user, asserting exit code 0 — this would have caught the actual failure, unlike the existing string-matching tests",
@@ -54,29 +56,147 @@
     },
     {
       "id": "TASK-5",
-      "title": "Fix healthcheck path mismatch between Docker and Render configs (unrelated to the crash, found while investigating)",
+      "title": "Fix healthcheck path mismatch between Docker and Render configs",
       "agent": "coder",
       "estimated_lines": 5,
       "dependencies": [],
       "skills": ["code-generation"],
+      "status": "pending",
       "acceptance_criteria": [
-        "Dockerfile/docker-compose.yml healthcheck hits /api/health/ ; render.yaml's healthCheckPath is /health/ ; core/urls.py only registers a health_check view at /health/ (not /api/health/) — confirm which path actually exists and make Docker/Compose consistent with it",
-        "This is a separate, lower-priority bug from the login crash — does not need to block TASK-1/2, but is real and would silently mark the container 'unhealthy' even if gunicorn is running"
+        "Dockerfile/docker-compose.yml healthcheck hits /api/health/ ; render.yaml's healthCheckPath is /health/ ; core/urls.py only registers a health_check view at /health/ (not /api/health/) — make Docker/Compose consistent with the actual URLconf",
+        "This is a separate, lower-priority bug — does not block TASK-1/2, but silently marks the container 'unhealthy' even if gunicorn is running"
+      ]
+    },
+    {
+      "id": "GA-0",
+      "title": "[DISCOVERY] Explore investment-area methodology and document findings",
+      "agent": "planner",
+      "estimated_lines": 0,
+      "dependencies": [],
+      "skills": ["discovery", "spec"],
+      "status": "complete",
+      "acceptance_criteria": [
+        "discovery-brief.md exists with persona, JTBD, riskiest assumption, acceptance criterion, DORA mapping, and prior art analysis",
+        "specification.md §1.1 documents the Growth Area Explorer methodology with factor weights, data sources, granularity, and known gaps",
+        "design.md Appendix A documents the purchase pipeline architecture, data source decisions, scoring methodology, and risk items",
+        "Key decisions (GrowthArea vs MarketSnapshot, crime data source) are resolved or deferred with rationale",
+        "Workflow STOPS at plan — no implementation code is written"
+      ]
+    },
+    {
+      "id": "GA-1",
+      "title": "Diagnose why GrowthArea and MarketSnapshot are empty (0 rows in DB)",
+      "agent": "planner",
+      "estimated_lines": 0,
+      "dependencies": [],
+      "skills": ["research"],
+      "status": "complete",
+      "acceptance_criteria": [
+        "Run `python manage.py populate_growth_areas --state=CA --city=\"San Francisco\"` and capture full stdout/stderr — report whether Census/BLS API calls succeed or fail",
+        "If API calls fail: identify whether it's an auth error (key permission), rate limit, API endpoint change, or data format change",
+        "If API calls succeed: confirm GrowthArea rows are created and data flows through",
+        "Alternatively: test the POST flow at /growth-explorer/ via curl or browser with debug logging enabled"
+      ]
+    },
+    {
+      "id": "GA-2",
+      "title": "Fix None-safety in composite_score and view logic",
+      "agent": "coder",
+      "estimated_lines": 15,
+      "dependencies": ["GA-1"],
+      "skills": ["code-generation", "refactoring"],
+      "status": "complete",
+      "acceptance_criteria": [
+        "`GrowthArea.composite_score` property handles None values gracefully (returns None or skips the factor)",
+        "`growth_explorer` view validates that population_growth_rate, employment_growth_rate, median_income_growth are not None before computing composite_score or upserting into DB",
+        "Test added for None-in-factors scenario",
+        "Existing tests still pass"
+      ]
+    },
+    {
+      "id": "GA-3",
+      "title": "Improve empty-state and error UX for growth area pages",
+      "agent": "coder",
+      "estimated_lines": 30,
+      "dependencies": ["GA-1"],
+      "skills": ["code-generation"],
+      "status": "complete",
+      "acceptance_criteria": [
+        "growth_explorer.html shows actionable guidance when GrowthArea and MarketSnapshot are both empty (e.g., 'Select a state and click Analyze State to discover growth areas via Census/BLS data')",
+        "growth_areas.html shows a link to /growth-explorer/ when empty, rather than just 'No market snapshots available'",
+        "API failure mid-flight shows a per-place or summary error message, not silent omission",
+        "Form submit button re-enables on network error/timeout (JS error handling)"
+      ]
+    },
+    {
+      "id": "GA-4",
+      "title": "Run populate_growth_areas to pre-seed the DB or verify the POST flow end-to-end",
+      "agent": "coder",
+      "estimated_lines": 1,
+      "dependencies": ["GA-1", "GA-2"],
+      "skills": ["code-generation"],
+      "status": "pending",
+      "acceptance_criteria": [
+        "After running `python manage.py populate_growth_areas` (with all 73 cities, or a representative subset), GrowthArea table has >0 rows",
+        "/growth/ page shows data (not 'No market snapshots available')",
+        "/api/v1/real-estate/growth-areas?state=CA returns meaningful results",
+        "OR the POST flow at /growth-explorer/ works end-to-end — user selects state, submits, sees ranked results"
+      ]
+    },
+    {
+      "id": "GA-5",
+      "title": "Update ACS_VINTAGE to auto-detect latest available vintage",
+      "agent": "coder",
+      "estimated_lines": 10,
+      "dependencies": ["GA-1"],
+      "skills": ["code-generation", "refactoring"],
+      "status": "pending",
+      "acceptance_criteria": [
+        "ACS_VINTAGE and ACS_VINTAGE_PRIOR are no longer hardcoded as '2022'/'2017'",
+        "The integration queries Census API to discover the latest available ACS5 vintage at runtime",
+        "Vintages are cached (e.g., for 24 hours) to avoid redundant API calls on every request",
+        "Existing tests still pass (may need to update mock expectations)"
+      ]
+    },
+    {
+      "id": "GA-6",
+      "title": "Add supply-constraint proxy (building permits) to GrowthArea scoring",
+      "agent": "coder",
+      "estimated_lines": 25,
+      "dependencies": ["GA-1"],
+      "skills": ["code-generation"],
+      "status": "pending",
+      "acceptance_criteria": [
+        "Fetch building permit data from Census BPS (Building Permits Survey) for each place — total units permitted per year",
+        "Compute a supply-constraint ratio: (new units permitted / population growth) — lower ratio = tighter supply = stronger demand signal",
+        "Add `building_permits_annual` and `supply_constraint_index` fields to GrowthArea model (use a new migration)",
+        "Include the supply constraint in composite_score (weight ~0.10, redistributing from existing factors)",
+        "Tests pass for the new data source"
       ]
     }
   ],
   "dependency_graph": {
-    "nodes": ["TASK-1", "TASK-2", "TASK-4", "TASK-5"],
+    "nodes": ["TASK-1", "TASK-2", "TASK-4", "TASK-5", "GA-0", "GA-1", "GA-2", "GA-3", "GA-4", "GA-5", "GA-6"],
     "edges": [
       ["TASK-1", "TASK-2"],
-      ["TASK-2", "TASK-4"]
+      ["TASK-2", "TASK-4"],
+      ["GA-0", "GA-1"],
+      ["GA-1", "GA-2"],
+      ["GA-1", "GA-3"],
+      ["GA-1", "GA-5"],
+      ["GA-1", "GA-6"],
+      ["GA-2", "GA-4"]
     ]
   },
   "summary": {
-    "total_tasks": 4,
-    "blocking_task": "None remaining — TASK-1 is confirmed, TASK-2 is a 1-line fix ready to implement",
+    "total_tasks": 11,
+    "blocking_task": "GA-1 (diagnose empty DB) is the highest-priority and blocks GA-2/GA-3/GA-4/GA-5/GA-6 — without knowing why data is empty, any fix is speculative",
     "unconfirmed_items": [
-      "Whether TASK-5's healthcheck mismatch (/api/health/ vs /health/) is actually causing any user-visible symptom, versus being a latent bug found incidentally — still worth fixing either way"
+      "Whether the Census and BLS API keys in .env actually work (they may be expired, revoked, or lack the right permissions)",
+      "Whether the Census ACS 2022 vintage API still returns data in the expected format",
+      "Whether the BLS employment growth API returns the expected LAUS series data",
+      "Whether the user wants pre-seeded data (management command) or on-demand (POST flow) or both",
+      "Whether the revised scoring methodology (with supply constraint) is worth building before confirming the existing factors work"
     ]
   }
 }
