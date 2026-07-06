@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
 from decimal import Decimal
-from math import ceil
-from typing import Any
-from urllib.parse import urljoin
+from typing import Any, cast
 
 import requests
 from bs4 import BeautifulSoup
@@ -31,6 +30,10 @@ class VrmScraper:
         self.delay_seconds = float(
             default_delay if delay_seconds is None else delay_seconds
         )
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def collect_state_listings(self, state_code: str) -> list[dict[str, Any]]:
         """Collect all listing pages for a single state."""
@@ -96,112 +99,194 @@ class VrmScraper:
         details["county"] = self._extract_county_from_breadcrumb(soup)
         return details
 
+    # ------------------------------------------------------------------
+    # Listing-page parsing (JSON-model based)
+    # ------------------------------------------------------------------
+
     def extract_total_pages(self, html: str) -> int:
-        """Extract total pagination page count from result count text."""
+        """Extract total pagination page count from the embedded JSON model."""
         soup = BeautifulSoup(html, "html.parser")
-        count_selectors = [
-            ".search-results-count",
-            ".results-count",
-            "[data-testid='results-count']",
-        ]
+        model = self._extract_json_model(soup)
+        if model is not None:
+            total_pages = model.get("totalPages")
+            if isinstance(total_pages, int) and total_pages >= 1:
+                return total_pages
 
-        count_text = ""
-        for selector in count_selectors:
-            element = soup.select_one(selector)
-            if element:
-                count_text = element.get_text(" ", strip=True)
-                break
-
-        if not count_text:
-            count_text = soup.get_text(" ", strip=True)
-
-        matches = [
-            re.search(r"of\s+(\d+)", count_text, flags=re.IGNORECASE),
-            re.search(r"(\d+)\s+results", count_text, flags=re.IGNORECASE),
-        ]
-        for match in matches:
+        # Fallback: try text-based extraction
+        count_text = soup.get_text(" ", strip=True)
+        for p in (r"of\s+(\d+)", r"(\d+)\s+results"):
+            match = re.search(p, count_text, flags=re.IGNORECASE)
             if match:
                 total_results = int(match.group(1))
-                return max(1, ceil(total_results / self.RESULTS_PER_PAGE))
+                return max(1, -(-total_results // self.RESULTS_PER_PAGE))  # ceil
 
         return 1
 
     def extract_properties_from_html(self, html: str) -> list[dict[str, Any]]:
-        """Extract VRM property cards from listing HTML."""
+        """Extract VRM property cards from the embedded JSON model.
+
+        The VRM site now renders property data via a ``<script>`` tag
+        containing ``propertySearchResultsModelJson`` — a JSON object
+        with a ``properties`` array.  We parse that instead of scraping
+        CSS classes from the DOM.
+        """
         soup = BeautifulSoup(html, "html.parser")
-        properties: list[dict[str, Any]] = []
+        model = self._extract_json_model(soup)
+        if model is None:
+            logger.warning("No propertySearchResultsModelJson found in page HTML")
+            return []
+
+        raw_properties: list[dict[str, Any]] = model.get("properties") or []
         seen_ids: set[int] = set()
+        result: list[dict[str, Any]] = []
 
-        for card_link in soup.select("a[href*='/Property-For-Sale/']"):
-            property_data = self._extract_property_data(card_link)
-            if not property_data:
+        for raw in raw_properties:
+            prop = self._json_to_property(raw)
+            if prop is None:
                 continue
 
-            property_id = int(property_data["vrm_property_id"])
-            if property_id in seen_ids:
+            pid = prop["vrm_property_id"]
+            if pid in seen_ids:
                 continue
+            seen_ids.add(pid)
+            result.append(prop)
 
-            seen_ids.add(property_id)
-            properties.append(property_data)
+        return result
 
-        return properties
+    # ------------------------------------------------------------------
+    # JSON-model helpers
+    # ------------------------------------------------------------------
 
-    def _extract_property_data(self, card_link: Any) -> dict[str, Any] | None:
-        """Extract a normalized property dictionary from one card link element."""
-        href = card_link.get("href")
-        if not isinstance(href, str):
+    @staticmethod
+    def _extract_json_model(soup: BeautifulSoup) -> dict[str, Any] | None:
+        """Find and parse ``propertySearchResultsModelJson`` from a ``<script>`` tag."""
+        pattern = re.compile(
+            r"var\s+propertySearchResultsModelJson\s*=\s*(\{.*?\});",
+            re.DOTALL,
+        )
+        for script in soup.find_all("script"):
+            text = script.string
+            if not text:
+                continue
+            match = pattern.search(text)
+            if match:
+                try:
+                    return cast("dict[str, Any]", json.loads(match.group(1)))
+                except json.JSONDecodeError as exc:
+                    logger.warning("Failed to parse property JSON model: %s", exc)
+                    return None
+        return None
+
+    def _json_to_property(self, raw: dict[str, Any]) -> dict[str, Any] | None:
+        """Convert a single JSON property object into our normalized schema.
+
+        Returns ``None`` when the record has no usable identifier or
+        address — those listings are incomplete placeholders.
+        """
+        raw_id = raw.get("assetId")
+        if not isinstance(raw_id, int) or raw_id <= 0:
             return None
 
-        match = re.search(r"/Property-For-Sale/(\d+)/", href)
-        if not match:
-            return None
-
-        vrm_property_id = int(match.group(1))
-        full_url = urljoin(f"{self.BASE_URL}/", href.lstrip("/"))
-
-        address_text = self._extract_text(card_link, [".property-address", ".address"])
-        address = self._parse_address(address_text)
-
-        status_text = self._extract_text(
-            card_link,
-            [".status-badge", "[class*='status']", "[class*='badge']"],
-        )
-        listing_type_text = self._extract_text(
-            card_link,
-            [".auction-badge", "[class*='auction']"],
-        )
-
-        return {
-            "vrm_property_id": vrm_property_id,
-            "vrm_listing_url": full_url,
-            "address": address["address"],
-            "city": address["city"],
-            "state": address["state"],
-            "zip_code": address["zip_code"],
-            "list_price": self._parse_decimal(
-                self._extract_text(card_link, [".property-price", "[class*='price']"])
-            ),
-            "bedrooms": self._parse_int(
-                self._extract_text(card_link, [".beds", "[class*='bed']"])
-            ),
-            "bathrooms": self._parse_decimal(
-                self._extract_text(card_link, [".baths", "[class*='bath']"])
-            ),
-            "square_feet": self._parse_int(
-                self._extract_text(card_link, [".sqft", "[class*='sqft']"])
-            ),
-            "status": self._normalize_status(status_text),
-            "vendee_eligible": self._has_vendee_badge(card_link),
-            "listing_type": self._normalize_listing_type(listing_type_text),
+        # --- map known fields ---
+        prop: dict[str, Any] = {
+            "vrm_property_id": raw_id,
+            "vendee_eligible": bool(raw.get("isVendeeFinancing", False)),
         }
 
-    def _extract_text(self, node: Any, selectors: list[str]) -> str:
-        """Extract text using the first matching selector."""
-        for selector in selectors:
-            element = node.select_one(selector)
-            if element:
-                return str(element.get_text(" ", strip=True))
-        return ""
+        # address: combine line1 + line2
+        addr = (raw.get("addressLine1") or "").strip()
+        addr2 = (raw.get("addressLine2") or "").strip()
+        if addr2:
+            addr = f"{addr} {addr2}"
+        prop["address"] = addr
+
+        prop["city"] = (raw.get("city") or "").strip().title()
+        prop["state"] = (raw.get("state") or "").strip().upper()
+        prop["zip_code"] = str(raw.get("zip") or "").strip()
+
+        # price: treat 0 / None as "not listed"
+        price_raw = raw.get("listPrice")
+        if isinstance(price_raw, (int, float)) and price_raw > 0:
+            prop["list_price"] = Decimal(str(price_raw))
+        else:
+            prop["list_price"] = None
+
+        # numeric fields
+        prop["bedrooms"] = self._json_int(raw.get("bedrooms"))
+        prop["bathrooms"] = self._json_decimal(raw.get("bathrooms"))
+        prop["square_feet"] = self._json_int(raw.get("squareFootage"))
+
+        # status
+        status_str = (raw.get("assetListingStatus") or "").strip()
+        prop["status"] = self._normalize_json_status(status_str)
+
+        # listing type
+        prop["listing_type"] = self._json_listing_type(raw)
+
+        # listing URL
+        prop["vrm_listing_url"] = self._build_listing_url(prop)
+
+        return prop
+
+    @staticmethod
+    def _json_int(value: Any) -> int | None:
+        """Safely cast a JSON number to ``int``."""
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _json_decimal(value: Any) -> Decimal | None:
+        """Safely cast a JSON number to ``Decimal``."""
+        if value is None:
+            return None
+        try:
+            return Decimal(str(value))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_json_status(status_str: str) -> str:
+        """Map VRM's ``assetListingStatus`` to our ``VrmProperty.Status`` choices."""
+        if not status_str:
+            return VrmProperty.Status.FOR_SALE
+        normalized = status_str.lower().strip()
+        if "coming" in normalized:
+            return VrmProperty.Status.COMING_SOON
+        if "pending" in normalized or "under contract" in normalized:
+            return VrmProperty.Status.PENDING
+        if "sold" in normalized:
+            return VrmProperty.Status.SOLD
+        return VrmProperty.Status.FOR_SALE
+
+    @staticmethod
+    def _json_listing_type(raw: dict[str, Any]) -> str:
+        """Determine listing type from JSON auction flags."""
+        if raw.get("isOnlineAuction"):
+            return VrmProperty.ListingType.ONLINE_AUCTION
+        if raw.get("isAuction"):
+            return VrmProperty.ListingType.IN_PERSON_AUCTION
+        return VrmProperty.ListingType.TRADITIONAL
+
+    @staticmethod
+    def _build_listing_url(prop: dict[str, Any]) -> str:
+        """Construct the VRM listing detail URL from property components."""
+        pid = prop["vrm_property_id"]
+        # Build slug: "123 Main St, City, ST 12345" -> "123-main-st-city-st-12345"
+        parts = [
+            prop.get("address", ""),
+            prop.get("city", ""),
+            prop.get("state", ""),
+            prop.get("zip_code", ""),
+        ]
+        slug = "-".join(p for p in parts if p)
+        slug = slug.lower().replace(" ", "-")
+        slug = re.sub(r"[^a-z0-9-]", "", slug)
+        slug = re.sub(r"-+", "-", slug).strip("-")
+        return f"{VrmScraper.BASE_URL}/Property-For-Sale/{pid}/{slug}"
 
     def _extract_geo_position(self, soup: BeautifulSoup) -> dict[str, Decimal | None]:
         """Parse latitude/longitude from the geo.position meta tag."""
@@ -297,48 +382,17 @@ class VrmScraper:
             return breadcrumb_texts[1]
         return None
 
-    def _parse_address(self, address_text: str) -> dict[str, str]:
-        """Parse `street, city, ST ZIP` style addresses."""
-        if not address_text:
-            return {"address": "", "city": "", "state": "", "zip_code": ""}
-
-        match = re.match(
-            r"^\s*(.*?)\s*,\s*(.*?)\s*,\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\s*$",
-            address_text,
+    def _has_vendee_badge(self, card_link: Any) -> bool:
+        """Detect Vendee-eligible marker in the listing card."""
+        return bool(
+            card_link.select_one(
+                "img[alt*='vendee' i], img[src*='vendee' i], [class*='vendee' i]"
+            )
         )
-        if match:
-            return {
-                "address": match.group(1).strip(),
-                "city": match.group(2).strip(),
-                "state": match.group(3).strip(),
-                "zip_code": match.group(4).strip(),
-            }
 
-        parts = [part.strip() for part in address_text.split(",") if part.strip()]
-        if len(parts) >= 3:
-            state_zip = parts[-1].split()
-            state = state_zip[0].upper() if state_zip else ""
-            zip_code = state_zip[1] if len(state_zip) > 1 else ""
-            return {
-                "address": parts[0],
-                "city": parts[1],
-                "state": state,
-                "zip_code": zip_code,
-            }
-
-        return {
-            "address": address_text.strip(),
-            "city": "",
-            "state": "",
-            "zip_code": "",
-        }
-
-    def _parse_decimal(self, value: str) -> Decimal | None:
-        """Parse decimal numbers from mixed display text."""
-        numeric_token = self._extract_numeric_token(value, allow_decimal=True)
-        if numeric_token is None:
-            return None
-        return Decimal(numeric_token)
+    # ------------------------------------------------------------------
+    # Detail-page helpers (kept for enrich_vrm_details command)
+    # ------------------------------------------------------------------
 
     def _parse_int(self, value: str) -> int | None:
         """Parse an integer from mixed display text."""
@@ -347,47 +401,13 @@ class VrmScraper:
             return None
         return int(numeric_token)
 
-    def _extract_numeric_token(self, value: str, allow_decimal: bool) -> str | None:
+    @staticmethod
+    def _extract_numeric_token(value: str, allow_decimal: bool) -> str | None:
         """Extract a sanitized numeric token, optionally allowing decimal places."""
         if not value:
             return None
-
         pattern = r"\d+(?:,\d{3})*(?:\.\d+)?" if allow_decimal else r"\d+(?:,\d{3})*"
         match = re.search(pattern, value)
         if not match:
             return None
-
-        token = match.group(0).replace(",", "")
-        return token
-
-    def _normalize_status(self, status_text: str) -> str:
-        """Map display status text to VrmProperty status choices."""
-        normalized = status_text.strip().lower()
-        if "coming" in normalized:
-            return VrmProperty.Status.COMING_SOON
-        if "pending" in normalized or "under contract" in normalized:
-            return VrmProperty.Status.PENDING
-        if "sold" in normalized:
-            return VrmProperty.Status.SOLD
-        return VrmProperty.Status.FOR_SALE
-
-    def _normalize_listing_type(self, listing_type_text: str) -> str:
-        """Map listing type badges to model choices."""
-        normalized = listing_type_text.strip().lower()
-        if not normalized:
-            return VrmProperty.ListingType.TRADITIONAL
-        if "online" in normalized and "auction" in normalized:
-            return VrmProperty.ListingType.ONLINE_AUCTION
-        if "in-person" in normalized and "auction" in normalized:
-            return VrmProperty.ListingType.IN_PERSON_AUCTION
-        if "auction" in normalized:
-            return VrmProperty.ListingType.ONLINE_AUCTION
-        return VrmProperty.ListingType.TRADITIONAL
-
-    def _has_vendee_badge(self, card_link: Any) -> bool:
-        """Detect Vendee-eligible marker in the listing card."""
-        return bool(
-            card_link.select_one(
-                "img[alt*='vendee' i], img[src*='vendee' i], [class*='vendee' i]"
-            )
-        )
+        return match.group(0).replace(",", "")
