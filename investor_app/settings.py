@@ -84,6 +84,7 @@ for origin in (
 # header so that request.is_secure() returns True and redirects use https://.
 # Removed in settings_test.py to keep test behaviour predictable.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)

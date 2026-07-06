@@ -20,7 +20,8 @@
   "portsAttributes": {
     "8000": {
       "label": "Django app",
-      "onAutoForward": "notify"
+      "onAutoForward": "notify",
+      "visibility": "public"
     }
   },
   "containerEnv": {
