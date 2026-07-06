@@ -51,6 +51,7 @@ urlpatterns = [
     path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
     path("portfolio/actuals/add/", portfolio_actuals_add, name="portfolio_actuals_add"),
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
+    path("growth-explorer/", views.growth_explorer, name="growth_explorer"),
     path(
         "settings/investment-targets/",
         views.investment_targets_edit,

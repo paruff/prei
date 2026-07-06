@@ -29,6 +29,13 @@ from django.utils.text import slugify
 from django.views import View
 from xhtml2pdf import pisa
 
+from core.integrations.market.census import (
+    discover_places_in_state,
+    fetch_housing_demand_index,
+    fetch_place_growth_metrics,
+)
+from core.integrations.market.bls import fetch_employment_growth
+
 from .models import VrmProperty, UserInvestmentTargets, GrowthArea
 
 from investor_app.finance.utils import (
@@ -693,6 +700,132 @@ def growth_areas(request):
         request,
         "growth_areas.html",
         {"top_growth": top_growth, "undervalued": undervalued},
+    )
+
+
+def growth_explorer(request: HttpRequest) -> HttpResponse:
+    """Growth Area Explorer — discover and analyze top growth places in a state.
+
+    Synchronous flow (matches VRM scrape pattern):
+    1. GET: render state picker form
+    2. POST: call discover_places_in_state (limit=20), fetch_employment_growth (once),
+       then for each place: fetch_place_growth_metrics + fetch_housing_demand_index,
+       upsert into GrowthArea, render results sorted by composite_score.
+    """
+    from os import getenv
+
+    if request.method == "GET":
+        return render(
+            request,
+            "growth_explorer.html",
+            {"states": US_STATES},
+        )
+
+    # POST — synchronous analysis
+    state = request.POST.get("state", "").strip().upper()
+    if not state or state not in [s[0] for s in US_STATES]:
+        return render(
+            request,
+            "growth_explorer.html",
+            {
+                "states": US_STATES,
+                "error": "Invalid state selected.",
+            },
+        )
+
+    census_api_key = getenv("CENSUS_API_KEY", "")
+    bls_api_key = getenv("BLS_API_KEY", "")
+
+    if not census_api_key:
+        return render(
+            request,
+            "growth_explorer.html",
+            {
+                "states": US_STATES,
+                "error": "CENSUS_API_KEY not configured.",
+            },
+        )
+    if not bls_api_key:
+        return render(
+            request,
+            "growth_explorer.html",
+            {
+                "states": US_STATES,
+                "error": "BLS_API_KEY not configured.",
+            },
+        )
+
+    # 1. Discover top 20 places in state by population
+    places = discover_places_in_state(state, census_api_key, limit=20)
+    if not places:
+        return render(
+            request,
+            "growth_explorer.html",
+            {
+                "states": US_STATES,
+                "error": f"No places found for state {state}.",
+            },
+        )
+
+    # 2. Fetch state-level employment growth once
+    emp_growth = fetch_employment_growth(state, bls_api_key)
+
+    # 3. For each place, fetch Census place metrics + housing demand, upsert GrowthArea
+    results = []
+    for place in places:
+        place_code = place["place_code"]
+        place_name = place["place_name"]
+        population = place["population"]
+
+        census_data = fetch_place_growth_metrics(state, place_code, census_api_key)
+        if census_data is None:
+            continue
+
+        pop_growth = census_data.get("population_growth_rate")
+        income_growth = census_data.get("median_income_growth_rate")
+
+        housing_demand = fetch_housing_demand_index(
+            state_code=state,
+            place_code=place_code,
+            api_key=census_api_key,
+            population_growth_rate=pop_growth,
+        )
+        if housing_demand is None:
+            housing_demand = 50  # neutral default
+
+        # Upsert GrowthArea (unique on state + city_name)
+        growth_area, _ = GrowthArea.objects.update_or_create(
+            state=state,
+            city_name=place_name,
+            defaults={
+                "metro_area": place_name,
+                "population_growth_rate": pop_growth,
+                "employment_growth_rate": emp_growth,
+                "median_income_growth": income_growth,
+                "housing_demand_index": housing_demand,
+                "data_timestamp": timezone.now(),
+            },
+        )
+        results.append(
+            {
+                "growth_area": growth_area,
+                "place_name": place_name,
+                "population": population,
+            }
+        )
+
+    # 4. Sort by composite_score descending
+    results.sort(key=lambda r: r["growth_area"].composite_score, reverse=True)
+
+    return render(
+        request,
+        "growth_explorer.html",
+        {
+            "states": US_STATES,
+            "selected_state": state,
+            "results": results,
+            "emp_growth": emp_growth,
+        },
     )
 
 
