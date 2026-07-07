@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
@@ -786,48 +787,24 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
     fred = FREDAdapter()
     emp_growth = fred.fetch_state_employment_growth(state)
 
-    # 3. For each place, fetch Census place metrics + housing demand, upsert GrowthArea
-    results = []
-    for idx, place in enumerate(places):
+    # 3. For each place, fetch Census place metrics + housing demand (parallel API calls)
+    safe_emp_growth = emp_growth if emp_growth is not None else Decimal("0")
+
+    def _fetch_place_data(place: dict) -> dict | None:
+        """Fetch Census data for a single place. API calls only — no DB writes."""
         place_code = place["place_code"]
         place_name = place["place_name"]
         population = place["population"]
 
-        logger.info(
-            "Growth Explorer: processing place %d/%d — %s, %s",
-            idx + 1,
-            len(places),
-            place_name,
-            state,
-        )
-
         census_data = fetch_place_growth_metrics(state, place_code, census_api_key)
         if census_data is None:
-            logger.warning(
-                "Growth Explorer: Census data is None for %s, %s — skipping",
-                place_name,
-                state,
-            )
-            continue
+            return None
 
         pop_growth = census_data.get("population_growth_rate")
         income_growth = census_data.get("median_income_growth_rate")
-
-        # Validate growth rates are not None (DecimalField does not accept None).
-        # Treat None as 0 (neutral/no growth) rather than skipping the place.
         if pop_growth is None:
-            logger.warning(
-                "Population growth rate is None for %s, %s — defaulting to 0",
-                place_name,
-                state,
-            )
             pop_growth = Decimal("0")
         if income_growth is None:
-            logger.warning(
-                "Income growth rate is None for %s, %s — defaulting to 0",
-                place_name,
-                state,
-            )
             income_growth = Decimal("0")
 
         housing_demand = fetch_housing_demand_index(
@@ -837,34 +814,58 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             population_growth_rate=pop_growth,
         )
         if housing_demand is None:
-            housing_demand = 50  # neutral default
+            housing_demand = 50
 
-        # Safe default for employment growth if BLS API returned None
-        safe_emp_growth = emp_growth if emp_growth is not None else Decimal("0")
+        return {
+            "place_code": place_code,
+            "place_name": place_name,
+            "population": population,
+            "pop_growth": pop_growth,
+            "income_growth": income_growth,
+            "housing_demand": housing_demand,
+        }
 
-        # Upsert GrowthArea (unique on state + city_name)
+    logger.info(
+        "Growth Explorer: fetching Census data for %d places in parallel for %s",
+        len(places),
+        state,
+    )
+    place_data_list: list[dict] = []
+    with ThreadPoolExecutor(max_workers=min(len(places), 10)) as executor:
+        futures = {executor.submit(_fetch_place_data, p): p for p in places}
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                if result is not None:
+                    place_data_list.append(result)
+            except Exception as exc:
+                logger.error("Growth Explorer: parallel fetch failed: %s", exc)
+
+    # 4. Upsert GrowthArea rows sequentially (SQLite does not support concurrent writes)
+    results = []
+    for data in place_data_list:
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
-            city_name=place_name,
+            city_name=data["place_name"],
             defaults={
-                "metro_area": place_name,
-                "population": population,
-                "population_growth_rate": pop_growth,
+                "metro_area": data["place_name"],
+                "population": data["population"],
+                "population_growth_rate": data["pop_growth"],
                 "employment_growth_rate": safe_emp_growth,
-                "median_income_growth": income_growth,
-                "housing_demand_index": housing_demand,
+                "median_income_growth": data["income_growth"],
+                "housing_demand_index": data["housing_demand"],
                 "data_timestamp": timezone.now(),
             },
         )
         results.append(
             {
                 "growth_area": growth_area,
-                "place_name": place_name,
-                "population": population,
+                "place_name": data["place_name"],
+                "population": data["population"],
             }
         )
 
-    # 4. Sort by composite_score descending (None scores sort last)
+    # 5. Sort by composite_score descending (None scores sort last)
     results.sort(
         key=lambda r: r["growth_area"].composite_score or Decimal("-999"),
         reverse=True,

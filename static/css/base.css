@@ -81,6 +81,58 @@ body {
   color: var(--color-neutral-900);
   font-weight: var(--weight-medium);
 }
+/* ── Nav dropdown ───────────────────────────────────────────── */
+.nav-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.nav-dropdown-toggle {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-md);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.nav-dropdown-toggle:hover,
+.nav-dropdown-toggle.is-active { background: var(--surface-secondary); color: var(--color-neutral-900); }
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  background: var(--surface-card);
+  border: var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  padding: var(--sp-1);
+  z-index: 200;
+  margin-top: 4px;
+}
+.nav-dropdown-menu.is-open { display: block; }
+.nav-dropdown-item {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: background 0.1s;
+}
+.nav-dropdown-item:hover { background: var(--surface-secondary); color: var(--color-neutral-900); }
+.nav-dropdown-item.active { color: var(--color-neutral-900); font-weight: var(--weight-medium); }
+.nav-dropdown-item .sub-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-200);
+  margin-top: 1px;
+}
 .nav-right { display: flex; align-items: center; gap: var(--sp-3); }
 .nav-menu-toggle {
   display: none;
@@ -541,6 +593,15 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
     margin-left: 0;
     padding-left: 0;
     border-left: none;
+  }
+  .nav-links.is-open .nav-dropdown { width: 100%; flex-direction: column; }
+  .nav-links.is-open .nav-dropdown-toggle { width: 100%; text-align: left; }
+  .nav-links.is-open .nav-dropdown-menu {
+    position: static;
+    box-shadow: none;
+    border: none;
+    padding-left: var(--sp-3);
+    margin-top: 0;
   }
   .nav-menu-toggle { display: flex; }
   .page-header     { flex-direction: column; align-items: flex-start; }

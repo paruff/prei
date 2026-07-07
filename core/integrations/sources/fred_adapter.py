@@ -403,6 +403,20 @@ class FREDAdapter:
         # FRED series ID for state nonfarm payrolls: {STATE}NA
         series_id = f"{state_code}NA"
 
+        # Check cache first (TTL: 7 days — employment data changes monthly)
+        from django.core.cache import cache
+
+        cache_key = f"fred_emp_growth_{state_code}_{years_back}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            logger.info(
+                "FRED employment growth cache hit for %s (%s): %s",
+                state_code,
+                series_id,
+                cached,
+            )
+            return cast(Optional[Decimal], cached)
+
         end_date = datetime.now()
         start_date = end_date - timedelta(days=years_back * 365)
 
@@ -480,6 +494,8 @@ class FREDAdapter:
             f"{float(growth_rate) * 100:.2f}",
             len(years) - 1,
         )
+        # Cache for 7 days — employment data changes monthly
+        cache.set(cache_key, growth_rate, 604800)
         return growth_rate
 
 

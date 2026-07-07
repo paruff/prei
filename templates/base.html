@@ -25,20 +25,43 @@
   </a>
 
   <div class="nav-links" id="nav-links" role="list">
-    <div class="nav-group">
-      <span class="nav-group-label" role="presentation">Pipeline</span>
-      <a href="{% url 'growth_explorer' %}" class="nav-link {% if request.resolver_match.url_name == 'growth_explorer' %}active{% endif %}">Discovery</a>
-      <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Screening</a>
-      <a href="{% url 'brrrr_calculator' %}" class="nav-link {% if request.resolver_match.url_name == 'brrrr_calculator' %}active{% endif %}">Underwriting</a>
-      <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
-      <a href="{% url 'sell_index' %}" class="nav-link {% if request.resolver_match.url_name == 'sell_index' %}active{% endif %}">Sell</a>
+    <a href="{% url 'growth_explorer' %}" class="nav-link {% if request.resolver_match.url_name == 'growth_explorer' %}active{% endif %}">🚀 Growth Areas</a>
+
+    <div class="nav-dropdown" id="pipeline-dropdown">
+      <button class="nav-dropdown-toggle" aria-expanded="false" aria-controls="pipeline-menu">
+        Pipeline <span aria-hidden="true">▾</span>
+      </button>
+      <div class="nav-dropdown-menu" id="pipeline-menu" role="menu">
+        <a href="{% url 'growth_explorer' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'growth_explorer' %}active{% endif %}" role="menuitem">
+          Discover
+          <span class="sub-label">Find growth markets</span>
+        </a>
+        <a href="{% url 'vrm_properties_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'vrm_properties_list' %}active{% endif %}" role="menuitem">
+          Foreclosures
+          <span class="sub-label">Browse VRM properties</span>
+        </a>
+        <a href="{% url 'dashboard' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" role="menuitem">
+          Screen
+          <span class="sub-label">Filter and compare deals</span>
+        </a>
+        <a href="{% url 'brrrr_calculator' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'brrrr_calculator' %}active{% endif %}" role="menuitem">
+          Underwriting
+          <span class="sub-label">Analyze returns and risk</span>
+        </a>
+        <a href="{% url 'property_add' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'property_add' %}active{% endif %}" role="menuitem">
+          Offer
+          <span class="sub-label">Log a new acquisition</span>
+        </a>
+        <a href="{% url 'portfolio_dashboard' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}" role="menuitem">
+          Rehab &amp; Lease
+          <span class="sub-label">Track renovation and tenants</span>
+        </a>
+      </div>
     </div>
-    <div class="nav-group">
-      <span class="nav-group-label" role="presentation">Data</span>
-      <a href="{% url 'vrm_properties_list' %}" class="nav-link {% if request.resolver_match.url_name == 'vrm_properties_list' %}active{% endif %}">Foreclosures</a>
-      <a href="{% url 'markets_list' %}" class="nav-link {% if request.resolver_match.url_name == 'markets_list' %}active{% endif %}">Markets</a>
-      <a href="{% url 'growth_areas' %}" class="nav-link {% if request.resolver_match.url_name == 'growth_areas' %}active{% endif %}">Growth Areas</a>
-    </div>
+
+    <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
+
+    <a href="{% url 'sell_index' %}" class="nav-link {% if request.resolver_match.url_name == 'sell_index' %}active{% endif %}">Sell</a>
   </div>
 
   <div class="nav-right">
@@ -89,6 +112,24 @@
     var open = links.classList.toggle('is-open');
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
+
+  // Pipeline dropdown toggle
+  var ddToggle = document.getElementById('pipeline-dropdown');
+  var ddMenu = document.getElementById('pipeline-menu');
+  if (ddToggle && ddMenu) {
+    ddToggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      ddMenu.classList.toggle('is-open');
+      var expanded = ddMenu.classList.contains('is-open');
+      ddToggle.querySelector('.nav-dropdown-toggle').setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+    // Close on click outside
+    document.addEventListener('click', function(e) {
+      if (!ddToggle.contains(e.target)) {
+        ddMenu.classList.remove('is-open');
+      }
+    });
+  }
 })();
 </script>
 
