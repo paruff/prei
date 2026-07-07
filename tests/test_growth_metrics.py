@@ -424,7 +424,9 @@ class PopulateGrowthAreasCommandTest(TestCase):
     """Test the populate_growth_areas management command."""
 
     @patch("core.management.commands.populate_growth_areas.fetch_place_growth_metrics")
-    @patch("core.management.commands.populate_growth_areas.fetch_employment_growth")
+    @patch(
+        "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
+    )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
     def test_creates_growth_area_on_success(
         self, mock_housing, mock_employment, mock_census
@@ -445,7 +447,6 @@ class PopulateGrowthAreasCommandTest(TestCase):
             os.environ,
             {
                 "CENSUS_API_KEY": "test-census-key",
-                "BLS_API_KEY": "test-bls-key",
             },
         ):
             out = io.StringIO()
@@ -464,7 +465,9 @@ class PopulateGrowthAreasCommandTest(TestCase):
         self.assertEqual(ga.housing_demand_index, 90)
 
     @patch("core.management.commands.populate_growth_areas.fetch_place_growth_metrics")
-    @patch("core.management.commands.populate_growth_areas.fetch_employment_growth")
+    @patch(
+        "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
+    )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
     def test_updates_existing_growth_area(
         self, mock_housing, mock_employment, mock_census
@@ -496,7 +499,6 @@ class PopulateGrowthAreasCommandTest(TestCase):
             os.environ,
             {
                 "CENSUS_API_KEY": "test-census-key",
-                "BLS_API_KEY": "test-bls-key",
             },
         ):
             out = io.StringIO()
@@ -522,27 +524,15 @@ class PopulateGrowthAreasCommandTest(TestCase):
                     cities=["San Francisco"],
                 )
 
-    def test_fails_without_bls_key(self):
-        """Fails with CommandError when BLS_API_KEY is missing."""
-        with patch.dict(
-            os.environ,
-            {"CENSUS_API_KEY": "test-key", "BLS_API_KEY": ""},
-            clear=True,
-        ):
-            with self.assertRaises(CommandError):
-                call_command(
-                    "populate_growth_areas",
-                    states=["CA"],
-                    cities=["San Francisco"],
-                )
-
     def test_fails_without_paired_args(self):
         """Fails with CommandError when only one of state/city is provided."""
         with self.assertRaises(CommandError):
             call_command("populate_growth_areas", states=["CA"])
 
     @patch("core.management.commands.populate_growth_areas.fetch_place_growth_metrics")
-    @patch("core.management.commands.populate_growth_areas.fetch_employment_growth")
+    @patch(
+        "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
+    )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
     def test_handles_multiple_cities(self, mock_housing, mock_employment, mock_census):
         """Creates GrowthArea records for multiple cities."""
@@ -561,7 +551,6 @@ class PopulateGrowthAreasCommandTest(TestCase):
             os.environ,
             {
                 "CENSUS_API_KEY": "test-census-key",
-                "BLS_API_KEY": "test-bls-key",
             },
         ):
             out = io.StringIO()
@@ -587,7 +576,9 @@ class PopulateGrowthAreasCommandTest(TestCase):
         self.assertIn("CA,", out.getvalue())
 
     @patch("core.management.commands.populate_growth_areas.fetch_place_growth_metrics")
-    @patch("core.management.commands.populate_growth_areas.fetch_employment_growth")
+    @patch(
+        "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
+    )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
     def test_handles_census_failure_gracefully(
         self, mock_housing, mock_employment, mock_census
@@ -599,7 +590,6 @@ class PopulateGrowthAreasCommandTest(TestCase):
             os.environ,
             {
                 "CENSUS_API_KEY": "test-census-key",
-                "BLS_API_KEY": "test-bls-key",
             },
         ):
             out = io.StringIO()

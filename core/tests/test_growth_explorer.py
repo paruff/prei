@@ -61,7 +61,6 @@ def _mock_census_metrics(
 
 API_ENV = {
     "CENSUS_API_KEY": "test-census-key",
-    "BLS_API_KEY": "test-bls-key",
 }
 
 
@@ -122,20 +121,10 @@ class TestGrowthExplorerPostErrors:
     @pytest.mark.django_db
     def test_missing_census_key_shows_error(self, client) -> None:
         """POST without CENSUS_API_KEY shows configuration error."""
-        with patch.dict(os.environ, {"BLS_API_KEY": "test-bls-key"}, clear=True):
+        with patch.dict(os.environ, clear=True):
             resp = client.post(reverse("growth_explorer"), {"state": "CA"})
-
-        assert resp.status_code == 200
-        assert "CENSUS_API_KEY" in resp.content.decode()
-
-    @pytest.mark.django_db
-    def test_missing_bls_key_shows_error(self, client) -> None:
-        """POST without BLS_API_KEY shows configuration error."""
-        with patch.dict(os.environ, {"CENSUS_API_KEY": "test-census-key"}, clear=True):
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
-
-        assert resp.status_code == 200
-        assert "BLS_API_KEY" in resp.content.decode()
+            assert resp.status_code == 200
+            assert "CENSUS_API_KEY" in resp.content.decode()
 
     @patch("core.views.discover_places_in_state")
     @pytest.mark.django_db
@@ -165,7 +154,9 @@ class TestGrowthExplorerPostErrors:
 
         with (
             patch.dict(os.environ, API_ENV),
-            patch("core.views.fetch_employment_growth") as mock_emp_growth,
+            patch(
+                "core.views.FREDAdapter.fetch_state_employment_growth"
+            ) as mock_emp_growth,
             patch("core.views.fetch_place_growth_metrics") as mock_census,
             patch("core.views.fetch_housing_demand_index") as mock_housing,
         ):
@@ -197,7 +188,7 @@ class TestGrowthExplorerPostSuccess:
     """POST behaviour — successful analysis creates/updates GrowthArea rows."""
 
     @patch("core.views.discover_places_in_state")
-    @patch("core.views.fetch_employment_growth")
+    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
     @pytest.mark.django_db
@@ -232,7 +223,7 @@ class TestGrowthExplorerPostSuccess:
         assert la.metro_area == "Los Angeles"
 
     @patch("core.views.discover_places_in_state")
-    @patch("core.views.fetch_employment_growth")
+    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
     @pytest.mark.django_db
@@ -276,7 +267,7 @@ class TestGrowthExplorerPostSuccess:
         assert la.housing_demand_index == 90
 
     @patch("core.views.discover_places_in_state")
-    @patch("core.views.fetch_employment_growth")
+    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
     @pytest.mark.django_db
@@ -314,7 +305,7 @@ class TestGrowthExplorerPostSuccess:
         assert rates.pop() == Decimal("0.04")  # 0.0375 → 0.04
 
     @patch("core.views.discover_places_in_state")
-    @patch("core.views.fetch_employment_growth")
+    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
     @pytest.mark.django_db
@@ -370,7 +361,7 @@ class TestGrowthExplorerPostSuccess:
         ), f"Los Angeles should rank above San Diego, got order: {names_in_order}"
 
     @patch("core.views.discover_places_in_state")
-    @patch("core.views.fetch_employment_growth")
+    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
     @pytest.mark.django_db
@@ -397,7 +388,7 @@ class TestGrowthExplorerPostSuccess:
         assert resp.context["selected_state"] == "CA"
 
     @patch("core.views.discover_places_in_state")
-    @patch("core.views.fetch_employment_growth")
+    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
     @pytest.mark.django_db
