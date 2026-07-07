@@ -42,7 +42,7 @@ class ATTOMAdapter:
     and response normalization for foreclosure data.
     """
 
-    BASE_URL = "https://api.attomdata.com/propertyapi/v1.0.0"
+    BASE_URL = "https://api.gateway.attomdata.com/propertyapi/v1.0.0"
     CACHE_DURATION = 86400  # 24 hours in seconds
     MAX_ERROR_RESPONSE_LENGTH = 200
 
@@ -65,13 +65,13 @@ class ATTOMAdapter:
         self.session.headers.update(headers)
 
     def fetch_property_detail(
-        self, address: str, address2: Optional[str] = None
+        self, address1: str, address2: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Fetch property details from ATTOM API.
 
         Args:
-            address: Street address (e.g., "123 Main St")
+            address1: Street address (e.g., "123 Main St")
             address2: City, state, ZIP (e.g., "Miami, FL 33139")
 
         Returns:
@@ -83,7 +83,7 @@ class ATTOMAdapter:
             ATTOMAPIError: For other API errors
         """
         endpoint = f"{self.BASE_URL}/property/detail"
-        params: Dict[str, str] = {"address": address}
+        params: Dict[str, str] = {"address1": address1}
 
         if address2:
             params["address2"] = address2
@@ -91,7 +91,7 @@ class ATTOMAdapter:
         return self._execute_get_request(
             endpoint=endpoint,
             params=params,
-            log_context=f"address={address}",
+            log_context=f"address1={address1}",
         )
 
     def fetch_foreclosure_data(
@@ -128,72 +128,84 @@ class ATTOMAdapter:
             log_context=f"geoid={geoid}",
         )
 
-    def fetch_avm_detail(self, address: str) -> Dict[str, Any]:
+    def fetch_avm_detail(
+        self, address1: str, address2: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Fetch AVM (Automated Valuation Model) details from ATTOM API.
 
         Args:
-            address: Full property address
+            address1: Street address
+            address2: City, state, ZIP
 
         Returns:
             AVM data from ATTOM API
         """
         endpoint = f"{self.BASE_URL}/avm/detail"
+        params: Dict[str, str] = {"address1": address1}
+        if address2:
+            params["address2"] = address2
         return self._execute_get_request(
             endpoint=endpoint,
-            params={"address": address},
-            log_context=f"address={address}",
+            params=params,
+            log_context=f"address1={address1}",
         )
 
-    def fetch_sales_history(self, address: str) -> Dict[str, Any]:
+    def fetch_sales_history(
+        self, address1: str, address2: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Fetch sales history snapshot from ATTOM API.
 
         Args:
-            address: Full property address
+            address1: Street address
+            address2: City, state, ZIP
 
         Returns:
             Sales history data from ATTOM API
         """
         endpoint = f"{self.BASE_URL}/sale/snapshot"
+        params: Dict[str, str] = {"address1": address1}
+        if address2:
+            params["address2"] = address2
         return self._execute_get_request(
             endpoint=endpoint,
-            params={"address": address},
-            log_context=f"address={address}",
+            params=params,
+            log_context=f"address1={address1}",
         )
 
     def fetch_with_cache(
-        self, address: str, address2: Optional[str] = None
+        self, address1: str, address2: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Fetch property data with caching to handle rate limits.
 
         Args:
-            address: Street address
+            address1: Street address
             address2: City, state, ZIP
 
         Returns:
             Property data (from cache or fresh API call)
         """
-        cache_key = self._generate_cache_key(address, address2)
+        cache_key = self._generate_cache_key(address1, address2)
         cached_data = cache.get(cache_key)
 
         if cached_data:
-            logger.info(f"Returning cached data for {address}")
+            logger.info(f"Returning cached data for {address1}")
             # Copy to avoid mutating the object returned by the cache backend.
             result_cached: Dict[str, Any] = deepcopy(cached_data)
             result_cached["_from_cache"] = True
             return result_cached
 
         try:
-            data = self.fetch_property_detail(address, address2)
+            data = self.fetch_property_detail(address1, address2)
             # Cache successful response
             cache.set(cache_key, data, self.CACHE_DURATION)
             data["_from_cache"] = False
             return data
         except ATTOMRateLimitError:
             # If rate limited and no cache available, raise error
-            logger.error(f"Rate limit exceeded and no cached data for {address}")
+            logger.error(f"Rate limit exceeded and no cached data for {address1}")
             raise
 
     def _execute_get_request(
