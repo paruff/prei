@@ -12,7 +12,7 @@ Any stage can transition to KILLED (terminal). No asset can exit KILLED.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -45,7 +45,7 @@ class StageLog(BaseModel):
     """Immutable record of a single stage occupancy period."""
 
     stage: PipelineStage
-    entered_at: datetime = Field(default_factory=datetime.utcnow)
+    entered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     exited_at: Optional[datetime] = None
     reason: Optional[str] = None
     metrics_snapshot: Dict[str, Any] = Field(default_factory=dict)
@@ -108,7 +108,7 @@ class PropertyAsset(BaseModel):
                 f"to {next_stage.value}"
             )
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Close the previous stage's exit timestamp
         if self.stage_history:
