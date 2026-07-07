@@ -35,6 +35,8 @@ repos:
           - types-reportlab
           - django-environ
           - pydantic
+          - fastapi
+          - click
         args: [--show-error-codes, --no-incremental]
         exclude: ^migrations/
         verbose: true
