@@ -143,7 +143,7 @@ def evaluate_screening_stage(
     # ── 4. Gross yield check (two arithmetic ops) ────────────────────────
     rent = asset_data.get("estimated_monthly_rent")
     price = asset_data.get("purchase_price")
-    if rent is not None and price is not None and price > 0:
+    if rent is not None and price is not None and price > 0 and float(rent) > 0:
         gy = gross_yield(float(rent), float(price))
         if gy < thresholds.min_gross_yield:
             return False, (
