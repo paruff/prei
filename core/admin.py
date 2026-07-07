@@ -6,6 +6,7 @@ from .models import (
     Listing,
     MarketSnapshot,
     OperatingExpense,
+    PipelineAsset,
     Property,
     RentalIncome,
     SavedSearch,
@@ -132,3 +133,18 @@ class ForeclosurePropertyAdmin(admin.ModelAdmin):
         "case_number",
     )
     date_hierarchy = "auction_date"
+
+
+@admin.register(PipelineAsset)
+class PipelineAssetAdmin(admin.ModelAdmin):
+    list_display = (
+        "asset_id",
+        "address",
+        "current_stage",
+        "price",
+        "cap_rate",
+        "mao",
+        "updated_at",
+    )
+    list_filter = ("current_stage", "source_name")
+    search_fields = ("asset_id", "address", "address_hash")

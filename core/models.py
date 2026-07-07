@@ -730,6 +730,97 @@ class GrowthArea(models.Model):
         super().save(*args, **kwargs)
 
 
+class PipelineAsset(models.Model):
+    """Django ORM model mirroring the pipeline state machine.
+
+    Tracks a property through the 11-stage pipeline lifecycle with
+    a snapshot of the current stage and relevant financial metrics.
+    """
+
+    asset_id = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="External source identifier",
+    )
+    address = models.TextField(help_text="Raw address string")
+    address_hash = models.CharField(
+        max_length=64,
+        db_index=True,
+        help_text="SHA-256 of normalized address for dedup",
+    )
+    source_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Origin source label",
+    )
+
+    STAGE_CHOICES = [
+        ("GACS", "GACS"),
+        ("DISCOVERY", "Discovery"),
+        ("SCREENING", "Screening"),
+        ("UNDERWRITING", "Underwriting"),
+        ("OFFER", "Offer"),
+        ("DUE_DILIGENCE", "Due Diligence"),
+        ("CLOSING", "Closing"),
+        ("TURNOVER", "Turnover"),
+        ("LEASING", "Leasing"),
+        ("PORTFOLIO", "Portfolio"),
+        ("KILLED", "Killed"),
+    ]
+    current_stage = models.CharField(
+        max_length=20,
+        choices=STAGE_CHOICES,
+        default="GACS",
+    )
+    kill_reason = models.TextField(blank=True, null=True)
+
+    price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    estimated_rent = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    noi = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    cap_rate = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        null=True,
+        blank=True,
+    )
+    mao = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    beds = models.IntegerField(null=True, blank=True)
+    baths = models.FloatField(null=True, blank=True)
+    sqft = models.FloatField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        verbose_name = "Pipeline Asset"
+        verbose_name_plural = "Pipeline Assets"
+
+    def __str__(self) -> str:
+        return f"{self.asset_id} [{self.current_stage}]"
+
+
 class ForeclosureProperty(models.Model):
     """Foreclosure property listing from external data sources."""
 
