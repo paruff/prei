@@ -690,20 +690,20 @@ def growth_areas(request):
     except (ValueError, TypeError):
         page = 1
 
-    # Read from GrowthArea model (city/metro-level growth metrics)
-    # Fall back to MarketSnapshot for backward compatibility if GrowthArea is empty
     growth_areas_qs = GrowthArea.objects.all().order_by("-composite_score")
 
     if growth_areas_qs.exists():
-        paginator = Paginator(growth_areas_qs, 25)  # 25 per page
+        paginator = Paginator(growth_areas_qs, 25)
         try:
-            top_growth_page = paginator.page(page)
+            growth_page = paginator.page(page)
         except EmptyPage:
-            top_growth_page = paginator.page(paginator.num_pages)
+            growth_page = paginator.page(paginator.num_pages)
+        data_source = "growtharea"
     else:
         # Fallback: use MarketSnapshot (ZIP-level) if GrowthArea not yet populated
         snapshots = MarketSnapshot.objects.all().order_by("-price_trend")[:50]
-        top_growth_page = snapshots
+        growth_page = snapshots
+        data_source = "snapshot"
 
     # Flag undervalued listings globally as a placeholder
     undervalued = find_undervalued(Listing.objects.all()[:200])
@@ -711,11 +711,9 @@ def growth_areas(request):
         request,
         "growth_areas.html",
         {
-            "top_growth_page": top_growth_page,
+            "growth_page": growth_page,
+            "data_source": data_source,
             "undervalued": undervalued,
-            "is_paginated": hasattr(paginator, "num_pages")
-            if growth_areas_qs.exists()
-            else False,
         },
     )
 

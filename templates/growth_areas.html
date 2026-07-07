@@ -5,73 +5,107 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Growth Areas</h1>
-    <p class="page-sub">Top growth markets ranked by composite score</p>
+    <p class="page-sub">
+      {% if data_source == "snapshot" %}
+        Top markets from recent snapshots
+      {% else %}
+        Top growth markets ranked by composite score
+      {% endif %}
+    </p>
   </div>
   <div class="nav-right">
     <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Analyze New State</a>
-    {% if top_growth_page %}
+    {% if data_source == "growtharea" %}
       <a href="{% url 'growth_areas_export_csv' %}" class="btn" title="Download all growth areas as CSV">⬇ CSV</a>
     {% endif %}
   </div>
 </div>
 
-{% if top_growth_page %}
-  <!-- Growth Areas Table -->
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Rank</th>
-          <th>City</th>
-          <th>State</th>
-          <th>Population</th>
-          <th>Pop Growth (5yr)</th>
-          <th>Emp Growth (5yr)</th>
-          <th>Income Growth (5yr)</th>
-          <th>Housing Demand</th>
-          <th>Composite Score</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ga in top_growth_page %}
+{% if growth_page %}
+  {% if data_source == "snapshot" %}
+    <!-- MarketSnapshot fallback table -->
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
           <tr>
-            <td class="col-right">{{ top_growth_page.start_index|add:forloop.counter0 }}</td>
-            <td>{{ ga.city_name }}</td>
-            <td>{{ ga.state }}</td>
-            <td class="col-right num">{{ ga.population|default_if_none:""|intcomma }}</td>
-            <td class="col-right num">{{ ga.population_growth_rate|mul:100|floatformat:2 }}%</td>
-            <td class="col-right num">{{ ga.employment_growth_rate|default_if_none:"0.00"|mul:100|floatformat:2 }}%</td>
-            <td class="col-right num">{{ ga.median_income_growth|mul:100|floatformat:2 }}%</td>
-            <td class="col-right">{{ ga.housing_demand_index }}</td>
-            <td class="col-right score-num num-good">{{ ga.composite_score|default_if_none:""|floatformat:2 }}</td>
-            <td><a href="{% url 'vrm_properties_list' %}?state={{ ga.state }}" class="btn">Foreclosures</a></td>
+            <th>ZIP Code</th>
+            <th>State</th>
+            <th>Rent Index</th>
+            <th>Price Trend</th>
+            <th></th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Pagination -->
-  {% if is_paginated %}
-    <div class="pagination">
-      <span class="step-links">
-        {% if top_growth_page.has_previous %}
-          <a href="?page=1" class="btn" title="First page">&laquo; First</a>
-          <a href="?page={{ top_growth_page.previous_page_number }}" class="btn">Previous</a>
-        {% endif %}
-
-        <span class="current-page">
-          Page {{ top_growth_page.number }} of {{ top_growth_page.paginator.num_pages }}
-        </span>
-
-        {% if top_growth_page.has_next %}
-          <a href="?page={{ top_growth_page.next_page_number }}" class="btn">Next</a>
-          <a href="?page={{ top_growth_page.paginator.num_pages }}" class="btn" title="Last page">Last &raquo;</a>
-        {% endif %}
-      </span>
-      <span class="total-count">({{ top_growth_page.paginator.count }} total)</span>
+        </thead>
+        <tbody>
+          {% for s in growth_page %}
+            <tr>
+              <td>{{ s.zip_code }}</td>
+              <td>{{ s.state }}</td>
+              <td class="col-right num">{{ s.rent_index|floatformat:0 }}</td>
+              <td class="col-right num">{{ s.price_trend|floatformat:2 }}%</td>
+              <td><a href="{% url 'vrm_properties_list' %}?state={{ s.state }}" class="btn">Foreclosures</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  {% else %}
+    <!-- GrowthArea table -->
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Population</th>
+            <th>Pop Growth (5yr)</th>
+            <th>Emp Growth (5yr)</th>
+            <th>Income Growth (5yr)</th>
+            <th>Housing Demand</th>
+            <th>Composite Score</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ga in growth_page %}
+            <tr>
+              <td class="col-right">{{ growth_page.start_index|add:forloop.counter0 }}</td>
+              <td>{{ ga.city_name }}</td>
+              <td>{{ ga.state }}</td>
+              <td class="col-right num">{{ ga.population|default_if_none:""|intcomma }}</td>
+              <td class="col-right num">{{ ga.population_growth_rate|mul:100|floatformat:2 }}%</td>
+              <td class="col-right num">{{ ga.employment_growth_rate|default_if_none:"0.00"|mul:100|floatformat:2 }}%</td>
+              <td class="col-right num">{{ ga.median_income_growth|mul:100|floatformat:2 }}%</td>
+              <td class="col-right">{{ ga.housing_demand_index }}</td>
+              <td class="col-right score-num num-good">{{ ga.composite_score|default_if_none:""|floatformat:2 }}</td>
+              <td><a href="{% url 'vrm_properties_list' %}?state={{ ga.state }}" class="btn">Foreclosures</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if growth_page.has_other_pages %}
+      <div class="pagination">
+        <span class="step-links">
+          {% if growth_page.has_previous %}
+            <a href="?page=1" class="btn" title="First page">&laquo; First</a>
+            <a href="?page={{ growth_page.previous_page_number }}" class="btn">Previous</a>
+          {% endif %}
+
+          <span class="current-page">
+            Page {{ growth_page.number }} of {{ growth_page.paginator.num_pages }}
+          </span>
+
+          {% if growth_page.has_next %}
+            <a href="?page={{ growth_page.next_page_number }}" class="btn">Next</a>
+            <a href="?page={{ growth_page.paginator.num_pages }}" class="btn" title="Last page">Last &raquo;</a>
+          {% endif %}
+        </span>
+        <span class="total-count">({{ growth_page.paginator.count }} total)</span>
+      </div>
+    {% endif %}
   {% endif %}
 
 {% else %}
