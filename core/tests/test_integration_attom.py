@@ -47,15 +47,17 @@ class TestATTOMLiveIntegration:
 
     def test_avm_detail_returns_valuation(self):
         """Test AVM/detail endpoint returns valuation data."""
-        resp = self.adapter.fetch_avm_detail("123 Main St, San Francisco, CA 94102")
+        resp = self.adapter.fetch_avm_detail("123 Main St", "San Francisco, CA 94102")
 
         assert isinstance(resp, dict)
-        # AVM response should have property data
+        # AVM response should have property or status data
         assert "property" in resp or "avm" in resp or "status" in resp
 
     def test_sales_history_returns_transactions(self):
         """Test sales history endpoint."""
-        resp = self.adapter.fetch_sales_history("123 Main St, San Francisco, CA 94102")
+        resp = self.adapter.fetch_sales_history(
+            "123 Main St", "San Francisco, CA 94102"
+        )
 
         assert isinstance(resp, dict)
         assert "property" in resp or "sale" in resp or "status" in resp
@@ -115,7 +117,7 @@ class TestATTOMLiveEndpoints:
         """Test property detail with a known address."""
         # Use a well-known San Francisco address
         resp = self.adapter.fetch_property_detail(
-            address="123 Main St",
+            address1="123 Main St",
             address2="San Francisco, CA 94102",
         )
 

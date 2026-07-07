@@ -21,6 +21,7 @@ from django.core.management import CommandError, call_command
 from django.test import TestCase
 from django.utils import timezone
 
+import core.integrations.market.census as census_mod
 from core.integrations.market.bls import fetch_employment_growth
 from core.integrations.market.census import (
     fetch_housing_demand_index,
@@ -37,13 +38,19 @@ from core.models import GrowthArea
 class CensusPlaceGrowthMetricsTest(TestCase):
     """Test Census two-vintage growth calculation for places (cities)."""
 
-    def _mock_census_response(self, population: int, income: int) -> MagicMock:
+    def setUp(self):
+        """Clear ACS vintage cache between tests to avoid stale cache in test isolation."""
+        census_mod._acs_vintage_cache = None
+
+    def _mock_census_response(
+        self, population: int, income: int, housing_units: int = 100000
+    ) -> MagicMock:
         """Helper to create a mock Census API response."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = [
-            ["B01001_001E", "B19013_001E", "NAME"],
-            [str(population), str(income), "Place"],
+            ["B01001_001E", "B19013_001E", "B25001_001E", "NAME"],
+            [str(population), str(income), str(housing_units), "Place"],
         ]
         mock_resp.raise_for_status.return_value = None
         return mock_resp
@@ -55,7 +62,32 @@ class CensusPlaceGrowthMetricsTest(TestCase):
         # Prior vintage (2017): pop=380000, income=78000
         # Pop growth: (400000-380000)/380000 = 0.0526
         # Income growth: (85000-78000)/78000 = 0.0897
+
+        # First mock response for /data.json (auto-detect vintages)
+        mock_data_json = MagicMock()
+        mock_data_json.status_code = 200
+        mock_data_json.json.return_value = {
+            "dataset": [
+                {
+                    "c_vintage": 2022,
+                    "title": "ACS 5-Year Detailed Tables",
+                    "distribution": [
+                        {"accessURL": "http://api.census.gov/data/2022/acs/acs5"}
+                    ],
+                },
+                {
+                    "c_vintage": 2017,
+                    "title": "ACS 5-Year Detailed Tables",
+                    "distribution": [
+                        {"accessURL": "http://api.census.gov/data/2017/acs/acs5"}
+                    ],
+                },
+            ]
+        }
+        mock_data_json.raise_for_status.return_value = None
+
         mock_get.side_effect = [
+            mock_data_json,  # /data.json
             self._mock_census_response(400000, 85000),  # Current (2022)
             self._mock_census_response(380000, 78000),  # Prior (2017)
         ]
@@ -126,7 +158,31 @@ class CensusPlaceGrowthMetricsTest(TestCase):
     @patch("core.integrations.market.census.requests.get")
     def test_negative_growth_rates(self, mock_get):
         """Returns negative growth rates when population/income decline."""
+        # First mock response for /data.json (auto-detect vintages)
+        mock_data_json = MagicMock()
+        mock_data_json.status_code = 200
+        mock_data_json.json.return_value = {
+            "dataset": [
+                {
+                    "c_vintage": 2022,
+                    "title": "ACS 5-Year Detailed Tables",
+                    "distribution": [
+                        {"accessURL": "http://api.census.gov/data/2022/acs/acs5"}
+                    ],
+                },
+                {
+                    "c_vintage": 2017,
+                    "title": "ACS 5-Year Detailed Tables",
+                    "distribution": [
+                        {"accessURL": "http://api.census.gov/data/2017/acs/acs5"}
+                    ],
+                },
+            ]
+        }
+        mock_data_json.raise_for_status.return_value = None
+
         mock_get.side_effect = [
+            mock_data_json,  # /data.json
             self._mock_census_response(350000, 80000),  # Current
             self._mock_census_response(400000, 85000),  # Prior (higher)
         ]

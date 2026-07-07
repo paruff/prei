@@ -92,7 +92,7 @@ def _fetch_latest_acs_vintages() -> dict[str, str] | None:
         logger.warning("Census /data.json parse error: %s", exc)
         return None
 
-    datasets = catalog.get("dataset", [])
+    datasets = catalog.get("dataset", []) if isinstance(catalog, dict) else []
     if not datasets:
         logger.warning("Census /data.json has no datasets")
         return None
@@ -389,12 +389,14 @@ def _fetch_acs_data(
 def _parse_acs_response(
     response: dict[str, Any],
     var_codes: list[str],
+    optional_vars: list[str] | None = None,
 ) -> dict[str, Any] | None:
     """Parse ACS response for specific variable codes.
 
     Args:
         response: Output from _fetch_acs_data
         var_codes: List of variable codes to extract (e.g., ["B01001_001E", "B19013_001E"])
+        optional_vars: List of variable codes that are optional (won't fail if missing)
 
     Returns:
         Dict mapping variable codes to parsed values, or None on error
@@ -402,11 +404,17 @@ def _parse_acs_response(
     headers = response["headers"]
     values = response["values"]
 
+    if optional_vars is None:
+        optional_vars = []
+
     result = {}
     for var in var_codes:
         try:
             idx = headers.index(var)
         except ValueError as exc:
+            if var in optional_vars:
+                logger.warning("Census API response missing optional variable %s", var)
+                continue
             logger.error(
                 "Census API response missing expected variable %s: %s", var, exc
             )
@@ -490,10 +498,14 @@ def fetch_place_growth_metrics(
 
     # Parse both responses
     current_parsed = _parse_acs_response(
-        current_data, ["B01001_001E", "B19013_001E", "B25001_001E"]
+        current_data,
+        ["B01001_001E", "B19013_001E", "B25001_001E"],
+        optional_vars=["B25001_001E"],
     )
     prior_parsed = _parse_acs_response(
-        prior_data, ["B01001_001E", "B19013_001E", "B25001_001E"]
+        prior_data,
+        ["B01001_001E", "B19013_001E", "B25001_001E"],
+        optional_vars=["B25001_001E"],
     )
     if not current_parsed or not prior_parsed:
         return None

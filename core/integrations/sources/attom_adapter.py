@@ -227,6 +227,16 @@ class ATTOMAdapter:
                     f"Rate limit exceeded. Resets at: {rate_limit_reset}"
                 )
 
+            # "SuccessWithoutResult" (400) means valid request but no data found
+            if response.status_code == 400 and "SuccessWithoutResult" in response.text:
+                logger.info("ATTOM API returned empty result: %s", log_context)
+                return {"status": "empty", "message": "SuccessWithoutResult"}
+
+            # "No rule matched" (404) means endpoint not available for this key
+            if response.status_code == 404 and "No rule matched" in response.text:
+                logger.info("ATTOM API endpoint not available: %s", log_context)
+                return {"status": "empty", "message": "No rule matched"}
+
             if response.status_code != 200:
                 logger.error(
                     "ATTOM API error: %s - %s",
