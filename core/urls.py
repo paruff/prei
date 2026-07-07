@@ -30,6 +30,11 @@ urlpatterns = [
         name="property_add_expense",
     ),
     path("growth/", views.growth_areas, name="growth_areas"),
+    path(
+        "growth/export/csv/",
+        views.growth_areas_export_csv,
+        name="growth_areas_export_csv",
+    ),
     path("search/", views.search_listings, name="search_listings"),
     path("analyze/<int:property_id>/", views.analyze_property, name="analyze_property"),
     # Canonical report URL (listing/<id>/report/)

@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Q, Count
 from django.http import (
     Http404,
@@ -678,31 +679,92 @@ def property_share(request, pk: int):
 
 
 def growth_areas(request):
+    """Display paginated growth areas sorted by composite score.
+
+    Supports GET parameters:
+        page: Page number (default 1)
+    """
+    page = request.GET.get("page", 1)
+    try:
+        page = int(page)
+    except (ValueError, TypeError):
+        page = 1
+
     # Read from GrowthArea model (city/metro-level growth metrics)
     # Fall back to MarketSnapshot for backward compatibility if GrowthArea is empty
-    # composite_score is now a DB field precomputed on save — use DB-native ordering
-    growth_areas_qs = GrowthArea.objects.all()[:200]
+    growth_areas_qs = GrowthArea.objects.all().order_by("-composite_score")
 
     if growth_areas_qs.exists():
-        top_growth = sorted(
-            growth_areas_qs,
-            key=lambda ga: ga.composite_score or Decimal("0"),
-            reverse=True,
-        )[:20]
+        paginator = Paginator(growth_areas_qs, 25)  # 25 per page
+        try:
+            top_growth_page = paginator.page(page)
+        except EmptyPage:
+            top_growth_page = paginator.page(paginator.num_pages)
     else:
         # Fallback: use MarketSnapshot (ZIP-level) if GrowthArea not yet populated
-        snapshots = MarketSnapshot.objects.all()[:50]
-        top_growth = sorted(
-            snapshots, key=lambda s: (s.price_trend, s.rent_index), reverse=True
-        )[:10]
+        snapshots = MarketSnapshot.objects.all().order_by("-price_trend")[:50]
+        top_growth_page = snapshots
 
     # Flag undervalued listings globally as a placeholder
     undervalued = find_undervalued(Listing.objects.all()[:200])
     return render(
         request,
         "growth_areas.html",
-        {"top_growth": top_growth, "undervalued": undervalued},
+        {
+            "top_growth_page": top_growth_page,
+            "undervalued": undervalued,
+            "is_paginated": hasattr(paginator, "num_pages")
+            if growth_areas_qs.exists()
+            else False,
+        },
     )
+
+
+def growth_areas_export_csv(request: HttpRequest) -> HttpResponse:
+    """Export all GrowthArea data as CSV."""
+    import csv
+
+    queryset = GrowthArea.objects.all().order_by("-composite_score")
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = (
+        f'attachment; filename="growth-areas-{timezone.now().strftime("%Y%m%d")}.csv"'
+    )
+
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "State",
+            "City",
+            "Population",
+            "Pop Growth (%)",
+            "Emp Growth (%)",
+            "Income Growth (%)",
+            "Housing Demand",
+            "Supply Constraint",
+            "Composite Score",
+            "Data Timestamp",
+        ]
+    )
+    for ga in queryset:
+        writer.writerow(
+            [
+                ga.state,
+                ga.city_name,
+                ga.population or "",
+                f"{float(ga.population_growth_rate or 0) * 100:.2f}",
+                f"{float(ga.employment_growth_rate or 0) * 100:.2f}",
+                f"{float(ga.median_income_growth or 0) * 100:.2f}",
+                ga.housing_demand_index or "",
+                ga.supply_constraint_index or "",
+                f"{float(ga.composite_score or 0):.2f}",
+                ga.data_timestamp.strftime("%Y-%m-%d %H:%M")
+                if ga.data_timestamp
+                else "",
+            ]
+        )
+
+    return response
 
 
 def growth_explorer(request: HttpRequest) -> HttpResponse:

@@ -496,6 +496,31 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
   margin-bottom: var(--sp-1);
 }
 
+/* ── Pagination ─────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+  flex-wrap: wrap;
+}
+.pagination .step-links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.pagination .current-page {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-600);
+  padding: 0 var(--sp-2);
+}
+.pagination .total-count {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-200);
+  margin-left: var(--sp-2);
+}
+
 /* ── Table checkbox column ─────────────────────────────────── */
 .col-checkbox { width: 1%; white-space: nowrap; }
 

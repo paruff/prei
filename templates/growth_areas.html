@@ -1,61 +1,111 @@
 {% extends "base.html" %}
-{% block title %}Economically Growing Areas{% endblock %}
+{% block title %}Growth Areas{% endblock %}
+{% load humanize math_filters %}
 {% block content %}
-  <h1>Economically Growing Areas</h1>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Growth Areas</h1>
+    <p class="page-sub">Top growth markets ranked by composite score</p>
+  </div>
+  <div class="nav-right">
+    <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Analyze New State</a>
+    {% if top_growth_page %}
+      <a href="{% url 'growth_areas_export_csv' %}" class="btn" title="Download all growth areas as CSV">⬇ CSV</a>
+    {% endif %}
+  </div>
+</div>
 
-  {% if top_growth %}
-    <h2>Top Growth Markets</h2>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead>
-          <tr><th>Area</th><th>Rent Index</th><th>Price Trend %</th><th></th></tr>
-        </thead>
-        <tbody>
-          {% for s in top_growth %}
-              <tr>
-                <td>{% if s.zip_code %}{{ s.zip_code }}{% else %}{{ s.city }}, {{ s.state }}{% endif %}</td>
-                <td>{{ s.rent_index }}</td>
-                <td>{{ s.price_trend|floatformat:2 }}</td>
-                <td>
-                  <a href="{% url 'vrm_properties_list' %}?state={{ s.state }}" class="btn">View Foreclosures</a>
-                </td>
-              </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <div class="empty-state" role="status">
-      <div class="empty-state-icon" aria-hidden="true">📊</div>
-      <h3>No growth data available yet</h3>
-      <p>Growth area data is populated by querying Census and FRED APIs. Use the <strong>Growth Area Explorer</strong> to discover and analyze top growth places in any state.</p>
-      <div class="form-actions">
-        <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Open Growth Area Explorer</a>
-        <a href="{% url 'markets_list' %}" class="btn">View Market Snapshots</a>
-      </div>
-    </div>
-  {% endif %}
-
-  <h2 class="mt-section">Undervalued Listings (CMA)</h2>
+{% if top_growth_page %}
+  <!-- Growth Areas Table -->
   <div class="table-wrap">
     <table class="data-table">
       <thead>
-        <tr><th>Address</th><th>City</th><th>State</th><th>PPSF</th><th>Link</th></tr>
+        <tr>
+          <th>Rank</th>
+          <th>City</th>
+          <th>State</th>
+          <th>Population</th>
+          <th>Pop Growth (5yr)</th>
+          <th>Emp Growth (5yr)</th>
+          <th>Income Growth (5yr)</th>
+          <th>Housing Demand</th>
+          <th>Composite Score</th>
+          <th></th>
+        </tr>
       </thead>
       <tbody>
-        {% for l, ppsf in undervalued %}
+        {% for ga in top_growth_page %}
           <tr>
-            <td>{{ l.address }}</td>
-            <td>{{ l.city }}</td>
-            <td>{{ l.state }}</td>
-            <td>{{ ppsf|floatformat:2 }}</td>
-            <td><a href="{{ l.url }}" target="_blank" rel="noopener">View</a></td>
+            <td class="col-right">{{ top_growth_page.start_index|add:forloop.counter0 }}</td>
+            <td>{{ ga.city_name }}</td>
+            <td>{{ ga.state }}</td>
+            <td class="col-right num">{{ ga.population|default_if_none:""|intcomma }}</td>
+            <td class="col-right num">{{ ga.population_growth_rate|mul:100|floatformat:2 }}%</td>
+            <td class="col-right num">{{ ga.employment_growth_rate|default_if_none:"0.00"|mul:100|floatformat:2 }}%</td>
+            <td class="col-right num">{{ ga.median_income_growth|mul:100|floatformat:2 }}%</td>
+            <td class="col-right">{{ ga.housing_demand_index }}</td>
+            <td class="col-right score-num num-good">{{ ga.composite_score|default_if_none:""|floatformat:2 }}</td>
+            <td><a href="{% url 'vrm_properties_list' %}?state={{ ga.state }}" class="btn">Foreclosures</a></td>
           </tr>
-        {% empty %}
-          <tr><td colspan="5">No undervalued listings found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
+  <!-- Pagination -->
+  {% if is_paginated %}
+    <div class="pagination">
+      <span class="step-links">
+        {% if top_growth_page.has_previous %}
+          <a href="?page=1" class="btn" title="First page">&laquo; First</a>
+          <a href="?page={{ top_growth_page.previous_page_number }}" class="btn">Previous</a>
+        {% endif %}
+
+        <span class="current-page">
+          Page {{ top_growth_page.number }} of {{ top_growth_page.paginator.num_pages }}
+        </span>
+
+        {% if top_growth_page.has_next %}
+          <a href="?page={{ top_growth_page.next_page_number }}" class="btn">Next</a>
+          <a href="?page={{ top_growth_page.paginator.num_pages }}" class="btn" title="Last page">Last &raquo;</a>
+        {% endif %}
+      </span>
+      <span class="total-count">({{ top_growth_page.paginator.count }} total)</span>
+    </div>
+  {% endif %}
+
+{% else %}
+  <div class="empty-state" role="status">
+    <div class="empty-state-icon" aria-hidden="true">📊</div>
+    <h3>No growth data available yet</h3>
+    <p>Growth area data is populated by querying Census and FRED APIs. Use the <strong>Growth Area Explorer</strong> to discover and analyze top growth places in any state.</p>
+    <div class="form-actions">
+      <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Open Growth Area Explorer</a>
+      <a href="{% url 'markets_list' %}" class="btn">View Market Snapshots</a>
+    </div>
+  </div>
+{% endif %}
+
+<h2 class="mt-section">Undervalued Listings (CMA)</h2>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>Address</th><th>City</th><th>State</th><th>PPSF</th><th>Link</th></tr>
+    </thead>
+    <tbody>
+      {% for l, ppsf in undervalued %}
+        <tr>
+          <td>{{ l.address }}</td>
+          <td>{{ l.city }}</td>
+          <td>{{ l.state }}</td>
+          <td>{{ ppsf|floatformat:2 }}</td>
+          <td><a href="{{ l.url }}" target="_blank" rel="noopener">View</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">No undervalued listings found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 {% endblock %}
