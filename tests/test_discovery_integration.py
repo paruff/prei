@@ -8,7 +8,7 @@ from prei.models.pipeline import PipelineStage
 from prei.pipeline.handlers.discovery import DiscoverySanitizer
 from prei.pipeline.handlers.discovery_processor import DiscoveryProcessor
 from prei.pipeline.orchestrator import PipelineOrchestrator
-from prei.pipeline.sources.county import CountyForeclosureSource
+from prei.pipeline.sources.county import TexasCountyForeclosureSource
 from prei.pipeline.sources.registry import discover_from_all, get_source
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -163,7 +163,7 @@ class TestSourceRegistryToProcessor:
 
     def test_county_source_supported_counties(self):
         """County source knows supported counties for active states."""
-        counties = CountyForeclosureSource.supported_counties("CA")
+        counties = TexasCountyForeclosureSource.supported_counties("CA")
         assert len(counties) >= 5
         assert "Los Angeles" in counties
 

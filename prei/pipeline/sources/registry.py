@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Type
 
 from prei.pipeline.sources.base import DiscoverySource
-from prei.pipeline.sources.county import CountyForeclosureSource
+from prei.pipeline.sources.county import TexasCountyForeclosureSource
 from prei.pipeline.sources.reo_sources import (
     FannieMaeSource,
     HUDHomestoreSource,
@@ -25,7 +25,7 @@ _BUILTIN_SOURCES: Dict[str, Type[DiscoverySource]] = {
     "hud": HUDHomestoreSource,
     "va": VAForeclosuresSource,
     "usda": USDAForeclosuresSource,
-    "county": CountyForeclosureSource,
+    "county_tx": TexasCountyForeclosureSource,
     "vrm": VrmDiscoverySource,
 }
 

@@ -670,6 +670,12 @@ class GrowthArea(models.Model):
         blank=True,
         help_text="Precomputed weighted growth score (computed on save)",
     )
+    landlord_score = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="State landlord-friendliness score (0=tenant-friendly, 10=landlord-friendly)",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

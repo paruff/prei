@@ -46,6 +46,7 @@ from .models import (
     UserScreeningPreferences,
 )
 
+from prei.integrations.landlord_data import get_state_landlord_score
 from investor_app.finance.utils import (
     compute_analysis_for_property,
     calculate_whatif_monthly_cashflow,
@@ -920,6 +921,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "employment_growth_rate": safe_emp_growth,
                 "median_income_growth": data["income_growth"],
                 "housing_demand_index": data["housing_demand"],
+                "landlord_score": get_state_landlord_score(state)["score"],
                 "data_timestamp": timezone.now(),
             },
         )
@@ -936,6 +938,13 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
         key=lambda r: r["growth_area"].composite_score or Decimal("-999"),
         reverse=True,
     )
+
+    # Add landlord-friendliness info to each result
+    state_info = get_state_landlord_score(state)
+    for r in results:
+        r["landlord_score"] = state_info["score"]
+        r["landlord_label"] = state_info["label"]
+        r["landlord_tier"] = state_info["tier"]
 
     # 6. Optional: pipeline discovery for a specific city
     pipeline_results = None

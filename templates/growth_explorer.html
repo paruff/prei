@@ -206,7 +206,15 @@
             <tr>
               <td class="col-right">{{ forloop.counter }}</td>
               <td>{{ r.place_name }}</td>
-              <td>{{ r.growth_area.state }}</td>
+              <td>{{ r.growth_area.state }}
+                {% if r.landlord_score >= 7 %}
+                  <span class="verdict-badge verdict-a" title="{{ r.landlord_label }}: score {{ r.landlord_score }}/10 — fast evictions, no rent control">🟢</span>
+                {% elif r.landlord_score <= 3 %}
+                  <span class="verdict-badge verdict-c" title="{{ r.landlord_label }}: score {{ r.landlord_score }}/10 — slow evictions, rent control">🔴</span>
+                {% else %}
+                  <span class="verdict-badge verdict-moderate" title="{{ r.landlord_label }}: score {{ r.landlord_score }}/10">🟡</span>
+                {% endif %}
+              </td>
               <td class="col-right num">{{ r.population|intcomma }}</td>
               <td class="col-right num">{{ r.growth_area.population_growth_rate|mul:100|floatformat:2 }}%</td>
               <td class="col-right num">{{ r.growth_area.employment_growth_rate|mul:100|floatformat:2 }}%</td>

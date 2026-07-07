@@ -3,7 +3,7 @@
 import pytest
 
 from prei.pipeline.sources.base import DiscoverySource
-from prei.pipeline.sources.county import CountyForeclosureSource
+from prei.pipeline.sources.county import TexasCountyForeclosureSource
 from prei.pipeline.sources.registry import (
     discover_from_all,
     get_source,
@@ -32,11 +32,13 @@ class TestSourceInterface:
             (HUDHomestoreSource, "hud"),
             (VAForeclosuresSource, "va"),
             (USDAForeclosuresSource, "usda"),
-            (CountyForeclosureSource, "county_la"),
+            (TexasCountyForeclosureSource, "county_la"),
         ],
     )
     def test_all_sources_have_name(self, cls, name):
-        source = cls() if cls != CountyForeclosureSource else cls(county="Los Angeles")
+        source = (
+            cls() if cls != TexasCountyForeclosureSource else cls(county="Los Angeles")
+        )
         assert isinstance(source, DiscoverySource)
         assert source.name is not None
         assert len(source.name) > 0
@@ -48,16 +50,16 @@ class TestSourceInterface:
             HUDHomestoreSource,
             VAForeclosuresSource,
             USDAForeclosuresSource,
-            CountyForeclosureSource,
+            TexasCountyForeclosureSource,
         ],
     )
     def test_all_sources_return_list(self, cls):
-        source = cls() if cls != CountyForeclosureSource else cls()
+        source = cls() if cls != TexasCountyForeclosureSource else cls()
         result = source.fetch(state="CA")
         assert isinstance(result, list)
 
     def test_county_source_accepts_county_param(self):
-        source = CountyForeclosureSource(county="Los Angeles")
+        source = TexasCountyForeclosureSource(county="Los Angeles")
         assert source.county == "Los Angeles"
         assert "los_angeles" in source.name
 
@@ -125,34 +127,34 @@ class TestUSDAForeclosuresSource:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-class TestCountyForeclosureSource:
+class TestTexasCountyForeclosureSource:
     def test_name_default(self):
-        source = CountyForeclosureSource()
-        assert "county" in source.name
+        source = TexasCountyForeclosureSource()
+        assert "county_tx" in source.name
 
     def test_name_with_county(self):
-        source = CountyForeclosureSource(county="Los Angeles")
+        source = TexasCountyForeclosureSource(county="Los Angeles")
         assert source.name == "county_los_angeles"
 
     def test_default_notice_types(self):
-        source = CountyForeclosureSource()
-        assert CountyForeclosureSource.NOTICE_NOD in source.notice_types
-        assert CountyForeclosureSource.NOTICE_NTS in source.notice_types
-        assert CountyForeclosureSource.NOTICE_SHERIFF in source.notice_types
-        assert CountyForeclosureSource.NOTICE_AUCTION in source.notice_types
+        source = TexasCountyForeclosureSource()
+        assert TexasCountyForeclosureSource.NOTICE_NOD in source.notice_types
+        assert TexasCountyForeclosureSource.NOTICE_NTS in source.notice_types
+        assert TexasCountyForeclosureSource.NOTICE_SHERIFF in source.notice_types
+        assert TexasCountyForeclosureSource.NOTICE_AUCTION in source.notice_types
 
     def test_fetch_with_notice_type(self):
-        source = CountyForeclosureSource()
+        source = TexasCountyForeclosureSource()
         result = source.fetch(state="CA", notice_type="nod")
         assert isinstance(result, list)
 
     def test_supported_counties_ca(self):
-        counties = CountyForeclosureSource.supported_counties("CA")
+        counties = TexasCountyForeclosureSource.supported_counties("CA")
         assert "Los Angeles" in counties
         assert "San Diego" in counties
 
     def test_supported_counties_unknown_state(self):
-        counties = CountyForeclosureSource.supported_counties("XX")
+        counties = TexasCountyForeclosureSource.supported_counties("XX")
         assert counties == []
 
 
@@ -168,14 +170,14 @@ class TestRegistry:
         assert "hud" in sources
         assert "va" in sources
         assert "usda" in sources
-        assert "county" in sources
+        assert "county_tx" in sources
 
     def test_get_source_valid(self):
         source = get_source("fannie_mae")
         assert isinstance(source, FannieMaeSource)
 
-        source = get_source("county", county="Los Angeles")
-        assert isinstance(source, CountyForeclosureSource)
+        source = get_source("county_tx", county="Los Angeles")
+        assert isinstance(source, TexasCountyForeclosureSource)
         assert source.county == "Los Angeles"
 
     def test_get_source_invalid(self):
