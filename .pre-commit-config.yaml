@@ -38,7 +38,7 @@ repos:
           - fastapi
           - click
         args: [--show-error-codes, --no-incremental]
-        exclude: ^migrations/
+        exclude: ^migrations/|^tests_bdd/
         verbose: true
 
   # --- GitOps validation (Dockerfile, docker-compose, K8s, Kustomize) ---

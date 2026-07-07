@@ -45,10 +45,13 @@ jobs:
       - name: Collect static files
         run: python manage.py collectstatic --noinput
 
-      - name: Run tests
+      - name: Run tests with coverage
         run: |
           set -o pipefail
-          pytest --tb=short -q 2>&1 | tee pytest-output.txt
+          coverage run -m pytest --tb=short -q 2>&1 | tee pytest-output.txt
+
+      - name: "Coverage report (gate: 20%)"
+        run: coverage report --fail-under=20 --skip-covered
 
       - name: Lint
         run: ruff check .
