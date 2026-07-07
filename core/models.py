@@ -1213,6 +1213,42 @@ class UserProfile(models.Model):
     def __str__(self) -> str:  # noqa: D401
         return f"Profile for {self.user.username}"
 
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class UserScreeningPreferences(models.Model):
+    """Per-user screening thresholds for pipeline discovery."""
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="screening_preferences"
+    )
+    min_gross_yield = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.07"),
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("1"))],
+    )
+    max_price_to_rent_ratio = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("15.00"),
+        validators=[MinValueValidator(Decimal("1")), MaxValueValidator(Decimal("100"))],
+    )
+    min_beds = models.PositiveIntegerField(default=1)
+    min_baths = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Screening Preferences"
+        verbose_name_plural = "Screening Preferences"
+
+    def __str__(self) -> str:
+        return (
+            f"{self.user.email}: yield>={self.min_gross_yield}, "
+            f"PTR<={self.max_price_to_rent_ratio}"
+        )
+
 
 class UserInvestmentTargets(models.Model):
     """Per-user configurable underwriting thresholds and assumptions."""

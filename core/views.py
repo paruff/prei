@@ -38,7 +38,13 @@ from core.integrations.market.census import (
 )
 from core.integrations.sources.fred_adapter import FREDAdapter
 
-from .models import VrmProperty, UserInvestmentTargets, GrowthArea, PipelineAsset
+from .models import (
+    VrmProperty,
+    UserInvestmentTargets,
+    GrowthArea,
+    PipelineAsset,
+    UserScreeningPreferences,
+)
 
 from investor_app.finance.utils import (
     compute_analysis_for_property,
@@ -961,12 +967,26 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 all_listings, source_name="growth_explorer"
             )
 
-            # Run through batch screening
+            # Run through batch screening with user preferences when available
+            min_yield = Decimal("0.07")
+            max_ptr = Decimal("15.0")
+            min_beds = 1
+            min_baths = 1
+            if request.user.is_authenticated:
+                try:
+                    prefs = UserScreeningPreferences.objects.get(user=request.user)
+                    min_yield = prefs.min_gross_yield
+                    max_ptr = prefs.max_price_to_rent_ratio
+                    min_beds = prefs.min_beds
+                    min_baths = prefs.min_baths
+                except UserScreeningPreferences.DoesNotExist:
+                    pass
+
             thresholds = ScreeningThresholds(
-                min_gross_yield=0.07,
-                max_price_to_rent_ratio=15.0,
-                min_beds=1,
-                min_baths=1,
+                min_gross_yield=float(min_yield),
+                max_price_to_rent_ratio=float(max_ptr),
+                min_beds=min_beds,
+                min_baths=min_baths,
             )
             engine = PipelineEngine(repository=InMemoryAssetRepository())
             batch_processor = BatchScreeningProcessor(engine, thresholds)
@@ -1458,17 +1478,55 @@ US_STATES = [
 
 @login_required
 def vrm_properties_list(request: HttpRequest) -> HttpResponse:
-    """List VRM properties with state/zip filtering."""
+    """List VRM properties with state/zip filtering and pipeline integration."""
     state = request.GET.get("state", "").strip().upper()
     zip_code = request.GET.get("zip", "").strip()
+    pipeline_message = None
+
+    # Handle pipeline request: run selected properties through discovery
+    if request.method == "POST" and "run_pipeline" in request.POST:
+        from prei.pipeline.engine import InMemoryAssetRepository, PipelineEngine
+        from prei.pipeline.handlers.screening import ScreeningThresholds
+        from prei.pipeline.handlers.batch_screening import BatchScreeningProcessor
+
+        prop_ids = request.POST.getlist("pipeline_props")
+        if prop_ids:
+            properties = VrmProperty.objects.filter(
+                vrm_property_id__in=[int(p) for p in prop_ids]
+            )
+            payloads = []
+            for prop in properties:
+                payloads.append(
+                    {
+                        "asset_id": f"vrm-{prop.vrm_property_id}",
+                        "address": f"{prop.address}, {prop.city}, {prop.state} {prop.zip_code}",
+                        "price": float(prop.list_price) if prop.list_price else None,
+                        "rent": float(prop.projected_monthly_rent)
+                        if prop.projected_monthly_rent
+                        else None,
+                    }
+                )
+
+            thresholds = ScreeningThresholds(
+                min_gross_yield=0.07,
+                max_price_to_rent_ratio=15.0,
+                min_beds=1,
+                min_baths=1,
+            )
+            engine = PipelineEngine(repository=InMemoryAssetRepository())
+            processor = BatchScreeningProcessor(engine, thresholds)
+            result = processor.process(payloads)
+            pipeline_message = (
+                f"{len(payloads)} properties processed: "
+                f"{result['advanced']} passed screening, "
+                f"{result['killed']} rejected."
+            )
 
     queryset = VrmProperty.objects.all()
-
     if state:
         queryset = queryset.filter(state=state)
     if zip_code:
         queryset = queryset.filter(zip_code=zip_code)
-
     queryset = queryset.order_by("-last_seen_at")[:100]
 
     return render(
@@ -1481,19 +1539,29 @@ def vrm_properties_list(request: HttpRequest) -> HttpResponse:
             "selected_zip": zip_code,
             "total_count": VrmProperty.objects.count(),
             "filtered_count": queryset.count(),
+            "pipeline_message": pipeline_message,
         },
     )
 
 
 @login_required
 def investment_targets_edit(request: HttpRequest) -> HttpResponse:
-    """Edit the current user's investment targets (underwriting thresholds)."""
+    """Edit the current user's investment targets and screening preferences."""
     targets, _created = UserInvestmentTargets.objects.get_or_create(user=request.user)
+    prefs, _ = UserScreeningPreferences.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
         form = InvestmentTargetsForm(request.POST, instance=targets)
         if form.is_valid():
             form.save()
+            # Save screening preferences
+            prefs.min_gross_yield = Decimal(request.POST.get("min_gross_yield", "0.07"))
+            prefs.max_price_to_rent_ratio = Decimal(
+                request.POST.get("max_price_to_rent_ratio", "15.00")
+            )
+            prefs.min_beds = int(request.POST.get("min_beds", 1))
+            prefs.min_baths = int(request.POST.get("min_baths", 1))
+            prefs.save()
             return redirect("investment_targets_edit")
     else:
         form = InvestmentTargetsForm(instance=targets)
@@ -1501,7 +1569,7 @@ def investment_targets_edit(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "investment_targets/edit.html",
-        {"form": form, "targets": targets},
+        {"form": form, "targets": targets, "prefs": prefs},
     )
 
 
