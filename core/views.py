@@ -679,6 +679,7 @@ def property_share(request, pk: int):
 def growth_areas(request):
     # Read from GrowthArea model (city/metro-level growth metrics)
     # Fall back to MarketSnapshot for backward compatibility if GrowthArea is empty
+    # composite_score is now a DB field precomputed on save — use DB-native ordering
     growth_areas_qs = GrowthArea.objects.all()[:200]
 
     if growth_areas_qs.exists():
@@ -847,6 +848,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             city_name=place_name,
             defaults={
                 "metro_area": place_name,
+                "population": population,
                 "population_growth_rate": pop_growth,
                 "employment_growth_rate": safe_emp_growth,
                 "median_income_growth": income_growth,

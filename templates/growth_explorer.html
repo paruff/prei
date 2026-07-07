@@ -3,22 +3,20 @@
 {% load humanize math_filters %}
 {% block content %}
 <div class="page-header">
-  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-    <div>
-      <h1 class="page-title mb-1">Growth Area Explorer</h1>
-      <p class="page-sub mb-0">Discover top growth places in a state — live Census/BLS data pull</p>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-      {% if api_keys_configured %}
-        <span class="badge bg-success d-flex align-items-center gap-1" title="Census API key is configured; employment growth via FRED">
-          <span aria-hidden="true">✓</span> API Ready
-        </span>
-      {% else %}
-        <span class="badge bg-warning d-flex align-items-center gap-1" title="Census API key missing; FRED is optional">
-          <span aria-hidden="true">⚠</span> API Key Missing
-        </span>
-      {% endif %}
-    </div>
+  <div>
+    <h1 class="page-title">Growth Area Explorer</h1>
+    <p class="page-sub">Discover top growth places in a state — live Census/FRED data pull</p>
+  </div>
+  <div class="nav-right">
+    {% if api_keys_configured %}
+      <span class="verdict-badge verdict-a" title="Census API key configured; employment via FRED">
+        <span aria-hidden="true">✓</span> API Ready
+      </span>
+    {% else %}
+      <span class="verdict-badge verdict-c" title="Census API key missing; FRED is optional">
+        <span aria-hidden="true">⚠</span> API Key Missing
+      </span>
+    {% endif %}
   </div>
 </div>
 
@@ -28,29 +26,27 @@
 
 <!-- API Key Status Banner (only shown when key missing) -->
 {% if not api_keys_configured %}
-  <div class="message message-warning mb-4" role="alert">
-    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
-      <div>
-        <strong>⚠ Analysis unavailable — Census API key not configured</strong>
-        <div class="mt-1">
-          <code>CENSUS_API_KEY</code> is missing from your environment.
-          Employment data is fetched via FRED (free) and does not require a separate key.
-        </div>
-        <div class="form-hint mt-1">
-          Add <code>CENSUS_API_KEY</code> to <code>.env</code> (or container environment) to enable growth analysis.
-        </div>
+  <div class="message message-warning mb-form" role="alert">
+    <div>
+      <strong>⚠ Analysis unavailable — Census API key not configured</strong>
+      <div class="form-hint">
+        <code>CENSUS_API_KEY</code> is missing from your environment.
+        Employment data is fetched via FRED (free) and does not require a separate key.
+        Add <code>CENSUS_API_KEY</code> to <code>.env</code> to enable growth analysis.
       </div>
-      <a href="{% url 'vrm_properties_list' %}" class="btn btn-outline-secondary btn-sm ms-sm-3">Browse VRM Properties instead</a>
+    </div>
+    <div class="form-actions">
+      <a href="{% url 'vrm_properties_list' %}" class="btn">Browse VRM Properties instead</a>
     </div>
   </div>
 {% endif %}
 
 <!-- FRED Key Status (informational only — FRED is optional) -->
 {% if not fred_key_configured and api_keys_configured %}
-  <div class="message message-info mb-4" role="status">
+  <div class="message message-info mb-form" role="status">
     <div>
       <strong>ℹ Employment via FRED</strong>
-      <span class="ml-2">
+      <span class="ml-link">
         <code>FRED_API_KEY</code> not set — employment growth defaults to 0%.
         <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener">Get a free FRED key</a>
         and add to <code>.env</code> for accurate employment data.
@@ -60,50 +56,50 @@
 {% endif %}
 
 <!-- How It Works Card -->
-<div class="card mb-4">
-  <div class="card-title d-flex align-items-center gap-2">
+<div class="card mb-form">
+  <div class="card-title">
     <span aria-hidden="true">ℹ</span> How It Works
   </div>
   <div class="card-body">
-    <p class="mb-3">Click <strong>Analyze State</strong> to run a live analysis:</p>
-    <ol class="mb-3 ps-3">
+    <p>Click <strong>Analyze State</strong> to run a live analysis:</p>
+    <ol>
       <li><strong>Discover places:</strong> Queries Census for the top 10 places by population in the selected state.</li>
       <li><strong>Pull metrics:</strong> For each place, fetches 5-year population growth, median income growth, and housing demand index from Census ACS.</li>
       <li><strong>Add employment:</strong> Pulls 5-year state-level employment growth from FRED (Federal Reserve) — same value for all places in the state.</li>
       <li><strong>Score & rank:</strong> Computes a composite score and stores results for future reference.</li>
     </ol>
-    <div class="message message-info mb-0">
+    <div class="message message-info">
       <strong>Timing:</strong> Takes ~20–60 seconds depending on state size. Up to 21 sequential Census/FRED API calls.
     </div>
   </div>
 </div>
 
 <!-- Data Sources & What You'll See -->
-<div class="card mb-4">
-  <div class="card-title d-flex align-items-center gap-2">
+<div class="card mb-form">
+  <div class="card-title">
     <span aria-hidden="true">📊</span> Data Sources & Output
   </div>
   <div class="card-body">
-    <div class="row g-3">
-      <div class="col-md-6">
+    <div class="form-grid-2">
+      <div>
         <strong>Census ACS (5-year):</strong>
-        <ul class="mb-0 ps-3 mt-1">
+        <ul>
           <li>Population & population growth (5yr)</li>
           <li>Median income & income growth (5yr)</li>
           <li>Housing demand index (derived)</li>
         </ul>
       </div>
-      <div class="col-md-6">
+      <div>
         <strong>FRED (Federal Reserve):</strong>
-        <ul class="mb-0 ps-3 mt-1">
+        <ul>
           <li>State-level employment growth (5yr) via nonfarm payrolls</li>
           <li><em>Same value for all places in the state</em></li>
         </ul>
       </div>
     </div>
-    <div class="mt-3">
+    <div class="mt-section">
       <strong>Results table includes:</strong>
-      <ul class="mb-0 ps-3 mt-1">
+      <ul>
         <li>Rank (by composite score)</li>
         <li>City, State, Population (formatted)</li>
         <li>Pop Growth %, Emp Growth %*, Income Growth %</li>
@@ -121,7 +117,7 @@
   <div class="card mb-form">
     <div class="card-title">Select State</div>
     <div class="card-body">
-      <div class="form-group mb-form">
+      <div class="form-group">
         <label for="id_state" class="form-label">State</label>
         <select name="state" id="id_state" class="form-input" required {% if not api_keys_configured %}disabled{% endif %}>
           <option value="">— Choose a state —</option>
@@ -130,19 +126,19 @@
           {% endfor %}
         </select>
         {% if not api_keys_configured %}
-          <p class="form-hint mt-1">Configure API keys to enable state selection.</p>
+          <p class="form-hint">Configure Census API key to enable state selection.</p>
         {% else %}
-          <p class="form-hint mt-1">Select a state and click <strong>Analyze State</strong>.</p>
+          <p class="form-hint">Select a state and click <strong>Analyze State</strong>.</p>
         {% endif %}
       </div>
       <div class="form-actions">
-          <button type="submit" class="btn btn-primary" id="submit-btn"
-                  {% if not api_keys_configured %}disabled title="Configure CENSUS_API_KEY to enable analysis"{% endif %}>
+        <button type="submit" class="btn btn-primary" id="submit-btn"
+                {% if not api_keys_configured %}disabled title="Configure CENSUS_API_KEY to enable analysis"{% endif %}>
           <span class="btn-text">Analyze State</span>
           <span class="spinner" aria-hidden="true"></span>
         </button>
         {% if not api_keys_configured %}
-          <p class="form-hint mt-1 text-warning">⚠ Analysis requires Census API key in environment.</p>
+          <p class="form-hint">⚠ Analysis requires Census API key in environment.</p>
         {% endif %}
       </div>
     </div>
@@ -160,7 +156,7 @@
       <p id="loading-stage-3" class="loading-stage" data-duration="15">Computing composite scores and rankings...</p>
       <p id="loading-stage-4" class="loading-stage" data-duration="60">Still working... processing place <span id="place-counter">0</span> of 10</p>
       <p id="loading-stage-error" class="loading-stage error" hidden>
-        This is taking longer than expected. The Census/BLS API may be slow right now.<br>
+        This is taking longer than expected. The Census/FRED API may be slow right now.<br>
         <small>If this continues, the request will timeout after 2 minutes.</small>
       </p>
       <div class="progress-bar-wrap">
@@ -175,17 +171,17 @@
 <div id="results-section"{% if results is None and not error %} hidden{% endif %}>
 {% if results is not None %}
   <div class="mt-section">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+    <div class="page-header">
       <div>
-        <h2 class="mb-1">Results for {% if results.0 %}{{ results.0.growth_area.state }}{% else %}{{ selected_state }}{% endif %}</h2>
+        <h2>Results for {% if results.0 %}{{ results.0.growth_area.state }}{% else %}{{ selected_state }}{% endif %}</h2>
         {% if emp_growth is not None %}
-          <p class="mb-0 form-hint">
+          <p class="form-hint">
             <strong>State employment growth (5yr):</strong> {{ emp_growth|mul:100|floatformat:2 }}%
             <span class="ml-link" title="Employment growth from FRED CES nonfarm payrolls">📍 State-level figure (FRED)</span>
           </p>
         {% endif %}
       </div>
-      <a href="{% url 'growth_explorer' %}" class="btn btn-outline-secondary btn-sm">← New Analysis</a>
+      <a href="{% url 'growth_explorer' %}" class="btn">← New Analysis</a>
     </div>
 
     {% if results %}
@@ -216,35 +212,35 @@
               <td class="col-right num">{{ r.growth_area.employment_growth_rate|mul:100|floatformat:2 }}%</td>
               <td class="col-right num">{{ r.growth_area.median_income_growth|mul:100|floatformat:2 }}%</td>
               <td class="col-right">{{ r.growth_area.housing_demand_index }}</td>
-              <td class="col-right score-num num-good">{{ r.growth_area.composite_score|floatformat:2 }}</td>
+              <td class="col-right score-num num-good">{{ r.growth_area.composite_score|default_if_none:""|floatformat:2 }}</td>
               <td>
-                <a href="{% url 'vrm_properties_list' %}?state={{ r.growth_area.state }}" class="btn btn-sm">View Foreclosures</a>
+                <a href="{% url 'vrm_properties_list' %}?state={{ r.growth_area.state }}" class="btn">View Foreclosures</a>
               </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-      <div class="mt-2 form-hint">
+      <p class="form-hint">
         * Employment growth is a <strong>state-level</strong> figure from FRED (CES nonfarm payrolls) — same value for all places in the state.
-      </div>
+      </p>
     {% else %}
       <!-- Empty results state -->
-      <div class="empty-state-card" role="status">
+      <div class="empty-state" role="status">
         <div class="empty-state-icon" aria-hidden="true">🔍</div>
         <h3>No places discovered</h3>
         <p>Census returned no populated places for <strong>{{ selected_state }}</strong>.</p>
-        <div class="message message-info mt-2 mb-3">
+        <div class="message message-info">
           <strong>Possible causes:</strong>
-          <ul class="mb-0 ps-3 mt-1">
+          <ul>
             <li>The Census API key may not have permission for this query. Verify your <code>CENSUS_API_KEY</code> in <code>.env</code>.</li>
             <li>The ACS data vintage may need updating. Check that the vintage is available for this geography.</li>
             <li>The state may have very few Census-classified "places" (incorporated cities/towns).</li>
           </ul>
         </div>
-        <div class="d-flex flex-wrap gap-2 mt-3">
-          <a href="{% url 'growth_explorer' %}" class="btn btn-outline-primary">Try another state</a>
-          <a href="{% url 'vrm_properties_list' %}?state={{ selected_state }}" class="btn btn-outline-secondary">Browse VRM Properties for {{ selected_state }}</a>
+        <div class="form-actions">
+          <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Try another state</a>
+          <a href="{% url 'vrm_properties_list' %}?state={{ selected_state }}" class="btn">Browse VRM Properties for {{ selected_state }}</a>
         </div>
       </div>
     {% endif %}
@@ -321,7 +317,6 @@
   const resultsSection = document.getElementById('results-section');
   if (!form || !btn || !select) return;
 
-  /** Show a loading stage by index, hide all others. */
   function showStage(index) {
     for (let i = 0; i <= 5; i++) {
       const el = document.getElementById('loading-stage-' + i);
@@ -329,13 +324,11 @@
     }
   }
 
-  /** Update progress bar width. */
   function setProgress(pct) {
     const bar = document.getElementById('analysis-progress');
     if (bar) bar.style.width = Math.min(pct, 100) + '%';
   }
 
-  /** Re-enable the form after an error or timeout. */
   function resetForm(message) {
     btn.classList.remove('btn-loading');
     btn.disabled = false;
@@ -344,9 +337,8 @@
     if (textSpan) textSpan.textContent = 'Analyze State';
     overlay.hidden = true;
     if (message) {
-      // Show error in results section
       const errorDiv = document.createElement('div');
-      errorDiv.className = 'message message-error mt-3';
+      errorDiv.className = 'message message-error';
       errorDiv.role = 'alert';
       errorDiv.innerHTML = message;
       resultsSection.hidden = false;
@@ -355,7 +347,6 @@
   }
 
   form.addEventListener('submit', function(e) {
-    // Don't submit the form normally
     e.preventDefault();
 
     const state = select.value;
@@ -364,33 +355,27 @@
       return;
     }
 
-    // Get CSRF token
     const csrfInput = form.querySelector('[name=csrfmiddlewaretoken]');
     const csrfToken = csrfInput ? csrfInput.value : '';
 
-    // Visual feedback
     btn.classList.add('btn-loading');
     btn.disabled = true;
     const textSpan = btn.querySelector('.btn-text');
-    if (textSpan) textSpan.textContent = 'Analyzing…';
+    if (textSpan) textSpan.textContent = 'Analyzing\u2026';
     select.disabled = true;
 
-    // Hide any previous error
     const prevError = resultsSection.querySelector('.message');
     if (prevError) prevError.remove();
 
-    // Show loading overlay
     overlay.hidden = false;
     showStage(0);
     setProgress(0);
 
-    // Start elapsed timer
     let elapsed = 0;
     const timerEl = document.getElementById('elapsed-timer');
     const timerInterval = setInterval(function() {
       elapsed++;
       if (timerEl) timerEl.textContent = 'Elapsed: ' + elapsed + 's';
-      // Update progress indicator based on elapsed time
       if (elapsed < 5) {
         showStage(0);
         setProgress(5 + elapsed * 3);
@@ -408,26 +393,23 @@
         document.getElementById('place-counter').textContent = Math.min(10, Math.floor((elapsed - 60) / 3));
         setProgress(85);
       } else {
-        // Over 90 seconds — show warning
         document.getElementById('loading-stage-error').hidden = false;
         setProgress(95);
       }
     }, 1000);
 
-    // Set a timeout safety net: if the request takes > 130 seconds, abort
     const controller = new AbortController();
     const timeoutId = setTimeout(function() {
       controller.abort();
       clearInterval(timerInterval);
       resetForm(
         '⚠ Request timed out after 2 minutes. ' +
-        'The Census/BLS API may be slow or unreachable. ' +
+        'The Census/FRED API may be slow or unreachable. ' +
         '<a href="' + window.location.href + '" class="alert-link">Try again</a> ' +
         'or check your API keys in <code>.env</code>.'
       );
     }, 130000);
 
-    // Submit via fetch
     fetch(form.action || window.location.href, {
       method: 'POST',
       headers: {
@@ -446,13 +428,11 @@
       overlay.hidden = true;
 
       if (!response.ok) {
-        // Try to get error text from response
         return response.text().then(function(text) {
-          // Check for common error patterns
           if (response.status === 502) {
             throw new Error('Server timeout (502 Bad Gateway). The analysis took too long. Try again or reduce the state size.');
           } else if (response.status === 504) {
-            throw new Error('Gateway timeout (504). The upstream Census/BLS API took too long to respond.');
+            throw new Error('Gateway timeout (504). The upstream API took too long to respond.');
           } else if (response.status === 500) {
             throw new Error('Internal server error (500). Check server logs for details.');
           } else if (response.status === 403) {
@@ -465,11 +445,9 @@
       return response.text();
     })
     .then(function(html) {
-      // Replace page content with the response
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const newContent = doc.getElementById('results-section');
-      const newOverlay = doc.getElementById('loading-overlay');
       const newForm = doc.getElementById('explorer-form');
 
       if (newContent) {
@@ -478,13 +456,11 @@
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      // Update form state if the response changed it
       if (newForm) {
         const newSelect = newForm.querySelector('#id_state');
         if (newSelect) select.value = newSelect.value;
       }
 
-      // Re-enable form
       btn.classList.remove('btn-loading');
       btn.disabled = false;
       select.disabled = false;
@@ -496,14 +472,12 @@
       overlay.hidden = true;
 
       if (err.name === 'AbortError') {
-        // Already handled by the timeout above
         return;
       }
       resetForm('⚠ ' + err.message);
     });
   });
 
-  // Re-enable if user navigates back (bfcache)
   window.addEventListener('pageshow', function(event) {
     if (event.persisted) {
       btn.classList.remove('btn-loading');

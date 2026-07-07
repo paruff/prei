@@ -278,6 +278,7 @@ class Command(BaseCommand):
                     city_name=city_name,
                     defaults={
                         "metro_area": city_name,  # Use city name as metro area for now
+                        "population": census_data.get("population_current"),
                         "population_growth_rate": pop_growth,
                         "employment_growth_rate": emp_growth,
                         "median_income_growth": income_growth,

@@ -5,53 +5,57 @@
 
   {% if top_growth %}
     <h2>Top Growth Markets</h2>
-    <table>
-      <thead>
-        <tr><th>Area</th><th>Rent Index</th><th>Price Trend %</th></tr>
-      </thead>
-      <tbody>
-        {% for s in top_growth %}
-            <tr>
-              <td>{% if s.zip_code %}{{ s.zip_code }}{% else %}{{ s.city }}, {{ s.state }}{% endif %}</td>
-              <td>{{ s.rent_index }}</td>
-              <td>{{ s.price_trend|floatformat:2 }}</td>
-              <td>
-                <a href="{% url 'vrm_properties_list' %}?state={{ s.state }}">View Foreclosures</a>
-              </td>
-            </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Area</th><th>Rent Index</th><th>Price Trend %</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for s in top_growth %}
+              <tr>
+                <td>{% if s.zip_code %}{{ s.zip_code }}{% else %}{{ s.city }}, {{ s.state }}{% endif %}</td>
+                <td>{{ s.rent_index }}</td>
+                <td>{{ s.price_trend|floatformat:2 }}</td>
+                <td>
+                  <a href="{% url 'vrm_properties_list' %}?state={{ s.state }}" class="btn">View Foreclosures</a>
+                </td>
+              </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% else %}
-    <div class="empty-state-card" role="status">
+    <div class="empty-state" role="status">
       <div class="empty-state-icon" aria-hidden="true">📊</div>
       <h3>No growth data available yet</h3>
-      <p>Growth area data is populated by querying Census and BLS APIs. Use the <strong>Growth Area Explorer</strong> to discover and analyze top growth places in any state.</p>
-      <div class="d-flex flex-wrap gap-2 mt-3">
+      <p>Growth area data is populated by querying Census and FRED APIs. Use the <strong>Growth Area Explorer</strong> to discover and analyze top growth places in any state.</p>
+      <div class="form-actions">
         <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Open Growth Area Explorer</a>
-        <a href="{% url 'markets_list' %}" class="btn btn-outline-secondary">View Market Snapshots</a>
+        <a href="{% url 'markets_list' %}" class="btn">View Market Snapshots</a>
       </div>
     </div>
   {% endif %}
 
   <h2 class="mt-section">Undervalued Listings (CMA)</h2>
-  <table>
-    <thead>
-      <tr><th>Address</th><th>City</th><th>State</th><th>PPSF</th><th>Link</th></tr>
-    </thead>
-    <tbody>
-      {% for l, ppsf in undervalued %}
-        <tr>
-          <td>{{ l.address }}</td>
-          <td>{{ l.city }}</td>
-          <td>{{ l.state }}</td>
-          <td>{{ ppsf|floatformat:2 }}</td>
-          <td><a href="{{ l.url }}" target="_blank" rel="noopener">View</a></td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="5">No undervalued listings found.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Address</th><th>City</th><th>State</th><th>PPSF</th><th>Link</th></tr>
+      </thead>
+      <tbody>
+        {% for l, ppsf in undervalued %}
+          <tr>
+            <td>{{ l.address }}</td>
+            <td>{{ l.city }}</td>
+            <td>{{ l.state }}</td>
+            <td>{{ ppsf|floatformat:2 }}</td>
+            <td><a href="{{ l.url }}" target="_blank" rel="noopener">View</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No undervalued listings found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
 {% endblock %}

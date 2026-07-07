@@ -660,6 +660,16 @@ class GrowthArea(models.Model):
         max_digits=9, decimal_places=6, null=True, blank=True
     )
     data_timestamp = models.DateTimeField()
+    population = models.IntegerField(
+        null=True, blank=True, help_text="Latest population from Census ACS"
+    )
+    composite_score = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Precomputed weighted growth score (computed on save)",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -674,8 +684,13 @@ class GrowthArea(models.Model):
     def __str__(self) -> str:  # noqa: D401
         return f"{self.city_name}, {self.state}"
 
-    @property
-    def composite_score(self) -> Decimal | None:
+    def composite_score_display(self) -> Decimal | None:
+        """Return precomputed composite score, or compute on the fly if not stored."""
+        if self.composite_score is not None:
+            return self.composite_score
+        return self._compute_composite_score()
+
+    def _compute_composite_score(self) -> Decimal | None:
         """Calculate composite growth score based on weighted metrics.
 
         Returns None if none of the weighted factors are available (all are None/zero).
@@ -683,7 +698,7 @@ class GrowthArea(models.Model):
 
         Weights (revised GA-6):
           - Population growth rate:  0.20  (place-level, Census ACS)
-          - Employment growth rate:  0.35  (state-level, BLS LAUS)
+          - Employment growth rate:  0.35  (state-level, FRED)
           - Median income growth:    0.20  (place-level, Census ACS)
           - Housing demand index:    0.10  (place-level, Census ACS occupancy)
           - Supply constraint index: 0.15  (place-level, Census ACS housing-unit growth)
@@ -708,6 +723,11 @@ class GrowthArea(models.Model):
             + supply_idx * supply_weight
         )
         return score
+
+    def save(self, *args, **kwargs):
+        """Precompute composite_score on save."""
+        self.composite_score = self._compute_composite_score()
+        super().save(*args, **kwargs)
 
 
 class ForeclosureProperty(models.Model):
