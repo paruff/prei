@@ -13,10 +13,13 @@ from core.integrations.sources.fred_adapter import FREDAdapter, FREDAuthenticati
 
 
 # Skip all tests in this module if no FRED API key
-pytestmark = pytest.mark.skipif(
-    not (os.getenv("FRED_API_KEY") or os.getenv("FRED_api_key")),
-    reason="FRED_API_KEY not set in environment",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not (os.getenv("FRED_API_KEY") or os.getenv("FRED_api_key")),
+        reason="FRED_API_KEY not set in environment",
+    ),
+    pytest.mark.integration,
+]
 
 
 class TestFREDLIntegration:
@@ -187,7 +190,3 @@ class TestFREDSeriesAvailability:
         # If it exists, verify structure
         if info is not None:
             assert info.get("id") == series_id
-
-
-# Mark all tests in this module as integration tests
-pytestmark = pytest.mark.integration
