@@ -15,10 +15,13 @@ from core.integrations.sources.attom_adapter import (
 
 
 # Skip all tests in this module if no ATTOM API key
-pytestmark = pytest.mark.skipif(
-    not os.getenv("ATTOM_API_KEY"),
-    reason="ATTOM_API_KEY not set in environment",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not os.getenv("ATTOM_API_KEY"),
+        reason="ATTOM_API_KEY not set in environment",
+    ),
+    pytest.mark.integration,
+]
 
 
 class TestATTOMLiveIntegration:
@@ -137,7 +140,3 @@ class TestATTOMLiveEndpoints:
         assert isinstance(resp, dict)
         if "property" in resp:
             assert isinstance(resp["property"], list)
-
-
-# Mark slow tests
-pytestmark = pytest.mark.integration
