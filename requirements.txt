@@ -26,4 +26,5 @@ xhtml2pdf>=0.2.17  # HTML/CSS template-driven PDF export without WeasyPrint syst
 svglib>=1.6.0,<1.7.0  # pycairo build dependency; CI installs libcairo2-dev via apt
 matplotlib>=3.10.9
 pillow>=12.2.0
+pydantic>=2.11.0  # Strict state machine models for prei/models/pipeline.py
 cryptography>=48.0.1  # Fix GHSA-537c-gmf6-5ccf (Vulnerable OpenSSL in cryptography wheels)

@@ -34,6 +34,7 @@ repos:
           - types-psycopg2
           - types-reportlab
           - django-environ
+          - pydantic
         args: [--show-error-codes, --no-incremental]
         exclude: ^migrations/
         verbose: true
