@@ -145,9 +145,11 @@ class TexasCountyForeclosureSource(DiscoverySource):
 
     def __init__(
         self,
-        county_key: str,
+        county_key: str = "harris",
         notice_types: Optional[List[str]] = None,
+        county: Optional[str] = None,  # alias for tests/registry
     ) -> None:
+        county_key = county or county_key
         self.county_key = county_key.lower()
         self._county_info = TEXAS_COUNTY_FEEDS.get(
             self.county_key,

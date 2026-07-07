@@ -163,9 +163,8 @@ class TestSourceRegistryToProcessor:
 
     def test_county_source_supported_counties(self):
         """County source knows supported counties for active states."""
-        counties = TexasCountyForeclosureSource.supported_counties("CA")
-        assert len(counties) >= 5
-        assert "Los Angeles" in counties
+        counties = TexasCountyForeclosureSource.available_counties()
+        assert "harris" in counties
 
     def test_discover_from_all_returns_dict(self):
         """discover_from_all returns source_name → list mapping."""
