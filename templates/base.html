@@ -60,7 +60,7 @@
     </div>
 
     <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
-
+    <a href="{% url 'pipeline_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'pipeline_dashboard' %}active{% endif %}">Pipeline</a>
     <a href="{% url 'sell_index' %}" class="nav-link {% if request.resolver_match.url_name == 'sell_index' %}active{% endif %}">Sell</a>
   </div>
 

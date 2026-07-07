@@ -38,7 +38,7 @@ from core.integrations.market.census import (
 )
 from core.integrations.sources.fred_adapter import FREDAdapter
 
-from .models import VrmProperty, UserInvestmentTargets, GrowthArea
+from .models import VrmProperty, UserInvestmentTargets, GrowthArea, PipelineAsset
 
 from investor_app.finance.utils import (
     compute_analysis_for_property,
@@ -1005,6 +1005,53 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             "fred_key_configured": fred_configured,
             "census_key_configured": bool(census_api_key),
             "api_keys_configured": bool(census_api_key),
+        },
+    )
+
+
+def pipeline_dashboard(request: HttpRequest) -> HttpResponse:
+    """Pipeline dashboard showing stage distribution and screening results.
+
+    Queries the PipelineAsset Django model for persisted pipeline state.
+    Each row links back to the growth explorer or pipeline detail.
+    """
+    from collections import Counter
+
+    # Query all pipeline-tracked assets
+    assets = PipelineAsset.objects.all().order_by("-updated_at")
+
+    # Stage distribution (StateAggregator-style)
+    stage_counts: dict[str, int] = dict(Counter(a.current_stage for a in assets))
+    total = len(assets)
+
+    # Pipeline flow grouping
+    flow = {
+        "acquisition": sum(
+            stage_counts.get(s, 0) for s in ["GACS", "DISCOVERY", "SCREENING"]
+        ),
+        "deal_making": sum(
+            stage_counts.get(s, 0)
+            for s in ["UNDERWRITING", "OFFER", "DUE_DILIGENCE", "CLOSING"]
+        ),
+        "operations": sum(stage_counts.get(s, 0) for s in ["TURNOVER", "LEASING"]),
+        "portfolio": stage_counts.get("PORTFOLIO", 0),
+    }
+
+    # Screening results table (killed = screening failure, advanced = passed)
+    # Show the 50 most recent, split by killed vs advanced
+    killed = assets.filter(current_stage="KILLED")[:25]
+    advanced = assets.exclude(current_stage__in=["KILLED", "GACS"])[:25]
+
+    return render(
+        request,
+        "pipeline_dashboard.html",
+        {
+            "total_assets": total,
+            "stage_counts": stage_counts,
+            "flow": flow,
+            "killed_assets": killed,
+            "advanced_assets": advanced,
+            "all_assets": assets[:50],
         },
     )
 

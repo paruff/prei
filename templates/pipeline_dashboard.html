@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Pipeline Dashboard{% endblock %}
+{% load humanize %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Pipeline Dashboard</h1>
+    <p class="page-sub">Property pipeline tracking — {{ total_assets }} assets total</p>
+  </div>
+  <div class="nav-right">
+    <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Discover New Properties</a>
+  </div>
+</div>
+
+<!-- Pipeline Flow KPI Grid -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Acquisition</div>
+    <div class="kpi-value num-good">{{ flow.acquisition }}</div>
+    <div class="kpi-sub">GACS → DISCOVERY → SCREENING</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Deal Making</div>
+    <div class="kpi-value">{{ flow.deal_making }}</div>
+    <div class="kpi-sub">UNDERWRITING → OFFER → CLOSING</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Operations</div>
+    <div class="kpi-value">{{ flow.operations }}</div>
+    <div class="kpi-sub">TURNOVER → LEASING</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Portfolio</div>
+    <div class="kpi-value num-good">{{ flow.portfolio }}</div>
+    <div class="kpi-sub">Active holdings</div>
+  </div>
+</div>
+
+<!-- Stage Distribution Card -->
+<div class="card mb-form">
+  <div class="card-title">Stage Distribution</div>
+  <div class="card-body">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Stage</th><th>Count</th></tr>
+        </thead>
+        <tbody>
+          {% for stage, count in stage_counts.items %}
+            <tr>
+              <td>{{ stage }}</td>
+              <td class="col-right num">{{ count }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="2">No pipeline activity yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Screening Results: Advanced (passed screening) -->
+<div class="card mb-form">
+  <div class="card-title">✅ Passed Screening ({{ advanced_assets|length }})</div>
+  <div class="card-body">
+    {% if advanced_assets %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>Address</th>
+              <th>Stage</th>
+              <th>Price</th>
+              <th>Cap Rate</th>
+              <th>MAO</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in advanced_assets %}
+              <tr>
+                <td>{{ a.asset_id }}</td>
+                <td title="{{ a.address }}">{{ a.address|truncatechars:40 }}</td>
+                <td>{{ a.current_stage }}</td>
+                <td class="col-right num">{% if a.price %}${{ a.price|floatformat:0|intcomma }}{% endif %}</td>
+                <td class="col-right num">{% if a.cap_rate %}{{ a.cap_rate|floatformat:4 }}{% endif %}</td>
+                <td class="col-right num">{% if a.mao %}${{ a.mao|floatformat:0|intcomma }}{% endif %}</td>
+                <td>{{ a.updated_at|date:"M d H:i" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>No assets have passed screening yet. Run discovery from the <a href="{% url 'growth_explorer' %}">Growth Area Explorer</a>.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Screening Results: Killed (failed screening) -->
+<div class="card mb-form">
+  <div class="card-title">🛑 Failed Screening / Killed ({{ killed_assets|length }})</div>
+  <div class="card-body">
+    {% if killed_assets %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>Address</th>
+              <th>Kill Reason</th>
+              <th>Price</th>
+              <th>Beds</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in killed_assets %}
+              <tr>
+                <td>{{ a.asset_id }}</td>
+                <td title="{{ a.address }}">{{ a.address|truncatechars:40 }}</td>
+                <td title="{{ a.kill_reason }}">{{ a.kill_reason|truncatechars:60 }}</td>
+                <td class="col-right num">{% if a.price %}${{ a.price|floatformat:0|intcomma }}{% endif %}</td>
+                <td class="col-right">{{ a.beds|default_if_none:"" }}</td>
+                <td>{{ a.updated_at|date:"M d H:i" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>No failed assets yet.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="card mb-form">
+  <div class="card-title">Recent Activity</div>
+  <div class="card-body">
+    {% if all_assets %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>Address</th>
+              <th>Stage</th>
+              <th>Source</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in all_assets %}
+              <tr>
+                <td>{{ a.asset_id }}</td>
+                <td>{{ a.address|truncatechars:50 }}</td>
+                <td>{% if a.current_stage == "KILLED" %}<span class="num-warn">{{ a.current_stage }}</span>{% else %}{{ a.current_stage }}{% endif %}</td>
+                <td>{{ a.source_name|default:"—" }}</td>
+                <td>{{ a.updated_at|date:"M d H:i" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon" aria-hidden="true">📊</div>
+        <h3>No pipeline activity yet</h3>
+        <p>Use the Growth Area Explorer to discover properties and run them through the pipeline.</p>
+        <div class="form-actions">
+          <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Open Growth Area Explorer</a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
