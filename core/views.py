@@ -931,6 +931,68 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
         reverse=True,
     )
 
+    # 6. Optional: pipeline discovery for a specific city
+    pipeline_results = None
+    pipeline_city = request.POST.get("pipeline_city", "").strip()
+    if pipeline_city:
+        from prei.pipeline.handlers.discovery_processor import DiscoveryProcessor
+        from prei.pipeline.handlers.screening import ScreeningThresholds
+        from prei.pipeline.handlers.batch_screening import BatchScreeningProcessor
+        from prei.pipeline.engine import InMemoryAssetRepository, PipelineEngine
+        from prei.pipeline.sources.registry import discover_from_all
+
+        logger.info(
+            "Growth Explorer: running pipeline discovery for %s, %s",
+            pipeline_city,
+            state,
+        )
+        try:
+            # Discover raw listings from available sources
+            source_results = discover_from_all(state=state)
+            all_listings: list[dict] = []
+            for src_name, listings in source_results.items():
+                for listing in listings:
+                    listing["source"] = src_name
+                    all_listings.append(listing)
+
+            # Run through discovery processor (dedup + state inception)
+            processor = DiscoveryProcessor(existing_hashes=set())
+            discovery_result = processor.process_batch(
+                all_listings, source_name="growth_explorer"
+            )
+
+            # Run through batch screening
+            thresholds = ScreeningThresholds(
+                min_gross_yield=0.07,
+                max_price_to_rent_ratio=15.0,
+                min_beds=1,
+                min_baths=1,
+            )
+            engine = PipelineEngine(repository=InMemoryAssetRepository())
+            batch_processor = BatchScreeningProcessor(engine, thresholds)
+            screening_result = batch_processor.process(all_listings)
+
+            pipeline_results = {
+                "city": pipeline_city,
+                "sources_queried": list(source_results.keys()),
+                "total_discovered": discovery_result["new_assets_discovered"],
+                "duplicates": discovery_result["duplicates_skipped"],
+                "failed": discovery_result["failed_records"],
+                "passed_screening": screening_result["advanced"],
+                "failed_screening": screening_result["killed"],
+                "skipped_total": discovery_result["duplicates_skipped"]
+                + discovery_result["failed_records"],
+                "execution_ms": round(screening_result["execution_time_ms"], 0),
+            }
+        except Exception as exc:
+            logger.error(
+                "Growth Explorer: pipeline discovery failed for %s, %s: %s",
+                pipeline_city,
+                state,
+                exc,
+            )
+            pipeline_results = {"error": str(exc), "city": pipeline_city}
+
     return render(
         request,
         "growth_explorer.html",
@@ -939,6 +1001,10 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             "selected_state": state,
             "results": results,
             "emp_growth": emp_growth,
+            "pipeline_results": pipeline_results,
+            "fred_key_configured": fred_configured,
+            "census_key_configured": bool(census_api_key),
+            "api_keys_configured": bool(census_api_key),
         },
     )
 

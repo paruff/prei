@@ -215,6 +215,7 @@
               <td class="col-right score-num num-good">{{ r.growth_area.composite_score|default_if_none:""|floatformat:2 }}</td>
               <td>
                 <a href="{% url 'vrm_properties_list' %}?state={{ r.growth_area.state }}" class="btn">View Foreclosures</a>
+                <button type="submit" name="pipeline_city" value="{{ r.place_name }}" class="btn" title="Run property discovery pipeline for {{ r.place_name }}, {{ r.growth_area.state }}">🔍 Discover</button>
               </td>
             </tr>
             {% endfor %}
@@ -224,6 +225,50 @@
       <p class="form-hint">
         * Employment growth is a <strong>state-level</strong> figure from FRED (CES nonfarm payrolls) — same value for all places in the state.
       </p>
+
+      <!-- Pipeline Discovery Results -->
+      {% if pipeline_results %}
+        <div class="card mb-form mt-section" id="pipeline-results">
+          <div class="card-title">
+            <span aria-hidden="true">🔍</span> Property Discovery: {{ pipeline_results.city }}, {{ selected_state }}
+          </div>
+          <div class="card-body">
+            {% if pipeline_results.error %}
+              <div class="message message-warning">
+                <strong>⚠ Pipeline error:</strong> {{ pipeline_results.error }}
+              </div>
+            {% else %}
+              <div class="kpi-grid">
+                <div class="kpi-card">
+                  <div class="kpi-label">Discovered</div>
+                  <div class="kpi-value num-good">{{ pipeline_results.total_discovered }}</div>
+                  <div class="kpi-sub">new properties found</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Passed Screening</div>
+                  <div class="kpi-value num-good">{{ pipeline_results.passed_screening }}</div>
+                  <div class="kpi-sub">above 7% yield / under 15x PTR</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Rejected</div>
+                  <div class="kpi-value num-warn">{{ pipeline_results.failed_screening }}</div>
+                  <div class="kpi-sub">below thresholds</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Duplicate/Failed</div>
+                  <div class="kpi-value">{{ pipeline_results.skipped_total }}</div>
+                  <div class="kpi-sub">skipped records</div>
+                </div>
+              </div>
+              <p class="form-hint">
+                Sources queried: {{ pipeline_results.sources_queried|join:", " }}.
+                Completed in {{ pipeline_results.execution_ms }}ms.
+                <a href="{% url 'vrm_properties_list' %}?state={{ selected_state }}" class="ml-link">→ Browse all VRM properties in {{ selected_state }}</a>
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
     {% else %}
       <!-- Empty results state -->
       <div class="empty-state" role="status">

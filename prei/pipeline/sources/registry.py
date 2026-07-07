@@ -16,6 +16,7 @@ from prei.pipeline.sources.reo_sources import (
     USDAForeclosuresSource,
     VAForeclosuresSource,
 )
+from prei.pipeline.sources.vrm_source import VrmDiscoverySource
 
 # ── Built-in source registry ──────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ _BUILTIN_SOURCES: Dict[str, Type[DiscoverySource]] = {
     "va": VAForeclosuresSource,
     "usda": USDAForeclosuresSource,
     "county": CountyForeclosureSource,
+    "vrm": VrmDiscoverySource,
 }
 
 
