@@ -10,11 +10,11 @@
     </div>
     <div class="d-flex align-items-center gap-2">
       {% if api_keys_configured %}
-        <span class="badge bg-success d-flex align-items-center gap-1" title="Census API key is configured; employment data via FRED">
+        <span class="badge bg-success d-flex align-items-center gap-1" title="Census API key is configured; employment growth via FRED">
           <span aria-hidden="true">✓</span> API Ready
         </span>
       {% else %}
-        <span class="badge bg-warning d-flex align-items-center gap-1" title="Census API key missing">
+        <span class="badge bg-warning d-flex align-items-center gap-1" title="Census API key missing; FRED is optional">
           <span aria-hidden="true">⚠</span> API Key Missing
         </span>
       {% endif %}
@@ -41,6 +41,20 @@
         </div>
       </div>
       <a href="{% url 'vrm_properties_list' %}" class="btn btn-outline-secondary btn-sm ms-sm-3">Browse VRM Properties instead</a>
+    </div>
+  </div>
+{% endif %}
+
+<!-- FRED Key Status (informational only — FRED is optional) -->
+{% if not fred_key_configured and api_keys_configured %}
+  <div class="message message-info mb-4" role="status">
+    <div>
+      <strong>ℹ Employment via FRED</strong>
+      <span class="ml-2">
+        <code>FRED_API_KEY</code> not set — employment growth defaults to 0%.
+        <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener">Get a free FRED key</a>
+        and add to <code>.env</code> for accurate employment data.
+      </span>
     </div>
   </div>
 {% endif %}
@@ -241,7 +255,7 @@
 
 {% block extra_js %}
 <style>
-.loading-overlay {
+.loading-overlay:not([hidden]) {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(255, 255, 255, 0.92);

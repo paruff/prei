@@ -715,6 +715,10 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
     from os import getenv
 
     census_api_key = getenv("CENSUS_API_KEY", "")
+    census_configured = bool(census_api_key)
+    # FRED key is optional — if missing, employment growth defaults to 0
+    fred_key = getenv("FRED_API_KEY") or getenv("FRED_api_key") or ""
+    fred_configured = bool(fred_key)
     api_keys_configured = bool(census_api_key)
 
     if request.method == "GET":
@@ -724,7 +728,8 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             {
                 "states": US_STATES,
                 "api_keys_configured": api_keys_configured,
-                "census_key_configured": bool(census_api_key),
+                "census_key_configured": census_configured,
+                "fred_key_configured": fred_configured,
             },
         )
 
@@ -737,6 +742,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "states": US_STATES,
                 "api_keys_configured": False,
                 "census_key_configured": bool(census_api_key),
+                "fred_key_configured": fred_configured,
                 "error": "CENSUS_API_KEY not configured. Set CENSUS_API_KEY in your environment.",
             },
         )
@@ -750,6 +756,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "states": US_STATES,
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": bool(census_api_key),
+                "fred_key_configured": fred_configured,
                 "error": "Invalid state selected.",
             },
         )
@@ -766,6 +773,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "states": US_STATES,
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": bool(census_api_key),
+                "fred_key_configured": fred_configured,
                 "error": f"No places found for state {state}.",
             },
         )
