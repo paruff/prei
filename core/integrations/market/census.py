@@ -82,11 +82,11 @@ def _fetch_latest_acs_vintages() -> dict[str, str] | None:
     """
     url = f"{CENSUS_API_BASE}/data.json"
     try:
-        resp = requests.get(url, timeout=30)
+        resp = requests.get(url, timeout=15)
         resp.raise_for_status()
         catalog = resp.json()
     except requests.RequestException as exc:
-        logger.warning("Census /data.json request failed: %s", exc)
+        logger.warning("Census /data.json request failed [15s timeout]: %s", exc)
         return None
     except (ValueError, TypeError) as exc:
         logger.warning("Census /data.json parse error: %s", exc)
@@ -347,24 +347,26 @@ def _fetch_acs_data(
             )
             time.sleep(backoff)
         try:
-            resp = requests.get(url, params=params, timeout=30)
+            resp = requests.get(url, params=params, timeout=15)
             resp.raise_for_status()
             last_exc = None
             break
         except requests.RequestException as exc:
             last_exc = exc
             logger.warning(
-                "Census API request failed (attempt %d/3) for geography=%s: %s",
+                "Census API request failed (attempt %d/3) for geography=%s [%ds timeout]: %s",
                 attempt + 1,
                 geography,
+                15,
                 exc,
             )
             continue
 
     if last_exc is not None:
         logger.error(
-            "Census API request failed after 3 attempts for geography=%s: %s",
+            "Census API request failed after 3 attempts for geography=%s [%ds timeout]: %s",
             geography,
+            15,
             last_exc,
         )
         return None
@@ -623,11 +625,11 @@ def discover_places_in_state(
     }
 
     try:
-        resp = requests.get(url, params=params, timeout=30)
+        resp = requests.get(url, params=params, timeout=15)
         resp.raise_for_status()
     except requests.RequestException as exc:
         logger.error(
-            "Census API request failed for places in state=%s: %s",
+            "Census API request failed for places in state=%s [15s timeout]: %s",
             state_code,
             exc,
         )

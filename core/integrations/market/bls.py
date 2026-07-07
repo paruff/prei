@@ -162,7 +162,7 @@ def fetch_employment_growth(
             json=payload,
             headers=headers,
             params=params,
-            timeout=30,
+            timeout=15,
         )
         resp.raise_for_status()
     except requests.RequestException as exc:
@@ -176,6 +176,17 @@ def fetch_employment_growth(
     except (ValueError, TypeError) as exc:
         logger.error(
             "BLS employment API returned invalid JSON for state=%s: %s", state_code, exc
+        )
+        return None
+
+    # BLS API v2 returns HTTP 200 even for errors; check status field
+    status = data.get("status")
+    if status and status != "REQUEST_SUCCEEDED":
+        logger.warning(
+            "BLS employment API error for state=%s: status=%s message=%s",
+            state_code,
+            status,
+            data.get("message", "Unknown"),
         )
         return None
 
@@ -259,7 +270,7 @@ def _fetch_bls_value(series_id: str, api_key: str, state_code: str) -> Decimal |
             json=payload,
             headers=headers,
             params=params,
-            timeout=30,
+            timeout=15,
         )
         resp.raise_for_status()
     except requests.RequestException as exc:
@@ -270,6 +281,17 @@ def _fetch_bls_value(series_id: str, api_key: str, state_code: str) -> Decimal |
         data = resp.json()
     except (ValueError, TypeError) as exc:
         logger.error("BLS API returned invalid JSON for state=%s: %s", state_code, exc)
+        return None
+
+    # BLS API v2 returns HTTP 200 even for errors; check status field
+    status = data.get("status")
+    if status and status != "REQUEST_SUCCEEDED":
+        logger.warning(
+            "BLS API error for state=%s: status=%s message=%s",
+            state_code,
+            status,
+            data.get("message", "Unknown"),
+        )
         return None
 
     results = data.get("Results", {})

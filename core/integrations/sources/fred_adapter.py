@@ -124,7 +124,7 @@ class FREDAdapter:
         url = f"{FRED_API_BASE}{endpoint}"
 
         try:
-            resp = self.session.get(url, params=params, timeout=30)
+            resp = self.session.get(url, params=params, timeout=15)
             resp.raise_for_status()
         except requests.exceptions.HTTPError as exc:
             # FRED returns 400 for both invalid keys and invalid series
@@ -371,6 +371,116 @@ class FREDAdapter:
                 "latest": starts_recent[-1] if starts_recent else None,
             },
         }
+
+    def fetch_state_employment_growth(
+        self,
+        state_code: str,
+        years_back: int = 5,
+    ) -> Optional[Decimal]:
+        """
+        Compute 5-year employment growth for a state using FRED nonfarm payroll data.
+
+        Uses the 'All Employees: Total Nonfarm' series (CES survey) to compute
+        the change in employment level from the earliest to the latest annual
+        average over the specified period.
+
+        Args:
+            state_code: 2-letter US state code (e.g., "TX", "CA").
+            years_back: Number of years of history to use.
+
+        Returns:
+            Decimal growth rate (e.g., 0.0234 = 2.34% growth), or None on error.
+        """
+        from datetime import datetime, timedelta
+
+        state_code = state_code.strip().upper()
+        if not state_code or len(state_code) != 2:
+            logger.error(
+                "Invalid state code for FRED employment growth: %s", state_code
+            )
+            return None
+
+        # FRED series ID for state nonfarm payrolls: {STATE}NA
+        series_id = f"{state_code}NA"
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=years_back * 365)
+
+        try:
+            observations = self.get_series_observations(
+                series_id,
+                start_date=start_date.strftime("%Y-%m-%d"),
+                end_date=end_date.strftime("%Y-%m-%d"),
+            )
+        except FREDAPIError as exc:
+            logger.error(
+                "FRED employment series %s failed for %s: %s",
+                series_id,
+                state_code,
+                exc,
+            )
+            return None
+
+        if not observations:
+            logger.warning(
+                "FRED employment series %s returned no data for %s",
+                series_id,
+                state_code,
+            )
+            return None
+
+        # Filter out null values (".") and compute annual averages
+        annual_averages: dict[str, list[Decimal]] = {}
+        for obs in observations:
+            value = obs.get("value")
+            date = obs.get("date", "")
+            if value is None or value == "." or not date:
+                continue
+            year = date[:4]
+            try:
+                decimal_val = Decimal(value)
+            except (InvalidOperation, ValueError):
+                continue
+            if year not in annual_averages:
+                annual_averages[year] = []
+            annual_averages[year].append(decimal_val)
+
+        # Need at least 2 years of data to compute growth
+        years = sorted(annual_averages.keys())
+        if len(years) < 2:
+            logger.warning(
+                "FRED employment series %s needs >=2 years of data, got %d years: %s",
+                series_id,
+                len(years),
+                years,
+            )
+            return None
+
+        def avg(values: list[Decimal]) -> Decimal:
+            return sum(values) / Decimal(len(values))
+
+        earliest_avg = avg(annual_averages[years[0]])
+        latest_avg = avg(annual_averages[years[-1]])
+
+        if earliest_avg == 0:
+            logger.warning(
+                "FRED employment series %s earliest year average is zero for %s",
+                series_id,
+                state_code,
+            )
+            return None
+
+        growth_rate = (latest_avg - earliest_avg) / earliest_avg
+        logger.info(
+            "FRED employment growth for %s (%s): %s → %s = %s%% over %d years",
+            state_code,
+            series_id,
+            f"{earliest_avg:.0f}",
+            f"{latest_avg:.0f}",
+            f"{float(growth_rate) * 100:.2f}",
+            len(years) - 1,
+        )
+        return growth_rate
 
 
 def create_fred_adapter() -> FREDAdapter:

@@ -1,10 +1,13 @@
-"""Management command to populate GrowthArea model with real Census and BLS data.
+"""Management command to populate GrowthArea model with real Census and FRED data.
 
 Usage:
     python manage.py populate_growth_areas --state=CA --city="San Francisco"
     python manage.py populate_growth_areas --state=CA --city="San Francisco" --force
     python manage.py populate_growth_areas --file=growth_cities.txt
     python manage.py populate_growth_areas --state=CA --city="San Francisco" --state=TX --city="Austin"
+
+Employment growth is fetched from FRED (Federal Reserve) rather than BLS,
+because the BLS free tier is limited to 25 requests/day.
 """
 
 from __future__ import annotations
@@ -16,12 +19,12 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from core.integrations.market.bls import fetch_employment_growth
 from core.integrations.market.census import (
     compute_supply_constraint_index,
     fetch_housing_demand_index,
     fetch_place_growth_metrics,
 )
+from core.integrations.sources.fred_adapter import FREDAdapter
 from core.models import GrowthArea
 
 # Cache TTL: re-fetch if data older than this
@@ -87,7 +90,7 @@ def _lookup_place_code(state_code: str, city_name: str) -> str | None:
 
 
 class Command(BaseCommand):
-    help = "Populate GrowthArea with Census/BLS growth metrics for cities"
+    help = "Populate GrowthArea with Census/FRED growth metrics for cities"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -164,16 +167,12 @@ class Command(BaseCommand):
 
         # Check API keys
         census_api_key = os.getenv("CENSUS_API_KEY", "")
-        bls_api_key = os.getenv("BLS_API_KEY", "")
 
         if not census_api_key:
             raise CommandError(
                 "CENSUS_API_KEY not set. Required for population/income growth and housing demand."
             )
-        if not bls_api_key:
-            raise CommandError(
-                "BLS_API_KEY not set. Required for employment growth data."
-            )
+        # FRED API key is optional — FREDAdapter reads from FRED_API_KEY env var automatically
 
         self.stdout.write(f"Processing {len(targets)} cities...")
 
@@ -181,10 +180,9 @@ class Command(BaseCommand):
         skipped = 0
         errors = 0
 
-        # State-level BLS cache: avoids duplicate API calls for cities in the same state.
-        # BLS employment growth is state-level, not city-level, so we cache per state_code.
-        # This also helps stay within BLS free-tier rate limits (~25 requests/day unregistered).
-        _bls_cache: dict[str, Decimal | None] = {}
+        # State-level FRED cache: avoids duplicate API calls for cities in the same state.
+        # Employment growth is state-level, not city-level, so we cache per state_code.
+        _fred_cache: dict[str, Decimal | None] = {}
 
         for state_code, city_name, place_code in targets:
             self.stdout.write(
@@ -229,19 +227,19 @@ class Command(BaseCommand):
                 income_growth = census_data.get("median_income_growth_rate")
                 units_growth = census_data.get("housing_units_growth_rate")
 
-                # 2. BLS: employment growth (state-level, cached per state)
-                if state_code not in _bls_cache:
-                    _bls_cache[state_code] = fetch_employment_growth(
+                # 2. Employment growth via FRED (state-level, cached per state)
+                # FRED replaces BLS because the BLS free tier is rate-limited to 25 req/day
+                if state_code not in _fred_cache:
+                    fed = FREDAdapter()
+                    _fred_cache[state_code] = fed.fetch_state_employment_growth(
                         state_code=state_code,
-                        api_key=bls_api_key,
-                        years_back=5,
                     )
-                emp_growth = _bls_cache[state_code]
+                emp_growth = _fred_cache[state_code]
 
                 if emp_growth is None:
                     self.stdout.write(
                         self.style.WARNING(
-                            f"  BLS employment growth unavailable for {state_code}"
+                            f"  Employment growth unavailable from FRED for {state_code}"
                         )
                     )
 

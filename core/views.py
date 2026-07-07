@@ -34,7 +34,7 @@ from core.integrations.market.census import (
     fetch_housing_demand_index,
     fetch_place_growth_metrics,
 )
-from core.integrations.market.bls import fetch_employment_growth
+from core.integrations.sources.fred_adapter import FREDAdapter
 
 from .models import VrmProperty, UserInvestmentTargets, GrowthArea
 
@@ -708,15 +708,14 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
 
     Synchronous flow (matches VRM scrape pattern):
     1. GET: render state picker form
-    2. POST: call discover_places_in_state (limit=20), fetch_employment_growth (once),
+    2. POST: call discover_places_in_state (limit=10), fetch_employment_growth (once),
        then for each place: fetch_place_growth_metrics + fetch_housing_demand_index,
        upsert into GrowthArea, render results sorted by composite_score.
     """
     from os import getenv
 
     census_api_key = getenv("CENSUS_API_KEY", "")
-    bls_api_key = getenv("BLS_API_KEY", "")
-    api_keys_configured = bool(census_api_key and bls_api_key)
+    api_keys_configured = bool(census_api_key)
 
     if request.method == "GET":
         return render(
@@ -726,7 +725,6 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "states": US_STATES,
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": bool(census_api_key),
-                "bls_key_configured": bool(bls_api_key),
             },
         )
 
@@ -739,8 +737,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "states": US_STATES,
                 "api_keys_configured": False,
                 "census_key_configured": bool(census_api_key),
-                "bls_key_configured": bool(bls_api_key),
-                "error": "API keys not configured. Set CENSUS_API_KEY and BLS_API_KEY in your environment.",
+                "error": "CENSUS_API_KEY not configured. Set CENSUS_API_KEY in your environment.",
             },
         )
 
@@ -753,14 +750,15 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "states": US_STATES,
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": bool(census_api_key),
-                "bls_key_configured": bool(bls_api_key),
                 "error": "Invalid state selected.",
             },
         )
 
-    # 1. Discover top 20 places in state by population
-    places = discover_places_in_state(state, census_api_key, limit=20)
+    # 1. Discover top 10 places in state by population
+    logger.info("Growth Explorer: discovering places in state %s", state)
+    places = discover_places_in_state(state, census_api_key, limit=10)
     if not places:
+        logger.warning("Growth Explorer: no places found for state %s", state)
         return render(
             request,
             "growth_explorer.html",
@@ -768,23 +766,39 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "states": US_STATES,
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": bool(census_api_key),
-                "bls_key_configured": bool(bls_api_key),
                 "error": f"No places found for state {state}.",
             },
         )
 
-    # 2. Fetch state-level employment growth once
-    emp_growth = fetch_employment_growth(state, bls_api_key)
+    logger.info("Growth Explorer: discovered %d places in state %s", len(places), state)
+
+    # 2. Fetch state-level employment growth via FRED (no rate limit issues like BLS)
+    logger.info("Growth Explorer: fetching state-level employment growth for %s", state)
+    fred = FREDAdapter()
+    emp_growth = fred.fetch_state_employment_growth(state)
 
     # 3. For each place, fetch Census place metrics + housing demand, upsert GrowthArea
     results = []
-    for place in places:
+    for idx, place in enumerate(places):
         place_code = place["place_code"]
         place_name = place["place_name"]
         population = place["population"]
 
+        logger.info(
+            "Growth Explorer: processing place %d/%d — %s, %s",
+            idx + 1,
+            len(places),
+            place_name,
+            state,
+        )
+
         census_data = fetch_place_growth_metrics(state, place_code, census_api_key)
         if census_data is None:
+            logger.warning(
+                "Growth Explorer: Census data is None for %s, %s — skipping",
+                place_name,
+                state,
+            )
             continue
 
         pop_growth = census_data.get("population_growth_rate")

@@ -10,12 +10,12 @@
     </div>
     <div class="d-flex align-items-center gap-2">
       {% if api_keys_configured %}
-        <span class="badge bg-success d-flex align-items-center gap-1" title="Both Census and BLS API keys are configured">
+        <span class="badge bg-success d-flex align-items-center gap-1" title="Census API key is configured; employment data via FRED">
           <span aria-hidden="true">✓</span> API Ready
         </span>
       {% else %}
-        <span class="badge bg-warning d-flex align-items-center gap-1" title="API keys missing">
-          <span aria-hidden="true">⚠</span> API Keys Missing
+        <span class="badge bg-warning d-flex align-items-center gap-1" title="Census API key missing">
+          <span aria-hidden="true">⚠</span> API Key Missing
         </span>
       {% endif %}
     </div>
@@ -26,23 +26,18 @@
   <div class="message message-error" role="alert">{{ error }}</div>
 {% endif %}
 
-<!-- API Key Status Banner (only shown when keys missing or incomplete) -->
+<!-- API Key Status Banner (only shown when key missing) -->
 {% if not api_keys_configured %}
   <div class="message message-warning mb-4" role="alert">
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
       <div>
-        <strong>⚠️ Analysis unavailable — API keys not configured</strong>
+        <strong>⚠ Analysis unavailable — Census API key not configured</strong>
         <div class="mt-1">
-          {% if not census_key_configured and not bls_key_configured %}
-            Both <code>CENSUS_API_KEY</code> and <code>BLS_API_KEY</code> are missing from your environment.
-          {% elif not census_key_configured %}
-            <code>CENSUS_API_KEY</code> is missing.
-          {% elif not bls_key_configured %}
-            <code>BLS_API_KEY</code> is missing.
-          {% endif %}
+          <code>CENSUS_API_KEY</code> is missing from your environment.
+          Employment data is fetched via FRED (free) and does not require a separate key.
         </div>
         <div class="form-hint mt-1">
-          Add them to <code>.env</code> (or container environment) to enable growth analysis.
+          Add <code>CENSUS_API_KEY</code> to <code>.env</code> (or container environment) to enable growth analysis.
         </div>
       </div>
       <a href="{% url 'vrm_properties_list' %}" class="btn btn-outline-secondary btn-sm ms-sm-3">Browse VRM Properties instead</a>
@@ -53,18 +48,18 @@
 <!-- How It Works Card -->
 <div class="card mb-4">
   <div class="card-title d-flex align-items-center gap-2">
-    <span aria-hidden="true">ℹ️</span> How It Works
+    <span aria-hidden="true">ℹ</span> How It Works
   </div>
   <div class="card-body">
     <p class="mb-3">Click <strong>Analyze State</strong> to run a live analysis:</p>
     <ol class="mb-3 ps-3">
-      <li><strong>Discover places:</strong> Queries Census for the top 20 places by population in the selected state.</li>
+      <li><strong>Discover places:</strong> Queries Census for the top 10 places by population in the selected state.</li>
       <li><strong>Pull metrics:</strong> For each place, fetches 5-year population growth, median income growth, and housing demand index from Census ACS.</li>
-      <li><strong>Add employment:</strong> Pulls 5-year state-level employment growth from BLS LAUS (same for all places in the state).</li>
+      <li><strong>Add employment:</strong> Pulls 5-year state-level employment growth from FRED (Federal Reserve) — same value for all places in the state.</li>
       <li><strong>Score & rank:</strong> Computes a composite score and stores results for future reference.</li>
     </ol>
-    <div class="alert alert-info mb-0">
-      <strong>Timing:</strong> Takes ~15–45 seconds depending on state size. 20 sequential Census API calls + 1 BLS call.
+    <div class="message message-info mb-0">
+      <strong>Timing:</strong> Takes ~20–60 seconds depending on state size. Up to 21 sequential Census/FRED API calls.
     </div>
   </div>
 </div>
@@ -85,9 +80,9 @@
         </ul>
       </div>
       <div class="col-md-6">
-        <strong>BLS LAUS:</strong>
+        <strong>FRED (Federal Reserve):</strong>
         <ul class="mb-0 ps-3 mt-1">
-          <li>State-level employment growth (5yr)</li>
+          <li>State-level employment growth (5yr) via nonfarm payrolls</li>
           <li><em>Same value for all places in the state</em></li>
         </ul>
       </div>
@@ -127,20 +122,43 @@
         {% endif %}
       </div>
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary" id="submit-btn"
-                {% if not api_keys_configured %}disabled title="Configure CENSUS_API_KEY and BLS_API_KEY to enable analysis"{% endif %}>
+          <button type="submit" class="btn btn-primary" id="submit-btn"
+                  {% if not api_keys_configured %}disabled title="Configure CENSUS_API_KEY to enable analysis"{% endif %}>
           <span class="btn-text">Analyze State</span>
           <span class="spinner" aria-hidden="true"></span>
         </button>
         {% if not api_keys_configured %}
-          <p class="form-hint mt-1 text-warning">⚠️ Analysis requires Census and BLS API keys in environment.</p>
+          <p class="form-hint mt-1 text-warning">⚠ Analysis requires Census API key in environment.</p>
         {% endif %}
       </div>
     </div>
   </div>
 </form>
 
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay" hidden aria-hidden="true">
+  <div class="loading-card card">
+    <div class="card-body">
+      <div class="loading-spinner"></div>
+      <p id="loading-stage-0" class="loading-stage active" data-duration="5">Discovering top places in state...</p>
+      <p id="loading-stage-1" class="loading-stage" data-duration="10">Fetching population and income data from Census ACS...</p>
+      <p id="loading-stage-2" class="loading-stage" data-duration="30">Analyzing growth metrics for each place...</p>
+      <p id="loading-stage-3" class="loading-stage" data-duration="15">Computing composite scores and rankings...</p>
+      <p id="loading-stage-4" class="loading-stage" data-duration="60">Still working... processing place <span id="place-counter">0</span> of 10</p>
+      <p id="loading-stage-error" class="loading-stage error" hidden>
+        This is taking longer than expected. The Census/BLS API may be slow right now.<br>
+        <small>If this continues, the request will timeout after 2 minutes.</small>
+      </p>
+      <div class="progress-bar-wrap">
+        <div id="analysis-progress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <p class="form-hint" id="elapsed-timer">Elapsed: 0s</p>
+    </div>
+  </div>
+</div>
+
 <!-- Results Section -->
+<div id="results-section"{% if results is None and not error %} hidden{% endif %}>
 {% if results is not None %}
   <div class="mt-section">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
@@ -149,7 +167,7 @@
         {% if emp_growth is not None %}
           <p class="mb-0 form-hint">
             <strong>State employment growth (5yr):</strong> {{ emp_growth|mul:100|floatformat:2 }}%
-            <span class="ml-link" title="Employment growth reflects statewide data from BLS LAUS">📍 State-level figure</span>
+            <span class="ml-link" title="Employment growth from FRED CES nonfarm payrolls">📍 State-level figure (FRED)</span>
           </p>
         {% endif %}
       </div>
@@ -193,6 +211,9 @@
           </tbody>
         </table>
       </div>
+      <div class="mt-2 form-hint">
+        * Employment growth is a <strong>state-level</strong> figure from FRED (CES nonfarm payrolls) — same value for all places in the state.
+      </div>
     {% else %}
       <!-- Empty results state -->
       <div class="empty-state-card" role="status">
@@ -203,7 +224,7 @@
           <strong>Possible causes:</strong>
           <ul class="mb-0 ps-3 mt-1">
             <li>The Census API key may not have permission for this query. Verify your <code>CENSUS_API_KEY</code> in <code>.env</code>.</li>
-            <li>The ACS data vintage may need updating. Check that the vintage (currently 2023) is available for this geography.</li>
+            <li>The ACS data vintage may need updating. Check that the vintage is available for this geography.</li>
             <li>The state may have very few Census-classified "places" (incorporated cities/towns).</li>
           </ul>
         </div>
@@ -213,77 +234,269 @@
         </div>
       </div>
     {% endif %}
-
-    <p class="form-hint mt-3">
-      * Employment growth is a <strong>state-level</strong> figure from BLS LAUS — same value for all places in the state.
-    </p>
   </div>
 {% endif %}
-
+</div>
 {% endblock %}
 
 {% block extra_js %}
+<style>
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.loading-card {
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+}
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border, #ddd);
+  border-top-color: var(--color-primary, #2563eb);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.loading-stage {
+  margin: 4px 0;
+  color: var(--color-text-muted, #6b7280);
+  display: none;
+}
+.loading-stage.active {
+  display: block;
+  color: var(--color-text, #111827);
+  font-weight: 500;
+}
+.loading-stage.error {
+  color: var(--color-error, #dc2626);
+}
+.loading-stage.error small {
+  color: var(--color-text-muted, #6b7280);
+}
+.progress-bar-wrap {
+  height: 6px;
+  background: var(--color-border, #e5e7eb);
+  border-radius: 3px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--color-primary, #2563eb);
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+</style>
 <script>
 (function() {
   const form = document.getElementById('explorer-form');
   const btn = document.getElementById('submit-btn');
   const select = document.getElementById('id_state');
+  const overlay = document.getElementById('loading-overlay');
+  const resultsSection = document.getElementById('results-section');
   if (!form || !btn || !select) return;
 
+  /** Show a loading stage by index, hide all others. */
+  function showStage(index) {
+    for (let i = 0; i <= 5; i++) {
+      const el = document.getElementById('loading-stage-' + i);
+      if (el) el.hidden = (i !== index);
+    }
+  }
+
+  /** Update progress bar width. */
+  function setProgress(pct) {
+    const bar = document.getElementById('analysis-progress');
+    if (bar) bar.style.width = Math.min(pct, 100) + '%';
+  }
+
   /** Re-enable the form after an error or timeout. */
-  function resetForm() {
+  function resetForm(message) {
     btn.classList.remove('btn-loading');
     btn.disabled = false;
     select.disabled = false;
     const textSpan = btn.querySelector('.btn-text');
     if (textSpan) textSpan.textContent = 'Analyze State';
-    const statusEl = document.getElementById('analysis-status');
-    if (statusEl) statusEl.remove();
+    overlay.hidden = true;
+    if (message) {
+      // Show error in results section
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'message message-error mt-3';
+      errorDiv.role = 'alert';
+      errorDiv.innerHTML = message;
+      resultsSection.hidden = false;
+      resultsSection.prepend(errorDiv);
+    }
   }
 
-  form.addEventListener('submit', function() {
+  form.addEventListener('submit', function(e) {
+    // Don't submit the form normally
+    e.preventDefault();
+
+    const state = select.value;
+    if (!state) {
+      resetForm('Please select a state.');
+      return;
+    }
+
+    // Get CSRF token
+    const csrfInput = form.querySelector('[name=csrfmiddlewaretoken]');
+    const csrfToken = csrfInput ? csrfInput.value : '';
+
     // Visual feedback
     btn.classList.add('btn-loading');
     btn.disabled = true;
     const textSpan = btn.querySelector('.btn-text');
     if (textSpan) textSpan.textContent = 'Analyzing…';
-
-    // Disable select to prevent changes during request
     select.disabled = true;
 
-    // Show a progress indicator
-    const statusEl = document.createElement('div');
-    statusEl.id = 'analysis-status';
-    statusEl.className = 'form-hint mt-2';
-    statusEl.innerHTML = '⏳ Running Census API calls… this takes ~15–45 seconds.';
-    form.appendChild(statusEl);
+    // Hide any previous error
+    const prevError = resultsSection.querySelector('.message');
+    if (prevError) prevError.remove();
 
-    // Set a timeout safety net: if the request takes > 120 seconds,
-    // re-enable the form so the user can retry instead of being stuck.
-    setTimeout(function() {
-      if (btn.disabled) {
-        resetForm();
-        // Only replace the status text if it still exists (request may complete shortly after)
-        const staleStatus = document.getElementById('analysis-status');
-        if (staleStatus) {
-          staleStatus.innerHTML = '⚠️ Request timed out. Please try again.';
-          staleStatus.className = 'form-hint mt-2 text-warning';
-        }
+    // Show loading overlay
+    overlay.hidden = false;
+    showStage(0);
+    setProgress(0);
+
+    // Start elapsed timer
+    let elapsed = 0;
+    const timerEl = document.getElementById('elapsed-timer');
+    const timerInterval = setInterval(function() {
+      elapsed++;
+      if (timerEl) timerEl.textContent = 'Elapsed: ' + elapsed + 's';
+      // Update progress indicator based on elapsed time
+      if (elapsed < 5) {
+        showStage(0);
+        setProgress(5 + elapsed * 3);
+      } else if (elapsed < 15) {
+        showStage(1);
+        setProgress(20 + (elapsed - 5) * 2);
+      } else if (elapsed < 45) {
+        showStage(2);
+        setProgress(40 + (elapsed - 15));
+      } else if (elapsed < 60) {
+        showStage(3);
+        setProgress(70 + (elapsed - 45) * 0.5);
+      } else if (elapsed < 90) {
+        showStage(4);
+        document.getElementById('place-counter').textContent = Math.min(10, Math.floor((elapsed - 60) / 3));
+        setProgress(85);
+      } else {
+        // Over 90 seconds — show warning
+        document.getElementById('loading-stage-error').hidden = false;
+        setProgress(95);
       }
-    }, 120000);
+    }, 1000);
+
+    // Set a timeout safety net: if the request takes > 130 seconds, abort
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function() {
+      controller.abort();
+      clearInterval(timerInterval);
+      resetForm(
+        '⚠ Request timed out after 2 minutes. ' +
+        'The Census/BLS API may be slow or unreachable. ' +
+        '<a href="' + window.location.href + '" class="alert-link">Try again</a> ' +
+        'or check your API keys in <code>.env</code>.'
+      );
+    }, 130000);
+
+    // Submit via fetch
+    fetch(form.action || window.location.href, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: new URLSearchParams({
+        'csrfmiddlewaretoken': csrfToken,
+        'state': state,
+      }),
+      signal: controller.signal,
+    })
+    .then(function(response) {
+      clearTimeout(timeoutId);
+      clearInterval(timerInterval);
+      overlay.hidden = true;
+
+      if (!response.ok) {
+        // Try to get error text from response
+        return response.text().then(function(text) {
+          // Check for common error patterns
+          if (response.status === 502) {
+            throw new Error('Server timeout (502 Bad Gateway). The analysis took too long. Try again or reduce the state size.');
+          } else if (response.status === 504) {
+            throw new Error('Gateway timeout (504). The upstream Census/BLS API took too long to respond.');
+          } else if (response.status === 500) {
+            throw new Error('Internal server error (500). Check server logs for details.');
+          } else if (response.status === 403) {
+            throw new Error('Access denied (403). Your API key may not have permission for this query.');
+          } else {
+            throw new Error('Server error (' + response.status + '). <a href="' + window.location.href + '" class="alert-link">Try again</a>.');
+          }
+        });
+      }
+      return response.text();
+    })
+    .then(function(html) {
+      // Replace page content with the response
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newContent = doc.getElementById('results-section');
+      const newOverlay = doc.getElementById('loading-overlay');
+      const newForm = doc.getElementById('explorer-form');
+
+      if (newContent) {
+        resultsSection.innerHTML = newContent.innerHTML;
+        resultsSection.hidden = false;
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // Update form state if the response changed it
+      if (newForm) {
+        const newSelect = newForm.querySelector('#id_state');
+        if (newSelect) select.value = newSelect.value;
+      }
+
+      // Re-enable form
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+      select.disabled = false;
+      if (textSpan) textSpan.textContent = 'Analyze State';
+    })
+    .catch(function(err) {
+      clearTimeout(timeoutId);
+      clearInterval(timerInterval);
+      overlay.hidden = true;
+
+      if (err.name === 'AbortError') {
+        // Already handled by the timeout above
+        return;
+      }
+      resetForm('⚠ ' + err.message);
+    });
   });
 
   // Re-enable if user navigates back (bfcache)
   window.addEventListener('pageshow', function(event) {
     if (event.persisted) {
-      resetForm();
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+      select.disabled = false;
+      overlay.hidden = true;
     }
-  });
-
-  // Handle client-side network errors: if the page receives a popstate
-  // or the request is aborted, allow retry.
-  window.addEventListener('pagehide', function() {
-    // Page is being navigated away from — clean up if we return via bfcache
   });
 })();
 </script>
