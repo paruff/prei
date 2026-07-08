@@ -1,0 +1,141 @@
+{
+  "skill": "plan",
+  "status": "ready",
+  "version": "1.0",
+  "created": "2026-07-08",
+  "feature": "DISC-1 — HUD REO Ingestion (data.gov feed)",
+  "spec": "docs/feature/disc-1/spec.md",
+  "design": "docs/feature/disc-1/design.md",
+  "notes": [
+    "Depends on DISC-0 (HudProperty model) — must be approved and migration applied.",
+    "Field asking_price is new — not an alias for existing list_price.",
+    "Insured status choices defined per FHA/VA/conventional/uninsured categories.",
+    "Human gate DISC-HG-1: confirm data.gov HUD REO endpoint URL before production.",
+    "Test fixtures co-located in core/tests/test_ingestion/, not core/fixtures/."
+  ],
+  "tasks": [
+    {
+      "id": "DISC-1-A",
+      "title": "Extend HudProperty model with REMOVED status, asking_price, insured_status",
+      "description": "Add REMOVED = 'removed' to HudProperty.Status choices, add asking_price Decimal field, add insured_status CharField with InsuredStatus choices.",
+      "depends_on": [],
+      "files": [
+        "core/models.py"
+      ],
+      "subtasks": [
+        "Add REMOVED to HudProperty.Status TextChoices",
+        "Add InsuredStatus inner class with FHA_INSURED, CONVENTIONAL, UNINSURED, VA choices",
+        "Add asking_price DecimalField to HudProperty",
+        "Add insured_status CharField to HudProperty",
+        "Generate migration 0034_add_hud_reo_fields.py"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "HudProperty has REMOVED status choice",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "HudProperty has asking_price Decimal field",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "HudProperty has insured_status field with defined choices",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Migration 0034 is generated and runnable",
+          "test_type": "integration"
+        }
+      ]
+    },
+    {
+      "id": "DISC-1-B",
+      "title": "Create test fixtures and conftest.py for HUD ingestion tests",
+      "description": "Create core/tests/test_ingestion/ directory with conftest.py providing mock_hud_response and existing_hud_record fixtures, plus fixture JSON data.",
+      "depends_on": ["DISC-1-A"],
+      "files": [
+        "core/tests/test_ingestion/conftest.py",
+        "core/tests/test_ingestion/"
+      ],
+      "subtasks": [
+        "Create core/tests/test_ingestion/__init__.py",
+        "Create conftest.py with mock_hud_response fixture returning sample HUD REO JSON",
+        "Create conftest.py with existing_hud_record fixture for stale-record tests",
+        "Create fixture JSON data inline or as a separate JSON file"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "conftest.py exists with mock_hud_response fixture",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "existing_hud_record fixture creates a record not in mock data",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "DISC-1-C",
+      "title": "Implement ingest_hud_reo management command",
+      "description": "Create core/management/commands/ingest_hud_reo.py with fetch, upsert, stale-removal, and dry-run logic.",
+      "depends_on": ["DISC-1-A"],
+      "files": [
+        "core/management/commands/ingest_hud_reo.py"
+      ],
+      "subtasks": [
+        "Define DEFAULT_ENDPOINT constant (gated by DISC-HG-1)",
+        "Implement add_arguments with --dry-run and --endpoint flags",
+        "Implement handle() with fetch → parse → upsert → stale-removal → log pipeline",
+        "Implement dry-run mode (use fixture data, skip DB writes)",
+        "Log added/updated/removed counts",
+        "Map data.gov JSON field names to HudProperty fields"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "Command runs without errors in dry-run mode",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Command upserts records by hud_case_number",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Stale records get status='removed'",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Command logs added/updated/removed counts",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "DISC-1-D",
+      "title": "Write all acceptance tests",
+      "description": "Create core/tests/test_ingestion/test_hud_reo.py with 5 unit tests and BDD scenarios.",
+      "depends_on": ["DISC-1-B", "DISC-1-C"],
+      "files": [
+        "core/tests/test_ingestion/test_hud_reo.py"
+      ],
+      "subtasks": [
+        "Write test_hud_ingest_creates_records using mock_hud_response",
+        "Write test_hud_ingest_upserts_not_duplicates using mock_hud_response",
+        "Write test_hud_ingest_marks_removed using existing_hud_record",
+        "Write test_hud_price_is_decimal using created HudProperty",
+        "Write test_hud_insured_status_choices using model validation",
+        "Write BDD scenarios"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "5 unit tests pass",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "BDD scenarios pass",
+          "test_type": "integration"
+        }
+      ]
+    }
+  ],
+  "execution_order": ["DISC-1-A", "DISC-1-B", "DISC-1-C", "DISC-1-D"]
+}
