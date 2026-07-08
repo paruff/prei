@@ -1,0 +1,18 @@
+[
+  {
+    "id": "DISC-5",
+    "title": "Dallas County TX NTS scraper (county proof-of-concept)",
+    "status": "in_progress",
+    "depends_on": ["DISC-0"],
+    "subtasks": [
+      {"id": "DISC-5.1", "title": "Create spec and design docs", "status": "completed"},
+      {"id": "DISC-5.2", "title": "Create core/integrations/county/ package", "status": "completed"},
+      {"id": "DISC-5.3", "title": "Write dallas_tx.py scraper module", "status": "completed"},
+      {"id": "DISC-5.4", "title": "Write management command", "status": "completed"},
+      {"id": "DISC-5.5", "title": "Write tests with fixture data", "status": "in_progress"},
+      {"id": "DISC-HG-3", "title": "Manual: confirm Dallas County URL structure and fields", "status": "blocked"},
+      {"id": "DISC-5.6", "title": "Finalize parser after DISC-HG-3", "status": "pending"},
+      {"id": "DISC-5.7", "title": "Review and PR", "status": "pending"}
+    ]
+  }
+]
