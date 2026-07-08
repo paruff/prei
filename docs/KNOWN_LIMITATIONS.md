@@ -126,6 +126,102 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
+### [LIMIT-10] PipelineProperty address fields are denormalized — become stale if source record changes
+
+**Location:** `core/models.py` — `PipelineProperty.address`, `PipelineProperty.address_hash`
+
+**Impact:** When PipelineProperty is created from VRM or ForeclosureProperty, the address is copied (denormalized) onto the PP record. If the source record is later updated by a re-scrape, the PP address becomes stale. There is no auto-sync mechanism in alpha.
+
+**Workaround:** Users should be aware that pipeline property addresses reflect the state at creation time. A future `sync_from_source` management command or signal-based approach could keep them current.
+
+**Fix tracked in:** Post-MVP — backlog.
+
+---
+
+### [LIMIT-11] Yield-based screening skipped for non-VRM source types
+
+**Location:** `core/services/screening.py` — `_eval_gross_yield()`, `_eval_price_to_rent_ratio()`
+
+**Impact:** Gross yield and price-to-rent ratio screening criteria require a rent estimate. Only VrmProperty has `projected_monthly_rent`. ForeclosureProperty, county records, and manual entries have no rent data, so these criteria are silently skipped with a note. No Rentcast integration exists to fill the gap.
+
+**Workaround:** Yield-based criteria are effectively VRM-only in alpha. Adding a Rentcast adapter (or other rent-estimate API) would enable yield screening for all source types.
+
+**Fix tracked in:** Not yet filed.
+
+---
+
+### [LIMIT-12] Newly acquired Property records are incomplete at creation
+
+**Location:** `core/services/pipeline.py` — `convert_to_property_record()`
+
+**Impact:** When a PipelineProperty is converted to a Property record via the closing view, the Property is created with minimal fields (address, purchase_price). Fields like sqft, monthly_rent_gross, loan details, and property_type are either defaulted or empty. Financial analysis will be invalid until the user completes the record in Portfolio.
+
+**Workaround:** After acquisition, users should navigate to Portfolio and edit the new Property record to fill in sqft, rent, loan terms, etc. The portfolio dashboard shows an "awaiting completion" banner for incomplete properties.
+
+**Fix tracked in:** Post-MVP — could pre-fill more fields from pipeline/underwriting data.
+
+---
+
+### [LIMIT-13] AuctionAlert not wired to PipelineProperty
+
+**Location:** `core/models.py` — `AuctionAlert`
+
+**Impact:** The AuctionAlert model exists but is not connected to PipelineProperty. Users cannot configure alerts for specific pipeline properties (e.g., "notify me when auction date changes"). This is a known gap from the original design.
+
+**Workaround:** Manually monitor auction dates via the pipeline detail view. No automated notifications.
+
+**Fix tracked in:** Backlog — post-MVP.
+
+---
+
+### [LIMIT-14] Leasing pipeline is tenant-acquisition tracking only
+
+**Location:** `core/models.py` — `LeasingPipelineProperty`
+
+**Impact:** The leasing pipeline tracks tenant acquisition (listing → lease signed → move-in). It does not cover ongoing property management: maintenance requests, rent collection, lease renewals, or tenant communications. These are planned for Phase 3.
+
+**Workaround:** After a lease is signed and the property is stabilized, users should manage ongoing operations in Portfolio. The leasing pipeline is specifically for pre-lease and move-in tracking.
+
+**Fix tracked in:** Phase 3 (not yet scheduled).
+
+---
+
+### [LIMIT-15] Screening re-run on criteria change is synchronous
+
+**Location:** `core/views.py` — `pipeline_screening_settings()`
+
+**Impact:** When a user updates screening criteria, the view re-screens all ACTIVE pipeline properties at DISCOVERED or SCREENING stage synchronously within the HTTP request. For users with many pipeline properties, this could cause noticeable page load delays. There is no background task / Celery integration in alpha.
+
+**Workaround:** Keep the number of active pipeline properties manageable (< 100). For larger portfolios, the re-screen count is shown in the success message so users are aware of how many properties were evaluated.
+
+**Fix tracked in:** Post-MVP — add Celery/background-task support for re-screening.
+
+---
+
+### [LIMIT-16] No multi-user pipeline sharing
+
+**Location:** All pipeline views and `PipelineProperty` model
+
+**Impact:** Pipeline property ownership is per-user (`ForeignKey(User)`). There is no team-based sharing — users on the same team cannot view or manage each other's pipeline entries. This is a deliberate simplification for alpha.
+
+**Workaround:** Users can share information manually. A future phase could add team-based access control similar to Property sharing.
+
+**Fix tracked in:** Post-MVP — backlog.
+
+---
+
+### [LIMIT-17] GACS-based screening requires pre-populated GACS scores
+
+**Location:** `core/services/screening.py` — `_eval_gacs_score()`
+
+**Impact:** The `min_gacs_score` screening criterion evaluates a property's market Growth Area Composite Score. If GACS scores have not been populated (via `populate_growth_areas` management command), no GrowthArea record exists for the property's state+city, and the criterion is silently skipped with a note. Users who configure a min_gacs_score but haven't populated growth data will see the criterion ignored.
+
+**Workaround:** Run `python manage.py populate_growth_areas` to populate GACS scores. The criterion is skipped (with a note) until scores are available.
+
+**Fix tracked in:** Could be improved by checking for GACS data availability in the UI. Not yet filed.
+
+---
+
 ## Resolved Limitations
 
 ### [LIMIT-R01] Docker container permissions — `app` user could not write `db.sqlite3`
