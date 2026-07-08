@@ -546,3 +546,25 @@
   background: var(--surface-secondary);
   border-radius: var(--radius-sm);
 }
+
+/* Form spacing */
+.form-field-group {
+  margin-top: 0;
+}
+
+.mt-2 {
+  margin-top: var(--sp-2);
+}
+
+.mt-3 {
+  margin-top: var(--sp-3);
+}
+
+.input-full {
+  width: 100%;
+}
+
+.textarea-full {
+  width: 100%;
+  resize: vertical;
+}
