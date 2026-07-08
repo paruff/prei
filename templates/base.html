@@ -29,7 +29,7 @@
 
     <div class="nav-dropdown" id="pipeline-dropdown">
       <button class="nav-dropdown-toggle" aria-expanded="false" aria-controls="pipeline-menu">
-        Pipeline <span aria-hidden="true">▾</span>
+        Purchase Pipeline <span aria-hidden="true">▾</span>
       </button>
       <div class="nav-dropdown-menu" id="pipeline-menu" role="menu">
         <a href="{% url 'growth_explorer' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'growth_explorer' %}active{% endif %}" role="menuitem">
@@ -44,6 +44,7 @@
           Screen
           <span class="sub-label">Filter and compare deals</span>
         </a>
+        <!-- PIPE-TODO: Screen should point to pipeline_screen view when built -->
         <a href="{% url 'brrrr_calculator' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'brrrr_calculator' %}active{% endif %}" role="menuitem">
           Underwriting
           <span class="sub-label">Analyze returns and risk</span>
@@ -52,15 +53,17 @@
           Offer
           <span class="sub-label">Log a new acquisition</span>
         </a>
+        <!-- PIPE-TODO: Offer should point to pipeline_offer view when built -->
         <a href="{% url 'portfolio_dashboard' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}" role="menuitem">
           Rehab &amp; Lease
           <span class="sub-label">Track renovation and tenants</span>
         </a>
+        <!-- PIPE-TODO: Rehab & Lease should point to pipeline_rehab view when built -->
       </div>
     </div>
 
+    <a href="#" class="nav-link" title="Leasing pipeline — coming soon"><!-- PIPE-TODO: wire after PIPE-X -->Leasing Pipeline</a>
     <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
-    <a href="{% url 'pipeline_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'pipeline_dashboard' %}active{% endif %}">Pipeline</a>
     <a href="{% url 'sell_index' %}" class="nav-link {% if request.resolver_match.url_name == 'sell_index' %}active{% endif %}">Sell</a>
   </div>
 
