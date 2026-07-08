@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
 
 
 from core.integrations.sources.fannie_mae import FannieMaeHomePathClient
@@ -71,7 +72,8 @@ class TestParseListingCards:
         assert first["baths"] == Decimal("2")
         assert first["sq_ft"] == 1500
         assert first["status"] == "Active"
-        assert "homepath.com" in first["url"]
+        parsed_url = urlparse(first["url"])
+        assert parsed_url.netloc == "www.homepath.com"
 
         second = results[1]
         assert second["address"] == "456 Oak Ave"

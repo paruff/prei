@@ -222,10 +222,15 @@ class FannieMaeHomePathClient:
                 url = ""
                 if link_el:
                     href = link_el.get("href", "")
+                    # BeautifulSoup Tag.get() returns str | AttributeValueList
+                    # in its type stubs.  For href attributes, it's always a
+                    # string, so narrow the type to keep mypy happy.
+                    if not isinstance(href, str):
+                        href = ""
                     if href and not href.startswith("http"):
                         url = f"https://www.homepath.com{href}"
                     else:
-                        url = href  # type: ignore[assignment]
+                        url = href
 
                 status = "Active"
                 if status_el:

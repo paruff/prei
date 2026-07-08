@@ -196,5 +196,7 @@ class Command(BaseCommand):
         if not user:
             user = User.objects.first()
         if not user:
-            logger.warning("No user found in database. Cannot assign PipelineProperty owner.")
+            logger.warning(
+                "No user found in database. Cannot assign PipelineProperty owner."
+            )
         return user
