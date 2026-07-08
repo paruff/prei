@@ -1595,6 +1595,152 @@ def pipeline_closing_create(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
+@login_required
+def leasing_list(request: HttpRequest) -> HttpResponse:
+    """List leasing pipeline entries for the current user."""
+    from core.models import LeasingPipelineProperty
+    from datetime import date
+
+    status_filter = request.GET.get("status", "ACTIVE")
+
+    qs = LeasingPipelineProperty.objects.filter(
+        user=request.user,
+        status=status_filter,
+    ).order_by("-updated_at")
+
+    # Compute days_vacant for listing-stage entries
+    today = date.today()
+    for entry in qs:
+        if entry.listed_date and entry.stage == "LISTING":
+            entry.days_vacant = (today - entry.listed_date).days
+        else:
+            entry.days_vacant = None
+
+    stage_order = [
+        "LISTING",
+        "SHOWING",
+        "APPLICATION",
+        "SCREENING",
+        "APPROVED",
+        "LEASE_SIGNED",
+        "MOVE_IN",
+        "STABILIZED",
+    ]
+
+    return render(
+        request,
+        "leasing/leasing_list.html",
+        {
+            "entries": qs,
+            "current_status": status_filter,
+            "stage_order": stage_order,
+        },
+    )
+
+
+@login_required
+def leasing_add(request: HttpRequest) -> HttpResponse:
+    """Add a new leasing pipeline entry."""
+    from core.models import LeasingPipelineProperty, Property
+
+    # Properties not already in active leasing
+    active_leasing_ids = LeasingPipelineProperty.objects.filter(
+        user=request.user,
+        status__in=["ACTIVE", "ON_HOLD"],
+    ).values_list("property_record_id", flat=True)
+
+    available_properties = (
+        Property.objects.filter(
+            user=request.user,
+        )
+        .exclude(pk__in=active_leasing_ids)
+        .order_by("address")
+    )
+
+    # Pre-fill from ?property_id=
+    prefill_property_id = request.GET.get("property_id", "")
+    prefill_property = None
+    if prefill_property_id:
+        try:
+            prefill_property = Property.objects.get(
+                pk=prefill_property_id,
+                user=request.user,
+            )
+        except Property.DoesNotExist:
+            pass
+
+    if request.method == "POST":
+        prop_id = request.POST.get("property_record")
+        asking_rent = request.POST.get("asking_rent", "").strip()
+        listed_date = request.POST.get("listed_date", "").strip()
+        listing_source = request.POST.get("listing_source", "")
+
+        if not prop_id:
+            messages.error(request, "Please select a property.")
+            return redirect("leasing_add")
+
+        try:
+            prop = Property.objects.get(pk=prop_id, user=request.user)
+        except Property.DoesNotExist:
+            messages.error(request, "Property not found.")
+            return redirect("leasing_add")
+
+        LeasingPipelineProperty.objects.create(
+            property_record=prop,
+            user=request.user,
+            asking_rent=Decimal(asking_rent) if asking_rent else None,
+            listed_date=listed_date or None,
+            listing_source=listing_source,
+        )
+        messages.success(request, "Property added to leasing pipeline.")
+        return redirect("leasing_list")
+
+    return render(
+        request,
+        "leasing/leasing_add.html",
+        {
+            "available_properties": available_properties,
+            "prefill_property": prefill_property,
+        },
+    )
+
+
+@login_required
+def leasing_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    """Leasing pipeline detail view."""
+    from core.models import LeasingPipelineProperty
+
+    try:
+        entry = LeasingPipelineProperty.objects.get(pk=pk, user=request.user)
+    except LeasingPipelineProperty.DoesNotExist:
+        raise Http404
+
+    # Stage history: chronological from stage based on created_at/updated_at
+    stage_order = [
+        "LISTING",
+        "SHOWING",
+        "APPLICATION",
+        "SCREENING",
+        "APPROVED",
+        "LEASE_SIGNED",
+        "MOVE_IN",
+        "STABILIZED",
+    ]
+    stage_history = [
+        (s, None) for s in stage_order[: stage_order.index(entry.stage) + 1]
+    ]
+
+    return render(
+        request,
+        "leasing/leasing_detail.html",
+        {
+            "entry": entry,
+            "stage_history": stage_history,
+            "stage_order": stage_order,
+        },
+    )
+
+
 def search_listings(request):
     # Optionally load a saved search to prefill filters
     saved_id = request.GET.get("saved_id")

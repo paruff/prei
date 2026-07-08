@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Leasing #{{ entry.pk }} — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <div class="pipeline-detail-header">
+    <div>
+      <a href="{% url 'leasing_list' %}" class="back-link">&larr; Back to Leasing Pipeline</a>
+      <h1>{{ entry.property_record.address }}</h1>
+      <p class="help-text">{{ entry.property_record.city }}, {{ entry.property_record.state }}</p>
+    </div>
+    <div class="pipeline-card-badges">
+      <span class="pipeline-badge badge-stage">{{ entry.get_stage_display }}</span>
+      <span class="pipeline-badge badge-status-{{ entry.status|lower }}">{{ entry.get_status_display }}</span>
+    </div>
+  </div>
+
+  <div class="pipeline-detail-body">
+
+    {# Listing details #}
+    <div class="pipeline-detail-section">
+      <h2>Listing</h2>
+      <table class="pipeline-detail-table">
+        <tr><td>Asking Rent</td><td>{% if entry.asking_rent %}${{ entry.asking_rent|floatformat:2|intcomma }}/mo{% else %}—{% endif %}</td></tr>
+        <tr><td>Listed</td><td>{{ entry.listed_date|date:"M j, Y"|default:"—" }}</td></tr>
+        <tr><td>Source</td><td>{{ entry.listing_source|default:"—" }}</td></tr>
+        {% if entry.days_vacant is not None %}
+        <tr><td class="text-danger">Days Vacant</td><td>{{ entry.days_vacant }}</td></tr>
+        {% endif %}
+      </table>
+    </div>
+
+    {# Applicant tracking #}
+    <div class="pipeline-detail-section">
+      <h2>Applicant</h2>
+      <table class="pipeline-detail-table">
+        <tr><td>Name</td><td>{{ entry.applicant_name|default:"—" }}</td></tr>
+        <tr><td>Application Date</td><td>{{ entry.application_date|date:"M j, Y"|default:"—" }}</td></tr>
+        <tr><td>Screening</td><td>{% if entry.screening_passed is True %}Passed{% elif entry.screening_passed is False %}Failed{% else %}Pending{% endif %}</td></tr>
+      </table>
+    </div>
+
+    {# Lease details (shown when stage >= LEASE_SIGNED) #}
+    {% if entry.stage == 'LEASE_SIGNED' or entry.stage == 'MOVE_IN' or entry.stage == 'STABILIZED' %}
+    <div class="pipeline-detail-section">
+      <h2>Lease</h2>
+      <table class="pipeline-detail-table">
+        <tr><td>Start Date</td><td>{{ entry.lease_start_date|date:"M j, Y"|default:"—" }}</td></tr>
+        <tr><td>End Date</td><td>{{ entry.lease_end_date|date:"M j, Y"|default:"—" }}</td></tr>
+        <tr><td>Monthly Rent</td><td>${{ entry.monthly_rent|floatformat:2|intcomma }}</td></tr>
+        <tr><td>Security Deposit</td><td>${{ entry.security_deposit|floatformat:2|intcomma }}</td></tr>
+      </table>
+    </div>
+    {% endif %}
+
+    {# Stage history #}
+    <div class="pipeline-detail-section full-width">
+      <h2>Stage History</h2>
+      <div class="stage-history">
+        {% for stage_name, ts in stage_history %}
+        <div class="stage-history-item">
+          <span class="stage-history-name">{{ stage_name|title }}</span>
+          {% if stage_name == entry.stage %}
+            <span class="stage-history-current">Current</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Action buttons #}
+    <div class="pipeline-action-bar">
+      {% if entry.status == 'ACTIVE' and entry.stage != 'STABILIZED' %}
+        <span class="btn btn-primary btn-placeholder">Advance Stage</span>
+      {% endif %}
+      {% if entry.status == 'ACTIVE' %}
+        <span class="btn btn-danger btn-placeholder">Fill</span>
+        <span class="btn btn-outline btn-placeholder">Hold</span>
+      {% endif %}
+      {% if entry.status == 'FILLED' or entry.stage == 'STABILIZED' %}
+        <a href="{% url 'portfolio_dashboard' %}" class="btn btn-primary">View in Portfolio &rarr;</a>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
