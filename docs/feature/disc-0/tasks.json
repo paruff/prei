@@ -1,0 +1,57 @@
+{
+  "skill": "plan",
+  "status": "ready",
+  "version": "1.0",
+  "created": "2026-07-08",
+  "feature": "DISC-0 — Source Data Models",
+  "spec": "docs/feature/disc-0/spec.md",
+  "design": "docs/feature/disc-0/design.md",
+  "notes": [
+    "All three models follow VrmProperty/ForeclosureProperty patterns.",
+    "All currency values use Decimal — never float per AGENTS.md rule 3.",
+    "Migration file is generated but NOT run — attached for paruff review.",
+    "Depends on PIPE-1 (PipelineProperty) being approved first."
+  ],
+  "tasks": [
+    {
+      "id": "DISC-0",
+      "title": "Add HudProperty, UsdaProperty, CountyForeclosureNotice models + migration",
+      "description": "Add three new source-specific data models to core/models.py and generate the migration file for paruff review.",
+      "depends_on": [],
+      "files": [
+        "core/models.py",
+        "core/migrations/DISC-0_migration.py"
+      ],
+      "subtasks": [
+        "Add HudProperty model with hud_case_number, address, price, beds, baths, sqft, status, timestamps",
+        "Add UsdaProperty model with usda_case_number, address, price, beds, baths, sqft, status, timestamps",
+        "Add CountyForeclosureNotice model with case_number, document_type, borrower, lender, address, county, filing/sale dates, bid amounts",
+        "Generate migration via makemigrations",
+        "Copy migration to core/migrations/DISC-0_migration.py (DO NOT run against database)"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "HudProperty model exists with all required fields",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "UsdaProperty model exists with all required fields",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "CountyForeclosureNotice model exists with all required fields",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Migration file is generated and attached (not run)",
+          "test_type": "integration"
+        },
+        {
+          "criterion": "All currency fields use Decimal",
+          "test_type": "unit"
+        }
+      ]
+    }
+  ],
+  "execution_order": ["DISC-0"]
+}
