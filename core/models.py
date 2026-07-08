@@ -1874,3 +1874,92 @@ class MonthlyActuals(models.Model):
         """Vacancy rate as a fraction of the month."""
         days_in_month = 30  # Simplified; most months ~30 days
         return Decimal(str(self.actual_vacancy_days)) / Decimal(str(days_in_month))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Property Discovery Sources & Requests
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class PropertySource(models.Model):
+    """A discoverable source of properties that feeds into the pipeline.
+
+    Each row corresponds to one of the ``PipelineProperty.SourceType``
+    choices and tracks whether a working integration exists, where to find
+    it online, and basic metadata for the discovery UI.
+
+    Users browse available sources on the Property Discovery page and
+    submit ``DiscoveryRequest`` records to trigger property fetching from a
+    source for a specific location.
+    """
+
+    source_type = models.CharField(
+        max_length=20,
+        choices=PipelineProperty.SourceType.choices,
+        unique=True,
+        help_text="Maps to PipelineProperty.SourceType",
+    )
+    name = models.CharField(max_length=128)
+    description = models.TextField(blank=True, default="")
+    website_url = models.URLField(blank=True, default="")
+    is_free = models.BooleanField(default=True)
+    is_active = models.BooleanField(
+        default=False,
+        help_text="Has a working scraper or API integration",
+    )
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True, default="")
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+        verbose_name = "Property Source"
+        verbose_name_plural = "Property Sources"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class DiscoveryRequest(models.Model):
+    """A user-initiated request to discover properties from a source.
+
+    When a user clicks 'Request Properties' on a source in the Property
+    Discovery page, a ``DiscoveryRequest`` is created.  Future scrapers
+    and ingesters will pick up ``REQUESTED`` records, fetch properties
+    for the target location, and create ``PipelineProperty`` records
+    from the results.
+    """
+
+    class Status(models.TextChoices):
+        REQUESTED = "requested", "Requested"
+        PROCESSING = "processing", "Processing"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+        CANCELLED = "cancelled", "Cancelled"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="discovery_requests"
+    )
+    source = models.ForeignKey(
+        PropertySource, on_delete=models.CASCADE, related_name="requests"
+    )
+    location = models.CharField(
+        max_length=255, help_text="City, State or ZIP code to target"
+    )
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.REQUESTED
+    )
+    properties_found = models.IntegerField(default=0)
+    error_message = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Discovery Request"
+        verbose_name_plural = "Discovery Requests"
+
+    def __str__(self) -> str:
+        return f"{self.source.name} @ {self.location} [{self.status}]"

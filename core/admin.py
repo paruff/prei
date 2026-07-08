@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    DiscoveryRequest,
     ForeclosureProperty,
     InvestmentAnalysis,
     Listing,
@@ -8,6 +9,7 @@ from .models import (
     OperatingExpense,
     PipelineAsset,
     Property,
+    PropertySource,
     RentalIncome,
     SavedSearch,
     Transaction,
@@ -148,3 +150,31 @@ class PipelineAssetAdmin(admin.ModelAdmin):
     )
     list_filter = ("current_stage", "source_name")
     search_fields = ("asset_id", "address", "address_hash")
+
+
+@admin.register(PropertySource)
+class PropertySourceAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "source_type",
+        "is_free",
+        "is_active",
+        "sort_order",
+        "last_checked_at",
+    )
+    list_filter = ("is_free", "is_active", "source_type")
+    search_fields = ("name", "description")
+
+
+@admin.register(DiscoveryRequest)
+class DiscoveryRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "source",
+        "user",
+        "location",
+        "status",
+        "properties_found",
+        "created_at",
+    )
+    list_filter = ("status", "source")
+    search_fields = ("location", "user__email")

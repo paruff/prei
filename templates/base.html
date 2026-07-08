@@ -32,9 +32,9 @@
         Purchase Pipeline <span aria-hidden="true">▾</span>
       </button>
       <div class="nav-dropdown-menu" id="pipeline-menu" role="menu">
-        <a href="{% url 'growth_explorer' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'growth_explorer' %}active{% endif %}" role="menuitem">
+        <a href="{% url 'property_discovery' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'property_discovery' %}active{% endif %}" role="menuitem">
           Discover
-          <span class="sub-label">Find growth markets</span>
+          <span class="sub-label">Find properties from public sources</span>
         </a>
         <a href="{% url 'vrm_properties_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'vrm_properties_list' %}active{% endif %}" role="menuitem">
           Foreclosures

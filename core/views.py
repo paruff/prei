@@ -2378,3 +2378,46 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
 def sell_index(request: HttpRequest) -> HttpResponse:
     """Sell/Disposition stub page — placeholder for future disposition tools."""
     return render(request, "sell_index.html")
+
+
+def property_discovery(request: HttpRequest) -> HttpResponse:
+    """Property Discovery page — browse sources and request property feeds.
+
+    Shows all available ``PropertySource`` records grouped by type,
+    along with the current user's recent ``DiscoveryRequest`` submissions.
+    Users can submit new requests to be fulfilled by future scrapers.
+    """
+    from .models import DiscoveryRequest, PropertySource
+
+    # Handle new discovery request
+    if request.method == "POST" and "request_discovery" in request.POST:
+        source_id = request.POST.get("source_id", "")
+        location = request.POST.get("location", "").strip()
+        if source_id and location:
+            DiscoveryRequest.objects.create(
+                user=request.user,
+                source_id=source_id,
+                location=location,
+            )
+
+    sources = PropertySource.objects.all()
+    user_requests = DiscoveryRequest.objects.filter(user=request.user)[:20]
+
+    # Group sources
+    free_sources = sources.filter(is_free=True)
+    paid_sources = sources.filter(is_free=False)
+    active_sources = sources.filter(is_active=True)
+    planned_sources = sources.filter(is_active=False)
+
+    return render(
+        request,
+        "property_discovery.html",
+        {
+            "sources": sources,
+            "free_sources": free_sources,
+            "paid_sources": paid_sources,
+            "active_sources": active_sources,
+            "planned_sources": planned_sources,
+            "user_requests": user_requests,
+        },
+    )

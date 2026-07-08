@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Property Discovery{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🔍 Property Discovery</h1>
+  <p class="page-header-desc">
+    Find real properties to buy from public and private data sources.
+    Choose a source below and request a location to start discovering deals.
+  </p>
+</div>
+
+{# ═════════════════════════════════════════════════════════════════════ #}
+{# Active sources card                                                  #}
+{# ═════════════════════════════════════════════════════════════════════ #}
+{% if active_sources %}
+<section class="card discovery-section">
+  <h2 class="discovery-section-heading discovery-section-heading--active">
+    <span aria-hidden="true">✅</span> Active Integrations
+  </h2>
+  <p class="discovery-section-desc">
+    These sources have working scrapers — properties are already flowing in.
+  </p>
+  <div class="kpi-grid discovery-grid">
+    {% for src in active_sources %}
+    <div class="card discovery-source-card discovery-source-card--active">
+      <div class="discovery-source-header">
+        <div>
+          <h3 class="discovery-source-name">{{ src.name }}</h3>
+          <p class="discovery-source-desc">{{ src.description|truncatewords:30 }}</p>
+          {% if src.website_url %}
+          <a href="{{ src.website_url }}" target="_blank" rel="noopener" class="btn btn-sm discovery-source-visit">
+            Visit Source ↗
+          </a>
+          {% endif %}
+        </div>
+        <span class="chip chip-success">Active</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ═════════════════════════════════════════════════════════════════════ #}
+{# Free / Planned sources card                                          #}
+{# ═════════════════════════════════════════════════════════════════════ #}
+<section class="card discovery-section">
+  <h2 class="discovery-section-heading">
+    <span aria-hidden="true">📡</span> Available Property Sources
+  </h2>
+  <p class="discovery-section-desc">
+    Request properties from any source below. We'll add scrapers based on demand.
+  </p>
+
+  <div class="kpi-grid discovery-grid">
+    {% for src in free_sources %}
+    <div class="card discovery-source-card discovery-source-card--{% if src.is_active %}active{% else %}planned{% endif %}">
+      <div class="discovery-source-body">
+        <div class="discovery-source-header">
+          <div>
+            <h3 class="discovery-source-name">
+              {% if not src.is_free %}${% endif %}
+              {{ src.name }}
+            </h3>
+            <p class="discovery-source-desc">{{ src.description|truncatewords:25 }}</p>
+            {% if src.website_url %}
+            <a href="{{ src.website_url }}" target="_blank" rel="noopener" class="btn btn-sm discovery-source-visit">
+              Visit ↗
+            </a>
+            {% endif %}
+          </div>
+          <span class="chip chip-{% if src.is_active %}success{% elif src.is_free %}info{% else %}warning{% endif %}">
+            {% if src.is_active %}Active{% elif src.is_free %}Free{% else %}Paid{% endif %}
+          </span>
+        </div>
+
+        {# Request form #}
+        <form method="post" action="{% url 'property_discovery' %}" class="discovery-request-form">
+          {% csrf_token %}
+          <input type="hidden" name="source_id" value="{{ src.id }}">
+          <label for="location-{{ src.id }}" class="sr-only">Location for {{ src.name }}</label>
+          <input
+            id="location-{{ src.id }}"
+            type="text"
+            name="location"
+            placeholder="e.g. Austin, TX or 78701"
+            required
+            class="form-input discovery-request-input"
+          >
+          <button type="submit" name="request_discovery" class="btn btn-primary">
+            Request Properties
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ═════════════════════════════════════════════════════════════════════ #}
+{# Paid sources card                                                    #}
+{# ═════════════════════════════════════════════════════════════════════ #}
+{% if paid_sources %}
+<section class="card discovery-section">
+  <h2 class="discovery-section-heading">
+    <span aria-hidden="true">💳</span> For-Fee Data Sources
+  </h2>
+  <p class="discovery-section-desc">
+    These sources require a subscription or fee. We'll add integration based on demand.
+  </p>
+  <div class="kpi-grid discovery-grid">
+    {% for src in paid_sources %}
+    <div class="card discovery-source-card discovery-source-card--paid">
+      <div class="discovery-source-header">
+        <div>
+          <h3 class="discovery-source-name">{{ src.name }}</h3>
+          <p class="discovery-source-desc">{{ src.description|truncatewords:20 }}</p>
+        </div>
+        <span class="chip chip-warning">Paid</span>
+      </div>
+      <p class="discovery-source-footnote">
+        ℹ️ Request this source and we'll prioritize integration.
+      </p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ═════════════════════════════════════════════════════════════════════ #}
+{# My recent requests                                                   #}
+{# ═════════════════════════════════════════════════════════════════════ #}
+{% if user_requests %}
+<section class="card">
+  <h2 class="discovery-section-heading">
+    <span aria-hidden="true">📋</span> My Discovery Requests
+  </h2>
+  <div class="data-table discovery-requests-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Requested</th>
+          <th>Properties Found</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in user_requests %}
+        <tr>
+          <td>{{ req.source.name }}</td>
+          <td>{{ req.location }}</td>
+          <td>
+            <span class="chip chip-{% if req.status == 'completed' %}success{% elif req.status == 'failed' %}danger{% elif req.status == 'processing' %}info{% else %}default{% endif %}">
+              {{ req.get_status_display }}
+            </span>
+          </td>
+          <td class="discovery-request-date">{{ req.created_at|date:"M j, Y" }}</td>
+          <td>{{ req.properties_found }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
