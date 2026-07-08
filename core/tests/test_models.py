@@ -7,7 +7,12 @@ from django.db import connection, models
 from django.utils import timezone
 
 from core.admin import VrmPropertyAdmin
-from core.models import VrmProperty
+from core.models import (
+    CountyForeclosureNotice,
+    HudProperty,
+    UsdaProperty,
+    VrmProperty,
+)
 
 
 class FieldExpectation(NamedTuple):
@@ -169,3 +174,217 @@ def test_vrm_property_str_representation(db):
     )
 
     assert str(vrm_property) == "369 Charles St, Winchester, VA"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# HudProperty
+# ═══════════════════════════════════════════════════════════════════════
+
+HUD_FIELD_EXPECTATIONS: dict[str, FieldExpectation] = {
+    "hud_case_number": FieldExpectation(models.CharField, False, 64),
+    "address": FieldExpectation(models.CharField, False),
+    "city": FieldExpectation(models.CharField, False),
+    "state": FieldExpectation(models.CharField, False, 2),
+    "zip_code": FieldExpectation(models.CharField, False),
+    "county": FieldExpectation(models.CharField, False),
+    "list_price": FieldExpectation(models.DecimalField, True),
+    "bedrooms": FieldExpectation(models.IntegerField, True),
+    "bathrooms": FieldExpectation(models.DecimalField, True),
+    "square_feet": FieldExpectation(models.IntegerField, True),
+    "property_type": FieldExpectation(models.CharField, False),
+    "status": FieldExpectation(models.CharField, False),
+    "listing_url": FieldExpectation(models.URLField, False),
+    "image_url": FieldExpectation(models.URLField, False),
+    "description": FieldExpectation(models.TextField, False),
+    "scraped_at": FieldExpectation(models.DateTimeField, False),
+    "last_seen_at": FieldExpectation(models.DateTimeField, False),
+    "created_at": FieldExpectation(models.DateTimeField, False),
+    "updated_at": FieldExpectation(models.DateTimeField, False),
+}
+
+
+def test_hud_property_model_fields():
+    """All HudProperty fields match expectations."""
+    for field_name, expectation in HUD_FIELD_EXPECTATIONS.items():
+        field = HudProperty._meta.get_field(field_name)
+        assert isinstance(field, expectation.field_type), (
+            f"{field_name}: expected {expectation.field_type.__name__}, "
+            f"got {type(field).__name__}"
+        )
+        assert field.null is expectation.nullable
+        if expectation.max_length is not None:
+            assert field.max_length == expectation.max_length, (
+                f"{field_name}: expected max_length={expectation.max_length}"
+            )
+
+    assert HudProperty._meta.get_field("hud_case_number").unique is True
+    for currency_field in ("list_price",):
+        field = HudProperty._meta.get_field(currency_field)
+        assert isinstance(field, models.DecimalField)
+        assert any(
+            isinstance(v, MinValueValidator) and v.limit_value == Decimal("0")
+            for v in field.validators
+        )
+    for int_field in ("bedrooms", "square_feet"):
+        field = HudProperty._meta.get_field(int_field)
+        assert any(
+            isinstance(v, MinValueValidator) and v.limit_value == 0
+            for v in field.validators
+        )
+
+
+def test_hud_property_str_representation():
+    """HudProperty string representation includes case number and address."""
+    prop = HudProperty(
+        hud_case_number="HUD-2026-001",
+        address="123 Main St",
+        city="Austin",
+        state="TX",
+        zip_code="78701",
+        status=HudProperty.Status.ACTIVE,
+        scraped_at=timezone.now(),
+        last_seen_at=timezone.now(),
+    )
+    assert str(prop) == "HUD HUD-2026-001 — 123 Main St, Austin"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# UsdaProperty
+# ═══════════════════════════════════════════════════════════════════════
+
+USDA_FIELD_EXPECTATIONS: dict[str, FieldExpectation] = {
+    "usda_case_number": FieldExpectation(models.CharField, False, 64),
+    "address": FieldExpectation(models.CharField, False),
+    "city": FieldExpectation(models.CharField, False),
+    "state": FieldExpectation(models.CharField, False, 2),
+    "zip_code": FieldExpectation(models.CharField, False),
+    "county": FieldExpectation(models.CharField, False),
+    "list_price": FieldExpectation(models.DecimalField, True),
+    "bedrooms": FieldExpectation(models.IntegerField, True),
+    "bathrooms": FieldExpectation(models.DecimalField, True),
+    "square_feet": FieldExpectation(models.IntegerField, True),
+    "lot_size_acres": FieldExpectation(models.DecimalField, True),
+    "property_type": FieldExpectation(models.CharField, False),
+    "status": FieldExpectation(models.CharField, False),
+    "listing_url": FieldExpectation(models.URLField, False),
+    "description": FieldExpectation(models.TextField, False),
+    "scraped_at": FieldExpectation(models.DateTimeField, False),
+    "last_seen_at": FieldExpectation(models.DateTimeField, False),
+    "created_at": FieldExpectation(models.DateTimeField, False),
+    "updated_at": FieldExpectation(models.DateTimeField, False),
+}
+
+
+def test_usda_property_model_fields():
+    """All UsdaProperty fields match expectations."""
+    for field_name, expectation in USDA_FIELD_EXPECTATIONS.items():
+        field = UsdaProperty._meta.get_field(field_name)
+        assert isinstance(field, expectation.field_type), (
+            f"{field_name}: expected {expectation.field_type.__name__}, "
+            f"got {type(field).__name__}"
+        )
+        assert field.null is expectation.nullable
+        if expectation.max_length is not None:
+            assert field.max_length == expectation.max_length
+
+    assert UsdaProperty._meta.get_field("usda_case_number").unique is True
+    for currency_field in ("list_price", "lot_size_acres"):
+        field = UsdaProperty._meta.get_field(currency_field)
+        assert isinstance(field, models.DecimalField)
+        assert any(
+            isinstance(v, MinValueValidator) and v.limit_value == Decimal("0")
+            for v in field.validators
+        )
+    for int_field in ("bedrooms", "square_feet"):
+        field = UsdaProperty._meta.get_field(int_field)
+        assert any(
+            isinstance(v, MinValueValidator) and v.limit_value == 0
+            for v in field.validators
+        )
+
+
+def test_usda_property_str_representation():
+    """UsdaProperty string representation includes case number and address."""
+    prop = UsdaProperty(
+        usda_case_number="USDA-2026-001",
+        address="456 Oak Ave",
+        city="Austin",
+        state="TX",
+        zip_code="78702",
+        status=UsdaProperty.Status.ACTIVE,
+        scraped_at=timezone.now(),
+        last_seen_at=timezone.now(),
+    )
+    assert str(prop) == "USDA USDA-2026-001 — 456 Oak Ave, Austin"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# CountyForeclosureNotice
+# ═══════════════════════════════════════════════════════════════════════
+
+COUNTY_FIELD_EXPECTATIONS: dict[str, FieldExpectation] = {
+    "case_number": FieldExpectation(models.CharField, False, 128),
+    "document_type": FieldExpectation(models.CharField, False),
+    "borrower_name": FieldExpectation(models.CharField, False),
+    "lender_name": FieldExpectation(models.CharField, False),
+    "trustee_name": FieldExpectation(models.CharField, False),
+    "address": FieldExpectation(models.CharField, False),
+    "city": FieldExpectation(models.CharField, False),
+    "state": FieldExpectation(models.CharField, False, 2),
+    "zip_code": FieldExpectation(models.CharField, False),
+    "county": FieldExpectation(models.CharField, False),
+    "filing_date": FieldExpectation(models.DateField, True),
+    "sale_date": FieldExpectation(models.DateField, True),
+    "auction_time": FieldExpectation(models.CharField, False),
+    "auction_location": FieldExpectation(models.TextField, False),
+    "opening_bid": FieldExpectation(models.DecimalField, True),
+    "unpaid_balance": FieldExpectation(models.DecimalField, True),
+    "estimated_value": FieldExpectation(models.DecimalField, True),
+    "parcel_number": FieldExpectation(models.CharField, False),
+    "source_url": FieldExpectation(models.URLField, False),
+    "raw_data": FieldExpectation(models.JSONField, False),
+    "scraped_at": FieldExpectation(models.DateTimeField, False),
+    "last_seen_at": FieldExpectation(models.DateTimeField, False),
+    "created_at": FieldExpectation(models.DateTimeField, False),
+    "updated_at": FieldExpectation(models.DateTimeField, False),
+}
+
+
+def test_county_foreclosure_notice_model_fields():
+    """All CountyForeclosureNotice fields match expectations."""
+    for field_name, expectation in COUNTY_FIELD_EXPECTATIONS.items():
+        field = CountyForeclosureNotice._meta.get_field(field_name)
+        assert isinstance(field, expectation.field_type), (
+            f"{field_name}: expected {expectation.field_type.__name__}, "
+            f"got {type(field).__name__}"
+        )
+        assert field.null is expectation.nullable
+        if expectation.max_length is not None:
+            assert field.max_length == expectation.max_length
+
+    assert CountyForeclosureNotice._meta.get_field("case_number").unique is True
+    for currency_field in ("opening_bid", "unpaid_balance", "estimated_value"):
+        field = CountyForeclosureNotice._meta.get_field(currency_field)
+        assert isinstance(field, models.DecimalField)
+        assert any(
+            isinstance(v, MinValueValidator) and v.limit_value == Decimal("0")
+            for v in field.validators
+        )
+
+
+def test_county_foreclosure_notice_str_representation():
+    """CountyForeclosureNotice string includes document type, case, and location."""
+    notice = CountyForeclosureNotice(
+        case_number="NOD-2026-001",
+        document_type=CountyForeclosureNotice.DocumentType.NOD,
+        address="789 Pine St",
+        city="Dallas",
+        state="TX",
+        zip_code="75201",
+        county="Dallas",
+        scraped_at=timezone.now(),
+        last_seen_at=timezone.now(),
+    )
+    assert "Notice of Default" in str(notice)
+    assert "NOD-2026-001" in str(notice)
+    assert "Dallas" in str(notice)

@@ -1069,6 +1069,197 @@ class ForeclosureProperty(models.Model):
         return f"{self.street}, {self.city}, {self.state} {self.zip_code} - {self.foreclosure_status}"
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Source-Specific Property Models (Discovery Pipeline)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class HudProperty(models.Model):
+    """HUD Homestore REO property listing from public government source."""
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        PENDING = "pending", "Pending"
+        SOLD = "sold", "Sold"
+        CONTINGENT = "contingent", "Contingent"
+
+    hud_case_number = models.CharField(max_length=64, unique=True, db_index=True)
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=128)
+    state = models.CharField(max_length=2, db_index=True)
+    zip_code = models.CharField(max_length=16)
+    county = models.CharField(max_length=128, blank=True, default="")
+    list_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    bedrooms = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
+    bathrooms = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    square_feet = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
+    property_type = models.CharField(max_length=64, blank=True, default="")
+    status = models.CharField(max_length=32, choices=Status.choices)
+    listing_url = models.URLField(blank=True, default="")
+    image_url = models.URLField(blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    scraped_at = models.DateTimeField()
+    last_seen_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "HUD Property"
+        verbose_name_plural = "HUD Properties"
+        indexes = [
+            models.Index(fields=["state", "city"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"HUD {self.hud_case_number} — {self.address}, {self.city}"
+
+
+class UsdaProperty(models.Model):
+    """USDA Rural Development REO property listing from public government source."""
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        PENDING = "pending", "Pending"
+        SOLD = "sold", "Sold"
+
+    usda_case_number = models.CharField(max_length=64, unique=True, db_index=True)
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=128)
+    state = models.CharField(max_length=2, db_index=True)
+    zip_code = models.CharField(max_length=16)
+    county = models.CharField(max_length=128, blank=True, default="")
+    list_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    bedrooms = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
+    bathrooms = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    square_feet = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
+    lot_size_acres = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    property_type = models.CharField(max_length=64, blank=True, default="")
+    status = models.CharField(max_length=32, choices=Status.choices)
+    listing_url = models.URLField(blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    scraped_at = models.DateTimeField()
+    last_seen_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "USDA Property"
+        verbose_name_plural = "USDA Properties"
+        indexes = [
+            models.Index(fields=["state", "city"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"USDA {self.usda_case_number} — {self.address}, {self.city}"
+
+
+class CountyForeclosureNotice(models.Model):
+    """Public foreclosure notice from county records (NOD, NTS, Sheriff Sale)."""
+
+    class DocumentType(models.TextChoices):
+        NOD = "nod", "Notice of Default"
+        NTS = "nts", "Notice of Trustee Sale"
+        SHERIFF_SALE = "sheriff_sale", "Sheriff Sale"
+        LIS_PENDENS = "lis_pendens", "Lis Pendens"
+        AUCTION = "auction", "Auction Calendar"
+
+    case_number = models.CharField(max_length=128, unique=True, db_index=True)
+    document_type = models.CharField(max_length=32, choices=DocumentType.choices)
+    borrower_name = models.CharField(max_length=255, blank=True, default="")
+    lender_name = models.CharField(max_length=255, blank=True, default="")
+    trustee_name = models.CharField(max_length=255, blank=True, default="")
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=128)
+    state = models.CharField(max_length=2, db_index=True)
+    zip_code = models.CharField(max_length=16, blank=True, default="")
+    county = models.CharField(max_length=128, db_index=True)
+    filing_date = models.DateField(null=True, blank=True)
+    sale_date = models.DateField(null=True, blank=True, db_index=True)
+    auction_time = models.CharField(max_length=64, blank=True, default="")
+    auction_location = models.TextField(blank=True, default="")
+    opening_bid = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    unpaid_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    estimated_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    parcel_number = models.CharField(max_length=128, blank=True, default="")
+    source_url = models.URLField(blank=True, default="")
+    raw_data = models.JSONField(default=dict, blank=True)
+    scraped_at = models.DateTimeField()
+    last_seen_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "County Foreclosure Notice"
+        verbose_name_plural = "County Foreclosure Notices"
+        ordering = ["-sale_date", "-filing_date"]
+        indexes = [
+            models.Index(fields=["county", "state"]),
+            models.Index(fields=["document_type"]),
+            models.Index(fields=["sale_date"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_document_type_display()} — {self.case_number} ({self.county}, {self.state})"
+
+
 class UserWatchlist(models.Model):
     """User's watchlist for tracking specific foreclosure properties."""
 
