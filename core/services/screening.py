@@ -3,8 +3,8 @@
 Provides the ScreeningResult dataclass and screen_property() function
 that evaluates a PipelineProperty against a user's ScreeningCriteria.
 Handles both hard-kill (immediate reject) and soft (score-based) criteria,
-with special handling for VrmProperty (has rent data) vs ForeclosureProperty
-(no rent data) source types.
+with special handling for VrmProperty (has rent data) vs other source types
+(no rent data: ForeclosureProperty, HudProperty, UsdaProperty).
 """
 
 from __future__ import annotations
@@ -62,6 +62,37 @@ class ScreeningResult:
     soft_failures: list[str] = field(default_factory=list)
     passes: list[str] = field(default_factory=list)
     notes: str = ""
+
+    @property
+    def kill_reason(self) -> str | None:
+        """Return the first hard-failure reason, or None if not killed."""
+        return self.hard_failures[0] if self.hard_failures else None
+
+    @property
+    def yield_evaluated(self) -> bool:
+        """True if gross yield was actually evaluated (not skipped)."""
+        for msg in self.passes:
+            if "gross yield" in msg.lower():
+                if "skipped" in msg.lower():
+                    return False
+                return True
+        for msg in self.soft_failures:
+            if "gross yield" in msg.lower():
+                return True
+        return False
+
+    @property
+    def yield_note(self) -> str:
+        """Machine-readable note about yield screening outcome."""
+        for msg in self.passes:
+            if "gross yield" in msg.lower():
+                if "skipped" in msg.lower():
+                    return "no_rent_estimate"
+                return "evaluated"
+        for msg in self.soft_failures:
+            if "gross yield" in msg.lower():
+                return "evaluated"
+        return ""
 
 
 def _kill_result(reason: str) -> ScreeningResult:
@@ -454,8 +485,49 @@ def get_or_create_criteria(user: User) -> Any:
     return criteria
 
 
+def _is_source_model(obj: Any) -> bool:
+    """Check if *obj* is a HUD/USDA source model (not a PipelineProperty).
+
+    Detects by checking for source-specific unique field names.
+    """
+    class_name = obj.__class__.__name__ if obj is not None else ""
+    return (
+        class_name in ("HudProperty", "UsdaProperty")
+        or hasattr(obj, "hud_case_number")
+        or hasattr(obj, "usda_case_number")
+    )
+
+
+def _adapt_source_to_pipeline(
+    source: Any,
+) -> Any:
+    """Create a namespace object with PipelineProperty-like fields from a HUD/USDA source.
+
+    Maps source-model fields to the attribute names that ``screen_property``
+    expects on ``pipeline_property``.
+    """
+
+    class _PipelineView:
+        price: Decimal | None = None
+        estimated_rent: Decimal | None = None
+        beds: int | None = None
+        year_built: int | None = None
+
+    view = _PipelineView()
+
+    if hasattr(source, "asking_price") and source.asking_price is not None:
+        view.price = Decimal(str(source.asking_price))
+    elif hasattr(source, "list_price") and source.list_price is not None:
+        view.price = Decimal(str(source.list_price))
+
+    if hasattr(source, "bedrooms") and source.bedrooms is not None:
+        view.beds = int(source.bedrooms)
+
+    return view
+
+
 def screen_property(
-    pipeline_property: PipelineProperty,
+    pipeline_property: Any,
     criteria: ScreeningCriteria,
     source_record: Any | None = None,
 ) -> ScreeningResult:
@@ -475,16 +547,20 @@ def screen_property(
       9. Beds
 
     Special handling:
-      - If source_record is a ForeclosureProperty or None, criteria 6 and 7
-        are skipped because no rent estimate is available.
+      - If source_record is a ForeclosureProperty, HudProperty, UsdaProperty,
+        or None, criteria 6 and 7 are skipped because no rent estimate is
+        available.
+      - If *pipeline_property* is a HUD or USDA source model (not a
+        PipelineProperty), it is treated as the source_record and relevant
+        fields (price, beds) are extracted from it.
       - Missing fields on PP or source_record → skip criterion,
         add 'SKIPPED: {criterion} — no data' to passes list.
 
     Args:
-        pipeline_property: PipelineProperty instance being evaluated.
+        pipeline_property: PipelineProperty or source model (HudProperty,
+                           UsdaProperty) being evaluated.
         criteria:          ScreeningCriteria with user's thresholds.
-        source_record:     Optional source model instance (VrmProperty,
-                          ForeclosureProperty, etc.) for additional data.
+        source_record:     Optional source model instance for additional data.
 
     Returns:
         ScreeningResult with pass/fail, final score, and diagnostic lists.
@@ -492,14 +568,19 @@ def screen_property(
     passes: list[str] = []
     notes: list[str] = []
 
+    # ── Detect source model passed as first argument ───────────────────────
+    if _is_source_model(pipeline_property):
+        source_record = pipeline_property
+        pipeline_property = _adapt_source_to_pipeline(source_record)
+
     # ── Extract data ──────────────────────────────────────────────────────
     state = _extract_state(pipeline_property, source_record)
     city = _extract_city(pipeline_property, source_record)
     foreclosure_status = _extract_foreclosure_status(source_record)
     property_type = _extract_property_type(source_record)
     has_rent_data = _is_vrm_source(source_record) or (
-        pipeline_property.estimated_rent is not None
-        and pipeline_property.estimated_rent > 0
+        getattr(pipeline_property, "estimated_rent", None) is not None
+        and getattr(pipeline_property, "estimated_rent", Decimal("0")) > 0
     )
 
     if not has_rent_data and source_record is not None:
