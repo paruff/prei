@@ -58,6 +58,8 @@ urlpatterns = [
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
     path("growth-explorer/", views.growth_explorer, name="growth_explorer"),
     path("pipeline/", views.pipeline_dashboard, name="pipeline_dashboard"),
+    path("pipeline/list/", views.pipeline_list, name="pipeline_list"),
+    path("pipeline/<int:pk>/", views.pipeline_detail, name="pipeline_detail"),
     path(
         "settings/investment-targets/",
         views.investment_targets_edit,

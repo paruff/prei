@@ -1,0 +1,423 @@
+/* ── Pipeline list / detail styles ──────────────────────────────────── */
+/* Uses design tokens from tokens.css — no hardcoded hex colors.       */
+
+/* ── List view ──────────────────────────────────────────────────────── */
+.pipeline-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-4);
+}
+
+.pipeline-page h1 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+  margin: 0 0 var(--sp-6);
+}
+
+/* Funnel header */
+.pipeline-funnel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-6);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.pipeline-funnel a {
+  color: var(--color-neutral-900);
+  text-decoration: none;
+}
+
+.pipeline-funnel-stage {
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-sm);
+}
+
+.pipeline-funnel-stage.active {
+  background: var(--color-primary-bg);
+}
+
+/* Status filter tabs */
+.pipeline-status-tabs {
+  display: flex;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-6);
+  font-size: var(--text-sm);
+}
+
+.pipeline-status-tab {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  font-weight: var(--weight-medium);
+  background: var(--surface-secondary);
+  color: var(--color-neutral-900);
+}
+
+.pipeline-status-tab.active-active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.pipeline-status-tab.active-killed {
+  background: var(--color-risk-400);
+  color: white;
+}
+
+.pipeline-status-tab.active-on_hold {
+  background: var(--color-caution-400);
+  color: white;
+}
+
+/* Property cards grid */
+.pipeline-cards {
+  display: grid;
+  gap: var(--sp-4);
+  grid-template-columns: 1fr;
+}
+
+.pipeline-card {
+  background: var(--surface-card);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+}
+
+.pipeline-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.pipeline-card-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.pipeline-card-badges {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  margin-bottom: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.pipeline-badge {
+  font-size: var(--text-xs);
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-weight: var(--weight-medium);
+}
+
+.badge-source {
+  background: var(--color-primary-bg);
+  color: var(--color-primary-text);
+  text-transform: uppercase;
+}
+
+.badge-stage {
+  background: var(--surface-secondary);
+  color: var(--color-neutral-700);
+}
+
+.badge-status-active {
+  background: var(--color-verdict-a-bg);
+  color: var(--color-verdict-a-text);
+}
+
+.badge-status-killed {
+  background: var(--color-verdict-c-bg);
+  color: var(--color-verdict-c-text);
+}
+
+.badge-status-on_hold {
+  background: var(--color-verdict-b-bg);
+  color: var(--color-verdict-b-text);
+}
+
+.pipeline-card-address {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--color-neutral-900);
+  margin-bottom: var(--sp-1);
+}
+
+.pipeline-card-meta {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+.pipeline-card-actions {
+  text-align: right;
+  min-width: 180px;
+}
+
+.pipeline-screening-result {
+  font-size: var(--text-sm);
+  margin-bottom: var(--sp-2);
+}
+
+.pipeline-screening-result.passed {
+  color: var(--color-verdict-a-text);
+}
+
+.pipeline-screening-result.failed {
+  color: var(--color-verdict-c-text);
+}
+
+.pipeline-days {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  margin-bottom: var(--sp-3);
+}
+
+.pipeline-card-btn-group {
+  display: flex;
+  gap: var(--sp-1);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.pipeline-action-btn {
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--text-xs);
+  border: var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--color-neutral-900);
+  text-decoration: none;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.pipeline-action-btn.primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+}
+
+.pipeline-action-btn.placeholder {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.pipeline-empty {
+  padding: var(--sp-8);
+  text-align: center;
+  color: var(--color-neutral-500);
+  font-size: var(--text-sm);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-md);
+}
+
+/* ── Detail view ────────────────────────────────────────────────────── */
+.pipeline-detail-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+
+.pipeline-detail-section {
+  background: var(--surface-card);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+}
+
+.pipeline-detail-section.full-width {
+  grid-column: 1 / -1;
+}
+
+.pipeline-detail-section h2 {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  margin: 0 0 var(--sp-3);
+}
+
+.pipeline-detail-table {
+  width: 100%;
+  font-size: var(--text-sm);
+  border-collapse: collapse;
+}
+
+.pipeline-detail-table td {
+  padding: var(--sp-1) 0;
+}
+
+.pipeline-detail-table td:first-child {
+  color: var(--color-neutral-500);
+  width: 40%;
+}
+
+/* Stage history */
+.stage-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.stage-history-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2);
+  background: var(--surface-page);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.stage-history-name {
+  font-weight: var(--weight-medium);
+  min-width: 140px;
+}
+
+.stage-history-time {
+  color: var(--color-neutral-500);
+}
+
+.stage-history-current {
+  font-size: var(--text-xs);
+  padding: 1px var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-bg);
+  color: var(--color-primary-text);
+}
+
+/* Detail header */
+.pipeline-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+
+.pipeline-detail-header .back-link {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  text-decoration: none;
+}
+
+.pipeline-detail-header h1 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+  margin: var(--sp-2) 0 0;
+}
+
+/* Detail inline verdict badges */
+.verdict-pass {
+  color: var(--color-verdict-a-text);
+}
+
+.verdict-fail {
+  color: var(--color-verdict-c-text);
+}
+
+.text-muted {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+.text-danger {
+  color: var(--color-risk-700);
+}
+
+/* Action button bar */
+.pipeline-action-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding: var(--sp-4) 0;
+}
+
+.pipeline-action-bar .btn {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  border: none;
+}
+
+.pipeline-action-bar .btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.pipeline-action-bar .btn-danger {
+  background: white;
+  color: var(--color-risk-400);
+  border: 1px solid var(--color-risk-400);
+}
+
+.pipeline-action-bar .btn-outline {
+  background: white;
+  color: var(--color-neutral-700);
+  border: var(--border-default);
+}
+
+.pipeline-action-bar .btn-warning {
+  background: var(--color-caution-400);
+  color: white;
+}
+
+.pipeline-action-bar .btn-placeholder {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* Kill modal */
+.pipeline-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  z-index: 100;
+}
+
+.pipeline-modal-content {
+  background: white;
+  max-width: 400px;
+  margin: 15% auto;
+  padding: var(--sp-6);
+  border-radius: var(--radius-lg);
+}
+
+.pipeline-modal h3 {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  margin: 0 0 var(--sp-3);
+}
+
+.pipeline-modal label {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  display: block;
+  margin-bottom: var(--sp-2);
+}
+
+.pipeline-modal input {
+  width: 100%;
+  padding: var(--sp-2);
+  font-size: var(--text-sm);
+  border: var(--border-default);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--sp-3);
+  box-sizing: border-box;
+}
+
+.pipeline-modal-actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+}

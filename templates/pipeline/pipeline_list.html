@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Pipeline — prei{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pipeline.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <h1>Purchase Pipeline</h1>
+
+  {# Funnel header: stage counts #}
+  <div class="pipeline-funnel">
+    {% for stage_label, count in stage_items %}
+      <span class="pipeline-funnel-stage {% if current_stage == stage_label %}active{% endif %}">
+        <a href="?stage={{ stage_label }}&status={{ current_status }}">
+          {{ stage_label|title }} <strong>({{ count }})</strong>
+        </a>
+      </span>
+    {% endfor %}
+  </div>
+
+  {# Status filter tabs #}
+  <div class="pipeline-status-tabs">
+    {% for status_val, status_label in status_choices %}
+      <a href="?status={{ status_val }}{% if current_stage %}&stage={{ current_stage }}{% endif %}"
+         class="pipeline-status-tab active-{{ status_val|lower }}">
+        {{ status_label }}
+      </a>
+    {% endfor %}
+  </div>
+
+  {# Property cards #}
+  {% if properties %}
+    <div class="pipeline-cards">
+    {% for pp in properties %}
+      <div class="pipeline-card">
+        <div class="pipeline-card-body">
+
+          {# Left: identity #}
+          <div class="pipeline-card-info">
+            <div class="pipeline-card-badges">
+              <span class="pipeline-badge badge-source">{{ pp.source_type }}</span>
+              <span class="pipeline-badge badge-stage">{{ pp.stage|title }}</span>
+              <span class="pipeline-badge badge-status-{{ pp.status|lower }}">{{ pp.status|title }}</span>
+            </div>
+            <div class="pipeline-card-address">{{ pp.address|truncatechars:60 }}</div>
+            <div class="pipeline-card-meta">
+              {% if pp.price %}Price: ${{ pp.price|floatformat:0|intcomma }}{% endif %}
+              {% if pp.beds and pp.baths %} &middot; {{ pp.beds }} bed / {{ pp.baths }} bath{% endif %}
+              {% if pp.sqft %} &middot; {{ pp.sqft|floatformat:0 }} sqft{% endif %}
+            </div>
+          </div>
+
+          {# Right: screening result + actions #}
+          <div class="pipeline-card-actions">
+            {% if pp.screening_passed is not None %}
+              <div class="pipeline-screening-result {% if pp.screening_passed %}passed{% else %}failed{% endif %}">
+                {% if pp.screening_passed %}PASSED{% else %}FAILED{% endif %}
+              </div>
+            {% endif %}
+            {% if pp.discovered_at %}
+              <div class="pipeline-days">{{ pp.discovered_at|timesince }} in pipeline</div>
+            {% endif %}
+            <div class="pipeline-card-btn-group">
+              {% if pp.status == 'ACTIVE' and pp.stage != 'STABILIZED' %}
+                <a href="{% url 'pipeline_detail' pp.pk %}" class="pipeline-action-btn primary placeholder">Advance</a>
+              {% endif %}
+              <a href="{% url 'pipeline_detail' pp.pk %}" class="pipeline-action-btn">View Details</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+  {% else %}
+    <div class="pipeline-empty">No pipeline properties found.</div>
+  {% endif %}
+</div>
+{% endblock %}
