@@ -421,3 +421,29 @@
   gap: var(--sp-2);
   justify-content: flex-end;
 }
+
+/* ── VRM list add-to-pipeline button ──────────────────────────────── */
+.pipeline-add-btn {
+  font-size: var(--text-xs);
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pipeline-in-link {
+  font-size: var(--text-xs);
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-verdict-a-bg);
+  color: var(--color-verdict-a-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pipeline-inline-form {
+  margin: 0;
+}
