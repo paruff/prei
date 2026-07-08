@@ -1627,6 +1627,103 @@ class RenovationRecord(models.Model):
         return f"Renovation #{self.pk}: {self.status} ({self.estimated_budget})"
 
 
+class LeasingPipelineProperty(models.Model):
+    """A property in the leasing pipeline (post-acquisition).
+
+    Triggered when RenovationRecord.status = complete or manually.
+    Tracks the tenant acquisition process from listing through
+    lease signing and move-in to stabilization.
+    """
+
+    class Stage(models.TextChoices):
+        LISTING = "LISTING", "Listed / Marketing"
+        SHOWING = "SHOWING", "Showings Scheduled"
+        APPLICATION = "APPLICATION", "Application Received"
+        SCREENING = "SCREENING", "Applicant Screening"
+        APPROVED = "APPROVED", "Applicant Approved"
+        LEASE_SIGNED = "LEASE_SIGNED", "Lease Signed"
+        MOVE_IN = "MOVE_IN", "Move-In Complete"
+        STABILIZED = "STABILIZED", "Stabilized"
+
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        FILLED = "FILLED", "Unit Filled"
+        ON_HOLD = "ON_HOLD", "On Hold"
+
+    property_record = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="leasing_entries",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="leasing_properties",
+    )
+
+    stage = models.CharField(
+        max_length=20,
+        choices=Stage.choices,
+        default=Stage.LISTING,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+
+    # Listing details
+    asking_rent = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    listed_date = models.DateField(null=True, blank=True)
+    listing_source = models.CharField(max_length=128, blank=True, default="")
+
+    # Applicant tracking
+    applicant_name = models.CharField(max_length=128, blank=True, default="")
+    application_date = models.DateField(null=True, blank=True)
+    screening_passed = models.BooleanField(null=True)
+    screening_notes = models.TextField(blank=True, default="")
+
+    # Lease details
+    lease_start_date = models.DateField(null=True, blank=True)
+    lease_end_date = models.DateField(null=True, blank=True)
+    monthly_rent = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    security_deposit = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+
+    # Move-in
+    move_in_date = models.DateField(null=True, blank=True)
+    stabilized_date = models.DateField(null=True, blank=True)
+
+    # Stage timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Leasing Pipeline Property"
+        verbose_name_plural = "Leasing Pipeline Properties"
+        ordering = ["-updated_at"]
+
+    def __str__(self) -> str:
+        return f"Leasing #{self.pk}: {self.property_record} [{self.stage}]"
+
+
 class UserScreeningPreferences(models.Model):
     """Per-user screening thresholds for pipeline discovery."""
 
