@@ -95,13 +95,17 @@ class ATTOMAdapter:
         )
 
     def fetch_foreclosure_data(
-        self, geoid: Optional[str] = None, radius: Optional[int] = None
+        self,
+        geoid: Optional[str] = None,
+        postalcode: Optional[str] = None,
+        radius: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Fetch foreclosure data from ATTOM API.
 
         Args:
-            geoid: Geographic identifier
+            geoid: Geographic identifier (e.g., census tract GEOID)
+            postalcode: ZIP/postal code to search
             radius: Search radius in miles
 
         Returns:
@@ -117,6 +121,8 @@ class ATTOMAdapter:
 
         if geoid:
             params["geoid"] = geoid
+        if postalcode:
+            params["postalcode"] = postalcode
         if radius is not None:
             if not isinstance(radius, int) or radius <= 0:
                 raise ValueError("radius must be a positive integer")
@@ -125,7 +131,7 @@ class ATTOMAdapter:
         return self._execute_get_request(
             endpoint=endpoint,
             params=params,
-            log_context=f"geoid={geoid}",
+            log_context=f"geoid={geoid}, postalcode={postalcode}",
         )
 
     def fetch_avm_detail(
@@ -222,19 +228,16 @@ class ATTOMAdapter:
 
             if response.status_code == 429:
                 logger.warning("ATTOM API rate limit exceeded")
-                rate_limit_reset = response.headers.get("X-RateLimit-Reset")
-                raise ATTOMRateLimitError(
-                    f"Rate limit exceeded. Resets at: {rate_limit_reset}"
-                )
+                raise ATTOMRateLimitError("Rate limit exceeded")
 
             # "SuccessWithoutResult" (400) means valid request but no data found
             if response.status_code == 400 and "SuccessWithoutResult" in response.text:
-                logger.info("ATTOM API returned empty result: %s", log_context)
+                logger.info("ATTOM API returned empty result (SuccessWithoutResult)")
                 return {"status": "empty", "message": "SuccessWithoutResult"}
 
             # "No rule matched" (404) means endpoint not available for this key
             if response.status_code == 404 and "No rule matched" in response.text:
-                logger.info("ATTOM API endpoint not available: %s", log_context)
+                logger.info("ATTOM API endpoint not available")
                 return {"status": "empty", "message": "No rule matched"}
 
             if response.status_code != 200:

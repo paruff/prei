@@ -1,0 +1,16 @@
+[
+  {
+    "id": "DISC-6",
+    "title": "ATTOM Preforeclosure Integration",
+    "status": "in_progress",
+    "depends_on": [],
+    "subtasks": [
+      {"id": "DISC-6.1", "title": "Add postalcode support to ATTOMAdapter.fetch_foreclosure_data", "status": "pending"},
+      {"id": "DISC-6.2", "title": "Create attom_preforeclosure.py with normalization", "status": "pending"},
+      {"id": "DISC-6.3", "title": "Create management command", "status": "pending"},
+      {"id": "DISC-6.4", "title": "Write tests", "status": "pending"},
+      {"id": "DISC-HG-4", "title": "Confirm ATTOM subscription covers NOD/NTS/REO data", "status": "blocked"},
+      {"id": "DISC-6.5", "title": "PR and review", "status": "pending"}
+    ]
+  }
+]
