@@ -66,6 +66,11 @@ urlpatterns = [
         name="pipeline_add_from_source",
     ),
     path(
+        "pipeline/screening/settings/",
+        views.pipeline_screening_settings,
+        name="pipeline_screening_settings",
+    ),
+    path(
         "settings/investment-targets/",
         views.investment_targets_edit,
         name="investment_targets_edit",

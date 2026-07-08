@@ -447,3 +447,102 @@
 .pipeline-inline-form {
   margin: 0;
 }
+
+/* ── Screening settings form ──────────────────────────────────────── */
+.help-text {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.field-label {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  display: block;
+  margin-bottom: var(--sp-1);
+}
+
+.field-input {
+  padding: var(--sp-2);
+  font-size: var(--text-sm);
+  border: var(--border-default);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+
+.checkbox-label {
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  cursor: pointer;
+}
+
+/* Form layout */
+.form-row {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.form-field-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-field-group .field-input {
+  width: auto;
+}
+
+.input-xs {
+  width: 80px;
+}
+
+.input-sm {
+  width: 100px;
+}
+
+.input-md {
+  width: 120px;
+}
+
+.input-lg {
+  width: 140px;
+}
+
+.form-note {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  margin-bottom: var(--sp-3);
+  background: var(--surface-secondary);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+}
+
+.form-submit-row {
+  margin-top: var(--sp-6);
+}
+
+.form-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.form-checkbox-grid-wide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.checkbox-min {
+  min-width: 100px;
+}
+
+.form-note-inline {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-sm);
+}
