@@ -7,7 +7,7 @@ property analysis with the custom design system and underwriting engine.
 
 Before you begin, ensure you have:
 
-- Python 3.11 or higher installed
+- Python 3.14 or higher installed
 - Git installed
 - Basic familiarity with command-line interfaces
 - (Optional) Docker and Docker Compose for containerized deployment
@@ -28,7 +28,7 @@ cd prei
 Create and activate a Python virtual environment:
 
 ```bash
-python3.11 -m venv .venv
+python3.14 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 

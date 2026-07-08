@@ -13,7 +13,7 @@
 
 ## Project Identity
 - prei: passive real estate investment analytics for buy-and-hold investors.
-- Stack: Python 3.12, Django 5.2, DRF, SQLite (default/alpha), Postgres (reserved for post-MVP production — see docker-compose.yml).
+- Stack: Python 3.14, Django 5.2, DRF, SQLite (default/alpha), Postgres (reserved for post-MVP production — see docker-compose.yml).
 - Constraints: Decimal money; service-layer boundaries; no Bootstrap.
 - Design: custom design system with CSS custom properties (tokens.css + base.css).
 

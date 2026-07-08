@@ -366,7 +366,7 @@ Developer Machine
 ```
 Docker Host
 ├── Web Container (Django app)
-│   ├── Python 3.11
+│   ├── Python 3.14
 │   ├── Application code
 │   └── Port 8000
 └── Database Container (PostgreSQL)

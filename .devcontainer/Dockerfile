@@ -9,7 +9,7 @@
 #
 # This Dockerfile strips the Yarn repo before features are applied.
 
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.14
 FROM mcr.microsoft.com/devcontainers/python:1-${PYTHON_VERSION}-bookworm
 
 # Remove the stale Yarn APT repository that breaks apt-get update.

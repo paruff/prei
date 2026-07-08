@@ -3,7 +3,7 @@
 ## Project
 
 prei — real-estate analytics platform
-Stack: Py3.11, Django 4.2, DRF, Postgres
+Stack: Py3.14, Django 5.2, DRF, Postgres
 Core domain: financial calculations (IRR, DSCR, cap rate, BRRRR), property data collection (VRM, HUD, ATTOM)
 
 ## Completed work

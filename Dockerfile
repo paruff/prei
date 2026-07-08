@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # ↑ enables BuildKit features — put this as line 1
 
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.14
 
 # ── Version metadata (injected by CI, or default for local dev) ────────────
 ARG VERSION=0.0.0-dev

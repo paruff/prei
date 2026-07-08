@@ -1,7 +1,7 @@
 # Security Policy — prei
 
 > **prei** is a Django 4.2 LTS application for passive residential real estate investment analytics.
-> Stack: Python 3.11 · Django · PostgreSQL · DRF · Celery · Redis · numpy-financial
+> Stack: Python 3.14 · Django · PostgreSQL · DRF · Celery · Redis · numpy-financial
 >
 > This document covers responsible disclosure, stack-specific rules enforced in code review,
 > the current security posture, known gaps that require remediation, and the developer
@@ -286,13 +286,9 @@ Note: If the app sits behind a TLS-terminating proxy (e.g., Render), set `SECURE
 
 ---
 
-#### 🟢 LOW — GAP-11: `Dockerfile` references Python 3.14 (pre-release)
+#### 🟢 LOW — [RESOLVED] GAP-11: `Dockerfile` references Python 3.14
 
-**Location:** `Dockerfile` line 4: `ARG PYTHON_VERSION=3.14`.
-
-**Risk:** Python 3.14 is not yet released as stable (as of the time of writing). Using a pre-release Python version in production containers can introduce undiscovered security vulnerabilities and unpredictable behavior.
-
-**Required fix:** Pin to `python:3.11-slim`, which aligns with the project's stated Python 3.11 requirement.
+**Status:** CLOSED — Python 3.14.6 is now stable and the project has migrated to it. The `Dockerfile` uses `ARG PYTHON_VERSION=3.14`, and all CI environments run Python 3.14.
 
 ---
 
