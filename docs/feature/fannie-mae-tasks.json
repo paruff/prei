@@ -1,0 +1,177 @@
+{
+  "skill": "plan",
+  "status": "ready",
+  "version": "1.0",
+  "created": "2026-07-08",
+  "author": "DeepSeek — session with paruff",
+  "feature": "Fannie Mae HomePath Property Datasource",
+  "spec": "docs/feature/fannie-mae-spec.md",
+  "design": "docs/feature/fannie-mae-design.md",
+  "notes": [
+    "Follows existing VRM scraper pattern (requests + BeautifulSoup).",
+    "Uses settings.SCRAPER_DELAY_SECONDS for rate limiting (default 1.5s).",
+    "All currency values are Decimal — never float per AGENTS.md rule 3.",
+    "No external API calls from views per AGENTS.md rule 2.",
+    "New migration for activation is NON-schema-changing (data-only)."
+  ],
+  "tasks": [
+    {
+      "id": "FANNIE-1",
+      "title": "Create FannieMaeHomePathClient scraper",
+      "description": "Implement the core scraper in core/integrations/sources/fannie_mae.py. Follows VrmScraper pattern: class-based, requests + BeautifulSoup, configurable delay, normalized dict output.",
+      "depends_on": [],
+      "files": ["core/integrations/sources/fannie_mae.py"],
+      "subtasks": [
+        "Implement __init__ with delay_seconds from settings.SCRAPER_DELAY_SECONDS",
+        "Implement search_by_location(location) -> list[dict]",
+        "Implement _fetch_search_page(location, page) internal method",
+        "Implement _parse_listing_cards(html) to extract property data from HTML",
+        "Normalize output per core/integrations/sources/__init__.py convention",
+        "Handle pagination (follow 'Next' links or page params)",
+        "Handle HTTP errors (4xx, 5xx, timeout) with logging and graceful abort"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "FannieMaeHomePathClient can be instantiated with a custom delay",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "search_by_location returns a list of dicts with all required normalized fields",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "HTTP errors are caught and logged, not raised as unhandled exceptions",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Empty search results return an empty list, not None",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "SCRAPER_DELAY_SECONDS setting is read correctly and applied",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "FANNIE-2",
+      "title": "Create collect_fannie_mae management command",
+      "description": "Implement the management command that drives the scraper and upserts results into PipelineProperty records with source_type='fannie'. Supports --location, --request-id, and --all-pending flags.",
+      "depends_on": ["FANNIE-1"],
+      "files": ["core/management/commands/collect_fannie_mae.py"],
+      "subtasks": [
+        "Add --location, --request-id, --all-pending CLI arguments",
+        "Resolve target location(s) from args or DiscoveryRequest records",
+        "Call FannieMaeHomePathClient.search_by_location() for each target",
+        "Upsert each result as PipelineProperty with source_type='fannie' and stage=DISCOVERED",
+        "Compute address_hash = sha256(street|city|state) for dedup via unique constraint",
+        "Update DiscoveryRequest status to completed with properties_found count",
+        "Log summary: location -> X properties found, Y new, Z duplicates skipped",
+        "Handle transaction rollback on unrecoverable errors"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "Command accepts --location and fetches listings for that location",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Command accepts --request-id and fulfills that DiscoveryRequest",
+          "test_type": "integration"
+        },
+        {
+          "criterion": "Command accepts --all-pending and fulfills all pending Fannie Mae requests",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Upserted PipelineProperty has source_type='fannie' and stage=DISCOVERED",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Duplicate addresses (same user + source_type + address_hash) are skipped",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "DiscoveryRequest properties_found is updated after completion",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "FANNIE-3",
+      "title": "Activate Fannie Mae PropertySource and verify in discovery page",
+      "description": "Create a data migration to set PropertySource.is_active=True for the Fannie Mae source. Verify the Property Discovery page shows it as an active integration.",
+      "depends_on": [],
+      "files": ["core/migrations/0032_activate_fannie_mae_source.py"],
+      "subtasks": [
+        "Create data migration: PropertySource.objects.filter(source_type='fannie').update(is_active=True)",
+        "Verify the Property Discovery page shows Fannie Mae under 'Active' section"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "PropertySource with source_type='fannie' has is_active=True after migration",
+          "test_type": "integration"
+        },
+        {
+          "criterion": "Property Discovery page renders Fannie Mae in the active sources section",
+          "test_type": "integration"
+        }
+      ]
+    },
+    {
+      "id": "FANNIE-4",
+      "title": "Write tests for FannieMaeHomePathClient",
+      "description": "Unit tests for the scraper client using fixtures (sample HTML) and mocking (HTTP responses). Tests cover parsing, error handling, rate limiting, and edge cases.",
+      "depends_on": ["FANNIE-1"],
+      "files": ["core/tests/test_fannie_mae_scraper.py"],
+      "subtasks": [
+        "Test search_by_location returns correct structure",
+        "Test _parse_listing_cards extracts all fields from sample HTML fixture",
+        "Test HTTP 404/500 responses are caught gracefully",
+        "Test timeout is caught and logged",
+        "Test empty results page returns empty list",
+        "Test delay is applied between sequential requests",
+        "Test pagination follows next page when available"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "All unit tests pass with 100% of FannieMaeHomePathClient coverage requirement",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Parse test uses real-looking sample HTML, not a trivial stub",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Error handling tests cover: 404, 500, timeout, connection error",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "FANNIE-5",
+      "title": "Write tests for collect_fannie_mae management command",
+      "description": "Unit and integration tests for the management command, covering the three CLI modes, upsert logic, dedup, and DiscoveryRequest fulfillment.",
+      "depends_on": ["FANNIE-2"],
+      "files": ["core/tests/test_collect_fannie_mae.py"],
+      "subtasks": [
+        "Test --location creates PipelineProperty records",
+        "Test --request-id fulfills the specific DiscoveryRequest",
+        "Test --all-pending fulfills multiple DiscoveryRequests",
+        "Test duplicate addresses are skipped (same street/city/state)",
+        "Test DiscoveryRequest status changes to completed",
+        "Test PipelineProperty.source_type = 'fannie'"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "All management command tests pass",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Dedup test confirms no duplicate PipelineProperty for same address+user",
+          "test_type": "unit"
+        }
+      ]
+    }
+  ],
+  "execution_order": ["FANNIE-1", "FANNIE-2", "FANNIE-3", "FANNIE-4", "FANNIE-5"]
+}
