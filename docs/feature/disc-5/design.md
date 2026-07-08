@@ -6,10 +6,10 @@
 - Package: `core/integrations/county/`
 - Module: `core/integrations/county/dallas_tx.py`
 - Responsibilities:
-  - HTTP fetch of Dallas County foreclosure page
-  - HTML parsing of NTS listings
+  - Playwright-based (headless Chromium) fetch of React SPA
+  - HTML parsing of NTS listings from rendered DOM
   - Data normalization into dict schema
-  - Rate limiting and error handling
+  - Graceful empty-result fallback when auth required
 
 ### Layer: Management Command
 - Module: `core/management/commands/scrape_dallas_county_nts.py`
@@ -30,31 +30,45 @@ CLI ──> scrape_dallas_county_nts command
          │
          ├─> dallas_tx.scrape_dallas_county_nts()
          │       │
-         │       ├─> HTTP GET ──> Dallas County page HTML
+         │       ├─> Playwright (headless Chromium)
+         │       │       └─> publicsearch.us React SPA
+         │       │              │
+         │       │              ├─> Login wall detected? → return None (logged)
+         │       │              └─> Table rendered? → _parse_rendered_html()
          │       │
-         │       ├─> BeautifulSoup parse ──> list[dict]
+         │       ├─> _parse_rendered_html() ──> list[dict]
          │       │     Fields: case_number, address, city, state, zip,
          │       │             trustee_name, lender_name, sale_date,
          │       │             opening_bid (optional)
          │       │
-         │       └─> returns list[dict]
+         │       └─> returns list[dict] (or [] if unavailable)
          │
          └─> for each notice:
                upsert into CountyForeclosureNotice
                  key: (case_number, county="Dallas", state="TX")
-               mark stale entries as +REMOVED status?
 ```
 
 ## Source Integration Type
 - **Type**: County Records (`SourceType.COUNTY`)
-- **Method**: HTTP (requests) + HTML parsing (BeautifulSoup)
-- **Status**: `COUNTY = "county"` already defined in `PipelineProperty.SourceType`
+- **Method**: Playwright (headless Chromium) + BeautifulSoup DOM parsing
+- **Status**: Returns empty results; data is behind publicsearch.us login wall
 
-## DISC-HG-3 Dependency
-The parser implementation awaits manual confirmation of:
-1. The URL path(s) serving NTS listings
-2. Whether the data is served as static HTML, JSON API, or requires interaction
-3. The exact column/field names in the source
+## DISC-HG-3 Resolution (2026-07-08)
+
+The Dallas County foreclosure data is served through **publicsearch.us** (a React SPA
+powered by the Neumo platform), *not* the direct county website.
+
+Confirmed findings:
+1. **URL**: `https://dallas.tx.publicsearch.us/results?department=FC&instrumentDateRange=...`
+2. **Format**: React SPA — requires JavaScript rendering (Playwright)
+3. **Auth**: The portal requires a **user account**. Unauthenticated requests hit a login wall.
+4. **Fields**: Not confirmed — DOM inspection requires an authenticated session.
+
+The scraper has been updated to use Playwright (like `fannie_mae.py`) and gracefully
+returns empty results with a warning when the login wall is encountered. To make this
+scraper functional, obtain a publicsearch.us account and either:
+- Add a Playwright-based Sign In flow
+- Reverse-engineer the JSON API from a logged-in session's network tab
 
 ## File Inventory
 
