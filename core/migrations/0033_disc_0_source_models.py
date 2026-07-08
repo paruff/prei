@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0031_seed_property_sources"),
+        ("core", "0032_activate_fannie_mae_source"),
     ]
 
     operations = [

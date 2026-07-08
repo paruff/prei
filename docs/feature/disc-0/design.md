@@ -5,7 +5,7 @@
 | Component | Change |
 |---|---|
 | `core/models.py` | Add HudProperty, UsdaProperty, CountyForeclosureNotice models |
-| `core/migrations/DISC-0_migration.py` | Generated migration (DO NOT RUN — attach for review) |
+| `core/migrations/0033_disc_0_source_models.py` | Generated migration (DO NOT RUN — attach for review) |
 
 ## Model Designs
 
