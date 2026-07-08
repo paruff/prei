@@ -1158,6 +1158,7 @@ class UsdaProperty(models.Model):
         ACTIVE = "active", "Active"
         PENDING = "pending", "Pending"
         SOLD = "sold", "Sold"
+        REMOVED = "removed", "Removed"
 
     usda_case_number = models.CharField(max_length=64, unique=True, db_index=True)
     address = models.CharField(max_length=255)
