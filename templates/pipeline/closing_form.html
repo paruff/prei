@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Close Deal — {{ prop.address|truncatechars:30 }} — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <div class="pipeline-detail-header">
+    <div>
+      <a href="{% url 'pipeline_detail' prop.pk %}" class="back-link">&larr; Back to Property</a>
+      <h1>Close Deal</h1>
+      <p class="help-text">{{ prop.address }}</p>
+    </div>
+  </div>
+
+  {% if closing_exists %}
+    <div class="alert-banner alert-banner-danger">
+      A closing record already exists for this property. Conversion already completed.
+    </div>
+  {% endif %}
+
+  <div class="pipeline-detail-body">
+
+    <div class="pipeline-detail-section full-width">
+      <h2>Closing Details</h2>
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="form-row">
+          <div class="form-field-group">
+            <label class="field-label">Final Purchase Price ($) *</label>
+            <input type="number" name="final_purchase_price" step="0.01" min="0.01" required
+                   value="" class="field-input input-lg">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Closing Date *</label>
+            <input type="date" name="closing_date" required
+                   value="" class="field-input input-md">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Closing Costs ($)</label>
+            <input type="number" name="closing_costs" step="0.01" min="0"
+                   value="0" class="field-input input-md">
+          </div>
+        </div>
+
+        <div class="form-row mt-2">
+          <div class="form-field-group">
+            <label class="field-label">Loan Amount ($)</label>
+            <input type="number" name="loan_amount" step="0.01" min="0"
+                   value="" class="field-input input-lg">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Down Payment ($)</label>
+            <input type="number" name="down_payment" step="0.01" min="0"
+                   value="" class="field-input input-lg">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Lender</label>
+            <input type="text" name="lender" value=""
+                   class="field-input input-md">
+          </div>
+        </div>
+
+        <div class="form-field-group mt-3">
+          <label class="field-label">Notes</label>
+          <textarea name="notes" rows="3" class="field-input input-full"></textarea>
+        </div>
+
+        <div class="form-submit-row">
+          <button type="submit" class="btn btn-primary">Close Deal &amp; Convert to Property</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

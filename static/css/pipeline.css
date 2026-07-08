@@ -568,3 +568,36 @@
   width: 100%;
   resize: vertical;
 }
+
+/* Alert banners */
+.alert-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-sm);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+}
+
+.alert-banner-danger {
+  background: var(--color-verdict-c-bg);
+  color: var(--color-verdict-c-text);
+}
+
+.alert-banner-info {
+  background: var(--surface-secondary);
+}
+
+.alert-banner-action {
+  font-size: var(--text-sm);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--color-primary);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+.mt-4 {
+  margin-top: var(--sp-4);
+}

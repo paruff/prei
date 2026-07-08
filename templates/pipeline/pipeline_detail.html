@@ -117,6 +117,7 @@
          <a href="{% url 'pipeline_offer_create' prop.pk %}" class="btn btn-primary">Add Offer</a>
          <a href="{% url 'pipeline_dd_checklist' prop.pk %}" class="btn btn-outline">Due Diligence</a>
          <a href="{% url 'pipeline_renovation' prop.pk %}" class="btn btn-outline">Renovation</a>
+         <a href="{% url 'pipeline_closing_create' prop.pk %}" class="btn btn-primary">Close Deal</a>
          <span class="btn btn-primary btn-placeholder">Advance Stage</span>
        {% endif %}
        {% if prop.status == 'ACTIVE' %}

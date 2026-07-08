@@ -86,6 +86,11 @@ urlpatterns = [
         name="pipeline_renovation",
     ),
     path(
+        "pipeline/<int:pk>/closing/",
+        views.pipeline_closing_create,
+        name="pipeline_closing_create",
+    ),
+    path(
         "settings/investment-targets/",
         views.investment_targets_edit,
         name="investment_targets_edit",

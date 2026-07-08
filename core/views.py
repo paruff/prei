@@ -1515,6 +1515,86 @@ def pipeline_renovation(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
+@login_required
+def pipeline_closing_create(request: HttpRequest, pk: int) -> HttpResponse:
+    """Create closing record and convert pipeline property to Property.
+
+    On POST: saves ClosingRecord, calls convert_to_property_record(),
+    all in transaction.atomic(). Redirects to portfolio dashboard
+    on success.
+    """
+    from django.db import transaction as db_transaction
+
+    from core.models import ClosingRecord, PipelineProperty
+    from core.services.pipeline import convert_to_property_record
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    # Check for existing closing record
+    closing_exists = ClosingRecord.objects.filter(pipeline_property=prop).exists()
+
+    if request.method == "POST":
+        final_price = request.POST.get("final_purchase_price")
+        closing_date_str = request.POST.get("closing_date")
+        closing_costs = request.POST.get("closing_costs", "0")
+        loan_amount = request.POST.get("loan_amount", "").strip()
+        down_payment = request.POST.get("down_payment", "").strip()
+        lender = request.POST.get("lender", "")
+        notes = request.POST.get("notes", "")
+
+        if not final_price or not closing_date_str:
+            messages.error(
+                request, "Final purchase price and closing date are required."
+            )
+            return redirect("pipeline_closing_create", pk=pk)
+
+        if closing_exists:
+            messages.error(
+                request,
+                "A closing record already exists for this property. "
+                "Cannot convert twice.",
+            )
+            return redirect("pipeline_detail", pk=pk)
+
+        with db_transaction.atomic():
+            # Create ClosingRecord
+            ClosingRecord.objects.create(
+                pipeline_property=prop,
+                final_purchase_price=Decimal(final_price),
+                closing_date=closing_date_str,
+                closing_costs=Decimal(closing_costs),
+                loan_amount=Decimal(loan_amount) if loan_amount else None,
+                down_payment=Decimal(down_payment) if down_payment else None,
+                lender=lender,
+                notes=notes,
+            )
+
+            # Convert to Property record
+            from datetime import datetime
+
+            closing_dt = datetime.strptime(closing_date_str, "%Y-%m-%d").date()
+            convert_to_property_record(prop, closing_date=closing_dt)
+
+        messages.success(
+            request,
+            f"Property acquired at {prop.address}! "
+            "Complete your property record to begin portfolio tracking.",
+        )
+        return redirect("portfolio_dashboard")
+
+    return render(
+        request,
+        "pipeline/closing_form.html",
+        {
+            "prop": prop,
+            "closing_exists": closing_exists,
+        },
+    )
+
+
 def search_listings(request):
     # Optionally load a saved search to prefill filters
     saved_id = request.GET.get("saved_id")

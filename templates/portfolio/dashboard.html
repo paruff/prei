@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Portfolio — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <h1>Portfolio</h1>
+
+  {# Incomplete property banner #}
+  {% if incomplete_count > 0 and first_incomplete %}
+    <div class="alert-banner alert-banner-info">
+      <span>
+        You have <strong>{{ incomplete_count }}</strong> property record(s) awaiting completion.
+      </span>
+      <a href="{% url 'property_edit' first_incomplete.pk %}" class="alert-banner-action">
+        Complete now &rarr;
+      </a>
+    </div>
+  {% endif %}
+
+  {# Property list #}
+  {% if properties %}
+    <div class="pipeline-cards mt-4">
+    {% for prop in properties %}
+      <div class="pipeline-card">
+        <div class="pipeline-card-body">
+          <div class="pipeline-card-info">
+            <div class="pipeline-card-address">{{ prop.address }}</div>
+            <div class="pipeline-card-meta">
+              {{ prop.city }}, {{ prop.state }} {{ prop.zip_code }}
+              &middot; ${{ prop.purchase_price|floatformat:0|intcomma }}
+              &middot; {{ prop.monthly_rent_gross|floatformat:0|intcomma }}/mo
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+  {% else %}
+    <div class="pipeline-empty">No properties in your portfolio yet.</div>
+  {% endif %}
+
+</div>
+{% endblock %}
