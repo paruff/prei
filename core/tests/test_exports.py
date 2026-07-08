@@ -74,11 +74,9 @@ def test_pdf_export_includes_financing_section(
 def test_pdf_export_returns_500_on_generation_failure(
     client, user, property_sfr, analysis_sfr, monkeypatch
 ):
-    class _FailedPDFResult:
-        err = 1
-
     monkeypatch.setattr(
-        "core.views.pisa.CreatePDF", lambda src, dest: _FailedPDFResult()
+        "core.views._generate_pdf",
+        lambda html: (_ for _ in ()).throw(Exception("Playwright error")),
     )
     client.force_login(user)
 

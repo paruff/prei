@@ -3,7 +3,6 @@ from __future__ import annotations
 import io
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from io import BytesIO
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from typing import Any, Protocol, cast
@@ -29,7 +28,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views import View
-from xhtml2pdf import pisa
+from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
 
 from core.integrations.market.census import (
     discover_places_in_state,
@@ -2014,6 +2013,24 @@ def _format_financing_value(
         return f"{prefix}{value}{suffix}"
 
 
+def _generate_pdf(html: str) -> bytes:
+    """Generate a PDF from HTML content using Playwright.
+
+    Uses headless Chromium (already a project dependency) to render
+    the HTML template and produce a PDF.  This replaces the prior
+    xhtml2pdf approach which was incompatible with reportlab>=5.
+    """
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.set_content(html, wait_until="networkidle")
+            pdf_bytes: bytes = page.pdf(format="A4", print_background=True)
+            return pdf_bytes
+        finally:
+            browser.close()
+
+
 @login_required
 def export_pdf(request, pk: int) -> HttpResponse:
     """Render and return a one-page deal summary PDF for an owned property.
@@ -2113,13 +2130,14 @@ def export_pdf(request, pk: int) -> HttpResponse:
     }
 
     html = render_to_string("exports/deal_summary.html", context)
-    pdf_result = BytesIO()
-    conversion_result = pisa.CreatePDF(src=html, dest=pdf_result)
-    if conversion_result.err:
+
+    try:
+        pdf_bytes = _generate_pdf(html)
+    except Exception as exc:
         logger.error(
-            "PDF generation failed for property_id=%s with errors=%s",
+            "PDF generation failed for property_id=%s: %s",
             property_obj.pk,
-            conversion_result.err,
+            exc,
         )
         return HttpResponse(
             "Unable to generate PDF. Please contact support if this issue persists.",
@@ -2127,7 +2145,7 @@ def export_pdf(request, pk: int) -> HttpResponse:
         )
 
     filename = f"deal-summary-{slugify(property_obj.address) or property_obj.pk}.pdf"
-    response = HttpResponse(pdf_result.getvalue(), content_type="application/pdf")
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
