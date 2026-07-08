@@ -1,0 +1,114 @@
+{
+  "skill": "plan",
+  "status": "ready",
+  "version": "1.0",
+  "created": "2026-07-08",
+  "feature": "DISC-2 — USDA REO Ingestion (data.gov feed)",
+  "spec": "docs/feature/disc-2/spec.md",
+  "design": "docs/feature/disc-2/design.md",
+  "notes": [
+    "Depends on DISC-0 (UsdaProperty model) — must be approved and migration applied.",
+    "UsdaProperty needs REMOVED status added (no new fields).",
+    "USDA feed is a fixed-width TXT file, not JSON (DISC-HG-2 confirmed).",
+    "Dry-run mode uses structured fixture data (bypasses TXT parser).",
+    "TXT parser is a pure function tested separately."
+  ],
+  "tasks": [
+    {
+      "id": "DISC-2-A",
+      "title": "Extend UsdaProperty model with REMOVED status",
+      "description": "Add REMOVED = 'removed' to UsdaProperty.Status choices.",
+      "depends_on": [],
+      "files": ["core/models.py"],
+      "subtasks": [
+        "Add REMOVED to UsdaProperty.Status TextChoices",
+        "Generate migration 0035_add_usda_removed_status.py"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "UsdaProperty has REMOVED status choice",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Migration 0035 is generated and runnable",
+          "test_type": "integration"
+        }
+      ]
+    },
+    {
+      "id": "DISC-2-B",
+      "title": "Create test fixtures for USDA ingestion tests",
+      "description": "Append USDA fixtures to core/tests/test_ingestion/conftest.py",
+      "depends_on": ["DISC-2-A"],
+      "files": ["core/tests/test_ingestion/conftest.py"],
+      "subtasks": [
+        "Create mock_usda_response fixture with structured USDA property data",
+        "Create existing_usda_record fixture for stale-record tests"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "mock_usda_response fixture exists and returns structured data",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "existing_usda_record fixture creates record not in mock data",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "DISC-2-C",
+      "title": "Implement ingest_usda_reo management command",
+      "description": "Create command with TXT fetch/parse, upsert, stale-removal, dry-run.",
+      "depends_on": ["DISC-2-A"],
+      "files": ["core/management/commands/ingest_usda_reo.py"],
+      "subtasks": [
+        "Define DEFAULT_ENDPOINT constant (gated by DISC-HG-2)",
+        "Implement _parse_usda_txt() pure function for TXT line parsing",
+        "Implement add_arguments with --dry-run and --endpoint flags",
+        "Implement handle() with fetch → parse → upsert → stale-removal → log pipeline",
+        "Implement dry-run mode (use fixture data, skip HTTP)",
+        "Log added/updated/removed counts"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "Command runs without errors in dry-run mode",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Command upserts records by usda_case_number",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Stale records get status='removed'",
+          "test_type": "unit"
+        },
+        {
+          "criterion": "Command logs added/updated/removed counts",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "DISC-2-D",
+      "title": "Write acceptance tests",
+      "description": "Create core/tests/test_ingestion/test_usda_reo.py with 5 unit tests.",
+      "depends_on": ["DISC-2-B", "DISC-2-C"],
+      "files": ["core/tests/test_ingestion/test_usda_reo.py"],
+      "subtasks": [
+        "Write test_usda_ingest_creates_records",
+        "Write test_usda_ingest_upserts_not_duplicates",
+        "Write test_usda_ingest_marks_removed",
+        "Write test_usda_parser_extracts_fields",
+        "Write test_usda_price_is_decimal"
+      ],
+      "acceptance_criteria": [
+        {
+          "criterion": "5 unit tests pass",
+          "test_type": "unit"
+        }
+      ]
+    }
+  ],
+  "execution_order": ["DISC-2-A", "DISC-2-B", "DISC-2-C", "DISC-2-D"]
+}
