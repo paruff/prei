@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0033_disc_0_source_models"),
+        ("core", "0034_add_hud_reo_fields"),
     ]
 
     operations = [
