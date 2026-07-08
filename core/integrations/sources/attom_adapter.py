@@ -95,13 +95,17 @@ class ATTOMAdapter:
         )
 
     def fetch_foreclosure_data(
-        self, geoid: Optional[str] = None, radius: Optional[int] = None
+        self,
+        geoid: Optional[str] = None,
+        postalcode: Optional[str] = None,
+        radius: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Fetch foreclosure data from ATTOM API.
 
         Args:
-            geoid: Geographic identifier
+            geoid: Geographic identifier (e.g., census tract GEOID)
+            postalcode: ZIP/postal code to search
             radius: Search radius in miles
 
         Returns:
@@ -117,6 +121,8 @@ class ATTOMAdapter:
 
         if geoid:
             params["geoid"] = geoid
+        if postalcode:
+            params["postalcode"] = postalcode
         if radius is not None:
             if not isinstance(radius, int) or radius <= 0:
                 raise ValueError("radius must be a positive integer")
@@ -125,7 +131,7 @@ class ATTOMAdapter:
         return self._execute_get_request(
             endpoint=endpoint,
             params=params,
-            log_context=f"geoid={geoid}",
+            log_context=f"geoid={geoid}, postalcode={postalcode}",
         )
 
     def fetch_avm_detail(
