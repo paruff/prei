@@ -1,5 +1,11 @@
 {% extends "base.html" %}
+{% load static %}
+{% load math_filters %}
 {% block title %}VRM Properties{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pipeline.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -84,6 +90,7 @@
         <th>Status</th>
         <th>Vendee</th>
         <th>Scraped</th>
+        <th>Pipeline</th>
       </tr>
     </thead>
     <tbody>
@@ -116,6 +123,25 @@
         </td>
         <td>{% if prop.vendee_eligible %}<span class="badge bg-primary">Yes</span>{% else %}-{% endif %}</td>
         <td>{{ prop.last_seen_at|date:"M d, Y" }}</td>
+        <td>
+          {% with pp_id=prop.vrm_property_id|stringformat:"s" %}
+          {% if pp_id in pipeline_entries %}
+            <a href="{% url 'pipeline_detail' pipeline_entries|get_item:pp_id %}" class="pipeline-in-link">
+              In Pipeline &rarr;
+            </a>
+          {% else %}
+          <form method="post" action="{% url 'pipeline_add_from_source' %}" class="pipeline-inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="source_type" value="vrm">
+            <input type="hidden" name="source_id" value="{{ prop.vrm_property_id }}">
+            <input type="hidden" name="next" value="{% url 'vrm_properties_list' %}{% if selected_state %}?state={{ selected_state }}{% endif %}">
+            <button type="submit" class="pipeline-add-btn">
+              + Add to Pipeline
+            </button>
+          </form>
+          {% endif %}
+          {% endwith %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

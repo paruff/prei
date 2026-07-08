@@ -1207,6 +1207,55 @@ def pipeline_detail(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
+@login_required
+def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
+    """POST-only view to add a source property to the user's pipeline.
+
+    POST params:
+      source_type: 'vrm' (future: 'foreclosure', 'listing')
+      source_id:   primary key / identifier of the source record
+      next:        redirect URL on error (default: /pipeline/list/)
+    """
+    from django.shortcuts import redirect
+
+    from core.services.pipeline import create_from_vrm
+
+    if request.method != "POST":
+        messages.error(request, "This endpoint requires POST")
+        return redirect("pipeline_list")
+
+    source_type = request.POST.get("source_type", "")
+    source_id = request.POST.get("source_id", "")
+    next_url = request.POST.get("next", redirect("pipeline_list").url)
+
+    if not source_type or not source_id:
+        messages.error(request, "Missing source_type or source_id")
+        return redirect(next_url)
+
+    if source_type == "vrm":
+        try:
+            vrm = VrmProperty.objects.get(vrm_property_id=int(source_id))
+        except (VrmProperty.DoesNotExist, ValueError, TypeError):
+            messages.error(request, "VRM property not found")
+            return redirect(next_url)
+
+        pp, created = create_from_vrm(vrm, request.user)
+
+        if created:
+            verdict = "passed" if pp.screening_passed else "failed"
+            messages.success(
+                request,
+                f"VRM property added to pipeline. Screening {verdict}.",
+            )
+        else:
+            messages.info(request, "Already in your pipeline")
+
+        return redirect("pipeline_detail", pk=pp.pk)
+
+    messages.error(request, f"Unknown source type: {source_type}")
+    return redirect(next_url)
+
+
 def search_listings(request):
     # Optionally load a saved search to prefill filters
     saved_id = request.GET.get("saved_id")
@@ -1660,6 +1709,19 @@ def vrm_properties_list(request: HttpRequest) -> HttpResponse:
         queryset = queryset.filter(zip_code=zip_code)
     queryset = queryset.order_by("-last_seen_at")[:100]
 
+    # Annotate with pipeline membership (dict: source_id → pipeline_pk)
+    from core.models import PipelineProperty
+
+    if request.user.is_authenticated:
+        user_pipeline_entries = {
+            str(pp.source_id): pp.pk
+            for pp in PipelineProperty.objects.filter(
+                user=request.user, source_type=PipelineProperty.SourceType.VRM
+            )
+        }
+    else:
+        user_pipeline_entries = {}
+
     return render(
         request,
         "vrm_properties/list.html",
@@ -1671,6 +1733,7 @@ def vrm_properties_list(request: HttpRequest) -> HttpResponse:
             "total_count": VrmProperty.objects.count(),
             "filtered_count": queryset.count(),
             "pipeline_message": pipeline_message,
+            "pipeline_entries": user_pipeline_entries,
         },
     )
 

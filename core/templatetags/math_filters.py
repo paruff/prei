@@ -21,3 +21,12 @@ def mul(value, arg):
         return Decimal(str(value)) * Decimal(str(arg))
     except (ValueError, TypeError, InvalidOperation):
         return value
+
+
+@register.filter
+def get_item(dictionary, key):
+    """Look up a dictionary value by key. Usage: {{ dict|get_item:key }}."""
+    try:
+        return dictionary.get(key)
+    except (AttributeError, TypeError):
+        return None
