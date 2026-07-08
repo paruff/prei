@@ -1256,6 +1256,116 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
     return redirect(next_url)
 
 
+@login_required
+def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
+    """View and edit the user's pipeline screening criteria.
+
+    GET:  loads or creates ScreeningCriteria for the user.
+    POST: validates and saves criteria, then re-screens all active
+          pipeline properties at DISCOVERED or SCREENING stage.
+    """
+    from core.models import PipelineProperty, ScreeningCriteria
+    from core.services.screening import screen_property
+
+    criteria, _ = ScreeningCriteria.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        # Parse form fields
+        # Price range
+        min_price = request.POST.get("min_price")
+        max_price = request.POST.get("max_price")
+        if min_price:
+            criteria.min_price = Decimal(min_price)
+        else:
+            criteria.min_price = None
+        if max_price:
+            criteria.max_price = Decimal(max_price)
+        else:
+            criteria.max_price = None
+
+        # Yield and ratio (model has default=7.00, NOT NULL — can't be None)
+        min_yield = request.POST.get("min_gross_yield_pct", "").strip()
+        if min_yield:
+            criteria.min_gross_yield_pct = Decimal(min_yield)
+        # else: keep existing/default value
+        max_ptr = request.POST.get("max_price_to_rent_ratio", "").strip()
+        if max_ptr:
+            criteria.max_price_to_rent_ratio = Decimal(max_ptr)
+        # else: keep existing/default value
+
+        # Beds and size
+        min_beds = request.POST.get("min_beds")
+        max_beds = request.POST.get("max_beds")
+        min_sqft = request.POST.get("min_sqft")
+        max_year_built = request.POST.get("max_year_built")
+        criteria.min_beds = int(min_beds) if min_beds else 1
+        criteria.max_beds = int(max_beds) if max_beds else None
+        criteria.min_sqft = int(min_sqft) if min_sqft else None
+        criteria.max_year_built = int(max_year_built) if max_year_built else None
+
+        # Allowed values (checkboxes → JSON list)
+        criteria.allowed_property_types = request.POST.getlist("allowed_property_types")
+        criteria.allowed_states = request.POST.getlist("allowed_states")
+        criteria.allowed_foreclosure_statuses = request.POST.getlist(
+            "allowed_foreclosure_statuses"
+        )
+
+        # GACS score
+        min_gacs = request.POST.get("min_gacs_score")
+        if min_gacs:
+            criteria.min_gacs_score = Decimal(min_gacs)
+        else:
+            criteria.min_gacs_score = None
+
+        criteria.save()
+
+        # Re-screen all ACTIVE pipeline properties at DISCOVERED or SCREENING
+        rescreen_count = 0
+        for pp in PipelineProperty.objects.filter(
+            user=request.user,
+            status=PipelineProperty.Status.ACTIVE,
+            stage__in=[
+                PipelineProperty.Stage.DISCOVERED,
+                PipelineProperty.Stage.SCREENING,
+            ],
+        ):
+            source_record = None  # Re-resolve source for accurate screening
+            from core.services.pipeline import get_source_record
+
+            source_record = get_source_record(pp)
+            result = screen_property(pp, criteria, source_record=source_record)
+            pp.screening_passed = result.passed
+            pp.save(update_fields=["screening_passed", "updated_at"])
+            rescreen_count += 1
+
+        messages.success(
+            request,
+            f"Screening criteria saved. {rescreen_count} property(ies) re-screened.",
+        )
+        return redirect("pipeline_screening_settings")
+
+    return render(
+        request,
+        "pipeline/screening_settings.html",
+        {
+            "criteria": criteria,
+            "US_STATES": US_STATES,
+            "property_type_choices": [
+                "single-family",
+                "duplex",
+                "triplex",
+                "fourplex",
+            ],
+            "foreclosure_status_choices": [
+                "preforeclosure",
+                "auction",
+                "reo",
+                "government",
+            ],
+        },
+    )
+
+
 def search_listings(request):
     # Optionally load a saved search to prefill filters
     saved_id = request.GET.get("saved_id")
