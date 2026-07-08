@@ -2,9 +2,8 @@
 Context processor to provide version and environment info to all templates.
 
 Sources (in priority order):
-1. VERSION file at project root — the release source of truth
-2. Git HEAD ref parsing via filesystem (no subprocess) — for dev snapshot
-3. ``/app/VERSION`` inside Docker — for containerized builds
+1. Git tag matching current HEAD (loose refs then packed-refs) — the release source of truth
+2. ``0.0.0-dev`` fallback
 
 Exposed template variables:
 - ``version`` — e.g. "0.2.2"
@@ -27,20 +26,7 @@ _SHORT_SHA_LENGTH = 7
 
 
 def _read_version() -> str:
-    """Read version from VERSION file, falling back to git HEAD parsing."""
-    # Try VERSION file (project root and Docker container paths)
-    for path in (
-        Path(__file__).resolve().parent.parent / "VERSION",
-        Path("/app/VERSION"),
-    ):
-        try:
-            text = path.read_text().strip()
-            if text:
-                return text
-        except (FileNotFoundError, OSError):
-            continue
-
-    # Fallback: extract version from git tag if available via HEAD ref
+    """Read version from current git tag, falling back to ``0.0.0-dev``."""
     git_dir = _find_git_dir()
     if git_dir is not None:
         tag = _read_current_tag(git_dir)
@@ -140,29 +126,48 @@ def _resolve_packed_ref(git_dir: Path, ref_path: str) -> str | None:
 
 
 def _read_current_tag(git_dir: Path) -> str | None:
-    """Read the current tag from HEAD's position in packed-refs."""
+    """Read the current tag from HEAD's position.
+
+    Searches loose refs in ``.git/refs/tags/`` first, then falls back to
+    ``packed-refs``.  Returns the first matching tag for the current HEAD
+    commit, or ``None``.
+    """
     sha = _resolve_head(git_dir)
     if not sha:
         return None
 
-    packed = git_dir / "packed-refs"
-    if not packed.is_file():
-        return None
+    # 1. Loose refs: each file under refs/tags/ is one tag
+    tags_dir = git_dir / "refs" / "tags"
+    if tags_dir.is_dir():
+        try:
+            for tag_file in sorted(tags_dir.iterdir()):
+                if tag_file.is_file():
+                    try:
+                        if tag_file.read_text().strip() == sha:
+                            return tag_file.name
+                    except (FileNotFoundError, OSError):
+                        continue
+        except OSError:
+            pass
 
-    try:
-        for line in packed.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or line.startswith("^"):
-                continue
-            parts = line.split(" ", 1)
-            if (
-                len(parts) == 2
-                and parts[0] == sha
-                and parts[1].startswith("refs/tags/")
-            ):
-                return parts[1].removeprefix("refs/tags/")
-    except (FileNotFoundError, OSError):
-        pass
+    # 2. Packed refs
+    packed = git_dir / "packed-refs"
+    if packed.is_file():
+        try:
+            for line in packed.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("^"):
+                    continue
+                parts = line.split(" ", 1)
+                if (
+                    len(parts) == 2
+                    and parts[0] == sha
+                    and parts[1].startswith("refs/tags/")
+                ):
+                    return parts[1].removeprefix("refs/tags/")
+        except (FileNotFoundError, OSError):
+            pass
+
     return None
 
 
