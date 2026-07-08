@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Due Diligence — {{ prop.address|truncatechars:30 }} — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <div class="pipeline-detail-header">
+    <div>
+      <a href="{% url 'pipeline_detail' prop.pk %}" class="back-link">&larr; Back to Property</a>
+      <h1>Due Diligence Checklist</h1>
+      <p class="help-text">{{ prop.address }}</p>
+    </div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="pipeline-detail-body">
+
+      {# Inspection #}
+      <div class="pipeline-detail-section">
+        <h2>Inspection</h2>
+        <div class="form-checkbox-grid">
+          <label class="checkbox-label">
+            <input type="checkbox" name="inspection_scheduled" value="1" {% if dd.inspection_scheduled %}checked{% endif %}>
+            Inspection Scheduled
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="inspection_completed" value="1" {% if dd.inspection_completed %}checked{% endif %}>
+            Inspection Completed
+          </label>
+        </div>
+        <div class="form-field-group mt-2">
+          <label class="field-label">Inspection Findings</label>
+          <textarea name="inspection_findings" rows="3" class="field-input input-full">{{ dd.inspection_findings }}</textarea>
+        </div>
+      </div>
+
+      {# Title #}
+      <div class="pipeline-detail-section">
+        <h2>Title</h2>
+        <div class="form-checkbox-grid">
+          <label class="checkbox-label">
+            <input type="checkbox" name="title_search_ordered" value="1" {% if dd.title_search_ordered %}checked{% endif %}>
+            Title Search Ordered
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="title_clear" value="1" {% if dd.title_clear == True %}checked{% endif %}>
+            Title Clear
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="title_clear_no" value="1" {% if dd.title_clear == False %}checked{% endif %}>
+            Title Issues Found
+          </label>
+        </div>
+      </div>
+
+      {# Appraisal #}
+      <div class="pipeline-detail-section">
+        <h2>Appraisal</h2>
+        <div class="form-checkbox-grid">
+          <label class="checkbox-label">
+            <input type="checkbox" name="appraisal_ordered" value="1" {% if dd.appraisal_ordered %}checked{% endif %}>
+            Appraisal Ordered
+          </label>
+        </div>
+        <div class="form-field-group mt-2">
+          <label class="field-label">Appraisal Value ($)</label>
+          <input type="number" name="appraisal_value" step="0.01" min="0"
+                 value="{{ dd.appraisal_value|default:'' }}" class="field-input input-lg">
+        </div>
+      </div>
+
+      {# Insurance #}
+      <div class="pipeline-detail-section">
+        <h2>Insurance</h2>
+        <div class="form-checkbox-grid">
+          <label class="checkbox-label">
+            <input type="checkbox" name="insurance_quoted" value="1" {% if dd.insurance_quoted %}checked{% endif %}>
+            Insurance Quoted
+          </label>
+        </div>
+        <div class="form-field-group mt-2">
+          <label class="field-label">Annual Insurance Cost ($)</label>
+          <input type="number" name="insurance_annual_cost" step="0.01" min="0"
+                 value="{{ dd.insurance_annual_cost|default:'' }}" class="field-input input-lg">
+        </div>
+      </div>
+
+      {# Contractor #}
+      <div class="pipeline-detail-section">
+        <h2>Contractor Estimate</h2>
+        <div class="form-checkbox-grid">
+          <label class="checkbox-label">
+            <input type="checkbox" name="contractor_estimate_obtained" value="1" {% if dd.contractor_estimate_obtained %}checked{% endif %}>
+            Estimate Obtained
+          </label>
+        </div>
+        <div class="form-field-group mt-2">
+          <label class="field-label">Estimate Amount ($)</label>
+          <input type="number" name="contractor_estimate_amount" step="0.01" min="0"
+                 value="{{ dd.contractor_estimate_amount|default:'' }}" class="field-input input-lg">
+        </div>
+      </div>
+
+      {# Go/No-Go decision (full width) #}
+      <div class="pipeline-detail-section full-width">
+        <h2>Go / No-Go Decision</h2>
+        <div class="form-row">
+          <label class="checkbox-label">
+            <input type="radio" name="go_no_go" value="pending" {% if dd.go_no_go == 'pending' %}checked{% endif %}>
+            Pending
+          </label>
+          <label class="checkbox-label">
+            <input type="radio" name="go_no_go" value="go" {% if dd.go_no_go == 'go' %}checked{% endif %}>
+            Go
+          </label>
+          <label class="checkbox-label">
+            <input type="radio" name="go_no_go" value="no_go" {% if dd.go_no_go == 'no_go' %}checked{% endif %}>
+            No Go
+          </label>
+        </div>
+        <div class="form-field-group mt-2">
+          <label class="field-label">No-Go Reason (required if No Go)</label>
+          <textarea name="no_go_reason" rows="2" class="field-input input-full">{{ dd.no_go_reason }}</textarea>
+        </div>
+        <div class="form-submit-row">
+          <button type="submit" class="btn btn-primary">Save Checklist</button>
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+{% endblock %}

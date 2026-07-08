@@ -1366,6 +1366,155 @@ def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
+def pipeline_offer_create(request: HttpRequest, pk: int) -> HttpResponse:
+    """Create or list offers for a pipeline property."""
+    from core.models import OfferRecord, PipelineProperty
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    existing_offers = OfferRecord.objects.filter(pipeline_property=prop).order_by(
+        "-created_at"
+    )
+
+    if request.method == "POST":
+        from datetime import date
+
+        offer_price = request.POST.get("offer_price")
+        offer_date = request.POST.get("offer_date", str(date.today()))
+        offer_expiry = request.POST.get("offer_expiry") or None
+        contingencies = request.POST.getlist("contingencies")
+        notes = request.POST.get("notes", "")
+
+        if not offer_price:
+            messages.error(request, "Offer price is required.")
+            return redirect("pipeline_offer_create", pk=pk)
+
+        OfferRecord.objects.create(
+            pipeline_property=prop,
+            offer_price=Decimal(offer_price),
+            offer_date=offer_date,
+            offer_expiry=offer_expiry,
+            contingencies=contingencies,
+            notes=notes,
+        )
+        messages.success(request, "Offer recorded.")
+        return redirect("pipeline_offer_create", pk=pk)
+
+    return render(
+        request,
+        "pipeline/offer_form.html",
+        {
+            "prop": prop,
+            "offers": existing_offers,
+        },
+    )
+
+
+@login_required
+def pipeline_dd_checklist(request: HttpRequest, pk: int) -> HttpResponse:
+    """View and edit due diligence checklist for a pipeline property."""
+    from core.models import DueDiligenceChecklist, PipelineProperty
+    from core.services.pipeline import kill_property
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    dd, created = DueDiligenceChecklist.objects.get_or_create(
+        pipeline_property=prop,
+    )
+
+    if request.method == "POST":
+        dd.inspection_scheduled = "inspection_scheduled" in request.POST
+        dd.inspection_completed = "inspection_completed" in request.POST
+        dd.inspection_findings = request.POST.get("inspection_findings", "")
+        dd.title_search_ordered = "title_search_ordered" in request.POST
+        dd.title_clear = (
+            True
+            if "title_clear" in request.POST
+            else (False if "title_clear_no" in request.POST else None)
+        )
+        dd.appraisal_ordered = "appraisal_ordered" in request.POST
+        appraisal_val = request.POST.get("appraisal_value", "").strip()
+        dd.appraisal_value = Decimal(appraisal_val) if appraisal_val else None
+        dd.insurance_quoted = "insurance_quoted" in request.POST
+        insurance_cost = request.POST.get("insurance_annual_cost", "").strip()
+        dd.insurance_annual_cost = Decimal(insurance_cost) if insurance_cost else None
+        dd.contractor_estimate_obtained = "contractor_estimate_obtained" in request.POST
+        contractor_est = request.POST.get("contractor_estimate_amount", "").strip()
+        dd.contractor_estimate_amount = (
+            Decimal(contractor_est) if contractor_est else None
+        )
+        dd.go_no_go = request.POST.get("go_no_go", "pending")
+        dd.no_go_reason = request.POST.get("no_go_reason", "")
+        dd.save()
+
+        if dd.go_no_go == "no_go" and dd.no_go_reason:
+            kill_property(prop, dd.no_go_reason)
+            messages.success(request, "Property killed due to DD findings.")
+        else:
+            messages.success(request, "Due diligence checklist saved.")
+
+        return redirect("pipeline_dd_checklist", pk=pk)
+
+    return render(
+        request,
+        "pipeline/dd_checklist.html",
+        {
+            "prop": prop,
+            "dd": dd,
+        },
+    )
+
+
+@login_required
+def pipeline_renovation(request: HttpRequest, pk: int) -> HttpResponse:
+    """View and edit renovation record for a pipeline property."""
+    from core.models import PipelineProperty, RenovationRecord
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    renovation, created = RenovationRecord.objects.get_or_create(
+        pipeline_property=prop,
+    )
+
+    if request.method == "POST":
+        est_budget = request.POST.get("estimated_budget", "").strip()
+        if est_budget:
+            renovation.estimated_budget = Decimal(est_budget)
+        start_date = request.POST.get("start_date", "").strip()
+        renovation.start_date = start_date or None
+        renovation.contractor = request.POST.get("contractor", "")
+        renovation.scope_of_work = request.POST.get("scope_of_work", "")
+        renovation.status = request.POST.get("status", "not_started")
+        completion_date = request.POST.get("completion_date", "").strip()
+        renovation.completion_date = completion_date or None
+        actual_cost = request.POST.get("actual_cost", "").strip()
+        renovation.actual_cost = Decimal(actual_cost) if actual_cost else None
+        renovation.notes = request.POST.get("notes", "")
+        renovation.save()
+
+        messages.success(request, "Renovation record saved.")
+        return redirect("pipeline_renovation", pk=pk)
+
+    return render(
+        request,
+        "pipeline/renovation_form.html",
+        {
+            "prop": prop,
+            "renovation": renovation,
+        },
+    )
+
+
 def search_listings(request):
     # Optionally load a saved search to prefill filters
     saved_id = request.GET.get("saved_id")

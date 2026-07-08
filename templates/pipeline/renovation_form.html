@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Renovation — {{ prop.address|truncatechars:30 }} — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <div class="pipeline-detail-header">
+    <div>
+      <a href="{% url 'pipeline_detail' prop.pk %}" class="back-link">&larr; Back to Property</a>
+      <h1>Renovation Record</h1>
+      <p class="help-text">{{ prop.address }}</p>
+    </div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="pipeline-detail-body">
+
+      {# Budget & Timeline #}
+      <div class="pipeline-detail-section">
+        <h2>Budget &amp; Timeline</h2>
+        <div class="form-row">
+          <div class="form-field-group">
+            <label class="field-label">Estimated Budget ($)</label>
+            <input type="number" name="estimated_budget" step="0.01" min="0"
+                   value="{{ renovation.estimated_budget|default:'' }}" class="field-input input-lg">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Actual Cost ($)</label>
+            <input type="number" name="actual_cost" step="0.01" min="0"
+                   value="{{ renovation.actual_cost|default:'' }}" class="field-input input-lg">
+          </div>
+        </div>
+        <div class="form-row mt-2">
+          <div class="form-field-group">
+            <label class="field-label">Start Date</label>
+            <input type="date" name="start_date"
+                   value="{{ renovation.start_date|date:'Y-m-d'|default:'' }}" class="field-input input-md">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Completion Date</label>
+            <input type="date" name="completion_date"
+                   value="{{ renovation.completion_date|date:'Y-m-d'|default:'' }}" class="field-input input-md">
+          </div>
+        </div>
+      </div>
+
+      {# Contractor & Scope #}
+      <div class="pipeline-detail-section">
+        <h2>Contractor &amp; Scope</h2>
+        <div class="form-field-group">
+          <label class="field-label">Contractor</label>
+          <input type="text" name="contractor" value="{{ renovation.contractor }}"
+                 class="field-input input-full">
+        </div>
+        <div class="form-field-group mt-2">
+          <label class="field-label">Scope of Work</label>
+          <textarea name="scope_of_work" rows="4" class="field-input input-full">{{ renovation.scope_of_work }}</textarea>
+        </div>
+      </div>
+
+      {# Status #}
+      <div class="pipeline-detail-section">
+        <h2>Status</h2>
+        <div class="form-row">
+          <label class="checkbox-label">
+            <input type="radio" name="status" value="not_started" {% if renovation.status == 'not_started' %}checked{% endif %}>
+            Not Started
+          </label>
+          <label class="checkbox-label">
+            <input type="radio" name="status" value="in_progress" {% if renovation.status == 'in_progress' %}checked{% endif %}>
+            In Progress
+          </label>
+          <label class="checkbox-label">
+            <input type="radio" name="status" value="complete" {% if renovation.status == 'complete' %}checked{% endif %}>
+            Complete
+          </label>
+        </div>
+      </div>
+
+      {# Notes #}
+      <div class="pipeline-detail-section">
+        <h2>Notes</h2>
+        <textarea name="notes" rows="3" class="field-input input-full">{{ renovation.notes }}</textarea>
+      </div>
+
+      {# Save + leasing link #}
+      <div class="pipeline-detail-section full-width">
+        <div class="pipeline-action-bar">
+          <button type="submit" class="btn btn-primary">Save Renovation Record</button>
+          {% if renovation.status == 'complete' %}
+            {# djlint:off D018 #}
+            <a href="/leasing/add/?property_id={{ prop.pk }}" class="btn btn-warning">
+              + Add to Leasing Pipeline &rarr;
+            </a>
+            {# djlint:on #}
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+{% endblock %}

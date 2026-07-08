@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}New Offer — {{ prop.address|truncatechars:30 }} — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <div class="pipeline-detail-header">
+    <div>
+      <a href="{% url 'pipeline_detail' prop.pk %}" class="back-link">&larr; Back to Property</a>
+      <h1>New Offer</h1>
+      <p class="help-text">{{ prop.address }} — {{ prop.stage|title }}</p>
+    </div>
+  </div>
+
+  <div class="pipeline-detail-body">
+
+    {# Offer form #}
+    <div class="pipeline-detail-section">
+      <h2>Offer Details</h2>
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-row">
+          <div class="form-field-group">
+            <label class="field-label">Offer Price ($) *</label>
+            <input type="number" name="offer_price" step="0.01" min="0.01" required
+                   class="field-input input-lg">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Offer Date</label>
+            <input type="date" name="offer_date" value="{{ 'now'|date:'Y-m-d' }}"
+                   class="field-input input-md">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Offer Expiry</label>
+            <input type="date" name="offer_expiry" class="field-input input-md">
+          </div>
+        </div>
+
+        <div class="form-field-group mt-3">
+          <label class="field-label">Contingencies</label>
+          <div class="form-checkbox-grid">
+            <label class="checkbox-label">
+              <input type="checkbox" name="contingencies" value="inspection">
+              Inspection
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" name="contingencies" value="financing">
+              Financing
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" name="contingencies" value="appraisal">
+              Appraisal
+            </label>
+          </div>
+        </div>
+
+        <div class="form-field-group mt-3">
+          <label class="field-label">Notes</label>
+          <textarea name="notes" rows="3" class="field-input textarea-full"></textarea>
+        </div>
+
+        <div class="form-submit-row">
+          <button type="submit" class="btn btn-primary">Submit Offer</button>
+        </div>
+      </form>
+    </div>
+
+    {# Existing offers #}
+    <div class="pipeline-detail-section">
+      <h2>Existing Offers</h2>
+      {% if offers %}
+        <table class="pipeline-detail-table">
+          <tr><td>Date</td><td>Amount</td><td>Status</td><td>Expiry</td></tr>
+          {% for offer in offers %}
+          <tr>
+            <td>{{ offer.offer_date|date:"M j, Y" }}</td>
+            <td>${{ offer.offer_price|floatformat:2|intcomma }}</td>
+            <td>{{ offer.get_status_display }}</td>
+            <td>{{ offer.offer_expiry|date:"M j, Y"|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p class="help-text">No offers yet.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

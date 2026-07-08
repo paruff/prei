@@ -71,6 +71,21 @@ urlpatterns = [
         name="pipeline_screening_settings",
     ),
     path(
+        "pipeline/<int:pk>/offer/",
+        views.pipeline_offer_create,
+        name="pipeline_offer_create",
+    ),
+    path(
+        "pipeline/<int:pk>/dd/",
+        views.pipeline_dd_checklist,
+        name="pipeline_dd_checklist",
+    ),
+    path(
+        "pipeline/<int:pk>/renovation/",
+        views.pipeline_renovation,
+        name="pipeline_renovation",
+    ),
+    path(
         "settings/investment-targets/",
         views.investment_targets_edit,
         name="investment_targets_edit",

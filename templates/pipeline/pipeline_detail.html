@@ -111,19 +111,22 @@
     </div>
     {% endif %}
 
-    {# Action buttons #}
-    <div class="pipeline-action-bar">
-      {% if prop.status == 'ACTIVE' and prop.stage != 'STABILIZED' %}
-        <span class="btn btn-primary btn-placeholder">Advance Stage</span>
-      {% endif %}
-      {% if prop.status == 'ACTIVE' %}
-      <span class="btn btn-danger" onclick="document.getElementById('kill-modal').style.display='block'">Kill</span>
-      <span class="btn btn-outline btn-placeholder">Hold</span>
-      {% endif %}
-      {% if prop.status == 'KILLED' or prop.status == 'ON_HOLD' %}
-      <span class="btn btn-warning btn-placeholder">Reactivate</span>
-      {% endif %}
-    </div>
+     {# Action buttons #}
+     <div class="pipeline-action-bar">
+       {% if prop.status == 'ACTIVE' and prop.stage != 'STABILIZED' %}
+         <a href="{% url 'pipeline_offer_create' prop.pk %}" class="btn btn-primary">Add Offer</a>
+         <a href="{% url 'pipeline_dd_checklist' prop.pk %}" class="btn btn-outline">Due Diligence</a>
+         <a href="{% url 'pipeline_renovation' prop.pk %}" class="btn btn-outline">Renovation</a>
+         <span class="btn btn-primary btn-placeholder">Advance Stage</span>
+       {% endif %}
+       {% if prop.status == 'ACTIVE' %}
+       <span class="btn btn-danger" onclick="document.getElementById('kill-modal').style.display='block'">Kill</span>
+       <span class="btn btn-outline btn-placeholder">Hold</span>
+       {% endif %}
+       {% if prop.status == 'KILLED' or prop.status == 'ON_HOLD' %}
+       <span class="btn btn-warning btn-placeholder">Reactivate</span>
+       {% endif %}
+     </div>
 
   </div>{# end grid #}
 
