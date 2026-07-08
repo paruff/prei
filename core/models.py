@@ -827,6 +827,124 @@ class PipelineAsset(models.Model):
         return f"{self.asset_id} [{self.current_stage}]"
 
 
+class PipelineProperty(models.Model):
+    """A property tracked through the acquisition pipeline lifecycle.
+
+    Covers stages from raw discovery through acquisition, stabilization,
+    and portfolio transfer. Each row represents a single property from a
+    single source, deduplicated by (user, source_type, source_id).
+    """
+
+    class Stage(models.TextChoices):
+        DISCOVERED = "DISCOVERED", "Discovered"
+        SCREENING = "SCREENING", "Screening"
+        UNDERWRITING = "UNDERWRITING", "Underwriting"
+        OFFER = "OFFER", "Offer"
+        DUE_DILIGENCE = "DUE_DILIGENCE", "Due Diligence"
+        CLOSING = "CLOSING", "Closing"
+        ACQUIRED = "ACQUIRED", "Acquired"
+        RENOVATION = "RENOVATION", "Renovation"
+        STABILIZED = "STABILIZED", "Stabilized"
+
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        KILLED = "KILLED", "Killed"
+        ON_HOLD = "ON_HOLD", "On Hold"
+        ACQUIRED = "ACQUIRED", "Acquired"
+
+    class SourceType(models.TextChoices):
+        VRM = "vrm", "VRM Foreclosure"
+        FORECLOSURE = "foreclosure", "County Foreclosure"
+        LISTING = "listing", "MLS Listing"
+        MANUAL = "manual", "Manual Entry"
+        HUD = "hud", "HUD Homestore"
+        USDA = "usda", "USDA Foreclosure"
+        FANNIE = "fannie", "Fannie Mae HomePath"
+        FREDDIE = "freddie", "Freddie Mac HomeSteps"
+        COUNTY = "county", "County Records"
+        BANK_REO = "bank_reo", "Bank REO"
+
+    # ── Identity ─────────────────────────────────────────────────────
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="pipeline_properties"
+    )
+    source_type = models.CharField(max_length=20, choices=SourceType.choices)
+    source_id = models.CharField(max_length=255)
+    address = models.TextField()
+    address_hash = models.CharField(
+        max_length=64, db_index=True, blank=True, default=""
+    )
+
+    # ── Pipeline stage ───────────────────────────────────────────────
+    stage = models.CharField(
+        max_length=20, choices=Stage.choices, default=Stage.DISCOVERED
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.ACTIVE
+    )
+    screening_passed = models.BooleanField(null=True, blank=True)
+    kill_reason = models.TextField(blank=True, default="")
+
+    # ── Stage timestamps (null until stage is entered) ───────────────
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    screening_at = models.DateTimeField(null=True, blank=True)
+    underwriting_at = models.DateTimeField(null=True, blank=True)
+    offer_at = models.DateTimeField(null=True, blank=True)
+    due_diligence_at = models.DateTimeField(null=True, blank=True)
+    closing_at = models.DateTimeField(null=True, blank=True)
+    acquired_at = models.DateTimeField(null=True, blank=True)
+    renovation_at = models.DateTimeField(null=True, blank=True)
+    stabilized_at = models.DateTimeField(null=True, blank=True)
+
+    # ── Financial snapshot ───────────────────────────────────────────
+    price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    estimated_rent = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    beds = models.IntegerField(null=True, blank=True)
+    baths = models.FloatField(null=True, blank=True)
+    sqft = models.FloatField(null=True, blank=True)
+    year_built = models.IntegerField(null=True, blank=True)
+
+    # ── Underwriting results ─────────────────────────────────────────
+    investment_analysis = models.ForeignKey(
+        InvestmentAnalysis,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    gacs_score = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    mao = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # ── Property record (post-acquisition, transferred to Property model) ───
+    property_record = models.ForeignKey(
+        Property,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
+    # ── Timestamps ───────────────────────────────────────────────────
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "source_type", "source_id"],
+                name="unique_user_source_property",
+            ),
+        ]
+        ordering = ["-updated_at"]
+        verbose_name = "Pipeline Property"
+        verbose_name_plural = "Pipeline Properties"
+
+    def __str__(self) -> str:
+        return f"{self.source_type}/{self.source_id} [{self.stage}]"
+
+
 class ForeclosureProperty(models.Model):
     """Foreclosure property listing from external data sources."""
 
@@ -844,12 +962,10 @@ class ForeclosureProperty(models.Model):
         ("commercial", "Commercial"),
     )
 
-    # Property ID and metadata
     property_id = models.CharField(max_length=128, unique=True, db_index=True)
     data_source = models.CharField(max_length=64)
     data_timestamp = models.DateTimeField()
 
-    # Address information
     street = models.CharField(max_length=255)
     city = models.CharField(max_length=128)
     county = models.CharField(max_length=128, blank=True, default="")
@@ -862,7 +978,6 @@ class ForeclosureProperty(models.Model):
         max_digits=9, decimal_places=6, null=True, blank=True
     )
 
-    # Foreclosure details
     foreclosure_status = models.CharField(
         max_length=32, choices=FORECLOSURE_STATUS_CHOICES, db_index=True
     )
@@ -890,7 +1005,6 @@ class ForeclosureProperty(models.Model):
     trustee_name = models.CharField(max_length=255, blank=True, default="")
     trustee_phone = models.CharField(max_length=32, blank=True, default="")
 
-    # Property details
     property_type = models.CharField(
         max_length=32, choices=PROPERTY_TYPE_CHOICES, blank=True, default=""
     )
@@ -906,7 +1020,6 @@ class ForeclosureProperty(models.Model):
     pool = models.BooleanField(default=False)
     condition = models.CharField(max_length=64, blank=True, default="")
 
-    # Valuation data
     estimated_value = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -937,7 +1050,6 @@ class ForeclosureProperty(models.Model):
         validators=[MinValueValidator(Decimal("0"))],
     )
 
-    # Links and images
     images = models.JSONField(default=list, blank=True)
     property_detail_url = models.URLField(blank=True, default="")
     redfin_url = models.URLField(blank=True, default="")
@@ -953,7 +1065,7 @@ class ForeclosureProperty(models.Model):
             models.Index(fields=["foreclosure_status", "auction_date"]),
         ]
 
-    def __str__(self) -> str:  # noqa: D401
+    def __str__(self) -> str:
         return f"{self.street}, {self.city}, {self.state} {self.zip_code} - {self.foreclosure_status}"
 
 
@@ -1220,6 +1332,76 @@ class UserProfile(models.Model):
         return f"Profile for {self.user.username}"
 
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class ScreeningCriteria(models.Model):
+    """Per-user screening criteria for pipeline property filtering.
+
+    Defines the structural and financial bounds used by the pipeline
+    screening stage to evaluate incoming properties. One set of criteria
+    per user — replaces/provides the superset of simpler per-user prefs.
+    """
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="screening_criteria"
+    )
+
+    # Price range
+    max_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    min_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    # Yield and ratio
+    min_gross_yield_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("7.00"),
+        help_text="Minimum gross yield as percentage (e.g. 7.00 = 7%)",
+    )
+    max_price_to_rent_ratio = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("15.00"),
+    )
+
+    # Beds and size
+    min_beds = models.IntegerField(default=1)
+    max_beds = models.IntegerField(null=True, blank=True)
+    min_sqft = models.IntegerField(null=True, blank=True)
+    max_year_built = models.IntegerField(null=True, blank=True)
+
+    # Allowed values
+    allowed_property_types = models.JSONField(default=list, blank=True)
+    allowed_states = models.JSONField(default=list, blank=True)
+    allowed_foreclosure_statuses = models.JSONField(default=list, blank=True)
+
+    # Score floor
+    min_gacs_score = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Minimum Growth Area Composite Score for the property's market",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Screening Criteria"
+        verbose_name_plural = "Screening Criteria"
+
+    def __str__(self) -> str:
+        return f"{self.user.email}: yield>={self.min_gross_yield_pct}%, PTR<={self.max_price_to_rent_ratio}"
 
 
 class UserScreeningPreferences(models.Model):

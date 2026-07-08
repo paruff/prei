@@ -1,111 +1,162 @@
----
-date: 2026-07-06
-persona: passive-investor
-jtbd: "When I am beginning my search for an investment property, I want to identify geographic areas with the strongest growth fundamentals (population, employment, income, housing demand), so I can focus my property search on markets most likely to appreciate and generate positive cash flow."
-riskiest_assumption: "We assume that Census ACS 5-year data + BLS employment trends + a simple weighted composite score is sufficient to identify the best residential real estate investment areas. What if the real leading indicators are different (zoning/construction pipelines, school quality, crime trends, job-creation composition, infrastructure investment, supply constraints)? What if the composite_score weighting (0.25 pop, 0.35 emp, 0.25 income, 0.15 housing demand) is arbitrary and misleading?"
-acceptance_criterion: "Given the Growth Area Explorer page is loaded with Census and BLS API keys configured, when I select a state and click 'Analyze State', then I see a ranked table of cities within that state sorted by composite growth score, with population growth, employment growth, income growth, and housing demand metrics visible, and the data persists in the GrowthArea table for reuse."
-dora_ai_capability: "Cap6: User-centric focus"
-dora_core_capability: "N/A — end-user product feature, not DevOps pipeline"
-metric: "User-task-completion (can user identify top investment areas and proceed to property search within 3 minutes)"
-measurement_source: "Manual observation / session recording"
-baseline: "Current: page shows no data (GrowthArea count = 0, MarketSnapshot count = 0). User cannot complete the task at all."
-prior_art: "Existing implementation at /growth-explorer/ has the technical plumbing (Census+BLS API calls, model, scoring) but: (1) DB is empty, (2) methodology may need rethinking, (3) no fallback/error UX for API failure"
-status: "in-discovery"
+# Discovery Brief: PREI Full Acquisition & Leasing Pipeline
+# Written: 2026-07-07 session with paruff
+# Status: Ready for implementation via opencode / DeepSeek
+
 ---
 
-# Discovery Brief: Growth Area Investment Finder
+## 1. What We Are Building
 
-## Job to Be Done
+A CRM-like property acquisition and leasing pipeline that tracks individual
+properties as they move through stages from discovery to stabilized cashflow.
 
-When I am beginning my search for an investment property, I want to identify geographic areas with the strongest growth fundamentals (population, employment, income, housing demand), so I can focus my property search on markets most likely to appreciate and generate positive cash flow.
+This is the structural backbone of PREI as a product. Every other feature
+(GACS, VRM, underwriting, portfolio) becomes a stage or data input in this
+pipeline rather than a standalone tool.
 
-## Riskiest Assumption
+---
 
-We assume that Census ACS 5-year data + BLS employment trends + a simple weighted composite score (pop=0.25, emp=0.35, income=0.25, housing=0.15) is sufficient to identify the best residential real estate investment areas.
+## 2. The Problem Being Solved
 
-**Challenges to this assumption:**
-1. **The weightings are arbitrary.** There's no empirical or theoretical basis for 0.35 on employment vs 0.25 on population. Are these even the right factors?
-2. **Missing factors:** School quality, crime rates, zoning/construction pipeline, job-composition quality (e.g., tech vs retail vs manufacturing), infrastructure investment, property tax trends, landlord-friendliness regulation, climate risk.
-3. **Geographic granularity mismatch:** Census "places" are cities, but real estate is hyper-local (neighborhood/zip code). A city like Los Angeles has wildly different sub-markets.
-4. **Data timeliness:** ACS 5-year data (2022 vintage) is already 4 years old. BLS has similar lag. Growth trends may have shifted post-COVID.
-5. **Correlation ≠ causation:** A city with high population growth doesn't necessarily beat the market for buy-and-hold investors. Supply constraints and price-to-rent ratios matter.
+### Current state (verified from codebase)
+- PREI has underwriting math, portfolio tracking, and VRM discovery
+- These are disconnected tools — no model links them into a workflow
+- A user cannot see "here are 47 properties I am tracking, here is where
+  each one is in my process, here is why I killed the other 200"
+- There is no screening stage — properties go from discovery directly to
+  underwriting, which is expensive (analyst time) and unscalable
 
-## Acceptance Criterion
+### What institutional operators do differently
+Properties move left → right through stages only when they pass criteria.
+Most properties are killed early and cheaply. Only viable deals reach
+expensive stages (underwriting, offer, due diligence).
 
-Given the Growth Area Explorer page is loaded with Census and BLS API keys configured, when I select a state and click 'Analyze State', then I see a ranked table of cities within that state sorted by composite growth score, with population growth, employment growth, income growth, and housing demand metrics visible, and the data persists in the GrowthArea table for reuse.
+### The gap this creates for prei users
+Without a pipeline model, a user:
+- Has no deal flow visibility
+- Cannot track why they passed on a property
+- Cannot see how many properties they screened vs underwrote vs offered on
+- Cannot manage multiple properties at different stages simultaneously
 
-## DORA Outcome Target
+---
 
-This feature is end-user facing (not DevOps), so DORA delivery metrics don't directly apply. The relevant DORA AI capability is **Capability 6 (User-centric focus)** — ensuring we solve the real user problem before investing in implementation.
+## 3. Persona
 
-**Success metric:** User can go from blank page to a list of ranked investment areas in < 3 minutes, and click through to browse foreclosures in their top-ranked area.
+**Primary:** Individual buy-and-hold investor, learning the craft, managing
+deal flow solo or with a small team. Not institutional — does not have
+a dedicated analyst. Time is the binding constraint.
 
-**Current baseline:** Failure — user sees no data at all (0 records in GrowthArea and MarketSnapshot). The task is impossible.
+**Jobs to be done:**
+- "Show me which properties deserve my attention today"
+- "Tell me why I should not waste time on this property"
+- "Track where every deal I am looking at currently stands"
+- "Show me my historical kill rate and why I passed on deals"
+- "When a property I am watching hits my criteria, alert me"
 
-## Prior Art
+---
 
-### Existing in this repo
-| Artifact | Status |
+## 4. Riskiest Assumptions
+
+1. Users will actually move properties through pipeline stages manually
+   (vs. expecting automation). Mitigation: make stage advancement one click;
+   pre-fill as much as possible from source data.
+
+2. A single PipelineProperty model can accommodate all source types
+   (VRM, HUD, county, bank REO, etc.) without becoming unwieldy.
+   Mitigation: generic source linkage pattern (source_type + source_id).
+
+3. The leasing pipeline (tenant acquisition) is structurally similar enough
+   to the acquisition pipeline to share UI patterns. To be validated in
+   design phase.
+
+---
+
+## 5. What Is In Scope (this plan)
+
+### Acquisition Pipeline (stages 1–8)
+1. Market Selection — GACS (exists, being improved)
+2. Property Discovery — multi-source inventory (VRM exists; others planned)
+3. Property Screening — NEW: fast filter engine
+4. Underwriting — exists, needs pipeline linkage
+5. Offer Strategy — NEW: offer tracking
+6. Due Diligence — NEW: DD checklist and status
+7. Acquisition / Closing — NEW: closing record
+8. Renovation / Turnover — NEW: rehab tracking
+
+### Leasing Pipeline (stages 1–5)
+1. Listing (property is rent-ready)
+2. Applicant Discovery (where are leads coming from)
+3. Applicant Screening (basic criteria)
+4. Lease Execution
+5. Move-in / Stabilized
+
+### Navigation (confirmed by paruff)
+```
+Growth Areas | Purchase Pipeline | Portfolio | Leasing Pipeline
+```
+With submenus supporting sub-elements of each phase.
+
+---
+
+## 6. What Is NOT In Scope (this plan)
+
+- AuctionAlert wiring to PipelineProperty — backlog per paruff
+- Automated property discovery (no scraping in this plan — manual add or
+  import from existing sources)
+- MLS / IDX integration — deferred
+- Celery / background jobs — deferred (alpha constraint)
+- Multi-user team pipeline sharing — deferred (TeamMember model exists
+  but pipeline sharing is post-alpha)
+- Offer negotiation history beyond basic tracking
+- Legal document storage
+- Contractor management (beyond basic rehab budget fields)
+
+---
+
+## 7. Success Criteria
+
+- A user can add a VrmProperty or ForeclosureProperty to their pipeline
+  in one click and see it appear in their Purchase Pipeline view
+- A user can advance a property through pipeline stages and record why
+  they killed it at any stage
+- The screening stage eliminates properties automatically based on
+  user-configured thresholds before underwriting is triggered
+- A user can see a kanban or list view of all active pipeline properties
+  grouped by stage
+- The leasing pipeline tracks a property from rent-ready to stabilized
+- Nav reflects the four top-level sections with correct submenus
+
+---
+
+## 8. DORA Mapping
+
+- Deployment Frequency: pipeline is additive — no existing endpoints broken
+- Lead Time: estimated 6–8 tasks per pipeline phase; plan below
+- Change Failure Rate: migration-heavy — each new model needs paruff review
+- MTTR: all new models are nullable/additive; rollback is safe
+
+---
+
+## 9. Prior Art in This Codebase
+
+| Model | Role in Pipeline |
 |---|---|
-| `GrowthArea` model (core/models.py:643) | ✅ Exists, 0 rows in DB |
-| `growth_explorer` view (core/views.py:706) | ✅ POST flow calls Census + BLS APIs |
-| `growth_areas` view (core/views.py:679) | ✅ Reads GrowthArea, falls back to MarketSnapshot |
-| `growth_explorer.html` template | ✅ Full UI with form, results table, loading state |
-| `growth_areas.html` template | ✅ Simpler table (backup) |
-| `populate_growth_areas` management command | ✅ Pre-seeds 73 major cities |
-| Census/BLS integration code | ✅ `core/integrations/market/census.py`, `bls.py` |
-| API endpoint `/api/v1/real-estate/growth-areas` | ✅ Returns growth areas filtered by state |
-| Tests | ✅ `test_growth_explorer.py`, `test_growth_areas_integration.py`, `test_api_growth_areas.py` |
-| Composite score logic | ✅ `GrowthArea.composite_score` @property (model.py:674) |
+| GrowthArea | Stage 1 output — market selection |
+| VrmProperty | Stage 2 source — discovery |
+| ForeclosureProperty | Stage 2 source — discovery (multi-source ready) |
+| Listing | Stage 2 source — normalized listing |
+| InvestmentAnalysis | Stage 4 output — underwriting results |
+| Property | Post-acquisition record — Stage 7 output |
+| MonthlyActuals | Post-stabilization — portfolio tracking |
+| UserWatchlist | Links user to ForeclosureProperty — to be superseded by PipelineProperty |
 
-### External prior art
-- **BiggerPockets** — uses population growth, job growth, rent-to-price ratio, vacancy, landlord-friendly laws, and appreciation history.
-- **CBRE / JLL market reports** — use job-creation composition (which sectors), construction pipeline (units under construction vs absorbed), and institutional investment volume.
-- **Redfin/Zillow** — use heat maps of price/rent trends, days on market, sale-to-list ratio.
-- **ATTOM Data Solutions** — already integrated in this project for property-level data but not leveraged for area-level analysis.
+---
 
-## Key Questions to Resolve in Spec Phase
+## 10. Open Questions (resolved before implementation)
 
-1. **Growth area vs market snapshot — which is the real source of truth?** DECISION-1 was noted as pending in the Phase 1 spec. GrowthArea is city-level, MarketSnapshot is ZIP-level. The user needs hyper-local data, but GrowthArea has richer growth metrics. Solution: GrowthArea as the analytical engine, then overlay MarketSnapshot ZIP-level rent/price data for granularity.
-
-2. **Is the current scoring methodology valid?** The composite_score uses 4 equally-weighted-ish factors. Should we:
-   - Add more factors (school quality, crime, climate risk, regulation)?
-   - Use empirically-derived weights?
-   - Show multi-dimensional scores instead of a single composite?
-   - Let the user adjust weights to their preferences?
-
-3. **What data should prepopulate?** The management command has 73 major cities. Should we expand to more cities, or let the POST-based explorer discover any city in any state?
-
-4. **What's the error UX when APIs fail?** Currently, if Census or BLS API calls fail mid-flight, the user sees a partial or empty result with no clear error message.
-
-5. **How does this flow into the rest of the purchase pipeline?** The discovery → area selection → property search → underwriting pipeline needs to be coherent. Currently, the explorer links to VRM foreclosure browsing, but there's no "save this area to my watchlist" or "compare areas side by side."
-
-## Existing Issues (found by code inspection)
-
-1. **growth_areas.html uses MarketSnapshot fields (zip_code, rent_index, price_trend)** — when MarketSnapshot is empty, this page shows "No market snapshots available." This is the page at `/growth/` (URL), not the main explorer.
-
-2. **growth_explorer view does NOT check if population_growth_rate, employment_growth_rate, or median_income_growth are None before computing composite_score** — if any of these are None, the Decimal math in the `composite_score` property will fail with TypeError (can't multiply None). The tests only exercise the happy path where all values are valid.
-
-3. **ACS_VINTAGE = "2022" is hardcoded** — this is now 4 years old. Needs to be configurable or auto-updating.
-
-4. **The composite_score is a Python @property, not a DB column** — this was flagged in KNOWN_LIMITATIONS.md (LIMIT-04). Sorting happens in Python memory.
-
-5. **`discover_places_in_state` uses place:* wildcard which may time out for large states** — a single API call fetches ALL places, which could be thousands for states like CA or TX, even though only the top 20 are used.
-
-## Recommendations for Spec
-
-1. **Fix the data pipeline first** — run `populate_growth_areas` or investigate why the POST flow doesn't persist data (maybe the Census/BLS API calls are failing silently? The view has no error logging per-place — only "continue" on None).
-
-2. **Validate and harden the scoring** — add None checks in `composite_score`, or handle them in the view before computing.
-
-3. **Investigate what's actually failing** — the Census ACS 2022 vintage API may return errors for certain queries. The API key (provided in .env) may not have the right permissions.
-
-4. **Design the pipeline flow** — wire this area exploration into the full purchase pipeline: area discovery → market deep-dive → property search → underwriting → decision.
-
-5. **Consider user-adjustable scoring weights** — experienced investors have their own criteria; a customizable scorecard could be a differentiator.
-
-## Notes
-
-- The user's exact words: "the current Growth Area Explorer does not seem to get data and/or show the data. I want to explore the best way to find the best area to invest in residential real estate. This is the beginning of the purchase an investment property pipeline."
-- This is a methodology question first, a bug-fix second. Don't just fix the code — design the right approach.
-- The purchase pipeline from this project's roadmap (specification.md Phase 1) defines: "everything from 'here's a property/market' to 'should I buy it, at what price.'" The Growth Area Explorer is the very first step — "which market should I look at?"
+| # | Question | Answer |
+|---|---|---|
+| Q1 | PipelineProperty or stage fields on existing models? | PipelineProperty — confirmed by paruff |
+| Q2 | Generic FK or source_type+source_id for linking sources? | source_type + source_id pattern — safer, no GenericForeignKey complexity |
+| Q3 | AuctionAlert wired to pipeline? | Backlog — confirmed by paruff |
+| Q4 | Leasing pipeline definition? | Tenant acquisition: listing → applicant → screening → lease → move-in |
+| Q5 | Nav structure? | Growth Areas / Purchase Pipeline / Portfolio / Leasing Pipeline |
