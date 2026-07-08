@@ -328,6 +328,132 @@ def create_from_foreclosure(
     return pp, True
 
 
+def create_from_hud(
+    hud_property: Any,
+    user: Any,
+) -> Tuple[Any, bool]:
+    """Create a PipelineProperty from a HudProperty and run screening.
+
+    Same pattern as create_from_vrm. HudProperty has no rent data,
+    so yield/PTR criteria are skipped during screening.
+
+    Args:
+        hud_property: HudProperty instance.
+        user: Django User who owns this pipeline entry.
+
+    Returns:
+        Tuple of (PipelineProperty, created).
+    """
+    from core.models import HudProperty, PipelineProperty, ScreeningCriteria
+    from core.services.screening import screen_property
+
+    if not isinstance(hud_property, HudProperty):
+        raise TypeError("Expected HudProperty instance")
+
+    criteria, _ = ScreeningCriteria.objects.get_or_create(user=user)
+
+    price = hud_property.asking_price or hud_property.list_price
+
+    pp, created = PipelineProperty.objects.get_or_create(
+        user=user,
+        source_type=PipelineProperty.SourceType.HUD,
+        source_id=str(hud_property.hud_case_number),
+        defaults={
+            "address": hud_property.address or "",
+            "address_hash": "",
+            "stage": PipelineProperty.Stage.DISCOVERED,
+            "status": PipelineProperty.Status.ACTIVE,
+            "price": price,
+            "estimated_rent": None,
+            "beds": hud_property.bedrooms,
+            "year_built": None,
+            "discovered_at": timezone.now(),
+        },
+    )
+
+    if not created:
+        return pp, False
+
+    # Run screening immediately
+    result = screen_property(pp, criteria, source_record=hud_property)
+
+    pp.screening_passed = result.passed
+    pp.screening_at = timezone.now()
+    pp.stage = PipelineProperty.Stage.SCREENING
+    pp.save(
+        update_fields=[
+            "screening_passed",
+            "screening_at",
+            "stage",
+            "updated_at",
+        ]
+    )
+
+    return pp, True
+
+
+def create_from_usda(
+    usda_property: Any,
+    user: Any,
+) -> Tuple[Any, bool]:
+    """Create a PipelineProperty from a UsdaProperty and run screening.
+
+    Same pattern as create_from_hud. UsdaProperty has no rent data,
+    so yield/PTR criteria are skipped during screening.
+
+    Args:
+        usda_property: UsdaProperty instance.
+        user: Django User who owns this pipeline entry.
+
+    Returns:
+        Tuple of (PipelineProperty, created).
+    """
+    from core.models import PipelineProperty, ScreeningCriteria, UsdaProperty
+    from core.services.screening import screen_property
+
+    if not isinstance(usda_property, UsdaProperty):
+        raise TypeError("Expected UsdaProperty instance")
+
+    criteria, _ = ScreeningCriteria.objects.get_or_create(user=user)
+
+    pp, created = PipelineProperty.objects.get_or_create(
+        user=user,
+        source_type=PipelineProperty.SourceType.USDA,
+        source_id=str(usda_property.usda_case_number),
+        defaults={
+            "address": usda_property.address or "",
+            "address_hash": "",
+            "stage": PipelineProperty.Stage.DISCOVERED,
+            "status": PipelineProperty.Status.ACTIVE,
+            "price": usda_property.list_price,
+            "estimated_rent": None,
+            "beds": usda_property.bedrooms,
+            "year_built": None,
+            "discovered_at": timezone.now(),
+        },
+    )
+
+    if not created:
+        return pp, False
+
+    # Run screening immediately
+    result = screen_property(pp, criteria, source_record=usda_property)
+
+    pp.screening_passed = result.passed
+    pp.screening_at = timezone.now()
+    pp.stage = PipelineProperty.Stage.SCREENING
+    pp.save(
+        update_fields=[
+            "screening_passed",
+            "screening_at",
+            "stage",
+            "updated_at",
+        ]
+    )
+
+    return pp, True
+
+
 # ── Conversion to Property record ──────────────────────────────────────────────
 
 

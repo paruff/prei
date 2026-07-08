@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}HUD Property {{ hud_property.hud_case_number }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'hud_property_list' %}">HUD Properties</a></li>
+    <li class="breadcrumb-item active">{{ hud_property.hud_case_number }}</li>
+  </ol>
+</nav>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h2 class="h4 mb-0">{{ hud_property.address }}</h2>
+    <span class="badge bg-{% if hud_property.status == 'active' %}success{% elif hud_property.status == 'sold' %}secondary{% else %}info{% endif %} fs-6">{{ hud_property.get_status_display }}</span>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <table class="table table-sm">
+          <tr><th>Case Number</th><td>{{ hud_property.hud_case_number }}</td></tr>
+          <tr><th>Address</th><td>{{ hud_property.address }}</td></tr>
+          <tr><th>City</th><td>{{ hud_property.city }}</td></tr>
+          <tr><th>State</th><td>{{ hud_property.state }}</td></tr>
+          <tr><th>ZIP</th><td>{{ hud_property.zip_code }}</td></tr>
+          <tr><th>County</th><td>{{ hud_property.county|default:"-" }}</td></tr>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <table class="table table-sm">
+          <tr><th>Asking Price</th><td>{% if hud_property.asking_price %}${{ hud_property.asking_price|floatformat:2 }}{% else %}-{% endif %}</td></tr>
+          <tr><th>List Price</th><td>{% if hud_property.list_price %}${{ hud_property.list_price|floatformat:2 }}{% else %}-{% endif %}</td></tr>
+          <tr><th>Bedrooms</th><td>{{ hud_property.bedrooms|default:"-" }}</td></tr>
+          <tr><th>Bathrooms</th><td>{{ hud_property.bathrooms|default:"-" }}</td></tr>
+          <tr><th>Square Feet</th><td>{{ hud_property.square_feet|default:"-" }}</td></tr>
+          <tr><th>Property Type</th><td>{{ hud_property.property_type|default:"-" }}</td></tr>
+          <tr><th>Insured Status</th><td>{{ hud_property.get_insured_status_display|default:"-" }}</td></tr>
+        </table>
+      </div>
+    </div>
+
+    {% if hud_property.description %}
+    <div class="mt-3">
+      <h5>Description</h5>
+      <p>{{ hud_property.description }}</p>
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+      <form method="post" action="{% url 'pipeline_add_from_source' %}">
+        {% csrf_token %}
+        <input type="hidden" name="source_type" value="hud">
+        <input type="hidden" name="source_id" value="{{ hud_property.hud_case_number }}">
+        <input type="hidden" name="next" value="{% url 'hud_property_detail' hud_property.pk %}">
+        <button type="submit" class="btn btn-primary">+ Add to Pipeline</button>
+      </form>
+    </div>
+  </div>
+  <div class="card-footer text-muted">
+    Last updated: {{ hud_property.updated_at|date:"M d, Y H:i" }}
+  </div>
+</div>
+{% endblock %}

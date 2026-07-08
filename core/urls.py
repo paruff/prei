@@ -56,6 +56,22 @@ urlpatterns = [
     path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
     path("portfolio/actuals/add/", portfolio_actuals_add, name="portfolio_actuals_add"),
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
+    path("hud-properties/", views.hud_property_list, name="hud_property_list"),
+    path(
+        "hud-properties/<int:pk>/",
+        views.hud_property_detail,
+        name="hud_property_detail",
+    ),
+    path(
+        "usda-properties/",
+        views.usda_property_list,
+        name="usda_property_list",
+    ),
+    path(
+        "usda-properties/<int:pk>/",
+        views.usda_property_detail,
+        name="usda_property_detail",
+    ),
     path("growth-explorer/", views.growth_explorer, name="growth_explorer"),
     path("discovery/", views.property_discovery, name="property_discovery"),
     path("pipeline/", views.pipeline_dashboard, name="pipeline_dashboard"),
