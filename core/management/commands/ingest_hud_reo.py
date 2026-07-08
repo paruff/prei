@@ -1,9 +1,35 @@
-"""Management command to ingest HUD REO properties from data.gov feed."""
+"""Management command to ingest HUD REO properties from ArcGIS GeoJSON feed.
+
+Confirmed endpoint (DISC-HG-1, 2026-07-08)
+--------------------------------------------
+The authoritative HUD REO data source is an ArcGIS Hub Feature Service
+published by HUD's eGIS team:
+
+  https://hudgis-hud.opendata.arcgis.com/datasets/a54aff75cc0a42de8456cc36a7335663_3
+
+The data is available as GeoJSON at:
+  https://opendata.arcgis.com/api/v3/datasets/a54aff75cc0a42de8456cc36a7335663_3/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1
+
+Fields available in the source:
+  CASE_NUM       — FHA case number (→ hud_case_number)
+  ADDRESS        — full street address (→ address)
+  CITY           — city (→ city)
+  STATE_CODE     — 2-letter state code (→ state)
+  DISPLAY_ZIP_CODE — ZIP code (→ zip_code)
+  DATE_ACQUIRED  — date HUD acquired the property
+  DATE_CLOSED    — date property was sold (null = still available)
+  MAP_LATITUDE   — latitude (stored in raw_data)
+  MAP_LONGITUDE  — longitude (stored in raw_data)
+
+⚠️  The ArcGIS data does NOT include: asking_price, bedrooms, bathrooms,
+square_feet, property_type, insured_status, listing_url, or image_url.
+These HudProperty fields are left as defaults when not available.
+"""
 
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -14,97 +40,154 @@ from core.models import HudProperty
 
 logger = logging.getLogger("prei.ingestion.hud")
 
-# Human gate DISC-HG-1: confirm this URL before production use.
-# The data.gov HUD REO JSON endpoint may change; verify before deploying.
-DEFAULT_ENDPOINT = "https://hudhomestore.data.gov/api/reo-properties"
+# ═══════════════════════════════════════════════════════════════════════
+# Confirmed endpoint (DISC-HG-1, 2026-07-08)
+# ═══════════════════════════════════════════════════════════════════════
 
-HUD_FIXTURE_DATA: dict[str, list[dict[str, Any]]] = {
-    "results": [
+DEFAULT_ENDPOINT = (
+    "https://opendata.arcgis.com/api/v3/datasets/"
+    "a54aff75cc0a42de8456cc36a7335663_3/downloads/data"
+    "?format=geojson&spatialRefId=4326&where=1%3D1"
+)
+
+# ── Fixture data for --dry-run mode ──────────────────────────────────
+# Mirrors the ArcGIS GeoJSON FeatureCollection schema.
+
+HUD_FIXTURE_DATA: dict[str, Any] = {
+    "type": "FeatureCollection",
+    "name": "FHA_Single_Family_REO_Properties_For_Sale",
+    "features": [
         {
-            "case_number": "HUD-2026-001",
-            "asking_price": 150000.00,
-            "street_address": "123 Main St",
-            "city": "Austin",
-            "state": "TX",
-            "zip": "78701",
-            "county": "Travis",
-            "bedrooms": 3,
-            "bathrooms": 2.0,
-            "square_feet": 1500,
-            "property_type": "Single Family",
-            "status": "Active",
-            "insured_status": "FHA Insured",
-            "listing_url": "https://hudhomestore.gov/property/HUD-2026-001",
-            "image_url": "https://hudhomestore.gov/images/HUD-2026-001.jpg",
-            "description": "Well-maintained 3BR home in Austin.",
+            "type": "Feature",
+            "properties": {
+                "OBJECTID": 1,
+                "CASE_NUM": "011-625906",
+                "CASE_STEP_NUMBER": 6,
+                "STREET_NUM": "12712 ",
+                "DIRECTION_PREFIX": None,
+                "STREET_NAME": "PLANT RD                      ",
+                "CITY": "ALPINE",
+                "STATE_CODE": "AL",
+                "DISPLAY_ZIP_CODE": 35014,
+                "MAP_LATITUDE": 33.370882,
+                "MAP_LONGITUDE": -86.323935,
+                "DATE_ACQUIRED": "2022-07-29T00:00:00Z",
+                "DATE_CLOSED": None,
+                "ADDRESS": "12712 PLANT RD                      ",
+                "REVITE_NAME": None,
+                "REVITE_HOC": None,
+            },
+            "geometry": {"type": "Point", "coordinates": [-86.323935, 33.370882]},
         },
         {
-            "case_number": "HUD-2026-002",
-            "asking_price": 200000.00,
-            "street_address": "456 Oak Ave",
-            "city": "Dallas",
-            "state": "TX",
-            "zip": "75201",
-            "county": "Dallas",
-            "bedrooms": 4,
-            "bathrooms": 3.0,
-            "square_feet": 2200,
-            "property_type": "Single Family",
-            "status": "Sold",
-            "insured_status": "Conventional",
-            "listing_url": "https://hudhomestore.gov/property/HUD-2026-002",
-            "image_url": "",
-            "description": "Recently sold 4BR home in Dallas.",
+            "type": "Feature",
+            "properties": {
+                "OBJECTID": 2,
+                "CASE_NUM": "011-640353",
+                "CASE_STEP_NUMBER": 6,
+                "STREET_NUM": "205 ",
+                "DIRECTION_PREFIX": None,
+                "STREET_NAME": "W CORNELIA ST                 ",
+                "CITY": "MARION",
+                "STATE_CODE": "AL",
+                "DISPLAY_ZIP_CODE": 36756,
+                "MAP_LATITUDE": 32.64209,
+                "MAP_LONGITUDE": -87.325266,
+                "DATE_ACQUIRED": "2022-11-01T00:00:00Z",
+                "DATE_CLOSED": None,
+                "ADDRESS": "205 W CORNELIA ST                 ",
+                "REVITE_NAME": None,
+                "REVITE_HOC": None,
+            },
+            "geometry": {"type": "Point", "coordinates": [-87.325266, 32.64209]},
         },
         {
-            "case_number": "HUD-2026-003",
-            "asking_price": 125000.00,
-            "street_address": "789 Pine St",
-            "city": "Houston",
-            "state": "TX",
-            "zip": "77001",
-            "county": "Harris",
-            "bedrooms": 2,
-            "bathrooms": 1.0,
-            "square_feet": 950,
-            "property_type": "Condo",
-            "status": "Active",
-            "insured_status": "Uninsured",
-            "listing_url": "https://hudhomestore.gov/property/HUD-2026-003",
-            "image_url": "",
-            "description": "Cozy 2BR condo in Houston.",
+            "type": "Feature",
+            "properties": {
+                "OBJECTID": 3,
+                "CASE_NUM": "011-662347",
+                "CASE_STEP_NUMBER": 6,
+                "STREET_NUM": "2220 ",
+                "DIRECTION_PREFIX": None,
+                "STREET_NAME": "E TUSCALOOSA A                ",
+                "CITY": "GADSDEN",
+                "STATE_CODE": "AL",
+                "DISPLAY_ZIP_CODE": 35904,
+                "MAP_LATITUDE": 34.028436,
+                "MAP_LONGITUDE": -86.03811,
+                "DATE_ACQUIRED": "2024-04-16T00:00:00Z",
+                "DATE_CLOSED": "2024-10-15T00:00:00Z",
+                "ADDRESS": "2220 E TUSCALOOSA A                ",
+                "REVITE_NAME": None,
+                "REVITE_HOC": None,
+            },
+            "geometry": {"type": "Point", "coordinates": [-86.03811, 34.028436]},
         },
-    ]
+    ],
 }
 
 
-def _map_status(raw_status: str) -> str:
-    """Map data.gov status string to HudProperty.Status value."""
-    mapping: dict[str, str] = {
-        "active": "active",
-        "pending": "pending",
-        "sold": "sold",
-        "contingent": "contingent",
-    }
-    return mapping.get(raw_status.lower(), "active")
+def _infer_status(properties: dict[str, Any]) -> str:
+    """Infer HudProperty.Status from ArcGIS property data.
+
+    - DATE_CLOSED set → property has been sold → SOLD
+    - Otherwise → ACTIVE
+    """
+    date_closed = properties.get("DATE_CLOSED")
+    if date_closed is not None:
+        return HudProperty.Status.SOLD
+    return HudProperty.Status.ACTIVE
 
 
-def _map_insured_status(raw: str) -> str:
-    """Map data.gov insured_status string to HudProperty.InsuredStatus value."""
-    mapping: dict[str, str] = {
-        "fha insured": "fha_insured",
-        "conventional": "conventional",
-        "uninsured": "uninsured",
-        "va": "va",
+def _feature_to_hud_property(
+    feature: dict[str, Any],
+    scraped_at: datetime,
+) -> dict[str, Any]:
+    """Convert one GeoJSON feature to HudProperty field defaults dict.
+
+    Maps only fields that exist in the ArcGIS source.  Fields without
+    a source counterpart (asking_price, bedrooms, etc.) are left at
+    their model defaults (None or "").
+    """
+    props = feature.get("properties", {})
+
+    # --- Identity ---
+    case_number = str(props.get("CASE_NUM", "")).strip()
+    address = str(props.get("ADDRESS", "")).strip()
+    city = str(props.get("CITY", "")).strip()
+
+    # --- Location ---
+    state = str(props.get("STATE_CODE", "")).strip()
+    raw_zip = props.get("DISPLAY_ZIP_CODE")
+    zip_code = str(raw_zip).strip() if raw_zip is not None else ""
+
+    return {
+        "hud_case_number": case_number,
+        "address": address,
+        "city": city,
+        "state": state,
+        "zip_code": zip_code,
+        "asking_price": None,
+        "list_price": None,
+        "bedrooms": None,
+        "bathrooms": None,
+        "square_feet": None,
+        "property_type": "",
+        "status": _infer_status(props),
+        "insured_status": "",
+        "listing_url": "",
+        "image_url": "",
+        "description": "",
+        "scraped_at": scraped_at,
+        "last_seen_at": scraped_at,
     }
-    return mapping.get(raw.lower(), "")
 
 
 class Command(BaseCommand):
-    """Fetch HUD REO properties from data.gov feed and upsert into HudProperty."""
+    """Fetch HUD REO properties from ArcGIS GeoJSON feed."""
 
     help = (
-        "Fetch HUD REO properties from data.gov feed, "
+        "Fetch HUD REO properties from ArcGIS Hub GeoJSON feed, "
         "upsert into HudProperty, and mark stale records as removed"
     )
 
@@ -119,10 +202,14 @@ class Command(BaseCommand):
             "--endpoint",
             type=str,
             default=None,
-            help="Override the data.gov HUD REO JSON endpoint URL",
+            help="Override the ArcGIS GeoJSON endpoint URL",
         )
 
-    def handle(self, *args: Any, **options: Any) -> None:  # noqa: C901
+    def handle(  # noqa: C901
+        self,
+        *args: Any,
+        **options: Any,
+    ) -> None:
         dry_run = options["dry_run"]
         endpoint = options.get("endpoint") or DEFAULT_ENDPOINT
 
@@ -135,16 +222,16 @@ class Command(BaseCommand):
         else:
             self.stdout.write(f"Fetching HUD REO data from {endpoint} ...")
             try:
-                response = requests.get(endpoint, timeout=30)
+                response = requests.get(endpoint, timeout=60)
                 response.raise_for_status()
                 raw_data = response.json()
             except requests.RequestException as exc:
                 self.stderr.write(self.style.ERROR(f"HTTP request failed: {exc}"))
                 raise
 
-        results = raw_data.get("results", [])
-        if not results:
-            self.stdout.write(self.style.WARNING("No results found in feed."))
+        features = raw_data.get("features", []) if isinstance(raw_data, dict) else []
+        if not features:
+            self.stdout.write(self.style.WARNING("No features found in GeoJSON feed."))
             return
 
         seen_case_numbers: set[str] = set()
@@ -152,44 +239,18 @@ class Command(BaseCommand):
         updated = 0
         now = timezone.now()
 
-        # ---- 2. Upsert each record ----
-        for item in results:
-            case_number = item.get("case_number", "")
+        # ---- 2. Upsert each feature ----
+        for feature in features:
+            props = feature.get("properties", {})
+            case_number = str(props.get("CASE_NUM", "")).strip()
             if not case_number:
                 continue
 
             seen_case_numbers.add(case_number)
 
-            raw_asking = item.get("asking_price")
-            asking_price: Decimal | None = (
-                Decimal(str(raw_asking)) if raw_asking is not None else None
-            )
-            raw_baths = item.get("bathrooms")
-            bathrooms: Decimal | None = (
-                Decimal(str(raw_baths)) if raw_baths is not None else None
-            )
+            defaults = _feature_to_hud_property(feature, now)
 
-            defaults: dict[str, Any] = {
-                "address": item.get("street_address", ""),
-                "city": item.get("city", ""),
-                "state": item.get("state", ""),
-                "zip_code": item.get("zip", ""),
-                "county": item.get("county", ""),
-                "asking_price": asking_price,
-                "bedrooms": item.get("bedrooms"),
-                "bathrooms": bathrooms,
-                "square_feet": item.get("square_feet"),
-                "property_type": item.get("property_type", ""),
-                "status": _map_status(item.get("status", "Active")),
-                "insured_status": _map_insured_status(item.get("insured_status", "")),
-                "listing_url": item.get("listing_url", ""),
-                "image_url": item.get("image_url", ""),
-                "description": item.get("description", ""),
-                "scraped_at": now,
-                "last_seen_at": now,
-            }
-
-            obj, created = HudProperty.objects.update_or_create(
+            _obj, created = HudProperty.objects.update_or_create(
                 hud_case_number=case_number,
                 defaults=defaults,
             )
