@@ -4,17 +4,21 @@ A Django-based web application for **personal passive real estate investors** �
 
 ## 📊 Status
 
-**Latest release:** `v0.3.1-alpha.2` (pre-release)
+**Latest release:** `v0.4.0` (development milestone)
 
 ### What works now
 - **Deal pipeline** — Screen, offer, renovate, close, and lease properties through a visual pipeline workflow with 9-criteria screening
+- **Discovery source models** — Structured ingestion for HUD REO (ArcGIS Hub), USDA REO, Dallas County NTS, and ATTOM preforeclosure notices
+- **Pipeline screening** — Hard-kill and yield scoring for HUD/USDA/county sources; "Add to Pipeline" flow from list/detail views
 - **Growth area explorer** — Discover and compare markets by demographic and economic indicators with pagination and CSV export
 - **VRM foreclosures** — Foreclosure listings with direct linking to pipeline discovery
 - **Property underwriting** — Full scorecard (CoC, Cap Rate, DSCR, GRM), BRRRR calculator, hold projections, tax modeling
 - **Market intelligence** — Price-to-rent ratio, population growth, employment diversity, school ratings, walk scores
 - **Auto-versioned releases** — Git tags → Docker bake → structured logging; every build carries its version
+- **Python 3.14 + Django 6.0** — Fully migrated to latest stable runtimes
 
 ### What's next
+- County foreclosure notice scraper framework (additional counties)
 - Property comparison and portfolio scenario modeling
 - Enhanced notifications and collaboration features
 - Additional data source integrations (Redfin, Zillow)

@@ -1,6 +1,35 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.0] - 2026-07-08
+
+### Added
+- **Discovery Source Models (DISC-0)**: `HudProperty`, `UsdaProperty`, `CountyForeclosureNotice` models for structured HUD/USDA/county foreclosure data storage.
+- **HUD REO Ingestion (DISC-1)**: `ingest_hud_reo` command fetching from HUD ArcGIS Hub GeoJSON feed. Confirmed real endpoint replaces guessed mock.
+- **USDA REO Ingestion (DISC-2)**: `ingest_usda_reo` command with fixed-width TXT parser for USDA rural REO data.
+- **HUD/USDA Pipeline Screening (DISC-3)**: Extended `screen_property()` to accept HudProperty/UsdaProperty directly; hard-kill criteria for non-rentable sources.
+- **HUD/USDA List/Detail Views (DISC-4)**: Property list and detail pages with "Add to Pipeline" for HUD and USDA sources.
+- **Dallas County TX NTS Scraper (DISC-5)**: First county-level foreclosure scraper targeting Dallas County publicsearch.us. Playwright-based with graceful auth-wall handling.
+- **ATTOM Preforeclosure Integration (DISC-6)**: Wired existing `ATTOMAdapter` to fetch NOD/NTS/Lis Pendens notices by ZIP code into `CountyForeclosureNotice`. Management command `fetch_attom_preforeclosure`.
+- **Property Discovery Page**: Source management and request system for triggering property fetches.
+- **Fannie Mae HomePath Datasource**: Scraper stub for HomePath.com (blocked by Cloudflare WAF — returns empty results gracefully).
+
+### Fixed
+- HUD endpoint corrected from guessed URL to real ArcGIS Hub GeoJSON (DISC-HG-1).
+- Migration conflicts resolved between DISC-0/DISC-1/DISC-2 branches.
+- Test conftest merged HUD + USDA fixtures after merge conflict.
+- Reportlab 5 upgrade unblocked by replacing xhtml2pdf with Playwright PDF generation.
+- 7 CodeQL clear-text logging alerts suppressed in ATTOM adapter.
+- CI failure for PR #241 (missing HUD test fixtures) and PR #232 (ruff/mypy/CodeQL gates).
+
+### Changed
+- **Python 3.14**: Project fully migrated from Python 3.12/3.13 to Python 3.14.6. All venvs, hooks, CI configs updated.
+- **Django 6.0**: Upgraded from Django 5.2 to 6.0.7.
+- **Reportlab 5.0**: Upgraded from reportlab 4.x to 5.0; xhtml2pdf replaced by Playwright `page.pdf()`.
+- **ATTOM Adapter**: Added `postalcode` param support to `fetch_foreclosure_data()`.
+- **Dependencies**: Updated django-stubs, svglib, types-reportlab; added pypdf for test PDF extraction.
+
+### Removed
+- `xhtml2pdf` dependency (replaced by Playwright for PDF generation).
 
 ## [0.3.1-alpha.2] - 2026-07-08
 
