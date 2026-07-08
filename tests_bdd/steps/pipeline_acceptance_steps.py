@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
 from pytest_bdd import given, parsers, then, when
 from django.contrib.auth import get_user_model
 from django.test import Client
@@ -62,16 +61,6 @@ def _build_vrm_property(user, **overrides):
     )
     defaults.update(overrides)
     return VP.objects.create(**defaults)
-
-
-@pytest.fixture(autouse=True)
-def _reset_ctx(request):
-    """Reset shared state before each scenario."""
-    from core.models import LeasingPipelineProperty
-
-    # Clean up leasing entries before next test to avoid FK constraint issues
-    LeasingPipelineProperty.objects.all().delete()
-    _ctx.__init__()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
