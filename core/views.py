@@ -1085,6 +1085,128 @@ def pipeline_dashboard(request: HttpRequest) -> HttpResponse:
     )
 
 
+def pipeline_list(request: HttpRequest) -> HttpResponse:
+    """Pipeline property list with stage funnel and filtering.
+
+    GET params:
+      status: filter by status (ACTIVE, KILLED, ON_HOLD) — default ACTIVE
+      stage:  filter by stage (SCREENING, UNDERWRITING, etc) — optional
+    """
+    from core.models import PipelineProperty
+
+    status_filter = request.GET.get("status", "ACTIVE")
+    stage_filter = request.GET.get("stage", "")
+
+    qs = (
+        PipelineProperty.objects.filter(user=request.user)
+        .select_related("investment_analysis", "property_record")
+        .order_by("-updated_at")
+    )
+
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if stage_filter:
+        qs = qs.filter(stage=stage_filter)
+
+    # Stage counts for funnel header
+    all_user_props = PipelineProperty.objects.filter(user=request.user)
+    stage_counts: dict[str, int] = {}
+    for pp in all_user_props:
+        stage_counts[pp.stage] = stage_counts.get(pp.stage, 0) + 1
+
+    # Build ordered list of (stage_label, count) for template display
+    stage_order = [
+        "DISCOVERED",
+        "SCREENING",
+        "UNDERWRITING",
+        "OFFER",
+        "DUE_DILIGENCE",
+        "CLOSING",
+        "ACQUIRED",
+        "RENOVATION",
+        "STABILIZED",
+    ]
+    stage_items = [(s, stage_counts.get(s, 0)) for s in stage_order]
+
+    return render(
+        request,
+        "pipeline/pipeline_list.html",
+        {
+            "properties": qs,
+            "stage_items": stage_items,
+            "current_status": status_filter,
+            "current_stage": stage_filter,
+            "status_choices": [
+                ("ACTIVE", "Active"),
+                ("KILLED", "Killed"),
+                ("ON_HOLD", "On Hold"),
+            ],
+        },
+    )
+
+
+def pipeline_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    """Pipeline property detail view.
+
+    Shows all pipeline fields, source record data, stage history,
+    and action buttons. 404 if not the user's property.
+    """
+    from core.models import PipelineProperty
+    from core.services.pipeline import get_source_record
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    source_record = get_source_record(prop)
+
+    # Stage history: build list of (stage_name, timestamp) skipping None
+    stage_fields = [
+        ("DISCOVERED", prop.discovered_at),
+        ("SCREENING", prop.screening_at),
+        ("UNDERWRITING", prop.underwriting_at),
+        ("OFFER", prop.offer_at),
+        ("DUE_DILIGENCE", prop.due_diligence_at),
+        ("CLOSING", prop.closing_at),
+        ("ACQUIRED", prop.acquired_at),
+        ("RENOVATION", prop.renovation_at),
+        ("STABILIZED", prop.stabilized_at),
+    ]
+    stage_history = [(s, t) for s, t in stage_fields if t is not None]
+
+    # Days in pipeline
+    if prop.discovered_at:
+        days_in_pipeline = (timezone.now() - prop.discovered_at).days
+    else:
+        days_in_pipeline = 0
+
+    # Kill reason suggestions (shared with template)
+    kill_reasons = [
+        "Price too high",
+        "Low yield",
+        "Poor condition",
+        "Bad market",
+        "Financing fell through",
+        "Lost to other buyer",
+        "Failed inspection",
+        "Title issues",
+        "Other",
+    ]
+
+    return render(
+        request,
+        "pipeline/pipeline_detail.html",
+        {
+            "prop": prop,
+            "source_record": source_record,
+            "stage_history": stage_history,
+            "days_in_pipeline": days_in_pipeline,
+            "kill_reasons": kill_reasons,
+        },
+    )
+
+
 def search_listings(request):
     # Optionally load a saved search to prefill filters
     saved_id = request.GET.get("saved_id")

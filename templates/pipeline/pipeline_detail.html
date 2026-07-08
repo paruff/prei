@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Pipeline #{{ prop.pk }} — prei{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pipeline.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  {# Header #}
+  <div class="pipeline-detail-header">
+    <div>
+      <a href="{% url 'pipeline_list' %}" class="back-link">&larr; Back to Pipeline</a>
+      <h1>{{ prop.address|truncatechars:60 }}</h1>
+    </div>
+    <div class="pipeline-card-badges">
+      <span class="pipeline-badge badge-source">{{ prop.source_type }}</span>
+      <span class="pipeline-badge badge-stage">{{ prop.stage|title }}</span>
+      <span class="pipeline-badge badge-status-{{ prop.status|lower }}">{{ prop.status|title }}</span>
+    </div>
+  </div>
+
+  {# Main content grid #}
+  <div class="pipeline-detail-body">
+
+    {# Left: property details #}
+    <div class="pipeline-detail-section">
+      <h2>Property Details</h2>
+      <table class="pipeline-detail-table">
+        <tr><td>Address</td><td>{{ prop.address }}</td></tr>
+        {% if source_record.city %}<tr><td>City</td><td>{{ source_record.city }}</td></tr>{% endif %}
+        {% if source_record.state %}<tr><td>State</td><td>{{ source_record.state }}</td></tr>{% endif %}
+        {% if prop.price %}<tr><td>Price</td><td>${{ prop.price|floatformat:2|intcomma }}</td></tr>{% endif %}
+        {% if prop.estimated_rent %}<tr><td>Est. Monthly Rent</td><td>${{ prop.estimated_rent|floatformat:2|intcomma }}</td></tr>{% endif %}
+        {% if prop.beds %}<tr><td>Beds</td><td>{{ prop.beds }}</td></tr>{% endif %}
+        {% if prop.baths %}<tr><td>Baths</td><td>{{ prop.baths }}</td></tr>{% endif %}
+        {% if prop.sqft %}<tr><td>Sq Ft</td><td>{{ prop.sqft|floatformat:0 }}</td></tr>{% endif %}
+        {% if prop.year_built %}<tr><td>Year Built</td><td>{{ prop.year_built }}</td></tr>{% endif %}
+      </table>
+    </div>
+
+    {# Right: pipeline info #}
+    <div class="pipeline-detail-section">
+      <h2>Pipeline Info</h2>
+      <table class="pipeline-detail-table">
+        <tr><td>Source</td><td>{{ prop.source_type|title }} #{{ prop.source_id }}</td></tr>
+        <tr><td>Stage</td><td>{{ prop.stage|title }}</td></tr>
+        <tr><td>Status</td><td>{{ prop.status|title }}</td></tr>
+        {% if prop.screening_passed is not None %}
+        <tr><td>Screening</td><td>{% if prop.screening_passed %}<span class="verdict-pass">PASSED</span>{% else %}<span class="verdict-fail">FAILED</span>{% endif %}</td></tr>
+        {% endif %}
+        <tr><td>Days in Pipeline</td><td>{{ days_in_pipeline }} days</td></tr>
+        {% if prop.investment_analysis %}<tr><td>Analysis</td><td>#{{ prop.investment_analysis.pk }}</td></tr>{% endif %}
+        {% if prop.mao %}<tr><td>MAO</td><td>${{ prop.mao|floatformat:2|intcomma }}</td></tr>{% endif %}
+        {% if prop.property_record %}<tr><td>Property Record</td><td>#{{ prop.property_record.pk }}</td></tr>{% endif %}
+        {% if prop.kill_reason %}<tr><td class="text-danger">Kill Reason</td><td>{{ prop.kill_reason }}</td></tr>{% endif %}
+      </table>
+    </div>
+
+    {# Stage history (full width) #}
+    <div class="pipeline-detail-section full-width">
+      <h2>Stage History</h2>
+      {% if stage_history %}
+        <div class="stage-history">
+        {% for stage_name, ts in stage_history %}
+          <div class="stage-history-item">
+            <span class="stage-history-name">{{ stage_name|title }}</span>
+            <span class="stage-history-time">{{ ts|date:"M j, Y g:i A" }}</span>
+            {% if stage_name == prop.stage %}
+              <span class="stage-history-current">Current</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-muted">No stage history recorded yet.</div>
+      {% endif %}
+    </div>
+
+    {# Source record data (full width) #}
+    {% if source_record %}
+    <div class="pipeline-detail-section full-width">
+      <h2>Source Record</h2>
+      <table class="pipeline-detail-table">
+        {% if source_record.vrm_property_id %}
+        <tr><td>VRM ID</td><td>{{ source_record.vrm_property_id }}</td></tr>
+        {% endif %}
+        {% if source_record.property_id %}
+        <tr><td>Property ID</td><td>{{ source_record.property_id }}</td></tr>
+        {% endif %}
+        {% if source_record.list_price %}
+        <tr><td>List Price</td><td>${{ source_record.list_price|floatformat:2|intcomma }}</td></tr>
+        {% endif %}
+        {% if source_record.opening_bid %}
+        <tr><td>Opening Bid</td><td>${{ source_record.opening_bid|floatformat:2|intcomma }}</td></tr>
+        {% endif %}
+        {% if source_record.foreclosure_status %}
+        <tr><td>Foreclosure Status</td><td>{{ source_record.foreclosure_status|title }}</td></tr>
+        {% endif %}
+        {% if source_record.property_type %}
+        <tr><td>Property Type</td><td>{{ source_record.property_type|title }}</td></tr>
+        {% endif %}
+        {% if source_record.status %}
+        <tr><td>Status</td><td>{{ source_record.status }}</td></tr>
+        {% endif %}
+      </table>
+    </div>
+    {% endif %}
+
+    {# Action buttons #}
+    <div class="pipeline-action-bar">
+      {% if prop.status == 'ACTIVE' and prop.stage != 'STABILIZED' %}
+        <span class="btn btn-primary btn-placeholder">Advance Stage</span>
+      {% endif %}
+      {% if prop.status == 'ACTIVE' %}
+      <span class="btn btn-danger" onclick="document.getElementById('kill-modal').style.display='block'">Kill</span>
+      <span class="btn btn-outline btn-placeholder">Hold</span>
+      {% endif %}
+      {% if prop.status == 'KILLED' or prop.status == 'ON_HOLD' %}
+      <span class="btn btn-warning btn-placeholder">Reactivate</span>
+      {% endif %}
+    </div>
+
+  </div>{# end grid #}
+
+</div>{# end container #}
+
+{# Kill reason modal (UI only) #}
+<div id="kill-modal" class="pipeline-modal">
+  <div class="pipeline-modal-content">
+    <h3>Kill Property</h3>
+    <form>
+      <label for="kill-reason-input">Reason</label>
+      <input id="kill-reason-input" list="kill-reasons" name="reason" required>
+      <datalist id="kill-reasons">
+        {% for reason in kill_reasons %}
+          <option value="{{ reason }}"></option>
+        {% endfor %}
+      </datalist>
+      <div class="pipeline-modal-actions">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('kill-modal').style.display='none'">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="document.getElementById('kill-modal').style.display='none'">Kill (not wired)</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
