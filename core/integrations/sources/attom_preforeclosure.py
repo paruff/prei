@@ -60,9 +60,7 @@ def fetch_attom_preforeclosure(
     Returns:
         List of CountyForeclosureNotice-ready dicts.
     """
-    logger.info(
-        "ATTOM preforeclosure: fetching for ZIP=%s (radius=%d)", zip_code, radius
-    )
+    logger.info("ATTOM preforeclosure: fetching notices (radius=%d)", radius)
 
     adapter = ATTOMAdapter()
 
@@ -72,16 +70,16 @@ def fetch_attom_preforeclosure(
         logger.warning("ATTOM: API key missing or invalid")
         return []
     except ATTOMRateLimitError:
-        logger.warning("ATTOM: rate limit exceeded for ZIP=%s", zip_code)
+        logger.warning("ATTOM: rate limit exceeded")
         return []
     except ATTOMAPIError as exc:
-        logger.warning("ATTOM: API error for ZIP=%s: %s", zip_code, exc)
+        logger.warning("ATTOM: API error: %s", exc)
         return []
 
     # Normalize each property in the response
     properties = _extract_properties(raw)
     if not properties:
-        logger.info("ATTOM preforeclosure: no properties found for ZIP=%s", zip_code)
+        logger.info("ATTOM preforeclosure: no properties found")
         return []
 
     notices: list[dict[str, Any]] = []
@@ -100,11 +98,7 @@ def fetch_attom_preforeclosure(
     if errors:
         logger.warning("ATTOM: %d property/ies failed to normalize", errors)
 
-    logger.info(
-        "ATTOM preforeclosure: %d notice(s) for ZIP=%s",
-        len(notices),
-        zip_code,
-    )
+    logger.info("ATTOM preforeclosure: %d notice(s) returned", len(notices))
     return notices
 
 

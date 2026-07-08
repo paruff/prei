@@ -228,19 +228,16 @@ class ATTOMAdapter:
 
             if response.status_code == 429:
                 logger.warning("ATTOM API rate limit exceeded")
-                rate_limit_reset = response.headers.get("X-RateLimit-Reset")
-                raise ATTOMRateLimitError(
-                    f"Rate limit exceeded. Resets at: {rate_limit_reset}"
-                )
+                raise ATTOMRateLimitError("Rate limit exceeded")
 
             # "SuccessWithoutResult" (400) means valid request but no data found
             if response.status_code == 400 and "SuccessWithoutResult" in response.text:
-                logger.info("ATTOM API returned empty result: %s", log_context)
+                logger.info("ATTOM API returned empty result (SuccessWithoutResult)")
                 return {"status": "empty", "message": "SuccessWithoutResult"}
 
             # "No rule matched" (404) means endpoint not available for this key
             if response.status_code == 404 and "No rule matched" in response.text:
-                logger.info("ATTOM API endpoint not available: %s", log_context)
+                logger.info("ATTOM API endpoint not available")
                 return {"status": "empty", "message": "No rule matched"}
 
             if response.status_code != 200:
