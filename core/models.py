@@ -1082,6 +1082,13 @@ class HudProperty(models.Model):
         PENDING = "pending", "Pending"
         SOLD = "sold", "Sold"
         CONTINGENT = "contingent", "Contingent"
+        REMOVED = "removed", "Removed"
+
+    class InsuredStatus(models.TextChoices):
+        FHA_INSURED = "fha_insured", "FHA Insured"
+        CONVENTIONAL = "conventional", "Conventional"
+        UNINSURED = "uninsured", "Uninsured"
+        VA = "va", "VA"
 
     hud_case_number = models.CharField(max_length=64, unique=True, db_index=True)
     address = models.CharField(max_length=255)
@@ -1089,6 +1096,13 @@ class HudProperty(models.Model):
     state = models.CharField(max_length=2, db_index=True)
     zip_code = models.CharField(max_length=16)
     county = models.CharField(max_length=128, blank=True, default="")
+    asking_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
     list_price = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -1111,6 +1125,12 @@ class HudProperty(models.Model):
     )
     property_type = models.CharField(max_length=64, blank=True, default="")
     status = models.CharField(max_length=32, choices=Status.choices)
+    insured_status = models.CharField(
+        max_length=32,
+        choices=InsuredStatus.choices,
+        blank=True,
+        default="",
+    )
     listing_url = models.URLField(blank=True, default="")
     image_url = models.URLField(blank=True, default="")
     description = models.TextField(blank=True, default="")
