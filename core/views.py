@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from django.conf import settings
 from django.contrib import messages
@@ -39,6 +39,8 @@ from core.integrations.market.census import (
 from core.integrations.sources.fred_adapter import FREDAdapter
 
 from .models import (
+    HudProperty,
+    UsdaProperty,
     VrmProperty,
     UserInvestmentTargets,
     GrowthArea,
@@ -1252,6 +1254,50 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
 
         return redirect("pipeline_detail", pk=pp.pk)
 
+    if source_type == "hud":
+        from core.services.pipeline import create_from_hud
+
+        try:
+            hud = HudProperty.objects.get(hud_case_number=source_id)
+        except HudProperty.DoesNotExist:
+            messages.error(request, "HUD property not found")
+            return redirect(next_url)
+
+        pp, created = create_from_hud(hud, request.user)
+
+        if created:
+            verdict = "passed" if pp.screening_passed else "failed"
+            messages.success(
+                request,
+                f"HUD property added to pipeline. Screening {verdict}.",
+            )
+        else:
+            messages.info(request, "Already in your pipeline")
+
+        return redirect("pipeline_detail", pk=pp.pk)
+
+    if source_type == "usda":
+        from core.services.pipeline import create_from_usda
+
+        try:
+            usda = UsdaProperty.objects.get(usda_case_number=source_id)
+        except UsdaProperty.DoesNotExist:
+            messages.error(request, "USDA property not found")
+            return redirect(next_url)
+
+        pp, created = create_from_usda(usda, request.user)
+
+        if created:
+            verdict = "passed" if pp.screening_passed else "failed"
+            messages.success(
+                request,
+                f"USDA property added to pipeline. Screening {verdict}.",
+            )
+        else:
+            messages.info(request, "Already in your pipeline")
+
+        return redirect("pipeline_detail", pk=pp.pk)
+
     messages.error(request, f"Unknown source type: {source_type}")
     return redirect(next_url)
 
@@ -2421,3 +2467,73 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
             "user_requests": user_requests,
         },
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HUD Property Views
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def hud_property_list(request: HttpRequest) -> HttpResponse:
+    """List HUD properties with optional state filter."""
+    state = request.GET.get("state", "").strip().upper()
+
+    queryset = HudProperty.objects.all().order_by("-created_at")
+    if state:
+        queryset = queryset.filter(state=state)
+
+    context: dict[str, Any] = {
+        "hud_properties": queryset,
+        "selected_state": state,
+        "total_count": HudProperty.objects.count(),
+        "filtered_count": queryset.count(),
+    }
+    return render(request, "hud_properties/list.html", context)
+
+
+def hud_property_detail(
+    request: HttpRequest,
+    pk: int,
+) -> HttpResponse:
+    """Detail view for a single HUD property with Add to Pipeline button."""
+    hud_property = get_object_or_404(HudProperty, pk=pk)
+
+    context: dict[str, Any] = {
+        "hud_property": hud_property,
+    }
+    return render(request, "hud_properties/detail.html", context)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# USDA Property Views
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def usda_property_list(request: HttpRequest) -> HttpResponse:
+    """List USDA properties with optional state filter."""
+    state = request.GET.get("state", "").strip().upper()
+
+    queryset = UsdaProperty.objects.all().order_by("-created_at")
+    if state:
+        queryset = queryset.filter(state=state)
+
+    context: dict[str, Any] = {
+        "usda_properties": queryset,
+        "selected_state": state,
+        "total_count": UsdaProperty.objects.count(),
+        "filtered_count": queryset.count(),
+    }
+    return render(request, "usda_properties/list.html", context)
+
+
+def usda_property_detail(
+    request: HttpRequest,
+    pk: int,
+) -> HttpResponse:
+    """Detail view for a single USDA property with Add to Pipeline button."""
+    usda_property = get_object_or_404(UsdaProperty, pk=pk)
+
+    context: dict[str, Any] = {
+        "usda_property": usda_property,
+    }
+    return render(request, "usda_properties/detail.html", context)
