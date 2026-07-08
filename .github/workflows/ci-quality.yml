@@ -37,9 +37,9 @@ jobs:
 
             const types = ['feat', 'fix', 'docs', 'style', 'refactor', 'perf', 'test', 'build', 'ci', 'chore', 'revert'];
             // Conventional Commits: type(optional-scope)!: subject
-            // subject: start with lowercase letter, then lowercase letters/digits/-/./_/
+            // subject: start with lowercase letter, then lowercase letters/digits/-/./_/space
             const pattern = new RegExp(
-              `^(${types.join('|')})(\\([a-z0-9/._-]+\\))?!?:\\s[a-z][a-z0-9/._-]*`
+              `^(${types.join('|')})(\\([a-z0-9/._-]+\\))?!?:\\s[a-z][a-z0-9/._\\-\\s]*$`
             );
 
             if (!pattern.test(title)) {
