@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Add to Leasing Pipeline — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <div class="pipeline-detail-header">
+    <div>
+      <a href="{% url 'leasing_list' %}" class="back-link">&larr; Back to Leasing Pipeline</a>
+      <h1>Add to Leasing Pipeline</h1>
+    </div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="pipeline-detail-body">
+
+      <div class="pipeline-detail-section full-width">
+        <h2>Property</h2>
+        <div class="form-field-group">
+          <label class="field-label">Select Property</label>
+          <select name="property_record" class="field-input select-full">
+            <option value="">— Select —</option>
+            {% for prop in available_properties %}
+              <option value="{{ prop.pk }}" {% if prefill_property and prefill_property.pk == prop.pk %}selected{% endif %}>
+                {{ prop.address }}, {{ prop.city }}, {{ prop.state }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="pipeline-detail-section">
+        <h2>Listing Details</h2>
+        <div class="form-row">
+          <div class="form-field-group">
+            <label class="field-label">Asking Rent ($/mo)</label>
+            <input type="number" name="asking_rent" step="0.01" min="0"
+                   class="field-input input-lg">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Listed Date</label>
+            <input type="date" name="listed_date" class="field-input input-md">
+          </div>
+          <div class="form-field-group">
+            <label class="field-label">Listing Source</label>
+            <input type="text" name="listing_source" placeholder="e.g. Zillow, Craigslist"
+                   class="field-input input-md">
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-detail-section full-width">
+        <div class="form-submit-row">
+          <button type="submit" class="btn btn-primary">Add to Leasing Pipeline</button>
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+{% endblock %}

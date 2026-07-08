@@ -601,3 +601,37 @@
 .mt-4 {
   margin-top: var(--sp-4);
 }
+
+/* Leasing list header */
+.leasing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.leasing-header h1 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+  margin: 0;
+}
+
+.leasing-add-btn {
+  font-size: var(--text-sm);
+  padding: var(--sp-1) var(--sp-3);
+  text-decoration: none;
+}
+
+.leasing-note {
+  margin-bottom: var(--sp-4);
+}
+
+.text-danger-bold {
+  color: var(--color-risk-400);
+}
+
+.select-full {
+  width: 100%;
+}

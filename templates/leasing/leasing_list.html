@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Leasing Pipeline — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <div class="leasing-header">
+    <h1>Leasing Pipeline</h1>
+    <a href="{% url 'leasing_add' %}" class="btn btn-primary leasing-add-btn">+ Add to Leasing</a>
+  </div>
+
+  {# Note #}
+  <div class="form-note leasing-note">
+    Leasing pipeline tracks tenant acquisition. For maintenance, rent collection, and lease renewals, use Portfolio.
+  </div>
+
+  {# Status tabs #}
+  <div class="pipeline-status-tabs">
+    <a href="?status=ACTIVE" class="pipeline-status-tab {% if current_status == 'ACTIVE' %}active-active{% endif %}">Active</a>
+    <a href="?status=FILLED" class="pipeline-status-tab {% if current_status == 'FILLED' %}active-killed{% endif %}">Filled</a>
+    <a href="?status=ON_HOLD" class="pipeline-status-tab {% if current_status == 'ON_HOLD' %}active-on_hold{% endif %}">On Hold</a>
+  </div>
+
+  {# Entries #}
+  {% if entries %}
+    <div class="pipeline-cards">
+    {% for entry in entries %}
+      <div class="pipeline-card">
+        <div class="pipeline-card-body">
+          <div class="pipeline-card-info">
+            <div class="pipeline-card-badges">
+              <span class="pipeline-badge badge-stage">{{ entry.get_stage_display }}</span>
+              <span class="pipeline-badge badge-status-{{ entry.status|lower }}">{{ entry.get_status_display }}</span>
+            </div>
+            <div class="pipeline-card-address">{{ entry.property_record.address }}</div>
+            <div class="pipeline-card-meta">
+              {{ entry.property_record.city }}, {{ entry.property_record.state }}
+              {% if entry.asking_rent %} &middot; ${{ entry.asking_rent|floatformat:0|intcomma }}/mo{% endif %}
+              {% if entry.days_vacant is not None %}
+                &middot; <strong class="text-danger-bold">{{ entry.days_vacant }} days vacant</strong>
+              {% endif %}
+            </div>
+          </div>
+          <div class="pipeline-card-actions">
+            <a href="{% url 'leasing_detail' entry.pk %}" class="pipeline-action-btn">View Details</a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+  {% else %}
+    <div class="pipeline-empty">No leasing entries found.</div>
+  {% endif %}
+
+</div>
+{% endblock %}
