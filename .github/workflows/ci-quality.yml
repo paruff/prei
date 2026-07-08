@@ -37,9 +37,9 @@ jobs:
 
             const types = ['feat', 'fix', 'docs', 'style', 'refactor', 'perf', 'test', 'build', 'ci', 'chore', 'revert'];
             // Conventional Commits: type(optional-scope)!: subject
-            // subject: start with lowercase letter, then lowercase letters/digits/-/./_/
+            // subject: start with lowercase letter, then any text
             const pattern = new RegExp(
-              `^(${types.join('|')})(\\([a-z0-9/._-]+\\))?!?:\\s[a-z][a-z0-9/._-]*`
+              `^(${types.join('|')})(\\([a-z0-9/._-]+\\))?!?:\\s[a-z].+`
             );
 
             if (!pattern.test(title)) {
@@ -47,8 +47,8 @@ jobs:
                 `PR title "${title}" does not follow Conventional Commits format.\n\n` +
                 `Expected: type(optional-scope): description\n` +
                 `Allowed types: ${types.join(', ')}\n\n` +
-                `The subject must start with a lowercase letter, followed by ` +
-                `lowercase letters, digits, or / . _ - characters.\n\n` +
+                `The subject must start with a lowercase letter, per ` +
+                `the Conventional Commits spec.\n\n` +
                 `Examples:\n  "feat(ui): add button"\n  "fix: resolve timeout"\n  ` +
                 `"chore(ci): bump dependency version"`;
               core.setFailed(msg);

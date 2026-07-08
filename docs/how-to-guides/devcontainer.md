@@ -41,7 +41,7 @@ This guide covers running prei in a **VS Code Dev Container** or **GitHub Codesp
 
 The `.devcontainer/devcontainer.json` configures:
 
-- **Base image:** Built from root `Dockerfile` (Python 3.12, non-root `app` user)
+- **Base image:** Built from root `Dockerfile` (Python 3.14, non-root `app` user)
 - **Compose file:** Uses root `docker-compose.yml` (SQLite, no Postgres)
   - **Environment variables:**
     - `DATABASE_URL=sqlite:////home/vscode/db.sqlite3` (absolute path — writable by `vscode` user)
@@ -121,4 +121,4 @@ Created by `make dev` via `seed_data` management command.
 └─────────────────────────────────────────────────────┘
 ```
 
-The source is mounted at `/workspaces/prei` for git/editor access, but the **runtime** code lives at `/app` (copied during `docker build`). The Dev Container uses its own Dockerfile (`.devcontainer/Dockerfile`) based on `mcr.microsoft.com/devcontainers/python:1-3.12-bookworm`. The database goes to `/home/vscode/db.sqlite3` — the `vscode` user's home directory — because the devcontainer runs as `vscode`, not `app`.
+The source is mounted at `/workspaces/prei` for git/editor access, but the **runtime** code lives at `/app` (copied during `docker build`). The Dev Container uses its own Dockerfile (`.devcontainer/Dockerfile`) based on `mcr.microsoft.com/devcontainers/python:1-3.14-bookworm`. The database goes to `/home/vscode/db.sqlite3` — the `vscode` user's home directory — because the devcontainer runs as `vscode`, not `app`.

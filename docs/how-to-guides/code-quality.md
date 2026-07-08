@@ -104,7 +104,7 @@ Configuration is in `mypy.ini`:
 
 ```ini
 [mypy]
-python_version = 3.11
+python_version = 3.14
 warn_return_any = True
 warn_unused_configs = True
 disallow_untyped_defs = False  # Enable gradually
@@ -183,7 +183,7 @@ Mypy configuration is in `mypy.ini`. Customize as needed:
 
 ```ini
 [mypy]
-python_version = 3.11
+python_version = 3.14
 warn_return_any = True
 warn_unused_configs = True
 check_untyped_defs = True

@@ -115,7 +115,7 @@ curl -I https://your-app.onrender.com/
 ### Build fails
 - Check Render build logs
 - Common: missing `SECRET_KEY` or `ALLOWED_HOSTS` in env vars
-- Python version mismatch: `render.yaml` uses base image from Dockerfile (3.12)
+- Python version mismatch: `render.yaml` uses base image from Dockerfile (3.14)
 
 ### Migrations fail
 - Check "Pre-deploy" logs in Render
