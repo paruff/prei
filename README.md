@@ -2,6 +2,25 @@
 
 A Django-based web application for **personal passive real estate investors** — buy-and-hold investors who want to analyze single-family rentals, small multifamily properties, and BRRRR deals with professional-grade underwriting. No fluff, no auction monitoring, no market timing — just durable cash-flow analysis.
 
+## 📊 Status
+
+**Latest release:** `v0.3.1-alpha.2` (pre-release)
+
+### What works now
+- **Deal pipeline** — Screen, offer, renovate, close, and lease properties through a visual pipeline workflow with 9-criteria screening
+- **Growth area explorer** — Discover and compare markets by demographic and economic indicators with pagination and CSV export
+- **VRM foreclosures** — Foreclosure listings with direct linking to pipeline discovery
+- **Property underwriting** — Full scorecard (CoC, Cap Rate, DSCR, GRM), BRRRR calculator, hold projections, tax modeling
+- **Market intelligence** — Price-to-rent ratio, population growth, employment diversity, school ratings, walk scores
+- **Auto-versioned releases** — Git tags → Docker bake → structured logging; every build carries its version
+
+### What's next
+- Property comparison and portfolio scenario modeling
+- Enhanced notifications and collaboration features
+- Additional data source integrations (Redfin, Zillow)
+
+---
+
 ## ✨ Features
 
 - **Deal Screener Dashboard** — At-a-glance KPI grid (CoC, Cap Rate, DSCR, GRM, Score) with color-coded verdicts
