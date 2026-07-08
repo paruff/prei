@@ -1404,6 +1404,229 @@ class ScreeningCriteria(models.Model):
         return f"{self.user.email}: yield>={self.min_gross_yield_pct}%, PTR<={self.max_price_to_rent_ratio}"
 
 
+class OfferRecord(models.Model):
+    """Record of an offer made on a pipeline property.
+
+    Supports the OFFER stage of the acquisition pipeline.
+    A PipelineProperty can have multiple offers (counter-offers).
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+        COUNTERED = "countered", "Countered"
+        WITHDRAWN = "withdrawn", "Withdrawn"
+
+    pipeline_property = models.ForeignKey(
+        PipelineProperty, on_delete=models.CASCADE, related_name="offers"
+    )
+    offer_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    offer_date = models.DateField()
+    offer_expiry = models.DateField(null=True, blank=True)
+    contingencies = models.JSONField(default=list, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    counter_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Offer Record"
+        verbose_name_plural = "Offer Records"
+
+    def __str__(self) -> str:
+        return f"Offer #{self.pk}: ${self.offer_price} on {self.pipeline_property}"
+
+
+class DueDiligenceChecklist(models.Model):
+    """Due diligence checklist for a pipeline property.
+
+    Tracks inspection, title, appraisal, insurance, and contractor
+    tasks during the DUE_DILIGENCE stage.
+    """
+
+    class GoNoGo(models.TextChoices):
+        PENDING = "pending", "Pending"
+        GO = "go", "Go"
+        NO_GO = "no_go", "No Go"
+
+    pipeline_property = models.OneToOneField(
+        PipelineProperty,
+        on_delete=models.CASCADE,
+        related_name="due_diligence",
+    )
+    inspection_scheduled = models.BooleanField(default=False)
+    inspection_completed = models.BooleanField(default=False)
+    inspection_findings = models.TextField(blank=True, default="")
+    title_search_ordered = models.BooleanField(default=False)
+    title_clear = models.BooleanField(null=True, blank=True)
+    appraisal_ordered = models.BooleanField(default=False)
+    appraisal_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    insurance_quoted = models.BooleanField(default=False)
+    insurance_annual_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    contractor_estimate_obtained = models.BooleanField(default=False)
+    contractor_estimate_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    go_no_go = models.CharField(
+        max_length=10,
+        choices=GoNoGo.choices,
+        default=GoNoGo.PENDING,
+    )
+    no_go_reason = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Due Diligence Checklist"
+        verbose_name_plural = "Due Diligence Checklists"
+
+    def __str__(self) -> str:
+        return f"DD #{self.pk}: {self.go_no_go} for {self.pipeline_property}"
+
+
+class ClosingRecord(models.Model):
+    """Closing record for an acquired pipeline property.
+
+    Captures final purchase price, closing costs, loan details,
+    and related metadata from the CLOSING stage.
+    """
+
+    pipeline_property = models.OneToOneField(
+        PipelineProperty,
+        on_delete=models.CASCADE,
+        related_name="closing_record",
+    )
+    final_purchase_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    closing_date = models.DateField()
+    closing_costs = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    loan_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    down_payment = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    lender = models.CharField(max_length=255, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Closing Record"
+        verbose_name_plural = "Closing Records"
+
+    def __str__(self) -> str:
+        return (
+            f"Closing #{self.pk}: ${self.final_purchase_price} on {self.closing_date}"
+        )
+
+
+class RenovationRecord(models.Model):
+    """Renovation record for a pipeline property post-acquisition.
+
+    Tracks budget, actual costs, timeline, and scope of work during
+    the RENOVATION stage. Links to both PipelineProperty (during
+    pipeline) and Property (post-conversion).
+    """
+
+    class Status(models.TextChoices):
+        NOT_STARTED = "not_started", "Not Started"
+        IN_PROGRESS = "in_progress", "In Progress"
+        COMPLETE = "complete", "Complete"
+
+    pipeline_property = models.OneToOneField(
+        PipelineProperty,
+        on_delete=models.CASCADE,
+        related_name="renovation_record",
+    )
+    property_record = models.ForeignKey(
+        Property,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="renovations",
+    )
+    estimated_budget = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    actual_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    start_date = models.DateField(null=True, blank=True)
+    completion_date = models.DateField(null=True, blank=True)
+    contractor = models.CharField(max_length=255, blank=True, default="")
+    scope_of_work = models.TextField(blank=True, default="")
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.NOT_STARTED,
+    )
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Renovation Record"
+        verbose_name_plural = "Renovation Records"
+
+    def __str__(self) -> str:
+        return f"Renovation #{self.pk}: {self.status} ({self.estimated_budget})"
+
+
 class UserScreeningPreferences(models.Model):
     """Per-user screening thresholds for pipeline discovery."""
 
