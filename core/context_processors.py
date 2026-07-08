@@ -1,9 +1,11 @@
 """
 Context processor to provide version and environment info to all templates.
 
-Sources (in priority order):
-1. Git tag matching current HEAD (loose refs then packed-refs) — the release source of truth
-2. ``0.0.0-dev`` fallback
+Sources (in priority order for version/commit):
+1. ``/app/.meta/{version,commit}`` — baked-in during Docker build
+2. ``PREI_VERSION`` / ``PREI_COMMIT`` env vars — injected during Docker build
+3. Git tag matching current HEAD (loose refs then packed-refs) — dev
+4. ``0.0.0-dev`` / ``unknown`` — fallback
 
 Exposed template variables:
 - ``version`` — e.g. "0.2.2"
@@ -26,7 +28,28 @@ _SHORT_SHA_LENGTH = 7
 
 
 def _read_version() -> str:
-    """Read version from current git tag, falling back to ``0.0.0-dev``."""
+    """Read version from baked-in file (Docker) or git tag (dev).
+
+    Priority:
+    1. ``/app/.meta/version`` — written during Docker build
+    2. ``PREI_VERSION`` env var — injected during Docker build
+    3. Git tag matching HEAD — local development
+    4. ``0.0.0-dev`` — fallback
+    """
+    # 1. Baked-in file (Docker builds)
+    try:
+        text = Path("/app/.meta/version").read_text().strip()
+        if text:
+            return text
+    except (FileNotFoundError, OSError):
+        pass
+
+    # 2. Environment variable (injected by Docker build)
+    env_version = getenv("PREI_VERSION")
+    if env_version:
+        return env_version
+
+    # 3. Git tag matching HEAD (development)
     git_dir = _find_git_dir()
     if git_dir is not None:
         tag = _read_current_tag(git_dir)
@@ -37,13 +60,28 @@ def _read_version() -> str:
 
 
 def _read_git_commit() -> str:
-    """Read short git commit SHA + dirty flag using only filesystem access.
+    """Read short commit SHA from baked-in file (Docker) or git (dev).
 
-    Reads ``.git/HEAD`` to find the current commit.  If HEAD is a symbolic
-    ref (``ref: refs/heads/branch``) follows it to the underlying ref file.
-    Checks for dirty state by comparing working-tree modification timestamps
-    (best-effort, no subprocess).
+    Priority:
+    1. ``/app/.meta/commit`` — written during Docker build
+    2. ``PREI_COMMIT`` env var — injected during Docker build
+    3. Git HEAD ref parsing via filesystem (no subprocess) — for dev snapshot
+    4. ``unknown`` — fallback
     """
+    # 1. Baked-in file (Docker builds)
+    try:
+        text = Path("/app/.meta/commit").read_text().strip()
+        if text:
+            return text[:_SHORT_SHA_LENGTH]
+    except (FileNotFoundError, OSError):
+        pass
+
+    # 2. Environment variable (injected by Docker build)
+    env_commit = getenv("PREI_COMMIT")
+    if env_commit:
+        return env_commit[:_SHORT_SHA_LENGTH]
+
+    # 3. Git HEAD (development)
     git_dir = _find_git_dir()
     if git_dir is None:
         return "unknown"

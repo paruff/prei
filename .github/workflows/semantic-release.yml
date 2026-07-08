@@ -1,0 +1,66 @@
+name: ☑️ Semantic Release — Automated Tagging
+
+# Runs when commits land on main.  Reads conventional commits since the
+# last tag, determines the next semver version, creates a new git tag,
+# and pushes it.  The tag push cascades into:
+#   1. docker-publish.yml — build, scan, publish, attest
+#   2. release.yml — GitHub Release with auto-generated notes
+#
+# Requires a GitHub token with contents:write permission to push tags.
+# The push of the new tag triggers the other workflows (not this one,
+# because tag pushes don't match the branches filter here).
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # required to push tags
+
+jobs:
+  release:
+    name: "☑️ Bump & Tag"
+    if: github.event_name == 'push' && !contains(toJson(github.event.head_commit.message), '[skip release]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # full history so semantic-release can read commits
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install python-semantic-release
+        run: pip install python-semantic-release==9.21.0
+
+      - name: Run semantic-release
+        id: semantic
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # --noop first to preview what would happen
+          if semantic-release --strict version --print-tag 2>/dev/null; then
+            echo "A new version would be published. Proceeding..."
+            semantic-release --strict publish
+            NEW_TAG=$(semantic-release --strict version --print-tag)
+            echo "tag=${NEW_TAG}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No new version needed (no conventional commits since last tag)."
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report result
+        run: |
+          if [ -n "${{ steps.semantic.outputs.tag }}" ]; then
+            echo "📦 Published tag: ${{ steps.semantic.outputs.tag }}"
+          else
+            echo "ℹ️ No version bump needed"
+          fi

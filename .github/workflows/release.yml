@@ -1,13 +1,15 @@
 name: Create GitHub Release
 
-# Triggers when a semver tag (v1.2.3) is pushed.
+# Triggers when a semver tag (v1.2.3, v1.2.3-alpha.1, etc.) is pushed.
+# The tag is typically created by semantic-release.yml (automated bump from
+# conventional commits) or manually via `git tag && git push --tags`.
 # Produces a GitHub Release with auto-generated notes from merged PRs.
 # The docker-publish workflow handles the GHCR image; this handles the release page.
 
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v[0-9]*"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

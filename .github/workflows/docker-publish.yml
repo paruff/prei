@@ -3,7 +3,7 @@ name: Tier 2 Governance — Build, Publish & Attest
 on:
   push:
     branches: [main]
-    tags: ["v*.*.*"]
+    tags: ["v[0-9]*"]
 
 concurrency:
   group: tier-2-${{ github.event_name }}-${{ github.ref }}
@@ -48,6 +48,17 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Derive version string
+        id: version
+        run: |
+          # Tag push → use tag name; branch push → use short SHA
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="0.0.0-dev+sha-${GITHUB_SHA::7}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "commit=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
       - name: Build image
         id: build
         uses: docker/build-push-action@v7
@@ -57,6 +68,9 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            COMMIT=${{ steps.version.outputs.commit }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: "job-finish"

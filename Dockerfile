@@ -2,10 +2,21 @@
 # ↑ enables BuildKit features — put this as line 1
 
 ARG PYTHON_VERSION=3.12
+
+# ── Version metadata (injected by CI, or default for local dev) ────────────
+ARG VERSION=0.0.0-dev
+ARG COMMIT=unknown
+
 FROM python:${PYTHON_VERSION}-slim AS base
+
+ARG VERSION
+ARG COMMIT
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PREI_VERSION=${VERSION} \
+    PREI_COMMIT=${COMMIT}
 
 # Update all OS packages to latest security patches and remove Perl
 # (not needed by this Python project) to eliminate Trivy alerts:
@@ -18,7 +29,7 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# --- deps layer (cached unless requirements.txt changes) ---
+# ── deps layer (cached unless requirements.txt changes) ───────────────────
 FROM base AS deps
 # Allow pip to write to /root/.cache/pip so the BuildKit cache mount is effective
 ENV PIP_NO_CACHE_DIR=0
@@ -32,9 +43,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip "setuptools>=82" "wheel>=0.46.2" && \
     pip install -r requirements.txt
 
-# --- final image ---
+# ── final image ──────────────────────────────────────────────────────────
 FROM base AS runtime
 ARG PYTHON_VERSION
+ARG VERSION
+ARG COMMIT
 COPY --from=deps /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python${PYTHON_VERSION}
 COPY --from=deps /usr/local/bin /usr/local/bin
 # Re-upgrade pip, setuptools, and wheel so the base image's stale dist-info is replaced.
@@ -44,9 +57,24 @@ COPY --from=deps /usr/local/bin /usr/local/bin
 RUN pip install --upgrade pip "setuptools>=82" "wheel>=0.46.2"
 COPY . .
 
+# Bake version into files so the runtime can read them without a .git dir
+RUN mkdir -p /app/.meta && \
+    echo -n "$VERSION" > /app/.meta/version && \
+    echo -n "$COMMIT" > /app/.meta/commit && \
+    echo "prei_version=$VERSION commit=$COMMIT" > /app/.meta/build-info
+
+# OCI labels (overridden by docker/metadata-action in CI, present as defaults locally)
+LABEL org.opencontainers.image.title="PREI - Real Estate Investment Analyzer" \
+      org.opencontainers.image.description="Django app for passive RE investment KPIs" \
+      org.opencontainers.image.vendor="paruff" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.created=""
+
 # Never run as root
-RUN addgroup --system app && adduser --system --group app
-RUN mkdir -p /app/.runtime/matplotlib && chown -R app:app /app
+RUN addgroup --system app && adduser --system --group app && \
+    mkdir -p /app/.runtime/matplotlib && \
+    chown -R app:app /app
 USER app
 ENV HOME=/app/.runtime \
     MPLCONFIGDIR=/app/.runtime/matplotlib \
