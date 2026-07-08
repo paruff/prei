@@ -32,4 +32,4 @@ fastapi>=0.115.0  # REST API layer for prei/api/pipeline_routes.py
 uvicorn[standard]>=0.34.0  # ASGI server for FastAPI
 httpx>=0.28.0  # HTTP client for FastAPI TestClient
 click>=8.1.0  # CLI tool for prei/cli.py
-cryptography>=48.0.1  # Fix GHSA-537c-gmf6-5ccf (Vulnerable OpenSSL in cryptography wheels)
+cryptography>=49.0.0  # Fix GHSA-537c-gmf6-5ccf (Vulnerable OpenSSL in cryptography wheels)
