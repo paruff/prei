@@ -27,11 +27,17 @@
   {# Status filter tabs #}
   <div class="pipeline-status-tabs">
     {% for status_val, status_label in status_choices %}
-      <a href="?status={{ status_val }}{% if current_stage %}&stage={{ current_stage }}{% endif %}"
+      <a href="?status={{ status_val }}{% if current_stage %}&stage={{ current_stage }}{% endif %}{% if month_filter %}&month={{ month_filter }}{% endif %}"
          class="pipeline-status-tab active-{{ status_val|lower }}">
         {{ status_label }}
       </a>
     {% endfor %}
+    <a href="?month=this{% if current_status %}&status={{ current_status }}{% endif %}{% if current_stage %}&stage={{ current_stage }}{% endif %}"
+       class="pipeline-status-tab {% if month_filter == 'this' %}is-active{% endif %}">This month</a>
+    {% if month_filter %}
+      <a href="?{% if current_status %}status={{ current_status }}{% endif %}{% if current_stage %}&stage={{ current_stage }}{% endif %}"
+         class="pipeline-status-tab">All time</a>
+    {% endif %}
   </div>
 
   {# Property cards #}
