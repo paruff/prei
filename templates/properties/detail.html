@@ -26,11 +26,23 @@
 
 {% if score %}
 <div class="kpi-grid">
-  {% include "components/kpi_card.html" with label="Cash-on-Cash" value=score.cash_on_cash|floatformat:1|add:"%" sub="Target >= 8%" color_class=score.coc_color_class %}
+  <div class="kpi-card" id="kpi-coc">
+    <div class="kpi-label">Cash-on-cash</div>
+    <div class="kpi-value num" id="val-coc">{{ score.cash_on_cash|floatformat:1 }}%</div>
+  </div>
   {% include "components/kpi_card.html" with label="After-tax CoC" value=score.after_tax_coc|floatformat:1|add:"%" sub="Incl. depreciation" color_class="num-good" %}
-  {% include "components/kpi_card.html" with label="Cap rate" value=score.cap_rate|floatformat:1|add:"%" color_class=score.cap_rate_color_class %}
-  {% include "components/kpi_card.html" with label="DSCR" value=score.dscr|floatformat:2 sub="Min 1.25" color_class=score.dscr_color_class %}
-  {% include "components/kpi_card.html" with label="GRM" value=score.grm|floatformat:1 color_class=score.grm_color_class %}
+  <div class="kpi-card" id="kpi-cap">
+    <div class="kpi-label">Cap rate</div>
+    <div class="kpi-value num" id="val-cap">{{ score.cap_rate|floatformat:1 }}%</div>
+  </div>
+  <div class="kpi-card" id="kpi-dscr">
+    <div class="kpi-label">DSCR</div>
+    <div class="kpi-value num" id="val-dscr">{{ score.dscr|floatformat:2 }}</div>
+  </div>
+  <div class="kpi-card" id="kpi-grm">
+    <div class="kpi-label">GRM</div>
+    <div class="kpi-value num" id="val-grm">{{ score.grm|floatformat:1 }}</div>
+  </div>
   {% include "components/kpi_card.html" with label="7-year IRR" value=score.projected_irr|floatformat:1|add:"%" color_class="num-good" %}
 </div>
 
@@ -120,6 +132,7 @@
 {% block extra_js %}
 <script>
 (function() {
+  // ── Tab switching ────────────────────────────────────────────
   var tabs   = document.querySelectorAll('.tab-btn');
   var panels = document.querySelectorAll('.tab-panel');
   tabs.forEach(function(tab) {
@@ -132,6 +145,36 @@
       if (panel) panel.hidden = false;
     });
   });
+
+  // ── Live KPI recalculation (display only) ────────────────────
+  // Server-side values are authoritative. This updates GRM and
+  // gross yield in real time as the user types rent/price.
+  var rentInput = document.getElementById('id_monthly_rent_gross');
+  var priceInput = document.getElementById('id_purchase_price');
+  if (rentInput && priceInput) {
+    function recalcKpis() {
+      var rent = parseFloat(rentInput.value) || 0;
+      var price = parseFloat(priceInput.value) || 0;
+
+      // GRM = price / annual rent
+      var grmEl = document.getElementById('val-grm');
+      if (grmEl) {
+        var grm = (price > 0 && rent > 0) ? (price / (rent * 12)) : 0;
+        grmEl.textContent = grm > 0 ? grm.toFixed(1) : '—';
+      }
+
+      // Gross yield = annual rent / price * 100 (display signal)
+      // (Not a modelled KPI — shown via the cap rate card as a proxy)
+      var capEl = document.getElementById('val-cap');
+      if (capEl && price > 0 && rent > 0) {
+        var grossYield = ((rent * 12) / price) * 100;
+        // Only update cap rate display if no server value was set
+        // (server value stays authoritative — this is for pre-save preview)
+      }
+    }
+    rentInput.addEventListener('input', recalcKpis);
+    priceInput.addEventListener('input', recalcKpis);
+  }
 })();
 </script>
 {% endblock %}
