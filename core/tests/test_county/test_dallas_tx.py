@@ -234,3 +234,28 @@ class TestTXBaseParser:
         config = {"county_name": "Test", "selectors": {}}
         notices = _parse_notices("<html></html>", config)
         assert notices == []
+
+    def test_base_parser_empty_on_no_match(self) -> None:
+        """Parser returns empty when no table with foreclosure keywords."""
+        from core.integrations.county.tx_base import _parse_notices
+
+        html = "<html><body><table><tr><td>1</td><td>Data</td></tr></table></body></html>"
+        config = {"county_name": "Test", "selectors": {"table": "table.nonexistent"}}
+        notices = _parse_notices(html, config)
+        assert notices == []
+
+    def test_parse_date_formats(self) -> None:
+        """_parse_date handles multiple formats."""
+        from core.integrations.county.tx_base import _parse_date
+
+        assert _parse_date("01/06/2026") == "2026-01-06"
+        assert _parse_date("2026-02-03") == "2026-02-03"
+        assert _parse_date("") is None
+
+    def test_parse_bid_formats(self) -> None:
+        """_parse_bid handles $ and comma formats."""
+        from core.integrations.county.tx_base import _parse_bid
+
+        assert _parse_bid("$250,000.00") == Decimal("250000")
+        assert _parse_bid("185500") == Decimal("185500")
+        assert _parse_bid("") is None

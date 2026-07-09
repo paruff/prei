@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -167,7 +166,6 @@ def test_hud_fmr_fallback_graceful_without_key(
     criteria: ScreeningCriteria,
 ) -> None:
     """HUD FMR fallback returns None gracefully when no API key configured."""
-    from core.models import PipelineProperty
     from core.services.pipeline import create_from_hud
     from core.services.screening import _get_monthly_rent
 
