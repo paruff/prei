@@ -454,6 +454,69 @@ def create_from_usda(
     return pp, True
 
 
+def create_from_county_notice(
+    county_notice: Any,
+    user: Any,
+) -> Tuple[Any, bool]:
+    """Create a PipelineProperty from a CountyForeclosureNotice and run screening.
+
+    Handles both ATTOM preforeclosure data (stored as CountyForeclosureNotice)
+    and county-scraped notices. No rent data available for these sources,
+    so yield/PTR criteria are skipped during screening.
+
+    Args:
+        county_notice: CountyForeclosureNotice instance.
+        user: Django User who owns this pipeline entry.
+
+    Returns:
+        Tuple of (PipelineProperty, created).
+    """
+    from core.models import CountyForeclosureNotice, PipelineProperty, ScreeningCriteria
+    from core.services.screening import screen_property
+
+    if not isinstance(county_notice, CountyForeclosureNotice):
+        raise TypeError("Expected CountyForeclosureNotice instance")
+
+    criteria, _ = ScreeningCriteria.objects.get_or_create(user=user)
+
+    pp, created = PipelineProperty.objects.get_or_create(
+        user=user,
+        source_type=PipelineProperty.SourceType.COUNTY,
+        source_id=str(county_notice.case_number),
+        defaults={
+            "address": county_notice.address or "",
+            "address_hash": "",
+            "stage": PipelineProperty.Stage.DISCOVERED,
+            "status": PipelineProperty.Status.ACTIVE,
+            "price": county_notice.unpaid_balance,
+            "estimated_rent": None,
+            "beds": None,
+            "year_built": None,
+            "discovered_at": timezone.now(),
+        },
+    )
+
+    if not created:
+        return pp, False
+
+    # Run screening immediately
+    result = screen_property(pp, criteria, source_record=county_notice)
+
+    pp.screening_passed = result.passed
+    pp.screening_at = timezone.now()
+    pp.stage = PipelineProperty.Stage.SCREENING
+    pp.save(
+        update_fields=[
+            "screening_passed",
+            "screening_at",
+            "stage",
+            "updated_at",
+        ]
+    )
+
+    return pp, True
+
+
 # ── Conversion to Property record ──────────────────────────────────────────────
 
 

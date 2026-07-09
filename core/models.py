@@ -730,6 +730,33 @@ class GrowthArea(models.Model):
         )
         return score
 
+    @property
+    def data_confidence(self) -> int:
+        """Confidence score 0-100 based on how many data points are real vs defaults.
+
+        Each of the 5 GACS components is scored:
+        - real value from API → 20 points
+        - default/placeholder  → 0 points
+        """
+        score = 0
+        # population_growth_rate: required field, always real
+        score += 20
+        # employment_growth_rate: nullable — if it's None, FRED data was missing
+        if self.employment_growth_rate is not None:
+            score += 20
+        # median_income_growth: required field, always real
+        score += 20
+        # housing_demand_index: default is 50 — if it's 50, may be placeholder
+        if self.housing_demand_index != 50:
+            score += 20
+        # supply_constraint_index: default is 50
+        if (
+            self.supply_constraint_index is not None
+            and self.supply_constraint_index != 50
+        ):
+            score += 20
+        return score
+
     def save(self, *args, **kwargs):
         """Precompute composite_score on save."""
         self.composite_score = self._compute_composite_score()
