@@ -836,6 +836,13 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
     places = discover_places_in_state(state, census_api_key, limit=10)
     if not places:
         logger.warning("Growth Explorer: no places found for state %s", state)
+        error_msg = (
+            f"No Census data returned for {state}. "
+            "This usually means: <br>"
+            "1. <strong>CENSUS_API_KEY</strong> is missing or invalid — "
+            "<a href='https://api.census.gov/data/key_signup.html' target='_blank' rel='noopener'>get a free key</a>"
+            "<br>2. The Census API is temporarily unavailable (try again later)"
+        )
         return render(
             request,
             "growth_explorer.html",
@@ -844,7 +851,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": bool(census_api_key),
                 "fred_key_configured": fred_configured,
-                "error": f"No places found for state {state}.",
+                "error": error_msg,
             },
         )
 
@@ -909,9 +916,19 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             except Exception as exc:
                 logger.error("Growth Explorer: parallel fetch failed: %s", exc)
 
-    # 4. Upsert GrowthArea rows sequentially (SQLite does not support concurrent writes)
+    # 4a. Upsert GrowthArea rows sequentially (SQLite does not support concurrent writes)
     results = []
     for data in place_data_list:
+        # Fetch school quality score if API key available
+        school_score = None
+        gs_api_key = getenv("GREATSCHOOLS_API_KEY", "")
+        if gs_api_key:
+            from core.integrations.market.schools import fetch_school_rating
+
+            zip_code = data.get("zip_code", "")
+            if zip_code:
+                school_score = fetch_school_rating(zip_code, gs_api_key)
+
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
             city_name=data["place_name"],
@@ -922,6 +939,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "employment_growth_rate": safe_emp_growth,
                 "median_income_growth": data["income_growth"],
                 "housing_demand_index": data["housing_demand"],
+                "school_score": school_score,
                 "landlord_score": get_state_landlord_score(state)["score"],
                 "data_timestamp": timezone.now(),
             },

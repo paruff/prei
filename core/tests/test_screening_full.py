@@ -273,7 +273,7 @@ class TestGacsScore:
         )
         assert ded == 0
         assert pass_msg is not None
-        assert "16" in (pass_msg or "")  # score computed from GrowthArea data
+        assert "6.02" in (pass_msg or "")  # score computed from GrowthArea data
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -5,145 +5,64 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Growth Area Explorer</h1>
-    <p class="page-sub">Discover top growth places in a state — live Census/FRED data pull</p>
-  </div>
-  <div class="nav-right">
-    {% if api_keys_configured %}
-      <span class="verdict-badge verdict-a" title="Census API key configured; employment via FRED">
-        <span aria-hidden="true">✓</span> API Ready
-      </span>
-    {% else %}
-      <span class="verdict-badge verdict-c" title="Census API key missing; FRED is optional">
-        <span aria-hidden="true">⚠</span> API Key Missing
-      </span>
-    {% endif %}
+    <p class="page-sub">Analyze top growth markets. Picks the 10 largest cities in a state and scores them.</p>
   </div>
 </div>
 
-{% if error %}
-  <div class="message message-error" role="alert">{{ error }}</div>
-{% endif %}
-
-<!-- API Key Status Banner (only shown when key missing) -->
+{# ── API key missing — no analysis possible ── #}
 {% if not api_keys_configured %}
   <div class="message message-warning mb-form" role="alert">
-    <div>
-      <strong>⚠ Analysis unavailable — Census API key not configured</strong>
-      <div class="form-hint">
-        <code>CENSUS_API_KEY</code> is missing from your environment.
-        Employment data is fetched via FRED (free) and does not require a separate key.
-        Add <code>CENSUS_API_KEY</code> to <code>.env</code> to enable growth analysis.
-      </div>
-    </div>
-    <div class="form-actions">
-      <a href="{% url 'vrm_properties_list' %}" class="btn">Browse VRM Properties instead</a>
-    </div>
+    <strong>⚠ Census API key not configured.</strong>
+    Add <code>CENSUS_API_KEY</code> to your <code>.env</code> file to enable growth analysis.
+    <a href="https://api.census.gov/data/key_signup.html" class="ml-link" target="_blank" rel="noopener">Get a free key →</a>
   </div>
 {% endif %}
 
-<!-- FRED Key Status (informational only — FRED is optional) -->
-{% if not fred_key_configured and api_keys_configured %}
-  <div class="message message-info mb-form" role="status">
-    <div>
-      <strong>ℹ Employment via FRED</strong>
-      <span class="ml-link">
-        <code>FRED_API_KEY</code> not set — employment growth defaults to 0%.
-        <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener">Get a free FRED key</a>
-        and add to <code>.env</code> for accurate employment data.
-      </span>
-    </div>
+{# ── Error from last analysis ── #}
+{% if error %}
+  <div class="message message-error mb-form" role="alert">{{ error }}</div>
+{% endif %}
+
+{# ── API status bar ── #}
+{% if api_keys_configured or fred_key_configured %}
+  <div class="message message-info mb-form" role="status" style="display: flex; gap: var(--sp-4); flex-wrap: wrap;">
+    {% if api_keys_configured %}
+      <span><span class="verdict-badge verdict-a" style="font-size: 0.8rem;">✓ Census</span></span>
+    {% else %}
+      <span><span class="verdict-badge verdict-c" style="font-size: 0.8rem;">✗ Census</span></span>
+    {% endif %}
+    {% if fred_key_configured %}
+      <span><span class="verdict-badge verdict-a" style="font-size: 0.8rem;">✓ FRED</span></span>
+    {% else %}
+      <span><span class="verdict-badge verdict-c" style="font-size: 0.8rem;">✗ FRED</span> <span class="page-sub">(optional, employment defaults to 0)</span></span>
+    {% endif %}
+    <span class="page-sub">Data: Census ACS (population, income) · FRED (employment)</span>
   </div>
 {% endif %}
 
-<!-- How It Works Card -->
-<div class="card mb-form">
-  <div class="card-title">
-    <span aria-hidden="true">ℹ</span> How It Works
-  </div>
-  <div class="card-body">
-    <p>Click <strong>Analyze State</strong> to run a live analysis:</p>
-    <ol>
-      <li><strong>Discover places:</strong> Queries Census for the top 10 places by population in the selected state.</li>
-      <li><strong>Pull metrics:</strong> For each place, fetches 5-year population growth, median income growth, and housing demand index from Census ACS.</li>
-      <li><strong>Add employment:</strong> Pulls 5-year state-level employment growth from FRED (Federal Reserve) — same value for all places in the state.</li>
-      <li><strong>Score & rank:</strong> Computes a composite score and stores results for future reference.</li>
-    </ol>
-    <div class="message message-info">
-      <strong>Timing:</strong> Takes ~20–60 seconds depending on state size. Up to 21 sequential Census/FRED API calls.
-    </div>
-  </div>
-</div>
-
-<!-- Data Sources & What You'll See -->
-<div class="card mb-form">
-  <div class="card-title">
-    <span aria-hidden="true">📊</span> Data Sources & Output
-  </div>
-  <div class="card-body">
-    <div class="form-grid-2">
-      <div>
-        <strong>Census ACS (5-year):</strong>
-        <ul>
-          <li>Population & population growth (5yr)</li>
-          <li>Median income & income growth (5yr)</li>
-          <li>Housing demand index (derived)</li>
-        </ul>
-      </div>
-      <div>
-        <strong>FRED (Federal Reserve):</strong>
-        <ul>
-          <li>State-level employment growth (5yr) via nonfarm payrolls</li>
-          <li><em>Same value for all places in the state</em></li>
-        </ul>
-      </div>
-    </div>
-    <div class="mt-section">
-      <strong>Results table includes:</strong>
-      <ul>
-        <li>Rank (by composite score)</li>
-        <li>City, State, Population (formatted)</li>
-        <li>Pop Growth %, Emp Growth %*, Income Growth %</li>
-        <li>Housing Demand Index (0–100)</li>
-        <li>Composite Score (higher = stronger growth profile)</li>
-        <li><strong>Action:</strong> Direct link to VRM foreclosures in that state</li>
-      </ul>
-    </div>
-  </div>
-</div>
-
-<!-- Analysis Form -->
-<form method="post" id="explorer-form" novalidate>
+{# ── State selector — always visible, prominent ── #}
+<form method="post" id="analysis-form" class="mb-form">
   {% csrf_token %}
-  <div class="card mb-form">
-    <div class="card-title">Select State</div>
-    <div class="card-body">
-      <div class="form-group">
-        <label for="id_state" class="form-label">State</label>
-        <select name="state" id="id_state" class="form-input" required {% if not api_keys_configured %}disabled{% endif %}>
-          <option value="">— Choose a state —</option>
-          {% for code, name in states %}
-          <option value="{{ code }}"{% if selected_state == code %} selected{% endif %}>{{ name }} ({{ code }})</option>
-          {% endfor %}
-        </select>
-        {% if not api_keys_configured %}
-          <p class="form-hint">Configure Census API key to enable state selection.</p>
-        {% else %}
-          <p class="form-hint">Select a state and click <strong>Analyze State</strong>.</p>
-        {% endif %}
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" id="submit-btn"
-                {% if not api_keys_configured %}disabled title="Configure CENSUS_API_KEY to enable analysis"{% endif %}>
-          <span class="btn-text">Analyze State</span>
-          <span class="spinner" aria-hidden="true"></span>
-        </button>
-        {% if not api_keys_configured %}
-          <p class="form-hint">⚠ Analysis requires Census API key in environment.</p>
-        {% endif %}
-      </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label for="state-select">State</label>
+      <select name="state" id="state-select" class="form-input" required aria-label="State">
+        <option value="">— Choose a state —</option>
+        {% for code, name in states %}
+          <option value="{{ code }}"{% if selected_state == code %} selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group" style="align-self: flex-end;">
+      <button type="submit" class="btn btn-primary" id="analyze-btn">Analyze State</button>
     </div>
   </div>
 </form>
+
+{# ── Warning banner ── #}
+<div class="message message-warning mb-form">
+  Scores use an experimental weighting model — not research-validated. Verify markets independently before investing.
+</div>
 
 <!-- Loading Overlay -->
 <div id="loading-overlay" class="loading-overlay" hidden aria-hidden="true">

@@ -653,6 +653,32 @@ class GrowthArea(models.Model):
     median_income_growth = models.DecimalField(max_digits=6, decimal_places=2)
     housing_demand_index = models.IntegerField()
     supply_constraint_index = models.IntegerField(default=50, null=True, blank=True)
+    school_score = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        help_text="Average school rating (0-10) from GreatSchools API",
+    )
+    rent_growth_rate = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="5-year gross rent growth rate from Census ACS",
+    )
+    net_migration = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Estimated net migration (population change - natural increase)",
+    )
+    net_migration_rate = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Net migration as fraction of prior population",
+    )
     latitude = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True
     )
@@ -702,31 +728,41 @@ class GrowthArea(models.Model):
         Returns None if none of the weighted factors are available (all are None/zero).
         Missing factors are treated as 0 so a partial score is still computable.
 
-        Weights (revised GA-6):
+        Weights (GACS v2):
+          - Employment growth rate:  0.35  (county-level QCEW preferred, FRED fallback)
           - Population growth rate:  0.20  (place-level, Census ACS)
-          - Employment growth rate:  0.35  (state-level, FRED)
-          - Median income growth:    0.20  (place-level, Census ACS)
-          - Housing demand index:    0.10  (place-level, Census ACS occupancy)
-          - Supply constraint index: 0.15  (place-level, Census ACS housing-unit growth)
+          - Median income growth:    0.15  (place-level, Census ACS)
+          - School quality score:    0.15  (place-level, GreatSchools API)
+          - Supply constraint index: 0.10  (place-level, Census ACS housing-unit growth)
+          - Net migration proxy:     0.05  (estimated from ACS pop growth vs natural increase)
         """
-        pop_weight = Decimal("0.20")
         emp_weight = Decimal("0.35")
-        income_weight = Decimal("0.20")
-        housing_weight = Decimal("0.10")
-        supply_weight = Decimal("0.15")
+        pop_weight = Decimal("0.20")
+        income_weight = Decimal("0.15")
+        school_weight = Decimal("0.15")
+        supply_weight = Decimal("0.10")
+        migration_weight = Decimal("0.05")
 
-        pop_rate = self.population_growth_rate or Decimal("0")
         emp_rate = self.employment_growth_rate or Decimal("0")
+        pop_rate = self.population_growth_rate or Decimal("0")
         income_rate = self.median_income_growth or Decimal("0")
-        housing_idx = Decimal(self.housing_demand_index or 0)
         supply_idx = Decimal(self.supply_constraint_index or 0)
+        school_score_val = (
+            (self.school_score / Decimal("10")) if self.school_score else Decimal("0")
+        )
+        migration_rate = (
+            (self.net_migration_rate / Decimal("100"))
+            if self.net_migration_rate
+            else Decimal("0")
+        )
 
         score = (
-            pop_rate * pop_weight
-            + emp_rate * emp_weight
+            emp_rate * emp_weight
+            + pop_rate * pop_weight
             + income_rate * income_weight
-            + housing_idx * housing_weight
+            + school_score_val * school_weight
             + supply_idx * supply_weight
+            + migration_rate * migration_weight
         )
         return score
 
@@ -734,28 +770,46 @@ class GrowthArea(models.Model):
     def data_confidence(self) -> int:
         """Confidence score 0-100 based on how many data points are real vs defaults.
 
-        Each of the 5 GACS components is scored:
-        - real value from API → 20 points
-        - default/placeholder  → 0 points
+        Each of the 6 GACS components is scored:
+        - real value from API → ~17 points
         """
-        score = 0
-        # population_growth_rate: required field, always real
-        score += 20
-        # employment_growth_rate: nullable — if it's None, FRED data was missing
+        c = 0
         if self.employment_growth_rate is not None:
-            score += 20
-        # median_income_growth: required field, always real
-        score += 20
-        # housing_demand_index: default is 50 — if it's 50, may be placeholder
-        if self.housing_demand_index != 50:
-            score += 20
-        # supply_constraint_index: default is 50
+            c += 17
+        c += 17  # population_growth_rate: required
+        c += 17  # median_income_growth: required
+        if self.school_score is not None:
+            c += 17
         if (
             self.supply_constraint_index is not None
             and self.supply_constraint_index != 50
         ):
-            score += 20
-        return score
+            c += 16
+        if self.net_migration_rate is not None:
+            c += 16
+        return min(c, 100)
+
+    @property
+    def net_migration_proxy(self) -> int | None:
+        """Estimated net migration using population growth as proxy.
+
+        True migration requires births/deaths data (CDC Vital Statistics).
+        This estimates it as: population_change - expected_natural_increase.
+        Natural increase is approximated as 0.5% of prior population.
+        Returns None if population data is unavailable.
+        """
+        from decimal import Decimal
+
+        pop = self.population
+        prior_pop = None
+        # We can reverse-engineer prior pop from current pop and growth rate
+        pop_growth = self.population_growth_rate
+        if pop is not None and pop_growth is not None and pop_growth != 0:
+            prior_pop = int(Decimal(pop) / (Decimal("1") + pop_growth))
+            natural_increase = int(Decimal(prior_pop) * Decimal("0.005"))
+            estimated_migration = pop - prior_pop - natural_increase
+            return estimated_migration
+        return None
 
     def save(self, *args, **kwargs):
         """Precompute composite_score on save."""

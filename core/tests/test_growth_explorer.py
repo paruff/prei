@@ -138,7 +138,7 @@ class TestGrowthExplorerPostErrors:
             resp = client.post(reverse("growth_explorer"), {"state": "WY"})
 
         assert resp.status_code == 200
-        assert "No places found" in resp.content.decode()
+        assert "No Census data returned" in resp.content.decode()
 
     @patch("core.views.discover_places_in_state")
     @pytest.mark.django_db

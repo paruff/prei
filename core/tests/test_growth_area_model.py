@@ -45,10 +45,8 @@ class TestGrowthAreaModel:
             data_timestamp=timezone.now(),
         )
 
-        # Expected (GA-6 weights): pop 0.20, emp 0.35, income 0.20, housing 0.10, supply 0.15
-        # (2.0 * 0.20) + (4.0 * 0.35) + (3.0 * 0.20) + (80 * 0.10) + (50 * 0.15)
-        # = 0.4 + 1.4 + 0.6 + 8 + 7.5 = 17.9
-        expected_score = Decimal("17.9")
+        # (4.0 * 0.35) + (2.0 * 0.20) + (3.0 * 0.15) + (50 * 0.10) = 1.4 + 0.4 + 0.45 + 5.0 = 7.25
+        expected_score = Decimal("7.25")
         assert area.composite_score == expected_score
 
     def test_composite_score_with_zero_values(self):
@@ -81,10 +79,9 @@ class TestGrowthAreaModel:
             data_timestamp=timezone.now(),
         )
 
-        # Expected (GA-6 weights): pop 0.20, emp 0.35, income 0.20, housing 0.10, supply 0.15
-        # (-1.0 * 0.20) + (-2.0 * 0.35) + (-1.5 * 0.20) + (50 * 0.10) + (50 * 0.15)
-        # = -0.2 + -0.7 + -0.3 + 5 + 7.5 = 11.3
-        expected_score = Decimal("11.3")
+        # (-2.0 * 0.35) + (-1.0 * 0.20) + (-1.5 * 0.15) + (50 * 0.10)
+        # = -0.7 + -0.2 + -0.225 + 5.0 = 3.875
+        expected_score = Decimal("3.875")
         assert area.composite_score == expected_score
 
     def test_string_representation(self):
