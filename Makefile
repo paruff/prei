@@ -11,8 +11,8 @@ REQUIREMENTS ?= requirements.txt
 define ensure_django
 	@$(PYTHON) -c "import django" 2>/dev/null || { \
 		echo "Django not found — installing dependencies..."; \
-		pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && \
-		pip install -r $(REQUIREMENTS); \
+		$(PYTHON) -m pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && \
+		$(PYTHON) -m pip install -r $(REQUIREMENTS); \
 	}
 endef
 

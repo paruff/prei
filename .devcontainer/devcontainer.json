@@ -7,6 +7,9 @@
   ],
   "workspaceFolder": "/workspaces/prei",
   "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.14"
+    },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
       "moby": true,
@@ -37,7 +40,7 @@
     "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN": "${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}",
     "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN_GITHUB_DEV": "${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN_GITHUB_DEV}"
   },
-  "postCreateCommand": "pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && pip install -r requirements.txt && python manage.py migrate --noinput",
+  "postCreateCommand": "python -m pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && python -m pip install -r requirements.txt && python manage.py migrate --noinput",
   "postStartCommand": "python manage.py check",
   "customizations": {
     "vscode": {
