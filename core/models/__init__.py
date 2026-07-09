@@ -2,6 +2,7 @@
 
 Import order matters: modules with fewer dependencies load first.
 """
+
 from __future__ import annotations
 
 # ── Standalone / low-dependency groups first ──
