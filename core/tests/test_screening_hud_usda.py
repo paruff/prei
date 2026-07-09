@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -158,3 +159,27 @@ def test_usda_property_yield_skipped_no_rent(
 
     assert result.yield_evaluated is False
     assert result.yield_note == "no_rent_estimate"
+
+
+@pytest.mark.django_db
+def test_hud_fmr_fallback_graceful_without_key(
+    hud_property_tx: HudProperty,
+    criteria: ScreeningCriteria,
+) -> None:
+    """HUD FMR fallback returns None gracefully when no API key configured."""
+    from core.models import PipelineProperty
+    from core.services.pipeline import create_from_hud
+    from core.services.screening import _get_monthly_rent
+
+    UserModel = get_user_model()
+    user = UserModel.objects.first() or UserModel.objects.create_user(
+        username="hud_fmr_test", password="test"
+    )
+    pp, _ = create_from_hud(hud_property_tx, user)
+    pp.estimated_rent = None
+    pp.price = Decimal("200000")
+    pp.save(update_fields=["estimated_rent", "price"])
+
+    # Should return None without raising (no HUD_API_KEY set)
+    result = _get_monthly_rent(pp, hud_property_tx)
+    assert result is None

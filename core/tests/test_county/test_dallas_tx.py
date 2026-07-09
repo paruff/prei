@@ -188,3 +188,49 @@ class TestDallasCountyScraper:
                 f"Unexpected date {d} — not a first Tuesday in 2026"
             )
             assert d.weekday() == calendar.TUESDAY
+
+
+class TestTXBaseParser:
+    """Tests for the shared TX county base parser."""
+
+    FIXTURE_HTML = """<!DOCTYPE html>
+<html><body>
+<table class="foreclosure-table">
+<thead><tr><th>Case</th><th>Date</th><th>Address</th><th>Trustee</th><th>Lender</th></tr></thead>
+<tbody>
+<tr><td>TX-NTS-001</td><td>01/06/2026</td><td>123 Main St, Austin, TX 78701</td><td>Shapiro PC</td><td>Wells Fargo</td></tr>
+<tr><td>TX-NTS-002</td><td>02/03/2026</td><td>456 Oak Ave, Houston, TX 77001</td><td>Barrett Daffin</td><td>Chase</td></tr>
+</tbody>
+</table>
+</body></html>"""
+
+    def test_base_parser_extracts_notices(self) -> None:
+        """Base parser extracts notices from standard HTML table."""
+        from core.integrations.county.tx_base import _parse_notices
+
+        config = {"county_name": "Test", "selectors": {"table": "table.foreclosure-table"}}
+        notices = _parse_notices(self.FIXTURE_HTML, config)
+        assert len(notices) == 2
+        assert notices[0]["county"] == "Test"
+        assert notices[0]["case_number"] == "TX-NTS-001"
+        assert notices[0]["address"] == "123 Main St"
+        assert notices[1]["case_number"] == "TX-NTS-002"
+
+    def test_base_parser_address_parsing(self) -> None:
+        """Addresses are split into street/city/ZIP."""
+        from core.integrations.county.tx_base import _parse_notices
+
+        config = {"county_name": "Test", "selectors": {"table": "table.foreclosure-table"}}
+        notices = _parse_notices(self.FIXTURE_HTML, config)
+        assert notices[0]["city"] == "Austin"
+        assert notices[0]["zip_code"] == "78701"
+        assert notices[1]["city"] == "Houston"
+        assert notices[1]["zip_code"] == "77001"
+
+    def test_base_parser_returns_empty_for_no_table(self) -> None:
+        """Parser returns empty list when no recognizable table."""
+        from core.integrations.county.tx_base import _parse_notices
+
+        config = {"county_name": "Test", "selectors": {}}
+        notices = _parse_notices("<html></html>", config)
+        assert notices == []
