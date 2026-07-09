@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 import requests
 from django.conf import settings
@@ -40,7 +40,9 @@ class FMRClient:
     def _get(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
         """Make a GET request to the HUD FMR API."""
         url = f"{FMR_API_BASE}/{path.lstrip('/')}"
-        resp = requests.get(url, headers=self._headers(), params=params, timeout=REQUEST_TIMEOUT)
+        resp = requests.get(
+            url, headers=self._headers(), params=params, timeout=REQUEST_TIMEOUT
+        )
         if resp.status_code == 401:
             raise FMRError("HUD API key is missing or invalid")
         if resp.status_code == 403:
@@ -48,19 +50,21 @@ class FMRClient:
         if resp.status_code == 404:
             raise FMRError(f"No data found: {path}")
         resp.raise_for_status()
-        return resp.json()
+        return cast(dict[str, Any], resp.json())
 
     def list_states(self) -> list[dict[str, str]]:
         """List all states with FMR data."""
         data = self._get("listStates")
-        return data.get("data", [])
+        return cast(list[dict[str, str]], data.get("data", []))
 
     def list_counties(self, state_code: str) -> list[dict[str, str]]:
         """List counties in a state with their FIPS codes."""
         data = self._get(f"listCounties/{state_code}")
-        return data.get("data", [])
+        return cast(list[dict[str, str]], data.get("data", []))
 
-    def get_county_data(self, fips_code: str, year: int | None = None) -> dict[str, Any] | None:
+    def get_county_data(
+        self, fips_code: str, year: int | None = None
+    ) -> dict[str, Any] | None:
         """Get FMR data for a specific county by FIPS code.
 
         Returns a dict with rent estimates for 0BR-4BR units,
@@ -93,7 +97,10 @@ class FMRClient:
         """Get FMR data for all counties/metro areas in a state."""
         data = self._get(f"statedata/{state_code}")
         result = data.get("data", {})
-        return result.get("counties", []) + result.get("metroareas", [])
+        return cast(
+            list[dict[str, Any]],
+            result.get("counties", []) + result.get("metroareas", []),
+        )
 
 
 def _parse_fmr(value: Any) -> Decimal | None:
@@ -101,7 +108,7 @@ def _parse_fmr(value: Any) -> Decimal | None:
     if value is None or value == "":
         return None
     try:
-        return Decimal(str(value))
+        return cast(Decimal, Decimal(str(value)))
     except Exception:
         return None
 
@@ -130,17 +137,25 @@ def get_rent_estimate(
         logger.warning("HUD_API_KEY not configured — cannot fetch rent estimates")
         return None
 
-    bed_key = {0: "efficiency", 1: "one_bedroom", 2: "two_bedroom", 3: "three_bedroom", 4: "four_bedroom"}
+    bed_key = {
+        0: "efficiency",
+        1: "one_bedroom",
+        2: "two_bedroom",
+        3: "three_bedroom",
+        4: "four_bedroom",
+    }
     key = bed_key.get(bedrooms, "two_bedroom")
 
     if fips_code:
         data = client.get_county_data(fips_code)
         if data and data.get(key) is not None:
-            return data[key]
+            return cast(Decimal | None, data[key])
 
     # Fall back to a reasonable default based on 2BR FMR
     if zip_code:
-        logger.info("ZIP-level FMR lookup not yet implemented via API — use county-level")
+        logger.info(
+            "ZIP-level FMR lookup not yet implemented via API — use county-level"
+        )
         # For now, county-level is the best we can do
         pass
 
