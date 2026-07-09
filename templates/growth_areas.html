@@ -80,7 +80,22 @@
               <td class="col-right num">{{ ga.median_income_growth|mul:100|floatformat:2 }}%</td>
               <td class="col-right">{{ ga.housing_demand_index }}</td>
               <td class="col-right score-num num-good">{{ ga.composite_score|default_if_none:""|floatformat:2 }}</td>
-              <td><a href="{% url 'vrm_properties_list' %}?state={{ ga.state }}" class="btn">Foreclosures</a></td>
+              <td><a href="{% url 'vrm_properties_list' %}?state={{ ga.state }}" class="btn">Foreclosures</a> <button class="btn" onclick="var r=document.getElementById('breakdown-{{ forloop.counter0 }}');r.hidden=!r.hidden">Score</button></td>
+            </tr>
+            <tr id="breakdown-{{ forloop.counter0 }}" hidden>
+              <td colspan="10">
+                <table class="data-table">
+                  <thead><tr><th>Component</th><th>Value</th><th>Weight</th></tr></thead>
+                  <tbody>
+                    <tr><td>Employment growth</td><td>{{ ga.employment_growth_rate|mul:100|floatformat:2 }}%</td><td>35%</td></tr>
+                    <tr><td>Population growth</td><td>{{ ga.population_growth_rate|mul:100|floatformat:2 }}%</td><td>20%</td></tr>
+                    <tr><td>Income growth</td><td>{{ ga.median_income_growth|mul:100|floatformat:2 }}%</td><td>20%</td></tr>
+                    <tr><td>Supply constraint</td><td>{{ ga.supply_constraint_index }}</td><td>15%</td></tr>
+                    <tr><td>Housing demand</td><td>{{ ga.housing_demand_index }}</td><td>10%</td></tr>
+                  </tbody>
+                </table>
+                <p class="page-sub">ACS vintage: auto-detected (2024 or latest available) &middot; Data timestamp: {{ ga.data_timestamp|date:"Y-m-d" }}</p>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
