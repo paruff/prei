@@ -76,7 +76,13 @@ urlpatterns = [
     path("discovery/", views.property_discovery, name="property_discovery"),
     path("pipeline/", views.pipeline_dashboard, name="pipeline_dashboard"),
     path("pipeline/list/", views.pipeline_list, name="pipeline_list"),
+    path("pipeline/review/", views.pipeline_review_queue, name="pipeline_review_queue"),
     path("pipeline/<int:pk>/", views.pipeline_detail, name="pipeline_detail"),
+    path(
+        "pipeline/<int:pk>/advance/",
+        views.pipeline_advance_stage,
+        name="pipeline_advance_stage",
+    ),
     path(
         "pipeline/add-from-source/",
         views.pipeline_add_from_source,

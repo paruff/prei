@@ -48,6 +48,10 @@
           Underwriting
           <span class="sub-label">Analyze returns and risk</span>
         </a>
+        <a href="{% url 'pipeline_review_queue' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_review_queue' %}active{% endif %}" role="menuitem">
+          Review queue
+          <span class="sub-label">Properties ready for your decision</span>
+        </a>
         <a href="{% url 'pipeline_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_list' %}active{% endif %}" role="menuitem">
           My Pipeline
           <span class="sub-label">Track all pipeline properties</span>
