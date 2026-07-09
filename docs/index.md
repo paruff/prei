@@ -40,7 +40,7 @@ Architecture, design decisions, and the design system.
 
 ## Technology Stack
 
-- **Backend:** Django 5.2 with Python 3.14
+- **Backend:** Django 6.0 with Python 3.14
 - **Database:** SQLite (dev), PostgreSQL (Render prod)
 - **Financial Libraries:** NumPy, pandas
 - **Testing:** pytest, pytest-django

@@ -1,5 +1,5 @@
 {
-  "name": "prei — Django 5.2 (SQLite dev, Postgres optional)",
+  "name": "prei — Django 6.0 (SQLite dev, Postgres optional)",
   "dockerComposeFile": "docker-compose.yml",
   "service": "web",
   "runServices": [

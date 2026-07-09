@@ -121,4 +121,4 @@ Created by `make dev` via `seed_data` management command.
 └─────────────────────────────────────────────────────┘
 ```
 
-The source is mounted at `/workspaces/prei` for git/editor access, but the **runtime** code lives at `/app` (copied during `docker build`). The Dev Container uses its own Dockerfile (`.devcontainer/Dockerfile`) based on `mcr.microsoft.com/devcontainers/python:1-3.14-bookworm`. The database goes to `/home/vscode/db.sqlite3` — the `vscode` user's home directory — because the devcontainer runs as `vscode`, not `app`.
+The source is mounted at `/workspaces/prei` for git/editor access, but the **runtime** code lives at `/app` (copied during `docker build`). The Dev Container uses its own Dockerfile (`.devcontainer/Dockerfile`) based on `mcr.microsoft.com/devcontainers/python:1-3.13-bookworm`. The database goes to `/home/vscode/db.sqlite3` — the `vscode` user's home directory — because the devcontainer runs as `vscode`, not `app`.
