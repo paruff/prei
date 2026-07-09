@@ -1398,6 +1398,55 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
 
         return redirect("pipeline_detail", pk=pp.pk)
 
+    if source_type in ("attom", "county"):
+        from core.integrations.sources.attom_preforeclosure import (
+            fetch_attom_preforeclosure,
+        )
+        from core.models import CountyForeclosureNotice
+        from core.services.pipeline import create_from_county_notice
+
+        if source_type == "attom":
+            # For ATTOM, source_id is a ZIP code — fetch via API, then upsert
+            notices = fetch_attom_preforeclosure(zip_code=source_id)
+            if not notices:
+                messages.warning(
+                    request, "No ATTOM preforeclosure notices found for that ZIP."
+                )
+                return redirect(next_url)
+
+            count = 0
+            for notice_data in notices:
+                notice_data.pop("scraped_at", None)
+                notice_data.pop("last_seen_at", None)
+                cn, _ = CountyForeclosureNotice.objects.update_or_create(
+                    case_number=notice_data["case_number"],
+                    county=notice_data.get("county", ""),
+                    state=notice_data.get("state", ""),
+                    defaults=notice_data,
+                )
+                pp, created = create_from_county_notice(cn, request.user)
+                if created:
+                    count += 1
+
+            messages.success(request, f"{count} ATTOM notice(s) added to pipeline.")
+            return redirect("pipeline_list")
+        else:
+            # county: source_id is a CountyForeclosureNotice pk
+            try:
+                cn = CountyForeclosureNotice.objects.get(pk=int(source_id))
+            except (CountyForeclosureNotice.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "County notice not found")
+                return redirect(next_url)
+
+            pp, created = create_from_county_notice(cn, request.user)
+
+            if created:
+                messages.success(request, "County notice added to pipeline.")
+            else:
+                messages.info(request, "Already in your pipeline")
+
+            return redirect("pipeline_detail", pk=pp.pk)
+
     messages.error(request, f"Unknown source type: {source_type}")
     return redirect(next_url)
 

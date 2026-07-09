@@ -94,7 +94,7 @@
                     <tr><td>Housing demand</td><td>{{ ga.housing_demand_index }}</td><td>10%</td></tr>
                   </tbody>
                 </table>
-                <p class="page-sub">ACS vintage: auto-detected (2024 or latest available) &middot; Data timestamp: {{ ga.data_timestamp|date:"Y-m-d" }}</p>
+                <p class="page-sub">ACS vintage: auto-detected (2024 or latest available) &middot; Data timestamp: {{ ga.data_timestamp|date:"Y-m-d" }} &middot; Confidence: {{ ga.data_confidence }}%</p>
               </td>
             </tr>
           {% endfor %}

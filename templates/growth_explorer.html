@@ -245,7 +245,7 @@
                     <tr><td>Housing demand</td><td>{{ r.growth_area.housing_demand_index }}</td><td>10%</td></tr>
                   </tbody>
                 </table>
-                <p class="page-sub">ACS vintage: auto-detected (2024 or latest available) &middot; Data timestamp: {{ r.growth_area.data_timestamp|date:"Y-m-d" }}</p>
+                <p class="page-sub">ACS vintage: auto-detected (2024 or latest available) &middot; Data timestamp: {{ r.growth_area.data_timestamp|date:"Y-m-d" }} &middot; Confidence: {{ r.growth_area.data_confidence }}%</p>
               </td>
             </tr>
             {% endfor %}
