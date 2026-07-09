@@ -729,18 +729,19 @@ class GrowthArea(models.Model):
         Missing factors are treated as 0 so a partial score is still computable.
 
         Weights (GACS v2):
-          - Employment growth rate:  0.40  (county-level QCEW preferred, FRED fallback)
+          - Employment growth rate:  0.35  (county-level QCEW preferred, FRED fallback)
           - Population growth rate:  0.20  (place-level, Census ACS)
-          - Median income growth:    0.20  (place-level, Census ACS)
+          - Median income growth:    0.15  (place-level, Census ACS)
+          - School quality score:    0.15  (place-level, GreatSchools API)
           - Supply constraint index: 0.10  (place-level, Census ACS housing-unit growth)
-          - School quality score:    0.10  (place-level, GreatSchools API)
-          - Housing demand index:    Removed (replaced by school quality)
+          - Net migration proxy:     0.05  (estimated from ACS pop growth vs natural increase)
         """
-        emp_weight = Decimal("0.40")
+        emp_weight = Decimal("0.35")
         pop_weight = Decimal("0.20")
-        income_weight = Decimal("0.20")
+        income_weight = Decimal("0.15")
+        school_weight = Decimal("0.15")
         supply_weight = Decimal("0.10")
-        school_weight = Decimal("0.10")
+        migration_weight = Decimal("0.05")
 
         emp_rate = self.employment_growth_rate or Decimal("0")
         pop_rate = self.population_growth_rate or Decimal("0")
@@ -749,13 +750,17 @@ class GrowthArea(models.Model):
         school_score_val = (
             (self.school_score / Decimal("10")) if self.school_score else Decimal("0")
         )
+        migration_rate = (
+            (self.net_migration_rate / Decimal("100")) if self.net_migration_rate else Decimal("0")
+        )
 
         score = (
             emp_rate * emp_weight
             + pop_rate * pop_weight
             + income_rate * income_weight
-            + supply_idx * supply_weight
             + school_score_val * school_weight
+            + supply_idx * supply_weight
+            + migration_rate * migration_weight
         )
         return score
 
@@ -763,28 +768,21 @@ class GrowthArea(models.Model):
     def data_confidence(self) -> int:
         """Confidence score 0-100 based on how many data points are real vs defaults.
 
-        Each of the 5 GACS components is scored:
-        - real value from API → 20 points
-        - default/placeholder  → 0 points
+        Each of the 6 GACS components is scored:
+        - real value from API → ~17 points
         """
         c = 0
-        # employment_growth_rate: nullable — FRED or QCEW data
         if self.employment_growth_rate is not None:
-            c += 20
-        # population_growth_rate: required field, always real
-        c += 20
-        # median_income_growth: required field, always real
-        c += 20
-        # school_score: nullable — GreatSchools integration
+            c += 17
+        c += 17  # population_growth_rate: required
+        c += 17  # median_income_growth: required
         if self.school_score is not None:
-            c += 20
-        # supply_constraint_index: default is 50
-        if (
-            self.supply_constraint_index is not None
-            and self.supply_constraint_index != 50
-        ):
-            c += 20
-        return c
+            c += 17
+        if self.supply_constraint_index is not None and self.supply_constraint_index != 50:
+            c += 16
+        if self.net_migration_rate is not None:
+            c += 16
+        return min(c, 100)
 
     @property
     def net_migration_proxy(self) -> int | None:
