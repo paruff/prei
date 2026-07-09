@@ -909,9 +909,19 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             except Exception as exc:
                 logger.error("Growth Explorer: parallel fetch failed: %s", exc)
 
-    # 4. Upsert GrowthArea rows sequentially (SQLite does not support concurrent writes)
+    # 4a. Upsert GrowthArea rows sequentially (SQLite does not support concurrent writes)
     results = []
     for data in place_data_list:
+        # Fetch school quality score if API key available
+        school_score = None
+        gs_api_key = getenv("GREATSCHOOLS_API_KEY", "")
+        if gs_api_key:
+            from core.integrations.market.schools import fetch_school_rating
+
+            zip_code = data.get("zip_code", "")
+            if zip_code:
+                school_score = fetch_school_rating(zip_code, gs_api_key)
+
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
             city_name=data["place_name"],
@@ -922,6 +932,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "employment_growth_rate": safe_emp_growth,
                 "median_income_growth": data["income_growth"],
                 "housing_demand_index": data["housing_demand"],
+                "school_score": school_score,
                 "landlord_score": get_state_landlord_score(state)["score"],
                 "data_timestamp": timezone.now(),
             },
