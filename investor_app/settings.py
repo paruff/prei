@@ -250,6 +250,9 @@ GROWTH_AREAS_CACHE_DURATION = 86400  # 24 hours
 # significantly by market, contractor, and property condition.
 # Override individual values via env vars: REHAB_COST_COSMETIC,
 # REHAB_COST_MODERATE, REHAB_COST_FULL_GUT (dollar amounts, e.g. "15").
+# FRED API key for economic data (employment growth, unemployment)
+FRED_API_KEY: str = env("FRED_API_KEY", default="")
+
 REHAB_COST_PER_SQFT: dict[str, Decimal] = {
     "cosmetic": Decimal(
         env("REHAB_COST_COSMETIC", default="15")
