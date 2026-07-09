@@ -208,7 +208,10 @@ class TestTXBaseParser:
         """Base parser extracts notices from standard HTML table."""
         from core.integrations.county.tx_base import _parse_notices
 
-        config = {"county_name": "Test", "selectors": {"table": "table.foreclosure-table"}}
+        config = {
+            "county_name": "Test",
+            "selectors": {"table": "table.foreclosure-table"},
+        }
         notices = _parse_notices(self.FIXTURE_HTML, config)
         assert len(notices) == 2
         assert notices[0]["county"] == "Test"
@@ -220,7 +223,10 @@ class TestTXBaseParser:
         """Addresses are split into street/city/ZIP."""
         from core.integrations.county.tx_base import _parse_notices
 
-        config = {"county_name": "Test", "selectors": {"table": "table.foreclosure-table"}}
+        config = {
+            "county_name": "Test",
+            "selectors": {"table": "table.foreclosure-table"},
+        }
         notices = _parse_notices(self.FIXTURE_HTML, config)
         assert notices[0]["city"] == "Austin"
         assert notices[0]["zip_code"] == "78701"
@@ -239,7 +245,9 @@ class TestTXBaseParser:
         """Parser returns empty when no table with foreclosure keywords."""
         from core.integrations.county.tx_base import _parse_notices
 
-        html = "<html><body><table><tr><td>1</td><td>Data</td></tr></table></body></html>"
+        html = (
+            "<html><body><table><tr><td>1</td><td>Data</td></tr></table></body></html>"
+        )
         config = {"county_name": "Test", "selectors": {"table": "table.nonexistent"}}
         notices = _parse_notices(html, config)
         assert notices == []
