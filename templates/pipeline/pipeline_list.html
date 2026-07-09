@@ -25,9 +25,9 @@
   </div>
 
   {# Search bar #}
-  <form method="get" class="mb-4" style="display: flex; gap: var(--sp-2);">
-    <input type="text" name="q" value="{{ search_term }}" placeholder="Search by address or ID..." class="form-input" style="max-width: 400px;" aria-label="Search pipeline properties">
-    <button type="submit" class="btn">Search</button>
+  <form method="get" class="mb-4">
+    <input type="text" name="q" value="{{ search_term }}" placeholder="Search by address or ID..." class="form-input" aria-label="Search pipeline properties">
+    <button type="submit" class="btn ml-link">Search</button>
     {% if search_term %}
       <a href="?status={{ current_status }}" class="btn">Clear</a>
     {% endif %}
