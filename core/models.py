@@ -751,7 +751,9 @@ class GrowthArea(models.Model):
             (self.school_score / Decimal("10")) if self.school_score else Decimal("0")
         )
         migration_rate = (
-            (self.net_migration_rate / Decimal("100")) if self.net_migration_rate else Decimal("0")
+            (self.net_migration_rate / Decimal("100"))
+            if self.net_migration_rate
+            else Decimal("0")
         )
 
         score = (
@@ -778,7 +780,10 @@ class GrowthArea(models.Model):
         c += 17  # median_income_growth: required
         if self.school_score is not None:
             c += 17
-        if self.supply_constraint_index is not None and self.supply_constraint_index != 50:
+        if (
+            self.supply_constraint_index is not None
+            and self.supply_constraint_index != 50
+        ):
             c += 16
         if self.net_migration_rate is not None:
             c += 16
