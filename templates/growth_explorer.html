@@ -197,6 +197,7 @@
               <th>Emp Growth (5yr)*</th>
               <th>Income Growth (5yr)</th>
               <th>Housing Demand</th>
+              <th>Supply Constraint</th>
               <th>Composite Score</th>
               <th>Action</th>
             </tr>
@@ -220,6 +221,10 @@
               <td class="col-right num">{{ r.growth_area.employment_growth_rate|mul:100|floatformat:2 }}%</td>
               <td class="col-right num">{{ r.growth_area.median_income_growth|mul:100|floatformat:2 }}%</td>
               <td class="col-right">{{ r.growth_area.housing_demand_index }}</td>
+              <td class="col-right">
+                {{ r.growth_area.supply_constraint_index|default_if_none:"50" }}
+                <span class="chip chip-info" title="Computed from ACS housing-to-population ratio when available; defaults to 50">ACS-derived</span>
+              </td>
               <td class="col-right score-num num-good">{{ r.growth_area.composite_score|default_if_none:""|floatformat:2 }}</td>
               <td>
                 <a href="{% url 'vrm_properties_list' %}?state={{ r.growth_area.state }}" class="btn">View Foreclosures</a>
