@@ -40,6 +40,16 @@
     {% endif %}
   </div>
 
+  {# Source type filter chips #}
+  <div class="chip-group">
+    <a href="?status={{ current_status }}{% if current_stage %}&stage={{ current_stage }}{% endif %}{% if month_filter %}&month={{ month_filter }}{% endif %}"
+       class="chip {% if not current_source %}is-active{% endif %}">All</a>
+    {% for val, label in source_choices %}
+    <a href="?status={{ current_status }}&source={{ val }}{% if current_stage %}&stage={{ current_stage }}{% endif %}{% if month_filter %}&month={{ month_filter }}{% endif %}"
+       class="chip {% if current_source == val %}is-active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
   {# Property cards #}
   {% if properties %}
     <div class="pipeline-cards">
