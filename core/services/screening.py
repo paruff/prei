@@ -361,7 +361,8 @@ def _get_monthly_rent(
     """Get monthly rent from source_record or PipelineProperty.
 
     Prefers source_record (VrmProperty.projected_monthly_rent) over
-    PipelineProperty.estimated_rent. Returns None if neither available.
+    PipelineProperty.estimated_rent. Falls back to HUD Fair Market Rent
+    lookup when neither is available.
     """
     if (
         source_record is not None
@@ -377,6 +378,37 @@ def _get_monthly_rent(
         and pipeline_property.estimated_rent > 0
     ):
         return Decimal(str(pipeline_property.estimated_rent))
+
+    # Fallback: try HUD FMR if we have a source record with ZIP
+    zip_code = None
+    bedrooms = pipeline_property.beds
+    if source_record is not None and hasattr(source_record, "zip_code"):
+        zip_code = str(source_record.zip_code) if source_record.zip_code else None  # type: ignore[union-attr]
+
+    if not zip_code and pipeline_property.address:
+        # Try extracting ZIP from address (common format: "..., TX 75201")
+        import re
+
+        m = re.search(r"\b(\d{5})\b", pipeline_property.address)
+        if m:
+            zip_code = m.group(1)
+
+    if zip_code:
+        try:
+            from core.integrations.market.hud_fmr import get_rent_estimate
+
+            rent = get_rent_estimate(
+                zip_code=zip_code, bedrooms=int(bedrooms) if bedrooms else 2
+            )
+            if rent is not None and rent > 0:
+                # Cache on pipeline_property for future calls
+                pipeline_property.estimated_rent = rent
+                PipelineProperty.objects.filter(pk=pipeline_property.pk).update(
+                    estimated_rent=rent
+                )
+                return rent
+        except Exception:
+            pass
 
     return None
 
