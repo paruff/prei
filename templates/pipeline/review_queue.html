@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Review Queue — prei{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+
+  <h1>
+    Review queue
+    {% if count_pass > 0 %}
+      <span class="chip chip-info">{{ count_pass }} passed</span>
+    {% endif %}
+    {% if count_marginal > 0 %}
+      <span class="chip chip-warning">{{ count_marginal }} marginal</span>
+    {% endif %}
+  </h1>
+
+  {% if count_pass == 0 %}
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <p>No properties are ready for review right now.</p>
+      <p class="page-sub">Discover and screen properties to see them here.</p>
+    </div>
+  {% else %}
+    <div class="pipeline-cards">
+    {% for prop in page_obj %}
+      <div class="card">
+        <div class="card-body">
+          {# Line 1: Address #}
+          <div class="card-title">{{ prop.address|truncatechars:60 }}</div>
+
+          {# Line 2: Price #}
+          <div class="page-sub">
+            {% if prop.price %}
+              ${{ prop.price|floatformat:0|intcomma }}
+            {% else %}
+              —
+            {% endif %}
+          </div>
+
+          {# Line 3: Estimated rent #}
+          <div class="page-sub">
+            {% if prop.estimated_rent %}
+              est. rent ${{ prop.estimated_rent }}/mo
+            {% else %}
+              <span class="page-sub">Yield not calculated</span>
+            {% endif %}
+          </div>
+
+          {# Line 4: Source chip #}
+          <div class="chip-group">
+            <span class="chip chip-default">{{ prop.get_source_type_display }}</span>
+          </div>
+
+          {# Line 5: New badge #}
+          {% if last_visit and prop.created_at|date:"c" > last_visit %}
+            <span class="chip chip-info">New</span>
+          {% endif %}
+
+          {# Actions row #}
+          <div class="mt-3">
+            <a href="{% url 'pipeline_detail' prop.pk %}" class="btn btn-primary">Underwrite →</a>
+            <form method="post" action="{% url 'pipeline_advance_stage' prop.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="hold">
+              <button type="submit" class="btn">Hold</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+
+    {# Pagination #}
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="btn">← Previous</a>
+      {% endif %}
+      <span class="page-sub">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </span>
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="btn">Next →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  {% endif %}
+
+</div>
+{% endblock %}

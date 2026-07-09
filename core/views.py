@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import EmptyPage, Paginator
-from django.db.models import Q, Count
+from django.db.models import F, Q, Count
 from django.http import (
     Http404,
     HttpRequest,
@@ -1144,6 +1144,86 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
             ],
         },
     )
+
+
+@login_required
+def pipeline_review_queue(request: HttpRequest) -> HttpResponse:
+    """Review queue: SCREENING-passed properties ready for triage.
+
+    Shows only PipelineProperty records at the SCREENING stage with
+    ``screening_passed=True``, sorted by ``gacs_score`` descending
+    (nulls last), then by ``created_at``.
+    """
+    from core.models import PipelineProperty
+
+    qs = (
+        PipelineProperty.objects.filter(
+            user=request.user,
+            status=PipelineProperty.Status.ACTIVE,
+            stage=PipelineProperty.Stage.SCREENING,
+            screening_passed=True,
+        )
+        .select_related("investment_analysis")
+        .order_by(F("gacs_score").desc(nulls_last=True), "created_at")
+    )
+
+    # Count badges
+    count_pass = qs.count()
+    count_marginal = PipelineProperty.objects.filter(
+        user=request.user,
+        status=PipelineProperty.Status.ACTIVE,
+        stage=PipelineProperty.Stage.SCREENING,
+        screening_passed=False,
+    ).count()
+
+    # Paginate
+    paginator = Paginator(qs, 20)
+    page_num = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_num)
+
+    # Last visit badge (session-based)
+    last_visit = request.session.get("pipeline_review_last_visit")
+    request.session["pipeline_review_last_visit"] = timezone.now().isoformat()
+
+    return render(
+        request,
+        "pipeline/review_queue.html",
+        {
+            "page_obj": page_obj,
+            "count_pass": count_pass,
+            "count_marginal": count_marginal,
+            "last_visit": last_visit,
+        },
+    )
+
+
+@login_required
+def pipeline_advance_stage(request: HttpRequest, pk: int) -> HttpResponse:
+    """Advance a pipeline property to the next stage.
+
+    Accepts POST with ``action`` parameter.  Currently supports:
+      - ``hold``: set status to ON_HOLD
+    """
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    from core.models import PipelineProperty
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    action = request.POST.get("action", "")
+
+    if action == "hold":
+        prop.status = PipelineProperty.Status.ON_HOLD
+        prop.save(update_fields=["status", "updated_at"])
+        messages.info(request, f"{prop.address} has been moved to Hold.")
+    else:
+        messages.warning(request, f"Unknown action: {action}")
+
+    return redirect("pipeline_review_queue")
 
 
 def pipeline_detail(request: HttpRequest, pk: int) -> HttpResponse:
