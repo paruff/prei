@@ -1092,11 +1092,15 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
     GET params:
       status: filter by status (ACTIVE, KILLED, ON_HOLD) — default ACTIVE
       stage:  filter by stage (SCREENING, UNDERWRITING, etc) — optional
+      month:  set to 'this' to filter to current month's properties
     """
+    from django.utils import timezone as tz
+
     from core.models import PipelineProperty
 
     status_filter = request.GET.get("status", "ACTIVE")
     stage_filter = request.GET.get("stage", "")
+    month_filter = request.GET.get("month", "")
 
     qs = (
         PipelineProperty.objects.filter(user=request.user)
@@ -1108,11 +1112,19 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(status=status_filter)
     if stage_filter:
         qs = qs.filter(stage=stage_filter)
+    if month_filter == "this":
+        now = tz.now()
+        qs = qs.filter(created_at__month=now.month, created_at__year=now.year)
 
     # Stage counts for funnel header
-    all_user_props = PipelineProperty.objects.filter(user=request.user)
+    stage_qs = PipelineProperty.objects.filter(user=request.user)
+    if month_filter == "this":
+        now = tz.now()
+        stage_qs = stage_qs.filter(
+            created_at__month=now.month, created_at__year=now.year
+        )
     stage_counts: dict[str, int] = {}
-    for pp in all_user_props:
+    for pp in stage_qs:
         stage_counts[pp.stage] = stage_counts.get(pp.stage, 0) + 1
 
     # Build ordered list of (stage_label, count) for template display
@@ -1137,6 +1149,7 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
             "stage_items": stage_items,
             "current_status": status_filter,
             "current_stage": stage_filter,
+            "month_filter": month_filter,
             "status_choices": [
                 ("ACTIVE", "Active"),
                 ("KILLED", "Killed"),
