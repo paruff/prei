@@ -177,6 +177,7 @@ class Notification(models.Model):
         ("reminder", "Reminder"),
         ("price_change", "Price Change"),
         ("sold", "Property Sold"),
+        ("pipeline_match", "Pipeline Match"),
     )
 
     PRIORITY_CHOICES = (

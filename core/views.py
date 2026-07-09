@@ -1104,6 +1104,43 @@ def pipeline_dashboard(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
+def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
+    """Portfolio dashboard — shows acquired properties and matching growth areas."""
+    from core.models import GrowthArea, PipelineProperty
+
+    # Get acquired properties
+    qs = PipelineProperty.objects.filter(
+        user=request.user,
+        status=PipelineProperty.Status.ACQUIRED,
+    ).order_by("-acquired_at")
+
+    total = qs.count()
+    total_equity = sum((p.price or 0) for p in qs)
+    total_rent = sum((p.estimated_rent or 0) for p in qs)
+    scores = [p.gacs_score for p in qs if p.gacs_score]
+    avg_gacs = sum(scores) / len(scores) if scores else 0
+
+    # Find growth areas matching property states
+    states = qs.values_list("state", flat=True).distinct()
+    growth_areas = GrowthArea.objects.filter(
+        state__in=list(states)
+    ).order_by("-composite_score")[:10]
+
+    return render(
+        request,
+        "portfolio_dashboard.html",
+        {
+            "properties": qs,
+            "total_properties": total,
+            "total_equity": total_equity,
+            "total_monthly_cf": total_rent,
+            "avg_gacs": avg_gacs,
+            "growth_areas": growth_areas,
+        },
+    )
+
+
 def pipeline_list(request: HttpRequest) -> HttpResponse:
     """Pipeline property list with stage funnel and filtering.
 

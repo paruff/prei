@@ -267,6 +267,10 @@ def create_from_vrm(
         ]
     )
 
+    # Notify user if the property passed screening
+    if pp.screening_passed:
+        _notify_if_growth_area_match(pp, user, None)
+
     return pp, True
 
 
@@ -324,6 +328,10 @@ def create_from_foreclosure(
             "updated_at",
         ]
     )
+
+    # Notify user if the property passed screening
+    if pp.screening_passed:
+        _notify_if_growth_area_match(pp, user, None)
 
     return pp, True
 
@@ -389,6 +397,10 @@ def create_from_hud(
         ]
     )
 
+    # Notify user if the property passed screening
+    if pp.screening_passed:
+        _notify_if_growth_area_match(pp, user, None)
+
     return pp, True
 
 
@@ -450,6 +462,10 @@ def create_from_usda(
             "updated_at",
         ]
     )
+
+    # Notify user if the property passed screening
+    if pp.screening_passed:
+        _notify_if_growth_area_match(pp, user, None)
 
     return pp, True
 
@@ -513,6 +529,10 @@ def create_from_county_notice(
             "updated_at",
         ]
     )
+
+    # Notify user if the property passed screening
+    if pp.screening_passed:
+        _notify_if_growth_area_match(pp, user, None)
 
     return pp, True
 
@@ -584,3 +604,25 @@ def convert_to_property_record(
         )
 
     return prop
+
+
+def _notify_if_growth_area_match(
+    pipeline_property: Any,
+    user: Any,
+    source_record: Any | None = None,
+) -> None:
+    """Create a notification if the property matches a user's growth area.
+
+    Called after a new PipelineProperty passes screening.  Silently
+    handles missing notification service or preferences.
+    """
+    try:
+        from core.services.notifications import notify_pipeline_match
+
+        notify_pipeline_match(user, pipeline_property, source_record)
+    except Exception as exc:
+        import logging
+
+        logging.getLogger("prei.pipeline").warning(
+            "Failed to send pipeline notification: %s", exc
+        )

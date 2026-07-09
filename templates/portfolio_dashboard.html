@@ -1,47 +1,113 @@
 {% extends "base.html" %}
-{% block title %}Portfolio Dashboard{% endblock %}
+{% load humanize %}
+{% block title %}Portfolio — prei{% endblock %}
 {% block content %}
-  <h1>Portfolio Dashboard</h1>
-  {% if error %}
-    <p class="message-error">{{ error }}</p>
-  {% else %}
-    <h2>Aggregate KPIs</h2>
-    <ul>
-      <li>Total NOI: ${{ agg.total_noi }}</li>
-      <li>Average Cap Rate: {{ agg.avg_cap_rate|floatformat:4 }}</li>
-      <li>Average Cash-on-Cash: {{ agg.avg_coc|floatformat:4 }}</li>
-    </ul>
 
-    <h2>12-Month Income Trend</h2>
-    {% if trend_summary %}
-      <p>
-        NOI trend: {{ trend_summary.trend_noi }}% &nbsp;|&nbsp;
-        Cap Rate trend: {{ trend_summary.trend_cap_rate }}%
-      </p>
-    {% endif %}
-    {% if monthly_series %}
-      <table>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Portfolio Dashboard</h1>
+    <p class="page-sub">
+      {% if total_properties > 0 %}
+        {{ total_properties }} property{{ total_properties|pluralize }} acquired
+        &middot; ${{ total_equity|floatformat:0|intcomma }} total equity
+      {% else %}
+        No properties acquired yet
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+{% if total_properties == 0 %}
+<div class="empty-state mt-section">
+  <div class="empty-state-icon" aria-hidden="true">📊</div>
+  <h3>No properties in your portfolio yet</h3>
+  <p>Properties move here when they reach the Acquired stage in your pipeline.</p>
+  <a href="{% url 'pipeline_list' %}" class="btn btn-primary">View Pipeline</a>
+</div>
+{% else %}
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Properties</div>
+    <div class="kpi-value num-good">{{ total_properties }}</div>
+    <div class="kpi-sub">Acquired</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Equity</div>
+    <div class="kpi-value num-good">${{ total_equity|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Monthly Cash Flow</div>
+    <div class="kpi-value {% if total_monthly_cf >= 0 %}num-good{% else %}num-bad{% endif %}">
+      ${{ total_monthly_cf|floatformat:0|intcomma }}
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Avg GACS Score</div>
+    <div class="kpi-value num">{{ avg_gacs|floatformat:1 }}</div>
+    <div class="kpi-sub">Market quality</div>
+  </div>
+</div>
+
+<div class="card mt-section">
+  <div class="card-title">Acquired Properties</div>
+  <div class="card-body">
+    <div class="table-wrap">
+      <table class="data-table">
         <thead>
           <tr>
-            <th>Month</th>
-            <th>Gross Income</th>
-            <th>Expenses</th>
-            <th>NOI</th>
+            <th>Address</th>
+            <th>Price</th>
+            <th>Est. Rent</th>
+            <th>Monthly CF</th>
+            <th>Market Score</th>
+            <th>Acquired</th>
           </tr>
         </thead>
         <tbody>
-          {% for row in monthly_series %}
-            <tr>
-              <td>{{ row.month }}</td>
-              <td>${{ row.gross_income|floatformat:2 }}</td>
-              <td>${{ row.expenses|floatformat:2 }}</td>
-              <td>${{ row.noi|floatformat:2 }}</td>
-            </tr>
+          {% for prop in properties %}
+          <tr>
+            <td>{{ prop.address|truncatechars:40 }}</td>
+            <td class="col-right num">${{ prop.price|floatformat:0|intcomma }}</td>
+            <td class="col-right num">{% if prop.estimated_rent %}${{ prop.estimated_rent|floatformat:0|intcomma }}/mo{% else %}—{% endif %}</td>
+            <td class="col-right num">{% if prop.estimated_rent and prop.price %}${{ prop.estimated_rent|floatformat:0|intcomma }}{% else %}—{% endif %}</td>
+            <td class="col-right num">{% if prop.gacs_score %}{{ prop.gacs_score|floatformat:1 }}{% else %}—{% endif %}</td>
+            <td>{{ prop.acquired_at|date:"M Y"|default:"—" }}</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-section">
+  <div class="card-title">Matching Growth Areas</div>
+  <div class="card-body">
+    {% if growth_areas %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>City</th><th>State</th><th>Pop Growth</th><th>Emp Growth</th><th>Composite Score</th></tr>
+          </thead>
+          <tbody>
+            {% for ga in growth_areas %}
+            <tr>
+              <td>{{ ga.city_name }}</td>
+              <td>{{ ga.state }}</td>
+              <td class="col-right num">{{ ga.population_growth_rate|floatformat:2 }}%</td>
+              <td class="col-right num">{{ ga.employment_growth_rate|default:"—" }}</td>
+              <td class="col-right num-good">{{ ga.composite_score|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% else %}
-      <p>No income data for the past 12 months.</p>
+      <p class="page-sub">No growth areas match your acquired properties.</p>
     {% endif %}
-  {% endif %}
+  </div>
+</div>
+
+{% endif %}
 {% endblock %}
