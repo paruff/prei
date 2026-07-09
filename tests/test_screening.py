@@ -750,10 +750,11 @@ class TestIntegration:
 
         result = screen_property(pp, configured_criteria, vrm_property)
         assert result.passed
-        assert result.score == Decimal("100")
+        # GACS v2: score 8.04 vs min 10 → deducts 3.92 from 100
+        assert result.score == Decimal("96.08"), f"Expected 96.08, got {result.score}"
         assert len(result.hard_failures) == 0
-        assert len(result.soft_failures) == 0
-        assert len(result.passes) >= 5
+        assert len(result.soft_failures) == 1  # GACS below minimum
+        assert len(result.passes) >= 4
 
     def test_foreclosure_property_skips_yield(
         self, db, configured_criteria, user, foreclosure_property, growth_area
