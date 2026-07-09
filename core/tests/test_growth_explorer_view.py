@@ -152,4 +152,4 @@ class TestGrowthExplorerPost:
         client.force_login(user)
         response = client.post(reverse("growth_explorer"), {"state": "TX"})
         assert response.status_code == 200
-        assert b"No places" in response.content
+        assert b"No Census data returned" in response.content
