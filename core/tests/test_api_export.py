@@ -344,7 +344,7 @@ class TestExportPropertyAnalysisPDF:
 
         response = api_client.post(url, data, format="json")
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_export_property_analysis_pdf_missing_data(self, auth_client):
         """Test PDF export fails with missing required data."""

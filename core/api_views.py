@@ -13,7 +13,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import generics, permissions, serializers, status
-from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
@@ -88,6 +88,8 @@ class ListingPagination(PageNumberPagination):
 
 class ListingListView(generics.ListAPIView):
     """List listings with optional filters."""
+
+    permission_classes = [permissions.AllowAny]
 
     serializer_class = ListingSerializer
     pagination_class = ListingPagination
@@ -174,6 +176,8 @@ class ListingListView(generics.ListAPIView):
 class ListingDetailView(generics.RetrieveAPIView):
     """Return a listing with computed score and nearest market snapshot."""
 
+    permission_classes = [permissions.AllowAny]
+
     queryset = Listing.objects.all()
     serializer_class = ListingSerializer
     throttle_classes = [UserRateThrottle, AnonRateThrottle]
@@ -221,6 +225,7 @@ class PortfolioAnalyticsView(APIView):
 
 
 @api_view(["GET"])
+@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def growth_areas_list(request):
     """
@@ -357,6 +362,7 @@ def growth_areas_list(request):
 
 
 @api_view(["GET"])
+@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def foreclosures_list(request):
     """
@@ -701,6 +707,7 @@ def get_property_type_defaults(
 
 
 @api_view(["POST"])
+@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def calculate_carrying_costs(request):
     """
@@ -1501,6 +1508,7 @@ def notification_preferences_view(request):
 
 
 @api_view(["POST"])
+@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def export_foreclosures_csv(request):
     """
@@ -1629,6 +1637,7 @@ def export_foreclosures_csv(request):
 
 
 @api_view(["POST"])
+@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def export_foreclosures_json(request):
     """
@@ -1910,6 +1919,7 @@ def export_property_deal_pack(request, property_id: int):
 
 
 @api_view(["POST"])
+@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def compare_investment_strategies(request):
     """
@@ -2165,6 +2175,7 @@ def compare_investment_strategies(request):
 
 
 @api_view(["GET"])
+@permission_classes([permissions.AllowAny])
 def health_check(request: Any) -> Response:
     """
     Health check endpoint for deployment platforms.
@@ -2247,6 +2258,8 @@ class VrmPropertyListAPI(APIView):
     List VRM properties with optional state and zip code filters.
     """
 
+    permission_classes = [permissions.AllowAny]
+
     def get(self, request: Any) -> Response:
         queryset = VrmProperty.objects.all()
 
@@ -2303,6 +2316,8 @@ class VrmPropertyScrapeAPI(APIView):
     Trigger a VRM scrape for the given state.
     """
 
+    permission_classes = [permissions.AllowAny]
+
     def post(self, request: Any) -> Response:
         state = request.data.get("state", "").strip().upper()
         if not state:
@@ -2355,6 +2370,7 @@ class VrmPropertyScrapeAPI(APIView):
 
 
 class VrmPropertyImportAPI(APIView):
+    permission_classes = [permissions.AllowAny]
     """
     POST /api/v1/vrm-properties/import/
 
