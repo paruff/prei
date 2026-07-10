@@ -210,9 +210,9 @@ class GrowthArea(models.Model):
         null=True,
         blank=True,
         help_text=(
-            "5-year gross rent growth rate — NOT YET POPULATED. "
-            "Field reserved for HUD FMR or ACS rent growth integration. "
-            "See GACS-FMR-1 in backlog."
+            "Year-over-year 2BR FMR growth rate from HUD (populated by "
+            "populate_growth_areas via FMR adapter).  Null when HUD_API_KEY "
+            "is missing or entity ID lookup fails."
         ),
     )
     net_migration = models.IntegerField(
@@ -235,6 +235,21 @@ class GrowthArea(models.Model):
             "5-character county FIPS code for QCEW employment lookup "
             "(e.g. '48113' for Dallas County TX)"
         ),
+    )
+    fmr_2br = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=(
+            "HUD FY2026 2BR Fair Market Rent (40th pct rent floor, "
+            "not market rent)"
+        ),
+    )
+    fmr_year = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Fiscal year of the FMR data (e.g. 2026)",
     )
     latitude = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True
