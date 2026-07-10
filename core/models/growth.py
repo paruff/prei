@@ -7,6 +7,27 @@ from django.db import models
 User = get_user_model()
 
 
+def compute_net_migration(
+    population: int | None,
+    pop_growth_rate: Decimal | None,
+) -> tuple[int | None, Decimal | None]:
+    """Estimate net migration and net migration rate from population data.
+
+    Formula:
+      prior_pop = current_pop / (1 + pop_growth_rate)
+      natural_increase = prior_pop * 0.005
+      net_migration = current_pop - prior_pop - natural_increase
+      net_migration_rate = net_migration / prior_pop
+    """
+    if population is not None and pop_growth_rate is not None and pop_growth_rate != 0:
+        prior_pop = int(Decimal(population) / (Decimal("1") + pop_growth_rate))
+        natural_increase = int(Decimal(prior_pop) * Decimal("0.005"))
+        migration = population - prior_pop - natural_increase
+        migration_rate = Decimal(migration) / Decimal(prior_pop)
+        return migration, migration_rate.quantize(Decimal("0.0001"))
+    return None, None
+
+
 class Listing(models.Model):
     """Normalized real estate listing ingested from external sources.
 

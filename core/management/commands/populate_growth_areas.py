@@ -272,6 +272,13 @@ class Command(BaseCommand):
                     )
                     supply_constraint = 50  # neutral default
 
+                # Compute net migration from population data
+                from core.models.growth import compute_net_migration
+
+                net_mig, net_mig_rate = compute_net_migration(
+                    census_data.get("population_current"), pop_growth
+                )
+
                 # 5. Upsert GrowthArea
                 growth_area, created = GrowthArea.objects.update_or_create(
                     state=state_code,
@@ -284,6 +291,8 @@ class Command(BaseCommand):
                         "median_income_growth": income_growth,
                         "housing_demand_index": housing_demand,
                         "supply_constraint_index": supply_constraint,
+                        "net_migration": net_mig,
+                        "net_migration_rate": net_mig_rate,
                         "data_timestamp": timezone.now(),
                     },
                 )
