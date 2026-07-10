@@ -539,7 +539,9 @@ class PopulateGrowthAreasCommandTest(TestCase):
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
     @patch("core.integrations.market.county_fips_map.lookup_county_fips")
-    def test_handles_multiple_cities(self, mock_fips, mock_housing, mock_employment, mock_census):
+    def test_handles_multiple_cities(
+        self, mock_fips, mock_housing, mock_employment, mock_census
+    ):
         """Creates GrowthArea records for multiple cities."""
         mock_census.return_value = {
             "population_current": 400000,
