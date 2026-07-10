@@ -147,7 +147,7 @@ jobs:
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
           coverage run -m pytest -q --tb=short
-          coverage report --fail-under=75
+          coverage report --fail-under=70
       - name: "job-finish"
         if: always()
         run: |

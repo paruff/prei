@@ -37,7 +37,7 @@ from core.integrations.market.census import (
 )
 from core.integrations.sources.fred_adapter import FREDAdapter
 
-from .models import (
+from core.models import (
     HudProperty,
     UsdaProperty,
     VrmProperty,
@@ -58,13 +58,13 @@ from investor_app.finance.utils import (
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
 from core.services import compute_portfolio_summary
 from core.services.audit import log_action
-from .forms import (
+from core.forms import (
     OperatingExpenseForm,
     PropertyForm,
     RentalIncomeForm,
     InvestmentTargetsForm,
 )
-from .models import (
+from core.models import (
     Listing,
     MarketSnapshot,
     Property,
@@ -251,6 +251,41 @@ def dashboard(request):
             "summary": summary,
         },
     )
+
+
+@login_required
+def onboard(request: HttpRequest) -> HttpResponse:
+    """Onboarding wizard — first-login setup for API keys and preferences."""
+    from core.models import ScreeningCriteria, UserProfile
+
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        profile.is_onboarded = True
+        profile.save(update_fields=["is_onboarded"])
+
+        criteria, _ = ScreeningCriteria.objects.get_or_create(user=request.user)
+        state = request.POST.get("target_state", "").strip().upper()
+        if state:
+            criteria.allowed_states = [state]
+        min_price = request.POST.get("min_price", "").strip()
+        if min_price:
+            try:
+                criteria.min_price = Decimal(min_price)
+            except Exception:
+                pass
+        max_price = request.POST.get("max_price", "").strip()
+        if max_price:
+            try:
+                criteria.max_price = Decimal(max_price)
+            except Exception:
+                pass
+        criteria.save()
+
+        messages.success(request, "Setup complete! Here's your dashboard.")
+        return redirect("dashboard")
+
+    return render(request, "onboard.html", {"profile": profile, "states": US_STATES})
 
 
 @login_required
@@ -1100,6 +1135,42 @@ def pipeline_dashboard(request: HttpRequest) -> HttpResponse:
             "killed_assets": killed,
             "advanced_assets": advanced,
             "all_assets": assets[:50],
+        },
+    )
+
+
+@login_required
+def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
+    """Portfolio dashboard — shows acquired properties and matching growth areas."""
+    from core.models import GrowthArea, PipelineProperty
+
+    # Get acquired properties
+    qs = PipelineProperty.objects.filter(
+        user=request.user,
+        status=PipelineProperty.Status.ACQUIRED,
+    ).order_by("-acquired_at")
+
+    total = qs.count()
+    total_equity = sum((p.price or 0) for p in qs)
+    total_rent = sum((p.estimated_rent or 0) for p in qs)
+    scores = [p.gacs_score for p in qs if p.gacs_score]
+    avg_gacs = sum(scores) / len(scores) if scores else 0
+
+    # Show top growth areas
+    growth_areas = GrowthArea.objects.filter(composite_score__isnull=False).order_by(
+        "-composite_score"
+    )[:10]
+
+    return render(
+        request,
+        "portfolio_dashboard.html",
+        {
+            "properties": qs,
+            "total_properties": total,
+            "total_equity": total_equity,
+            "total_monthly_cf": total_rent,
+            "avg_gacs": avg_gacs,
+            "growth_areas": growth_areas,
         },
     )
 
@@ -2674,7 +2745,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
     along with the current user's recent ``DiscoveryRequest`` submissions.
     Users can submit new requests to be fulfilled by future scrapers.
     """
-    from .models import DiscoveryRequest, PropertySource
+    from core.models import DiscoveryRequest, PropertySource
 
     # Handle new discovery request
     if request.method == "POST" and "request_discovery" in request.POST:

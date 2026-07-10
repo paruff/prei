@@ -2,10 +2,11 @@ from django.urls import path
 
 from . import views
 from .views import MarketRefreshView
-from .views_portfolio import portfolio_actuals_add, portfolio_dashboard
+from .views_portfolio import portfolio_actuals_add
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("onboard/", views.onboard, name="onboard"),
     path("health/", views.health_check, name="health_check"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("properties/add/", views.property_add, name="property_add"),
@@ -53,7 +54,7 @@ urlpatterns = [
         views.report_property,
         name="report_property",
     ),
-    path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
+    path("portfolio/", views.portfolio_dashboard, name="portfolio_dashboard"),
     path("portfolio/actuals/add/", portfolio_actuals_add, name="portfolio_actuals_add"),
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
     path("hud-properties/", views.hud_property_list, name="hud_property_list"),
@@ -75,6 +76,7 @@ urlpatterns = [
     path("growth-explorer/", views.growth_explorer, name="growth_explorer"),
     path("discovery/", views.property_discovery, name="property_discovery"),
     path("pipeline/", views.pipeline_dashboard, name="pipeline_dashboard"),
+    path("pipeline/portfolio/", views.portfolio_dashboard, name="portfolio_dashboard"),
     path("pipeline/list/", views.pipeline_list, name="pipeline_list"),
     path("pipeline/review/", views.pipeline_review_queue, name="pipeline_review_queue"),
     path(
