@@ -11,6 +11,7 @@
     Review queue
     {% if count_pass > 0 %}
       <span class="chip chip-info">{{ count_pass }} passed</span>
+      <a href="{% url 'pipeline_review_csv' %}" class="btn">CSV</a>
     {% endif %}
     {% if count_marginal > 0 %}
       <span class="chip chip-warning">{{ count_marginal }} marginal</span>

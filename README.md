@@ -111,9 +111,10 @@ The `render.yaml` blueprint provisions:
 | Key | Purpose | Get Key | Required For |
 |---|---|---|---|
 | `ATTOM_API_KEY` | Property details, comps, foreclosures | [api.attomdata.com](https://api.attomdata.com) | Comps, property enrichment |
-| `CENSUS_API_KEY` | ZIP demographics, population, income | [api.census.gov](https://api.census.gov/data/key_signup.html) | Market scoring |
-| `BLS_API_KEY` | State/metro unemployment, wages | [data.bls.gov/registrationEngine](https://data.bls.gov/registrationEngine/) | Market scoring |
-| `RENTCAST_API_KEY` | Rental estimate comps | [rentcast.io](https://rentcast.io) | Rent estimates |
+| `CENSUS_API_KEY` | ZIP demographics, population, income | [api.census.gov](https://api.census.gov/data/key_signup.html) | Growth area scoring |
+| `BLS_API_KEY` | County unemployment, wages (QCEW/LAUS) | [data.bls.gov/registrationEngine](https://data.bls.gov/registrationEngine/) | Growth area scoring |
+| `FRED_API_KEY` | State employment growth, economic data | [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html) | Growth area scoring (fallback) |
+| `HUD_API_KEY` | Fair Market Rents by ZIP/county | [huduser.gov/portal/dataset/fmr-api.html](https://www.huduser.gov/portal/dataset/fmr-api.html) | Rental estimates |
 | `GREATSCHOOLS_API_KEY` | School ratings | [greatschools.org/api](https://www.greatschools.org/api/) | Neighborhood quality |
 | `WALKSCORE_API_KEY` | Walkability scores | [walkscore.com/professional/api](https://www.walkscore.com/professional/api) | Neighborhood quality |
 

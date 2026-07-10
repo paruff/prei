@@ -24,6 +24,15 @@
     {% endfor %}
   </div>
 
+  {# Search bar #}
+  <form method="get" class="mb-4">
+    <input type="text" name="q" value="{{ search_term }}" placeholder="Search by address or ID..." class="form-input" aria-label="Search pipeline properties">
+    <button type="submit" class="btn ml-link">Search</button>
+    {% if search_term %}
+      <a href="?status={{ current_status }}" class="btn">Clear</a>
+    {% endif %}
+  </form>
+
   {# Status filter tabs #}
   <div class="pipeline-status-tabs">
     {% for status_val, status_label in status_choices %}

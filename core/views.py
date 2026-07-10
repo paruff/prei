@@ -695,7 +695,7 @@ def growth_areas(request):
     page = request.GET.get("page", 1)
     try:
         page = int(page)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         page = 1
 
     growth_areas_qs = GrowthArea.objects.all().order_by("-composite_score")
@@ -1112,6 +1112,7 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
       stage:  filter by stage (SCREENING, UNDERWRITING, etc) — optional
       month:  set to 'this' to filter to current month's properties
       source: filter by source_type (vrm, hud, usda, etc) — optional
+      q:      search term — filters by address or source_id (case-insensitive)
     """
     from django.utils import timezone as tz
 
@@ -1121,6 +1122,7 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
     stage_filter = request.GET.get("stage", "")
     month_filter = request.GET.get("month", "")
     source_filter = request.GET.get("source", "")
+    search_term = request.GET.get("q", "").strip()
 
     qs = (
         PipelineProperty.objects.filter(user=request.user)
@@ -1137,6 +1139,10 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(created_at__month=now.month, created_at__year=now.year)
     if source_filter:
         qs = qs.filter(source_type=source_filter)
+    if search_term:
+        qs = qs.filter(
+            Q(address__icontains=search_term) | Q(source_id__icontains=search_term)
+        )
 
     # Stage counts for funnel header
     stage_qs = PipelineProperty.objects.filter(user=request.user)
@@ -1175,6 +1181,7 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
             "current_stage": stage_filter,
             "month_filter": month_filter,
             "current_source": source_filter,
+            "search_term": search_term,
             "source_choices": [(c.value, c.label) for c in PipelineProperty.SourceType],
             "status_choices": [
                 ("ACTIVE", "Active"),
@@ -1234,6 +1241,54 @@ def pipeline_review_queue(request: HttpRequest) -> HttpResponse:
             "last_visit": last_visit,
         },
     )
+
+
+@login_required
+def pipeline_review_csv(request: HttpRequest) -> HttpResponse:
+    """Export the review queue as CSV."""
+    import csv
+
+    from core.models import PipelineProperty
+
+    qs = (
+        PipelineProperty.objects.filter(
+            user=request.user,
+            status=PipelineProperty.Status.ACTIVE,
+            stage=PipelineProperty.Stage.SCREENING,
+            screening_passed=True,
+        )
+        .select_related("investment_analysis")
+        .order_by(F("gacs_score").desc(nulls_last=True), "created_at")
+    )
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="pipeline_review.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "Address",
+            "Price",
+            "Source Type",
+            "GACS Score",
+            "Estimated Rent",
+            "Beds",
+            "Created",
+        ]
+    )
+    for pp in qs:
+        writer.writerow(
+            [
+                pp.address,
+                str(pp.price) if pp.price else "",
+                pp.get_source_type_display(),
+                str(pp.gacs_score) if pp.gacs_score else "",
+                str(pp.estimated_rent) if pp.estimated_rent else "",
+                str(pp.beds) if pp.beds else "",
+                pp.created_at.strftime("%Y-%m-%d") if pp.created_at else "",
+            ]
+        )
+    return response
 
 
 @login_required
@@ -1355,7 +1410,7 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
     if source_type == "vrm":
         try:
             vrm = VrmProperty.objects.get(vrm_property_id=int(source_id))
-        except (VrmProperty.DoesNotExist, ValueError, TypeError):
+        except VrmProperty.DoesNotExist, ValueError, TypeError:
             messages.error(request, "VRM property not found")
             return redirect(next_url)
 
@@ -1452,7 +1507,7 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
             # county: source_id is a CountyForeclosureNotice pk
             try:
                 cn = CountyForeclosureNotice.objects.get(pk=int(source_id))
-            except (CountyForeclosureNotice.DoesNotExist, ValueError, TypeError):
+            except CountyForeclosureNotice.DoesNotExist, ValueError, TypeError:
                 messages.error(request, "County notice not found")
                 return redirect(next_url)
 
@@ -1977,7 +2032,7 @@ def search_listings(request):
             max_price = max_price or (
                 str(s.max_price) if s.max_price is not None else None
             )
-        except (SavedSearch.DoesNotExist, ValueError):
+        except SavedSearch.DoesNotExist, ValueError:
             pass
 
     qs = Listing.objects.all()
@@ -2177,7 +2232,7 @@ def _format_financing_value(
     try:
         number = Decimal(str(value))
         return f"{prefix}{number:,.2f}{suffix}"
-    except (InvalidOperation, TypeError, ValueError):
+    except InvalidOperation, TypeError, ValueError:
         return f"{prefix}{value}{suffix}"
 
 
@@ -2596,7 +2651,7 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
                 closing_costs_pct=Decimal(form_data["closing_costs_pct"])
                 / Decimal("100"),
             )
-        except (InvalidOperation, ValueError, ZeroDivisionError):
+        except InvalidOperation, ValueError, ZeroDivisionError:
             # Invalid input — render form with no result
             result = None
 
