@@ -242,8 +242,7 @@ class GrowthArea(models.Model):
         null=True,
         blank=True,
         help_text=(
-            "HUD FY2026 2BR Fair Market Rent (40th pct rent floor, "
-            "not market rent)"
+            "HUD FY2026 2BR Fair Market Rent (40th pct rent floor, not market rent)"
         ),
     )
     fmr_year = models.IntegerField(
