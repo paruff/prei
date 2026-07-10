@@ -202,6 +202,18 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
+### [LIMIT-18] Employment growth is state-level (FRED), not city-level (BLS QCEW)
+
+**Location:** `populate_growth_areas.py`, growth_explorer view, `FREDAdapter` (`core/integrations/sources/fred_adapter.py`)
+
+**Impact:** `employment_growth_rate` (35% GACS weight) is the same value for every city in the same state. Austin, TX and Laredo, TX receive identical employment scores. This is the single largest source of inaccuracy in the composite score.
+
+**Workaround:** None in alpha. Rankings within a state are driven entirely by population, income, school, supply, and migration signals — not employment. The BLS QCEW adapter (`core/integrations/market/bls_qcew.py`) exists but is not yet integrated into the growth explorer flow.
+
+**Fix tracked in:** GACS-QCEW-1 — replace FRED state-level employment with BLS QCEW county-level employment data.
+
+---
+
 ## Resolved Limitations
 
 ### [LIMIT-R01] Docker container permissions — `app` user could not write `db.sqlite3`
