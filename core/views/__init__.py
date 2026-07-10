@@ -968,7 +968,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             state=state,
             city_name=data["place_name"],
             defaults={
-                "metro_area": data["place_name"],
+                "metro_area": "",  # TODO: populate from Census CBSA API
                 "population": data["population"],
                 "population_growth_rate": data["pop_growth"],
                 "employment_growth_rate": safe_emp_growth,
