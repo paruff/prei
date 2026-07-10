@@ -44,7 +44,9 @@ class TestScoreListingV2:
     def test_returns_score_object(self, cheap_property: Property) -> None:
         from core.models import UserInvestmentTargets
 
-        targets = UserInvestmentTargets.objects.get_or_create(user=cheap_property.user)[0]
+        targets = UserInvestmentTargets.objects.get_or_create(user=cheap_property.user)[
+            0
+        ]
         score = score_listing_v2(cheap_property, targets)
         assert score.total_score >= 0
         assert score.verdict is not None
