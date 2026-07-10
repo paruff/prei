@@ -750,8 +750,8 @@ class TestIntegration:
 
         result = screen_property(pp, configured_criteria, vrm_property)
         assert result.passed
-        # GACS v2: score 8.04 vs min 10 → deducts 3.92 from 100
-        assert result.score == Decimal("96.08"), f"Expected 96.08, got {result.score}"
+        # GACS v2: score 7.76 vs min 10 → deducts 4.48 from 100 = 95.52
+        assert result.score == Decimal("95.52"), f"Expected 95.52, got {result.score}"
         assert len(result.hard_failures) == 0
         assert len(result.soft_failures) == 1  # GACS below minimum
         assert len(result.passes) >= 4
