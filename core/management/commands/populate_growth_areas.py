@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from decimal import Decimal
+from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
@@ -24,6 +25,7 @@ from core.integrations.market.census import (
     fetch_housing_demand_index,
     fetch_place_growth_metrics,
 )
+from core.integrations.market.fmr_adapter import fetch_fmr_data
 from core.integrations.sources.fred_adapter import FREDAdapter
 from core.models import GrowthArea
 
@@ -310,7 +312,23 @@ class Command(BaseCommand):
                     census_data.get("population_current"), pop_growth
                 )
 
-                # 5. Upsert GrowthArea
+                # 5. HUD FMR: 2BR rent benchmark + year-over-year growth
+                from core.integrations.market.county_fips_map import (
+                    lookup_county_fips,
+                )
+
+                cfips = lookup_county_fips(state_code, city_name)
+                fmr_defaults: dict[str, Any] = {}
+                if cfips:
+                    fmr_data = fetch_fmr_data(state_code, cfips, city_name=city_name)
+                    if fmr_data:
+                        fmr_defaults["fmr_2br"] = fmr_data["fmr_2br"]
+                        fmr_defaults["fmr_year"] = fmr_data["fmr_year"]
+                        fmr_defaults["rent_growth_rate"] = fmr_data.get(
+                            "rent_growth_rate"
+                        )
+
+                # 6. Upsert GrowthArea
                 growth_area, created = GrowthArea.objects.update_or_create(
                     state=state_code,
                     city_name=city_name,
@@ -326,16 +344,23 @@ class Command(BaseCommand):
                         "net_migration_rate": net_mig_rate,
                         "county_fips": county_fips,
                         "data_timestamp": timezone.now(),
+                        **fmr_defaults,
                     },
                 )
 
                 action = "Created" if created else "Updated"
                 emp_str = f"{emp_growth}" if emp_growth is not None else "N/A"
+                fmr_str = (
+                    f", fmr_2br={fmr_defaults.get('fmr_2br')}"
+                    if fmr_defaults.get("fmr_2br")
+                    else ""
+                )
                 self.stdout.write(
                     self.style.SUCCESS(
                         f"  {action} GrowthArea: pop_growth={pop_growth}, "
                         f"emp_growth={emp_str}, income_growth={income_growth}, "
                         f"housing_demand={housing_demand}, supply={supply_constraint}"
+                        f"{fmr_str}"
                     )
                 )
                 refreshed += 1
