@@ -19,6 +19,7 @@ repos:
       - id: ruff
         args: [--fix, --show-fixes]
       - id: ruff-format
+        args: [--check]
 
   # --- mypy: static type checking ---
   # Version should match pip-resolved version from requirements.txt (mypy>=0.991)
