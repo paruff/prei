@@ -11,7 +11,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from django.utils import timezone
 
 from core.models import Property
 from core.services.portfolio import (
