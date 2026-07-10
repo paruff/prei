@@ -88,6 +88,7 @@ class ListingPagination(PageNumberPagination):
 
 class ListingListView(generics.ListAPIView):
     """List listings with optional filters."""
+    permission_classes = [permissions.AllowAny]
 
     serializer_class = ListingSerializer
     pagination_class = ListingPagination
@@ -173,6 +174,7 @@ class ListingListView(generics.ListAPIView):
 
 class ListingDetailView(generics.RetrieveAPIView):
     """Return a listing with computed score and nearest market snapshot."""
+    permission_classes = [permissions.AllowAny]
 
     queryset = Listing.objects.all()
     serializer_class = ListingSerializer
@@ -1915,6 +1917,7 @@ def export_property_deal_pack(request, property_id: int):
 
 
 @api_view(["POST"])
+@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def compare_investment_strategies(request):
     """
@@ -2251,6 +2254,7 @@ class VrmPropertyListAPI(APIView):
 
     List VRM properties with optional state and zip code filters.
     """
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request: Any) -> Response:
         queryset = VrmProperty.objects.all()
@@ -2307,6 +2311,7 @@ class VrmPropertyScrapeAPI(APIView):
 
     Trigger a VRM scrape for the given state.
     """
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request: Any) -> Response:
         state = request.data.get("state", "").strip().upper()
@@ -2360,6 +2365,7 @@ class VrmPropertyScrapeAPI(APIView):
 
 
 class VrmPropertyImportAPI(APIView):
+    permission_classes = [permissions.AllowAny]
     """
     POST /api/v1/vrm-properties/import/
 
