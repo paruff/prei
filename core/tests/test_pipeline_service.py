@@ -83,9 +83,7 @@ class TestAdvanceStage:
         assert result.stage == "SCREENING"
         assert result.screening_at is not None
 
-    def test_advance_through_full_cycle(
-        self, pipeline_prop: PipelineProperty
-    ) -> None:
+    def test_advance_through_full_cycle(self, pipeline_prop: PipelineProperty) -> None:
         """ADvance through all 9 stages to STABILIZED."""
         prop = pipeline_prop
         expected_stages = [
@@ -118,9 +116,7 @@ class TestAdvanceStage:
         with pytest.raises(ValueError, match="KILLED"):
             advance_stage(killed_prop)
 
-    def test_cannot_advance_hold_property(
-        self, on_hold_prop: PipelineProperty
-    ) -> None:
+    def test_cannot_advance_hold_property(self, on_hold_prop: PipelineProperty) -> None:
         """ON_HOLD properties cannot advance."""
         with pytest.raises(ValueError, match="ON_HOLD"):
             advance_stage(on_hold_prop)
@@ -138,17 +134,13 @@ class TestAdvanceStage:
 
 
 class TestKillProperty:
-    def test_kill_sets_status_and_reason(
-        self, pipeline_prop: PipelineProperty
-    ) -> None:
+    def test_kill_sets_status_and_reason(self, pipeline_prop: PipelineProperty) -> None:
         """Kill sets KILLED status and records the reason."""
         result = kill_property(pipeline_prop, "Price out of range")
         assert result.status == "KILLED"
         assert result.kill_reason == "Price out of range"
 
-    def test_kill_keeps_current_stage(
-        self, pipeline_prop: PipelineProperty
-    ) -> None:
+    def test_kill_keeps_current_stage(self, pipeline_prop: PipelineProperty) -> None:
         """Kill preserves the current stage."""
         result = kill_property(pipeline_prop, "Condition issues")
         assert result.stage == "DISCOVERED"
@@ -169,26 +161,22 @@ class TestHoldProperty:
         result = hold_property(pipeline_prop, "Waiting for inspection")
         assert result.status == "ON_HOLD"
 
-    def test_hold_records_reason(
-        self, pipeline_prop: PipelineProperty
-    ) -> None:
+    def test_hold_records_reason(self, pipeline_prop: PipelineProperty) -> None:
         """Hold stores the reason."""
         result = hold_property(pipeline_prop, "Need more data")
         assert result.kill_reason == "Need more data"
 
-    def test_hold_without_reason(
-        self, pipeline_prop: PipelineProperty
-    ) -> None:
+    def test_hold_without_reason(self, pipeline_prop: PipelineProperty) -> None:
         """Hold without reason sets kill_reason to blank (not overwritten)."""
         pipeline_prop.kill_reason = "old reason"
         pipeline_prop.save(update_fields=["kill_reason"])
         result = hold_property(pipeline_prop)
         assert result.status == "ON_HOLD"
-        assert result.kill_reason == "old reason"  # not overwritten when reason is empty
+        assert (
+            result.kill_reason == "old reason"
+        )  # not overwritten when reason is empty
 
-    def test_hold_preserves_stage(
-        self, pipeline_prop: PipelineProperty
-    ) -> None:
+    def test_hold_preserves_stage(self, pipeline_prop: PipelineProperty) -> None:
         """Hold does NOT change the stage."""
         pipeline_prop.stage = PipelineProperty.Stage.UNDERWRITING
         pipeline_prop.save(update_fields=["stage"])
@@ -200,23 +188,17 @@ class TestHoldProperty:
 
 
 class TestReactivateProperty:
-    def test_reactivate_from_killed(
-        self, killed_prop: PipelineProperty
-    ) -> None:
+    def test_reactivate_from_killed(self, killed_prop: PipelineProperty) -> None:
         """KILLED property reactivates to ACTIVE."""
         result = reactivate_property(killed_prop)
         assert result.status == "ACTIVE"
 
-    def test_reactivate_from_hold(
-        self, on_hold_prop: PipelineProperty
-    ) -> None:
+    def test_reactivate_from_hold(self, on_hold_prop: PipelineProperty) -> None:
         """ON_HOLD property reactivates to ACTIVE."""
         result = reactivate_property(on_hold_prop)
         assert result.status == "ACTIVE"
 
-    def test_reactivate_preserves_stage(
-        self, killed_prop: PipelineProperty
-    ) -> None:
+    def test_reactivate_preserves_stage(self, killed_prop: PipelineProperty) -> None:
         """Reactivate does NOT change the stage."""
         result = reactivate_property(killed_prop)
         assert result.stage == "DISCOVERED"
@@ -226,16 +208,12 @@ class TestReactivateProperty:
 
 
 class TestGetSourceRecord:
-    def test_manual_source_returns_none(
-        self, pipeline_prop: PipelineProperty
-    ) -> None:
+    def test_manual_source_returns_none(self, pipeline_prop: PipelineProperty) -> None:
         """Manual source type returns None (no FK to resolve)."""
         result = get_source_record(pipeline_prop)
         assert result is None
 
-    def test_unknown_source_returns_none(
-        self, pipeline_prop: PipelineProperty
-    ) -> None:
+    def test_unknown_source_returns_none(self, pipeline_prop: PipelineProperty) -> None:
         """Unrecognised source type returns None."""
         pipeline_prop.source_type = "extraterrestrial"
         result = get_source_record(pipeline_prop)

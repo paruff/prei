@@ -88,9 +88,7 @@ class TestComputePortfolioSummary:
         assert summary["total_capital_invested"] == Decimal("0")
         assert summary["total_annual_noi"] == Decimal("0")
 
-    def test_summary_with_property(
-        self, user, owned_property: Property
-    ) -> None:
+    def test_summary_with_property(self, user, owned_property: Property) -> None:
         """Single property produces a valid summary."""
         summary = compute_portfolio_summary(user)
         assert summary["total_properties"] == 1
