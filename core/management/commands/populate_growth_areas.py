@@ -26,7 +26,6 @@ from core.integrations.market.census import (
     fetch_place_growth_metrics,
 )
 from core.integrations.market.fmr_adapter import fetch_fmr_data
-from core.integrations.market.county_fips_map import lookup_county_fips  # noqa: F401
 from core.integrations.sources.fred_adapter import FREDAdapter
 from core.models import GrowthArea
 
@@ -283,6 +282,10 @@ class Command(BaseCommand):
                 )
 
                 # 5. HUD FMR: 2BR rent benchmark + year-over-year growth
+                from core.integrations.market.county_fips_map import (
+                    lookup_county_fips,
+                )
+
                 cfips = lookup_county_fips(state_code, city_name)
                 fmr_defaults: dict[str, Any] = {}
                 if cfips:
