@@ -243,6 +243,37 @@ class Command(BaseCommand):
                         )
                     )
 
+                # 2b. QCEW county-level employment (replaces FRED when county is known)
+                county_fips = ""
+                from core.integrations.market.county_fips_map import lookup_county_fips
+                from core.integrations.market.qcew_adapter import (
+                    fetch_county_employment_growth,
+                )
+
+                cfips = lookup_county_fips(state_code, city_name)
+                if cfips:
+                    qcew_growth = fetch_county_employment_growth(cfips, year=2024)
+                    if qcew_growth is not None:
+                        emp_growth = qcew_growth
+                        county_fips = cfips
+                        self.stdout.write(
+                            self.style.SUCCESS(
+                                f"  QCEW county employment for {city_name}: {qcew_growth}"
+                            )
+                        )
+                    else:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"  QCEW data unavailable for FIPS {cfips}, using FRED"
+                            )
+                        )
+                else:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"  No county FIPS for {city_name}, {state_code} — using FRED"
+                        )
+                    )
+
                 # 3. Census: housing demand proxy
                 housing_demand = fetch_housing_demand_index(
                     state_code=state_code,
@@ -293,6 +324,7 @@ class Command(BaseCommand):
                         "supply_constraint_index": supply_constraint,
                         "net_migration": net_mig,
                         "net_migration_rate": net_mig_rate,
+                        "county_fips": county_fips,
                         "data_timestamp": timezone.now(),
                     },
                 )
