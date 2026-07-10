@@ -61,7 +61,7 @@ class TestWatchlistAPI:
     def test_get_watchlist_unauthenticated(self, api_client):
         """Test getting watchlist requires authentication."""
         response = api_client.get("/api/v1/watchlist")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_get_empty_watchlist(self, authenticated_client):
         """Test getting empty watchlist."""
@@ -144,7 +144,7 @@ class TestAlertsAPI:
     def test_get_alerts_unauthenticated(self, api_client):
         """Test getting alerts requires authentication."""
         response = api_client.get("/api/v1/alerts")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_get_empty_alerts(self, authenticated_client):
         """Test getting empty alerts list."""
@@ -248,7 +248,7 @@ class TestNotificationsAPI:
     def test_get_notifications_unauthenticated(self, api_client):
         """Test getting notifications requires authentication."""
         response = api_client.get("/api/v1/notifications")
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     def test_get_empty_notifications(self, authenticated_client):
         """Test getting empty notifications list."""

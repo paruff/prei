@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from django.utils import timezone
+from django.utils.timezone import now as timezone_now
 
 from core.models import PipelineProperty
 from core.services.pipeline import (
@@ -127,9 +127,9 @@ class TestAdvanceStage:
 
     def test_advance_sets_timestamp(self, pipeline_prop: PipelineProperty) -> None:
         """Advancing sets the timestamp for the new stage."""
-        before = timezone.now() - timedelta(seconds=1)
+        before = timezone_now() - timedelta(seconds=1)
         prop = advance_stage(pipeline_prop)
-        after = timezone.now() + timedelta(seconds=1)
+        after = timezone_now() + timedelta(seconds=1)
         assert prop.screening_at is not None
         assert before <= prop.screening_at <= after
 
