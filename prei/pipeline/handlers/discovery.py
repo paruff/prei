@@ -45,7 +45,7 @@ class CanonicalPropertyPayload(BaseModel):
             return None
         try:
             return float(v)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return 0.0
 
     @field_validator("beds", mode="before")
@@ -56,7 +56,7 @@ class CanonicalPropertyPayload(BaseModel):
             return 0
         try:
             return int(float(v))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return 0
 
     @field_validator("baths", mode="before")
@@ -67,7 +67,7 @@ class CanonicalPropertyPayload(BaseModel):
             return 0.0
         try:
             return float(v)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return 0.0
 
     @field_validator("sqft", mode="before")
@@ -78,7 +78,7 @@ class CanonicalPropertyPayload(BaseModel):
             return None
         try:
             return float(v)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     @field_validator("year_built", mode="before")
@@ -89,7 +89,7 @@ class CanonicalPropertyPayload(BaseModel):
             return None
         try:
             return int(float(v))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
 

@@ -261,5 +261,5 @@ def _safe_decimal(value: Any) -> Decimal | None:
         return None
     try:
         return Decimal(str(value))
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None

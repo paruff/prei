@@ -235,7 +235,7 @@ class VrmScraper:
             return None
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     @staticmethod
@@ -245,7 +245,7 @@ class VrmScraper:
             return None
         try:
             return Decimal(str(value))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     @staticmethod

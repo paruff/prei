@@ -78,6 +78,11 @@ urlpatterns = [
     path("pipeline/portfolio/", views.portfolio_dashboard, name="portfolio_dashboard"),
     path("pipeline/list/", views.pipeline_list, name="pipeline_list"),
     path("pipeline/review/", views.pipeline_review_queue, name="pipeline_review_queue"),
+    path(
+        "pipeline/review/csv/",
+        views.pipeline_review_csv,
+        name="pipeline_review_csv",
+    ),
     path("pipeline/<int:pk>/", views.pipeline_detail, name="pipeline_detail"),
     path(
         "pipeline/<int:pk>/advance/",

@@ -121,7 +121,7 @@ def _fetch_latest_acs_vintages() -> dict[str, str] | None:
 
         try:
             v = int(vintage_str)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             continue
         acs_vintages.add(v)
 
@@ -677,7 +677,7 @@ def discover_places_in_state(
 
         try:
             population = int(raw_pop)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             continue
 
         # NAME format: "Los Angeles city, California" — extract place name only
