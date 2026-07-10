@@ -26,7 +26,7 @@ from core.integrations.market.census import (
     fetch_place_growth_metrics,
 )
 from core.integrations.market.fmr_adapter import fetch_fmr_data
-from core.integrations.market.county_fips_map import lookup_county_fips
+from core.integrations.market.county_fips_map import lookup_county_fips  # noqa: F401
 from core.integrations.sources.fred_adapter import FREDAdapter
 from core.models import GrowthArea
 
