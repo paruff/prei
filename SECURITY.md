@@ -1,8 +1,8 @@
 # Security Policy — prei
 
-> **prei** is a Django 4.2 LTS application for passive residential real estate investment analytics.
-> Stack: Python 3.14 · Django · PostgreSQL · DRF · Celery · Redis · numpy-financial
->
+> **prei** is a Django 6.0 LTS application for passive residential real estate investment analytics.
+> Stack: Python 3.14 · Django · SQLite/PostgreSQL · DRF · numpy-financial
+> 
 > This document covers responsible disclosure, stack-specific rules enforced in code review,
 > the current security posture, known gaps that require remediation, and the developer
 > security checklist applied to every PR.
@@ -115,102 +115,51 @@ The following items are **not yet in place** and represent real risk in a produc
 
 ---
 
-#### 🔴 CRITICAL — GAP-01: DRF default permission class is `AllowAny`
+#### ✅ RESOLVED — GAP-01: DRF default permission class is `AllowAny`
 
-**Location:** `investor_app/settings.py`, `REST_FRAMEWORK` block.
+**Fixed in:** Commit (audit-fix) — `DEFAULT_AUTHENTICATION_CLASSES` and `DEFAULT_PERMISSION_CLASSES` added to `REST_FRAMEWORK` block in settings.
 
-**Risk:** `DEFAULT_PERMISSION_CLASSES` is not set. The DRF default is `AllowAny`, meaning every API endpoint is publicly accessible without authentication unless the view individually sets `permission_classes = [IsAuthenticated]`. A missed annotation on a single view exposes user data.
-
-**Required fix:**
-
-```python
-# investor_app/settings.py — REST_FRAMEWORK block
-"DEFAULT_AUTHENTICATION_CLASSES": [
-    "rest_framework.authentication.SessionAuthentication",
-    # Add TokenAuthentication or JWTAuthentication here when API clients are added
-],
-"DEFAULT_PERMISSION_CLASSES": [
-    "rest_framework.permissions.IsAuthenticated",
-],
-```
-
-Views serving public data (e.g., growth areas, foreclosure listings) must then explicitly declare:
-
-```python
-permission_classes = [AllowAny]  # Public endpoint — no user data returned
-```
-
-This makes the security model explicit and opt-out rather than accidentally opt-in.
+**Status:** The default is now `IsAuthenticated`. Views serving public data must explicitly declare `permission_classes = [AllowAny]`. This makes the security model explicit and opt-out rather than accidentally opt-in.
 
 ---
 
-#### 🔴 CRITICAL — GAP-02: `DEBUG` defaults to `True`
+#### ✅ RESOLVED — GAP-02: `DEBUG` defaults to `True`
 
-**Location:** `investor_app/settings.py` line 10.
+**Fixed in:** Commit (audit-fix) — environment-aware logic added: production defaults to `False` via `env.bool("DEBUG", default=False)`, development uses `env.bool("DEBUG", default=True)`.
 
-```python
-env = environ.Env(
-    DEBUG=(bool, True),  # ← defaults to True if env var absent
-)
-```
+**Location:** `investor_app/settings.py`.
 
-**Risk:** If `DEBUG` is not set in the production environment (easy to miss during deploy), Django serves full stack traces, local variable dumps, SQL query logs, and settings values in all HTTP error responses.
-
-**Required fix:** Remove the default. Force an explicit value to be set:
-
-```python
-env = environ.Env(
-    DEBUG=(bool, False),  # Safe default — must explicitly opt in to debug mode
-)
-```
+**Status:** The default was changed to `False` for production environments. Django 6.0+ also redirects all error reporting to logging if `DEBUG=False` is properly configured, eliminating the stack trace leak vector.
 
 ---
 
-#### 🔴 CRITICAL — GAP-03: `SECRET_KEY` has an insecure fallback value
+#### ✅ RESOLVED — GAP-03: `SECRET_KEY` has an insecure fallback value
 
-**Location:** `investor_app/settings.py` line 19.
+**Fixed in:** Commit (audit-fix) — production `SECRET_KEY` now raises `ImproperlyConfigured` if not set; dev uses `"dev-only-secret-key-not-for-production"` with an explicit warning in the fallback string.
 
-```python
-SECRET_KEY = env("SECRET_KEY", default="dev-secret-key-change-me")
-```
+**Location:** `investor_app/settings.py`, lines 27-31.
 
-**Risk:** If `SECRET_KEY` is not set in the production environment, Django silently uses the hardcoded string. This makes session tokens, CSRF tokens, and signed cookies forgeable by anyone who knows (or guesses) the default string.
-
-**Required fix:** Remove the `default` argument entirely:
-
-```python
-SECRET_KEY = env("SECRET_KEY")  # Raises ImproperlyConfigured if not set
-```
+**Status:** The production path has no default fallback. The development fallback is explicitly labeled as "not for production" to prevent accidental use in production environments.
 
 ---
 
-#### 🔴 CRITICAL — GAP-04: `ALLOWED_HOSTS` defaults to `["*"]`
+#### ✅ RESOLVED — GAP-04: `ALLOWED_HOSTS` defaults to `["*"]`
 
-**Location:** `investor_app/settings.py` line 20.
+**Fixed in:** Commit (audit-fix) — default is now `"localhost,127.0.0.1"` (comma-split, filtered).
 
-```python
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
-```
+**Location:** `investor_app/settings.py`, lines 32-38.
 
-**Risk:** Allows any `Host:` header value, enabling Host Header Injection attacks (cache poisoning, password reset link hijacking).
-
-**Required fix:** Set a safe default that forces an explicit host list to be configured:
-
-```python
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # Raises ImproperlyConfigured if not set
-```
-
-And in production, set `ALLOWED_HOSTS=yourdomain.com` in the environment.
+**Status:** The wildcard `["*"]` default was removed. The safe default restricts to localhost. Production must explicitly set `ALLOWED_HOSTS` via environment variable.
 
 ---
 
-#### 🟠 HIGH — GAP-05: HTTPS/HSTS not configured
+#### ✅ RESOLVED — GAP-05: HTTPS/HSTS not configured
 
-**Location:** `investor_app/settings.py` — no `SECURE_*` settings present.
+**Fixed in:** Commit (audit-fix) — `SECURE_*` block added to `investor_app/settings.py`, conditional on `not DEBUG`.
 
-**Risk:** Without HTTPS enforcement, session cookies and API keys transit unencrypted. Without HSTS, a user who visits the HTTP version is vulnerable to SSL stripping.
+**Location:** `investor_app/settings.py`, lines 86-98.
 
-**Required fix (production settings or environment-conditional block):**
+**Configured settings:**
 
 ```python
 if not DEBUG:
@@ -219,12 +168,11 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_BROWSER_XSS_FILTER = True  # legacy header — still useful
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 ```
 
-Note: If the app sits behind a TLS-terminating proxy (e.g., Render), set `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")` instead of `SECURE_SSL_REDIRECT`.
+Plus `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` are set unconditionally (needed behind Render's TLS-terminating proxy).
 
 ---
 
