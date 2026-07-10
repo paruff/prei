@@ -20,7 +20,7 @@ Format: `### [LIMIT-ID] Short description` followed by location, impact, workaro
 
 ## Active Limitations
 
-### [LIMIT-01] FBI Crime Data Explorer (CDE) API — adapter returns dummy values
+### [LIMIT-01] 🔴 CRITICAL — FBI Crime Data Explorer (CDE) API — adapter returns dummy values
 
 **Location:** `core/integrations/market/crime.py`
 
@@ -34,7 +34,7 @@ Format: `### [LIMIT-ID] Short description` followed by location, impact, workaro
 
 ---
 
-### [LIMIT-02] Housing Demand Index uses a vacancy-rate heuristic, not a real demand metric
+### [LIMIT-02] 🟡 HIGH — Housing Demand Index uses a vacancy-rate heuristic, not a real demand metric
 
 **Location:** `core/integrations/sources/census.py` — `fetch_housing_demand_index()`
 
@@ -46,7 +46,7 @@ Format: `### [LIMIT-ID] Short description` followed by location, impact, workaro
 
 ---
 
-### [LIMIT-03] CodeQL-driven removal of `exc_info=True` reduces debuggability
+### [LIMIT-03] 🟡 HIGH — CodeQL-driven removal of `exc_info=True` reduces debuggability
 
 **Location:** `core/services/market_data.py` (8 calls), `core/integrations/market/schools.py` (1 call), `core/integrations/sources/attom_adapter.py` (2 calls)
 
@@ -58,11 +58,11 @@ Format: `### [LIMIT-ID] Short description` followed by location, impact, workaro
 
 ---
 
-### [LIMIT-05] SQLite is the default database; Postgres reserved for post-MVP production
+### [LIMIT-05] 🟢 LOW — SQLite is the default database; Postgres reserved for post-MVP production
 
 ---
 
-### [LIMIT-06] Production settings tests must explicitly set secure defaults to override `.env`
+### [LIMIT-06] 🟢 LOW — Production settings tests must explicitly set secure defaults to override `.env`
 
 **Location:** `tests/test_production_settings.py`
 
@@ -74,9 +74,9 @@ Format: `### [LIMIT-ID] Short description` followed by location, impact, workaro
 
 ---
 
-### [LIMIT-08] GrowthArea vs MarketSnapshot split — inconsistent fallback between HTML view and API
+### [LIMIT-08] 🟡 HIGH — GrowthArea vs MarketSnapshot split — inconsistent fallback between HTML view and API
 
-**Location:** `core/views.py:672` (HTML `growth_areas()`), `core/api_views.py:225` (API `growth_areas_list()`)
+**Location:** `core/views/__init__.py:672` (HTML `growth_areas()`), `core/api_views.py:225` (API `growth_areas_list()`)
 
 **Impact:** The HTML `/growth/` page and the `/api/growth-areas/` endpoint both serve growth-area data, but they diverge on fallback behavior:
 - **HTML view** falls back to `MarketSnapshot` (ZIP-level) when `GrowthArea` (city-level) is empty.
@@ -94,7 +94,7 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-09] Remaining `exc_info=True` calls not covered by CodeQL fix
+### [LIMIT-09] 🟢 LOW — Remaining `exc_info=True` calls not covered by CodeQL fix
 
 **Location:** `core/services/projections.py:269`, `core/management/commands/fetch_hud_source_index.py:139`
 
@@ -106,9 +106,9 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-10] PipelineProperty address fields are denormalized — become stale if source record changes
+### [LIMIT-10] 🟢 LOW — PipelineProperty address fields are denormalized — become stale if source record changes
 
-**Location:** `core/models.py` — `PipelineProperty.address`, `PipelineProperty.address_hash`
+**Location:** `core/models/pipeline.py` — `PipelineProperty.address`, `PipelineProperty.address_hash`
 
 **Impact:** When PipelineProperty is created from VRM or ForeclosureProperty, the address is copied (denormalized) onto the PP record. If the source record is later updated by a re-scrape, the PP address becomes stale. There is no auto-sync mechanism in alpha.
 
@@ -118,7 +118,7 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-11] Yield-based screening skipped for non-VRM source types
+### [LIMIT-11] 🟡 HIGH — Yield-based screening skipped for non-VRM source types
 
 **Location:** `core/services/screening.py` — `_eval_gross_yield()`, `_eval_price_to_rent_ratio()`
 
@@ -130,7 +130,7 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-12] Newly acquired Property records are incomplete at creation
+### [LIMIT-12] 🟡 HIGH — Newly acquired Property records are incomplete at creation
 
 **Location:** `core/services/pipeline.py` — `convert_to_property_record()`
 
@@ -142,9 +142,9 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-13] AuctionAlert not wired to PipelineProperty
+### [LIMIT-13] 🟢 LOW — AuctionAlert not wired to PipelineProperty
 
-**Location:** `core/models.py` — `AuctionAlert`
+**Location:** `core/models/notifications.py` — `AuctionAlert`
 
 **Impact:** The AuctionAlert model exists but is not connected to PipelineProperty. Users cannot configure alerts for specific pipeline properties (e.g., "notify me when auction date changes"). This is a known gap from the original design.
 
@@ -154,9 +154,9 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-14] Leasing pipeline is tenant-acquisition tracking only
+### [LIMIT-14] 🟢 LOW — Leasing pipeline is tenant-acquisition tracking only
 
-**Location:** `core/models.py` — `LeasingPipelineProperty`
+**Location:** `core/models/pipeline.py` — `LeasingPipelineProperty`
 
 **Impact:** The leasing pipeline tracks tenant acquisition (listing → lease signed → move-in). It does not cover ongoing property management: maintenance requests, rent collection, lease renewals, or tenant communications. These are planned for Phase 3.
 
@@ -166,9 +166,9 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-15] Screening re-run on criteria change is synchronous
+### [LIMIT-15] 🟢 LOW — Screening re-run on criteria change is synchronous
 
-**Location:** `core/views.py` — `pipeline_screening_settings()`
+**Location:** `core/views/__init__.py` — `pipeline_screening_settings()`
 
 **Impact:** When a user updates screening criteria, the view re-screens all ACTIVE pipeline properties at DISCOVERED or SCREENING stage synchronously within the HTTP request. For users with many pipeline properties, this could cause noticeable page load delays. There is no background task / Celery integration in alpha.
 
@@ -178,7 +178,7 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-16] No multi-user pipeline sharing
+### [LIMIT-16] 🟢 LOW — No multi-user pipeline sharing
 
 **Location:** All pipeline views and `PipelineProperty` model
 
@@ -190,7 +190,7 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-17] GACS-based screening requires pre-populated GACS scores
+### [LIMIT-17] 🟡 HIGH — GACS-based screening requires pre-populated GACS scores
 
 **Location:** `core/services/screening.py` — `_eval_gacs_score()`
 
@@ -202,15 +202,13 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-19] GrowthArea.rent_growth_rate field exists but is never populated
+### [LIMIT-19] 🟢 LOW — GrowthArea.rent_growth_rate field was never populated (now resolved)
 
 **Location:** `core/models/growth.py` — `GrowthArea.rent_growth_rate` field
 
-**Impact:** The field is declared and has a help text suggesting it comes from Census ACS, but no code path populates it. It is not displayed in any template, not included in GACS, and has no data source wired to it. Future agents seeing the field may assume rent growth data is available when it is not.
+**Impact before fix:** The field was declared and had a help text suggesting it comes from HUD FMR, but no code path populated it.
 
-**Workaround:** None. The field stays null until a rent growth data source is integrated (HUD FMR longitudinal data or ACS B25064 series).
-
-**Fix tracked in:** GACS-FMR-1 — wire HUD FMR or ACS gross rent data into GrowthArea.
+**Fix tracked in:** GACS-FMR-1 (PR #278) — wired into `populate_growth_areas` command. Field is now populated by HUD FMR year-over-year 2BR growth data. Update help_text and migration completed.
 
 ---
 

@@ -8,7 +8,7 @@
 ## Layer Definitions
 
 ```
-core/models.py        → Django ORM models only. Field definitions, __str__, Meta.
+core/models/           → Django ORM models only. Field definitions, __str__, Meta. Package at core/models/.
                         No business logic. No external calls.
 
 core/services/        → Business logic services.
@@ -67,7 +67,7 @@ The BRRRR calculator (`templates/brrrr_calculator.html`) is a **fully client-sid
 
 - Input fields → JavaScript reads values → computes all metrics in the browser
 - No form POST — instant recalculation on any input change
-- The Django view (`core/views.py:brrrr_calculator`) simply renders the template
+- The Django view (`core/views/__init__.py:brrrr_calculator`) simply renders the template
 - A server-side engine (`core/services/brrrr.py`) with 25+ tests provides the same math
   for API-driven use cases
 
@@ -82,7 +82,7 @@ If ARV is 0 or empty:
 
 |Layer       |File                                        |Responsibility                                                 |
 |------------|--------------------------------------------|---------------------------------------------------------------|
-|Models      |`core/models.py`                            |`Property`, `InvestmentAnalysis`, `UserInvestmentTargets` ORM  |
+|Models      |`core/models/` (package)                    |`Property`, `InvestmentAnalysis`, `UserInvestmentTargets` ORM  |
 |Services    |`core/services/scoring.py`                  |`UnderwritingScore` dataclass, `score_listing_v2()`            |
 |Services    |`core/services/brrrr.py`                    |`BRRRRAnalysis` dataclass, `calculate_brrrr()`                 |
 |Services    |`core/services/projections.py`              |`project_hold_period()`, `YearlyProjection`, `ExitAnalysis`    |
@@ -139,7 +139,7 @@ automatically apply `form-input` and `num` CSS classes. No per-field `attrs` nee
 
 **New background job?** → Task in `core/tasks.py` calling an existing service. Never put logic in the task itself.
 
-**New model field?** → `core/models.py` + migration + update `docs/CHANGE_IMPACT_MAP.md`.
+**New model field?** → `core/models/` (package) + migration + update `docs/CHANGE_IMPACT_MAP.md`.
 
 **New CSS class?** → Use token values from `tokens.css`. Never hardcode colors. If the class is a component, add to `base.css` with a comment section header.
 

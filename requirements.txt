@@ -1,35 +1,38 @@
-Django>=6.0.7,<6.1
-djangorestframework>=3.17.1,<4.0
-psycopg2-binary>=2.9.12
-numpy>=2.5.1
-numpy-financial>=1.0
-django-environ>=0.13.0
-whitenoise>=6.12.0
-gunicorn>=26.0.0
-pytest>=9.0.3
-pytest-django>=4.12.0
-pytest-bdd>=8.1.0
-coverage>=7.6.0  # Coverage gate in CI (test.yml)
-pytest-asyncio>=1.4.0
-ruff>=0.15.15
-mypy>=0.991
-django-stubs>=6.0.6
-djangorestframework-stubs>=3.16.9
-types-psycopg2>=2.9.21.20260518
-types-reportlab>=4.5.1.20260521
-requests>=2.33.1
-aiohttp>=3.14.1,<4.0
-beautifulsoup4>=4.14.3
-playwright>=1.61.0
-cffi>=2.1.0
-pypdf>=5.4.0  # PDF content extraction in tests
-reportlab>=5.0.0,<6.0.0
-svglib>=2.0.2,<2.1.0  # pycairo build dependency; CI installs libcairo2-dev via apt
-matplotlib>=3.10.9
-pillow>=12.2.0
-pydantic>=2.11.0  # Strict state machine models for prei/models/pipeline.py
-fastapi>=0.115.0  # REST API layer for prei/api/pipeline_routes.py
-uvicorn[standard]>=0.34.0  # ASGI server for FastAPI
-httpx>=0.28.0  # HTTP client for FastAPI TestClient
-click>=8.1.0  # CLI tool for prei/cli.py
-cryptography>=49.0.0  # Fix GHSA-537c-gmf6-5ccf (Vulnerable OpenSSL in cryptography wheels)
+# Pinned dependencies for reproducible builds.
+# Generated from uv.lock on 2026-07-10. Run `uv lock` to refresh.
+# Upper bounds (<NEXT) are set where known incompatibilities exist.
+Django==6.0.7
+djangorestframework==3.17.1
+psycopg2-binary==2.9.12
+numpy==2.5.1
+numpy-financial==1.0.0
+django-environ==0.14.0
+whitenoise==6.12.0
+gunicorn==26.0.0
+pytest==9.1.1
+pytest-django==4.12.0
+pytest-bdd==8.1.0
+coverage==7.15.0
+pytest-asyncio==1.4.0
+ruff==0.15.20  # Must match .pre-commit-config.yaml rev: v0.15.20
+mypy==2.2.0
+django-stubs==6.0.6
+djangorestframework-stubs==3.17.0
+types-psycopg2==2.9.21.20260518
+types-reportlab==4.5.1.20260521
+requests==2.34.2
+aiohttp==3.14.1
+beautifulsoup4==4.15.0
+playwright==1.61.0
+cffi==2.1.0
+pypdf==6.14.2
+reportlab==5.0.0
+svglib==2.0.2
+matplotlib==3.11.0
+pillow==12.3.0
+pydantic==2.13.4
+fastapi==0.139.0
+uvicorn[standard]==0.51.0
+httpx==0.28.1
+click==8.4.2
+cryptography==49.0.0  # Fix GHSA-537c-gmf6-5ccf

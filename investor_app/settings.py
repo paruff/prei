@@ -99,6 +99,23 @@ if not DEBUG:
 
 X_FRAME_OPTIONS = "DENY"
 
+# Session security — sessions expire on browser close and have a maximum age.
+# 1209600 seconds = 14 days.  The DB-backed session engine (default) persists
+# sessions beyond browser close — SESSION_EXPIRE_AT_BROWSER_CLOSE forces a fresh
+# login each time the browser restarts, while SESSION_COOKIE_AGE sets the hard
+# upper limit regardless of browser state.
+SESSION_COOKIE_AGE = 1209600  # 14 days
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = True
+
+# CORS is intentionally NOT configured.  This project serves a server-rendered
+# Django template frontend (no SPA / separate-client architecture).  All API
+# calls are same-origin (same domain, same port).  CORS headers are only needed
+# when a separate frontend domain makes cross-origin requests, which is not
+# a current or planned architecture.  If a mobile app, SPA, or third-party API
+# consumer is added, add django-cors-headers to requirements.txt and configure
+# CORS_ALLOWED_ORIGINS at that time.
+
 DATABASES = {
     "default": env.db(
         "DATABASE_URL",
