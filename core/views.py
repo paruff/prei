@@ -919,15 +919,12 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
     # 4a. Upsert GrowthArea rows sequentially (SQLite does not support concurrent writes)
     results = []
     for data in place_data_list:
-        # Fetch school quality score if API key available
+        # School quality (15% of GACS) is not populated during explorer runs because
+        # _fetch_place_data does not return a ZIP code.  School scores can be set
+        # manually via the admin or via a future batch enrichment command that
+        # resolves city→ZIP→GreatSchools rating.
+        # See core/integrations/market/schools.py for the fetch_school_rating adapter.
         school_score = None
-        gs_api_key = getenv("GREATSCHOOLS_API_KEY", "")
-        if gs_api_key:
-            from core.integrations.market.schools import fetch_school_rating
-
-            zip_code = data.get("zip_code", "")
-            if zip_code:
-                school_score = fetch_school_rating(zip_code, gs_api_key)
 
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
