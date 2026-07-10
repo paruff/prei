@@ -41,7 +41,7 @@ def _read_version() -> str:
         text = Path("/app/.meta/version").read_text().strip()
         if text:
             return text
-    except (FileNotFoundError, OSError):
+    except FileNotFoundError, OSError:
         pass
 
     # 2. Environment variable (injected by Docker build)
@@ -73,7 +73,7 @@ def _read_git_commit() -> str:
         text = Path("/app/.meta/commit").read_text().strip()
         if text:
             return text[:_SHORT_SHA_LENGTH]
-    except (FileNotFoundError, OSError):
+    except FileNotFoundError, OSError:
         pass
 
     # 2. Environment variable (injected by Docker build)
@@ -115,7 +115,7 @@ def _find_git_dir() -> Path | None:
                 gitdir_path = Path(text[8:].strip())
                 if gitdir_path.is_dir():
                     return gitdir_path
-        except (FileNotFoundError, OSError):
+        except FileNotFoundError, OSError:
             pass
     return None
 
@@ -125,7 +125,7 @@ def _resolve_head(git_dir: Path) -> str | None:
     head_file = git_dir / "HEAD"
     try:
         head_content = head_file.read_text().strip()
-    except (FileNotFoundError, OSError):
+    except FileNotFoundError, OSError:
         return None
 
     if not head_content:
@@ -137,7 +137,7 @@ def _resolve_head(git_dir: Path) -> str | None:
         ref_file = git_dir / ref_path
         try:
             return ref_file.read_text().strip()
-        except (FileNotFoundError, OSError):
+        except FileNotFoundError, OSError:
             # Packed ref — attempt to look up in packed-refs
             return _resolve_packed_ref(git_dir, ref_path)
 
@@ -158,7 +158,7 @@ def _resolve_packed_ref(git_dir: Path, ref_path: str) -> str | None:
             parts = line.split(" ", 1)
             if len(parts) == 2 and parts[1] == ref_path:
                 return parts[0]
-    except (FileNotFoundError, OSError):
+    except FileNotFoundError, OSError:
         pass
     return None
 
@@ -183,7 +183,7 @@ def _read_current_tag(git_dir: Path) -> str | None:
                     try:
                         if tag_file.read_text().strip() == sha:
                             return tag_file.name
-                    except (FileNotFoundError, OSError):
+                    except FileNotFoundError, OSError:
                         continue
         except OSError:
             pass
@@ -203,7 +203,7 @@ def _read_current_tag(git_dir: Path) -> str | None:
                     and parts[1].startswith("refs/tags/")
                 ):
                     return parts[1].removeprefix("refs/tags/")
-        except (FileNotFoundError, OSError):
+        except FileNotFoundError, OSError:
             pass
 
     return None
@@ -245,7 +245,7 @@ def _head_ref_file(git_dir: Path) -> Path | None:
     head_file = git_dir / "HEAD"
     try:
         content = head_file.read_text().strip()
-    except (FileNotFoundError, OSError):
+    except FileNotFoundError, OSError:
         return None
 
     if content.startswith("ref: "):

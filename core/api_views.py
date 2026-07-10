@@ -145,7 +145,7 @@ class ListingListView(generics.ListAPIView):
         for listing in queryset:
             try:
                 score = score_listing_v1(listing)
-            except (ArithmeticError, ValueError, TypeError, AttributeError):
+            except ArithmeticError, ValueError, TypeError, AttributeError:
                 score = None
                 logger.exception("Failed to score listing id=%s", listing.id)
             score_by_listing_id[listing.id] = score
@@ -563,7 +563,7 @@ def foreclosures_list(request):
                 page = 1
             if limit < 1 or limit > 100:
                 limit = 20
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             page = 1
             limit = 20
 
@@ -2275,7 +2275,7 @@ class VrmPropertyListAPI(APIView):
         try:
             page = max(1, int(page))
             page_size = min(100, max(1, int(page_size)))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             page = 1
             page_size = 25
 
@@ -2377,7 +2377,7 @@ class VrmPropertyImportAPI(APIView):
             uploaded = request.FILES["file"]
             try:
                 data = json.load(uploaded)
-            except (json.JSONDecodeError, ValueError):
+            except json.JSONDecodeError, ValueError:
                 logger.warning("VRM import: failed to parse uploaded file")
                 return Response(
                     {

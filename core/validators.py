@@ -117,7 +117,7 @@ def validate_min_growth_score(score: str | int | float | None) -> float:
 
     try:
         score_float = float(score)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         raise serializers.ValidationError(
             "minGrowthScore must be a number between 0 and 100."
         )
@@ -234,7 +234,7 @@ def validate_positive_integer(value: str | int | None, field_name: str) -> int |
 
     try:
         int_value = int(value)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         raise serializers.ValidationError(f"{field_name} must be a positive integer.")
 
     if int_value < 0:
@@ -264,7 +264,7 @@ def validate_positive_decimal(
 
     try:
         float_value = float(value)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         raise serializers.ValidationError(f"{field_name} must be a positive number.")
 
     if float_value < 0:

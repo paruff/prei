@@ -51,7 +51,7 @@ def fetch_school_rating(
         resp = requests.get(url, headers={"Accept": "application/json"}, timeout=10)
         resp.raise_for_status()
         schools = resp.json()
-    except (requests.RequestException, json.JSONDecodeError, TypeError):
+    except requests.RequestException, json.JSONDecodeError, TypeError:
         logger.warning("GreatSchools API error for zip=%s", zip_code)
         return None
 
@@ -64,7 +64,7 @@ def fetch_school_rating(
         if rating is not None:
             try:
                 ratings.append(float(rating))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 continue
 
     if not ratings:

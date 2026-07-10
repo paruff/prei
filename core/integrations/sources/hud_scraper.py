@@ -428,7 +428,7 @@ class HUDHomeScraper:
             # Remove $ and commas
             clean_price = price_text.replace("$", "").replace(",", "").strip()
             return Decimal(clean_price)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     def _parse_integer(self, text: str) -> int:
@@ -449,7 +449,7 @@ class HUDHomeScraper:
             match = re.search(r"\d+", text)
             if match:
                 return int(match.group())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
 
         return 0
@@ -472,7 +472,7 @@ class HUDHomeScraper:
             match = re.search(r"\d+\.?\d*", text)
             if match:
                 return Decimal(match.group())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
 
         return Decimal("0")

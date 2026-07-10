@@ -64,7 +64,7 @@ def _normalize_ranked_results(ranked: Any) -> list[RankedListing]:
         else:
             try:
                 score = Decimal(str(raw_score))
-            except (InvalidOperation, ValueError, TypeError):
+            except InvalidOperation, ValueError, TypeError:
                 score = score_listing_v1(listing)
 
         normalized.append({"obj": listing, "score": score})
@@ -98,7 +98,7 @@ def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[Recommen
 
     try:
         safe_limit = int(limit)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         safe_limit = 0
     if safe_limit <= 0:
         return []
