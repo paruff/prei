@@ -89,9 +89,10 @@
                   <tbody>
                     <tr><td>Employment growth</td><td>{{ ga.employment_growth_rate|mul:100|floatformat:2 }}%</td><td>35%</td></tr>
                     <tr><td>Population growth</td><td>{{ ga.population_growth_rate|mul:100|floatformat:2 }}%</td><td>20%</td></tr>
-                    <tr><td>Income growth</td><td>{{ ga.median_income_growth|mul:100|floatformat:2 }}%</td><td>20%</td></tr>
-                    <tr><td>Supply constraint</td><td>{{ ga.supply_constraint_index }}</td><td>15%</td></tr>
-                    <tr><td>Housing demand</td><td>{{ ga.housing_demand_index }}</td><td>10%</td></tr>
+                    <tr><td>Income growth</td><td>{{ ga.median_income_growth|mul:100|floatformat:2 }}%</td><td>15%</td></tr>
+                    <tr><td>School quality</td><td>{{ ga.school_score|default:"—" }}</td><td>15%</td></tr>
+                    <tr><td>Supply constraint</td><td>{{ ga.supply_constraint_index }}</td><td>10%</td></tr>
+                    <tr><td>Net migration</td><td>{{ ga.net_migration_rate|default:"—" }}</td><td>5%</td></tr>
                   </tbody>
                 </table>
                 <p class="page-sub">ACS vintage: auto-detected (2024 or latest available) &middot; Data timestamp: {{ ga.data_timestamp|date:"Y-m-d" }} &middot; Confidence: {{ ga.data_confidence }}%</p>
