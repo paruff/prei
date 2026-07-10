@@ -1156,11 +1156,10 @@ def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
     scores = [p.gacs_score for p in qs if p.gacs_score]
     avg_gacs = sum(scores) / len(scores) if scores else 0
 
-    # Find growth areas matching property states
-    states = qs.values_list("state", flat=True).distinct()
-    growth_areas = GrowthArea.objects.filter(state__in=list(states)).order_by(
-        "-composite_score"
-    )[:10]
+    # Show top growth areas
+    growth_areas = GrowthArea.objects.filter(
+        composite_score__isnull=False
+    ).order_by("-composite_score")[:10]
 
     return render(
         request,

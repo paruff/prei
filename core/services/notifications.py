@@ -40,9 +40,7 @@ def notify_pipeline_match(
     if not prefs.notify_in_app:
         return False
 
-    growth_areas = _find_matching_growth_areas(
-        pipeline_property, source_record
-    )
+    growth_areas = _find_matching_growth_areas(pipeline_property, source_record)
 
     if not growth_areas:
         return False
