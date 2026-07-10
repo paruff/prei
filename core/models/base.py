@@ -145,6 +145,10 @@ class UserProfile(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_onboarded = models.BooleanField(
+        default=False,
+        help_text="User has completed initial onboarding setup",
+    )
 
     def __str__(self) -> str:  # noqa: D401
         return f"Profile for {self.user.username}"

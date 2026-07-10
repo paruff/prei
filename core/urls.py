@@ -6,6 +6,7 @@ from .views_portfolio import portfolio_actuals_add, portfolio_dashboard
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("onboard/", views.onboard, name="onboard"),
     path("health/", views.health_check, name="health_check"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("properties/add/", views.property_add, name="property_add"),
@@ -53,7 +54,7 @@ urlpatterns = [
         views.report_property,
         name="report_property",
     ),
-    path("portfolio/", portfolio_dashboard, name="portfolio_dashboard"),
+    path("portfolio/", views.portfolio_dashboard, name="portfolio_dashboard"),
     path("portfolio/actuals/add/", portfolio_actuals_add, name="portfolio_actuals_add"),
     path("vrm-properties/", views.vrm_properties_list, name="vrm_properties_list"),
     path("hud-properties/", views.hud_property_list, name="hud_property_list"),
