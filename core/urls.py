@@ -2,7 +2,7 @@ from django.urls import path
 
 from . import views
 from .views import MarketRefreshView
-from .views_portfolio import portfolio_actuals_add, portfolio_dashboard
+from .views_portfolio import portfolio_actuals_add
 
 urlpatterns = [
     path("", views.home, name="home"),
