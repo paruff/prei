@@ -277,7 +277,7 @@ class Command(BaseCommand):
                     state=state_code,
                     city_name=city_name,
                     defaults={
-                        "metro_area": city_name,  # Use city name as metro area for now
+                        "metro_area": "",  # TODO: populate from Census CBSA API
                         "population": census_data.get("population_current"),
                         "population_growth_rate": pop_growth,
                         "employment_growth_rate": emp_growth,

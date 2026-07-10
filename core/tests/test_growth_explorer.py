@@ -220,7 +220,7 @@ class TestGrowthExplorerPostSuccess:
         # DecimalField(max_digits=6, decimal_places=2) rounds to 2dp
         assert la.employment_growth_rate == Decimal("0.04")  # 0.0450 → 0.04
         assert la.housing_demand_index == 85
-        assert la.metro_area == "Los Angeles"
+        assert la.metro_area == ""  # blank until CBSA API integration
 
     @patch("core.views.discover_places_in_state")
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
