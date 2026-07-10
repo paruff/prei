@@ -202,6 +202,18 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
+### [LIMIT-19] GrowthArea.rent_growth_rate field exists but is never populated
+
+**Location:** `core/models/growth.py` — `GrowthArea.rent_growth_rate` field
+
+**Impact:** The field is declared and has a help text suggesting it comes from Census ACS, but no code path populates it. It is not displayed in any template, not included in GACS, and has no data source wired to it. Future agents seeing the field may assume rent growth data is available when it is not.
+
+**Workaround:** None. The field stays null until a rent growth data source is integrated (HUD FMR longitudinal data or ACS B25064 series).
+
+**Fix tracked in:** GACS-FMR-1 — wire HUD FMR or ACS gross rent data into GrowthArea.
+
+---
+
 ## Resolved Limitations
 
 ### [LIMIT-R01] Docker container permissions — `app` user could not write `db.sqlite3`

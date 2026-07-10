@@ -188,7 +188,11 @@ class GrowthArea(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="5-year gross rent growth rate from Census ACS",
+        help_text=(
+            "5-year gross rent growth rate — NOT YET POPULATED. "
+            "Field reserved for HUD FMR or ACS rent growth integration. "
+            "See GACS-FMR-1 in backlog."
+        ),
     )
     net_migration = models.IntegerField(
         null=True,
