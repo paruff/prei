@@ -119,6 +119,7 @@
               <th>Housing Demand</th>
               <th>Supply Constraint</th>
               <th>Composite Score</th>
+              <th>Conf.</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -147,13 +148,24 @@
               </td>
               <td class="col-right score-num num-good">{{ r.growth_area.composite_score|default_if_none:""|floatformat:2 }}</td>
               <td>
+                {% with conf=r.growth_area.data_confidence %}
+                  {% if conf >= 80 %}
+                    <span class="chip chip-success">{{ conf }}%</span>
+                  {% elif conf >= 50 %}
+                    <span class="chip chip-warning">{{ conf }}%</span>
+                  {% else %}
+                    <span class="chip chip-danger">{{ conf }}%</span>
+                  {% endif %}
+                {% endwith %}
+              </td>
+              <td>
                 <a href="{% url 'vrm_properties_list' %}?state={{ r.growth_area.state }}" class="btn">View Foreclosures</a>
                 <button type="submit" name="pipeline_city" value="{{ r.place_name }}" class="btn" title="Run property discovery pipeline for {{ r.place_name }}, {{ r.growth_area.state }}">🔍 Discover</button>
                 <button type="button" class="btn" onclick="var r=document.getElementById('ge-breakdown-{{ forloop.counter0 }}');r.hidden=!r.hidden">Score</button>
               </td>
             </tr>
             <tr id="ge-breakdown-{{ forloop.counter0 }}" hidden>
-              <td colspan="11">
+              <td colspan="12">
                 <table class="data-table">
                   <thead><tr><th>Component</th><th>Value</th><th>Weight</th></tr></thead>
                   <tbody>
