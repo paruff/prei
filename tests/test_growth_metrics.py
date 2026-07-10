@@ -428,8 +428,9 @@ class PopulateGrowthAreasCommandTest(TestCase):
         "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     def test_creates_growth_area_on_success(
-        self, mock_housing, mock_employment, mock_census
+        self, mock_fips, mock_housing, mock_employment, mock_census
     ):
         """Creates a GrowthArea when all APIs return data."""
         mock_census.return_value = {
@@ -440,6 +441,7 @@ class PopulateGrowthAreasCommandTest(TestCase):
             "median_income_prior": Decimal("78000"),
             "median_income_growth_rate": Decimal("0.0897"),
         }
+        mock_fips.return_value = None
         mock_employment.return_value = Decimal("0.0450")
         mock_housing.return_value = 90
 
@@ -469,8 +471,9 @@ class PopulateGrowthAreasCommandTest(TestCase):
         "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     def test_updates_existing_growth_area(
-        self, mock_housing, mock_employment, mock_census
+        self, mock_fips, mock_housing, mock_employment, mock_census
     ):
         """Updates an existing GrowthArea when run again."""
         GrowthArea.objects.create(
@@ -492,6 +495,7 @@ class PopulateGrowthAreasCommandTest(TestCase):
             "median_income_prior": Decimal("78000"),
             "median_income_growth_rate": Decimal("0.1538"),
         }
+        mock_fips.return_value = None
         mock_employment.return_value = Decimal("0.0550")
         mock_housing.return_value = 85
 
@@ -534,7 +538,8 @@ class PopulateGrowthAreasCommandTest(TestCase):
         "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
-    def test_handles_multiple_cities(self, mock_housing, mock_employment, mock_census):
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
+    def test_handles_multiple_cities(self, mock_fips, mock_housing, mock_employment, mock_census):
         """Creates GrowthArea records for multiple cities."""
         mock_census.return_value = {
             "population_current": 400000,
@@ -544,6 +549,7 @@ class PopulateGrowthAreasCommandTest(TestCase):
             "median_income_prior": Decimal("78000"),
             "median_income_growth_rate": Decimal("0.09"),
         }
+        mock_fips.return_value = None
         mock_employment.return_value = Decimal("0.04")
         mock_housing.return_value = 85
 
@@ -580,8 +586,9 @@ class PopulateGrowthAreasCommandTest(TestCase):
         "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     def test_handles_census_failure_gracefully(
-        self, mock_housing, mock_employment, mock_census
+        self, mock_fips, mock_housing, mock_employment, mock_census
     ):
         """Continues processing when Census API fails for one city."""
         mock_census.return_value = None  # Census failed
