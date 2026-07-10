@@ -964,6 +964,13 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             if zip_code:
                 school_score = fetch_school_rating(zip_code, gs_api_key)
 
+        # Compute net migration from population data
+        from core.models.growth import compute_net_migration
+
+        net_mig, net_mig_rate = compute_net_migration(
+            data["population"], data["pop_growth"]
+        )
+
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
             city_name=data["place_name"],
@@ -975,6 +982,8 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "median_income_growth": data["income_growth"],
                 "housing_demand_index": data["housing_demand"],
                 "school_score": school_score,
+                "net_migration": net_mig,
+                "net_migration_rate": net_mig_rate,
                 "landlord_score": get_state_landlord_score(state)["score"],
                 "data_timestamp": timezone.now(),
             },
