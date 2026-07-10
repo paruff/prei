@@ -46,7 +46,7 @@ If scope >5 files or high risk, ask.
 ## Context Files
 | File | Why |
 |---|---|
-| `core/models.py` | model rules |
+| `core/models/` | model rules (package at core/models/) |
 | `docs/ARCHITECTURE.md` | layer rules |
 | `docs/CHANGE_IMPACT_MAP.md` | co-change map |
 | `docs/KNOWN_LIMITATIONS.md` | active known issues — read before touching a listed area |

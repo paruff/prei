@@ -2,7 +2,7 @@
 
 > Update whenever a model, service signature, or KPI function changes.
 
-## Model Changes (core/models.py)
+## Model Changes (core/models/ package)
 
 |If you change…             |You must also update…                                                    |
 |---------------------------|-------------------------------------------------------------------------|

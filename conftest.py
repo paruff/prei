@@ -12,7 +12,7 @@ from core.models import InvestmentAnalysis, OperatingExpense, Property, RentalIn
 User = get_user_model()
 
 
-def pytest_configure() -> None:
+def pytest_configure(config) -> None:  # noqa: ARG001
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "investor_app.settings_test")
 
 
