@@ -227,6 +227,15 @@ class GrowthArea(models.Model):
         blank=True,
         help_text="Net migration as fraction of prior population",
     )
+    county_fips = models.CharField(
+        max_length=5,
+        blank=True,
+        default="",
+        help_text=(
+            "5-character county FIPS code for QCEW employment lookup "
+            "(e.g. '48113' for Dallas County TX)"
+        ),
+    )
     latitude = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True
     )
