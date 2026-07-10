@@ -329,10 +329,12 @@ class GrowthArea(models.Model):
 
         Each of the 6 GACS components is scored:
         - real value from API → ~17 points
+        - employment: QCEW county-level = 17, FRED state-level = 8
         """
         c = 0
+        # Employment: QCEW (county_fips set) = 17 pts, FRED fallback = 8 pts
         if self.employment_growth_rate is not None:
-            c += 17
+            c += 17 if self.county_fips else 8
         c += 17  # population_growth_rate: required
         c += 17  # median_income_growth: required
         if self.school_score is not None:

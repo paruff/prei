@@ -968,19 +968,31 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             data["population"], data["pop_growth"]
         )
 
+        # Attempt county-level employment via QCEW (replaces FRED when county is known)
+        from core.integrations.market.county_fips_map import lookup_county_fips
+        from core.integrations.market.qcew_adapter import fetch_county_employment_growth
+
+        emp_rate = safe_emp_growth
+        county_fips = lookup_county_fips(state, data["place_name"])
+        if county_fips:
+            qcew_growth = fetch_county_employment_growth(county_fips, year=2024)
+            if qcew_growth is not None:
+                emp_rate = qcew_growth
+
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
             city_name=data["place_name"],
             defaults={
-                "metro_area": "",  # TODO: populate from Census CBSA API
+                "metro_area": "",
                 "population": data["population"],
                 "population_growth_rate": data["pop_growth"],
-                "employment_growth_rate": safe_emp_growth,
+                "employment_growth_rate": emp_rate,
                 "median_income_growth": data["income_growth"],
                 "housing_demand_index": data["housing_demand"],
                 "school_score": school_score,
                 "net_migration": net_mig,
                 "net_migration_rate": net_mig_rate,
+                "county_fips": county_fips or "",
                 "landlord_score": get_state_landlord_score(state)["score"],
                 "data_timestamp": timezone.now(),
             },

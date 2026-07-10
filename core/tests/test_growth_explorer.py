@@ -159,7 +159,11 @@ class TestGrowthExplorerPostErrors:
             ) as mock_emp_growth,
             patch("core.views.fetch_place_growth_metrics") as mock_census,
             patch("core.views.fetch_housing_demand_index") as mock_housing,
+            patch(
+                "core.integrations.market.county_fips_map.lookup_county_fips"
+            ) as mock_fips,
         ):
+            mock_fips.return_value = None
             mock_emp_growth.return_value = Decimal("0.0300")
             # First call returns data, second call returns None (fail)
             mock_census.side_effect = [
@@ -191,9 +195,11 @@ class TestGrowthExplorerPostSuccess:
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     @pytest.mark.django_db
     def test_creates_growth_areas(
         self,
+        mock_fips: MagicMock,
         mock_housing: MagicMock,
         mock_census: MagicMock,
         mock_employment: MagicMock,
@@ -201,6 +207,7 @@ class TestGrowthExplorerPostSuccess:
         client,
     ) -> None:
         """Successful POST creates GrowthArea rows for each place."""
+        mock_fips.return_value = None
         mock_discover.return_value = [
             _mock_place("44000", "Los Angeles", 400000),
             _mock_place("66000", "San Diego", 100000),
@@ -226,9 +233,11 @@ class TestGrowthExplorerPostSuccess:
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     @pytest.mark.django_db
     def test_updates_existing_growth_area(
         self,
+        mock_fips: MagicMock,
         mock_housing: MagicMock,
         mock_census: MagicMock,
         mock_employment: MagicMock,
@@ -247,6 +256,7 @@ class TestGrowthExplorerPostSuccess:
             data_timestamp=timezone.now() - timedelta(days=30),
         )
 
+        mock_fips.return_value = None
         mock_discover.return_value = [_mock_place("44000", "Los Angeles", 410000)]
         mock_employment.return_value = Decimal("0.0550")
         mock_census.return_value = _mock_census_metrics(
@@ -270,9 +280,11 @@ class TestGrowthExplorerPostSuccess:
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     @pytest.mark.django_db
     def test_employment_growth_is_state_level(
         self,
+        mock_fips: MagicMock,
         mock_housing: MagicMock,
         mock_census: MagicMock,
         mock_employment: MagicMock,
@@ -288,6 +300,7 @@ class TestGrowthExplorerPostSuccess:
             _mock_place("66000", "San Diego", 100000),
             _mock_place("70000", "San Jose", 80000),
         ]
+        mock_fips.return_value = None
         mock_employment.return_value = Decimal("0.0375")  # single state-level value
         mock_census.return_value = _mock_census_metrics()
         mock_housing.return_value = 75
@@ -308,9 +321,11 @@ class TestGrowthExplorerPostSuccess:
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     @pytest.mark.django_db
     def test_results_sorted_by_composite_score(
         self,
+        mock_fips: MagicMock,
         mock_housing: MagicMock,
         mock_census: MagicMock,
         mock_employment: MagicMock,
@@ -326,6 +341,7 @@ class TestGrowthExplorerPostSuccess:
             _mock_place("66000", "San Diego", 100000),
             _mock_place("70000", "San Jose", 80000),
         ]
+        mock_fips.return_value = None
         mock_employment.return_value = Decimal("0.0450")
 
         # Each place gets different growth data -> different composite_score
@@ -364,9 +380,11 @@ class TestGrowthExplorerPostSuccess:
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     @pytest.mark.django_db
     def test_context_includes_emp_growth_value(
         self,
+        mock_fips: MagicMock,
         mock_housing: MagicMock,
         mock_census: MagicMock,
         mock_employment: MagicMock,
@@ -376,6 +394,7 @@ class TestGrowthExplorerPostSuccess:
         """The state-level employment growth value is passed to the template
         context so the UI can display it with a footnote."""
         mock_discover.return_value = [_mock_place("44000", "Los Angeles", 400000)]
+        mock_fips.return_value = None
         mock_employment.return_value = Decimal("0.0375")
         mock_census.return_value = _mock_census_metrics()
         mock_housing.return_value = 80
@@ -391,9 +410,11 @@ class TestGrowthExplorerPostSuccess:
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
+    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
     @pytest.mark.django_db
     def test_housing_demand_defaults_to_50(
         self,
+        mock_fips: MagicMock,
         mock_housing: MagicMock,
         mock_census: MagicMock,
         mock_employment: MagicMock,
@@ -402,6 +423,7 @@ class TestGrowthExplorerPostSuccess:
     ) -> None:
         """When fetch_housing_demand_index returns None, the view defaults to 50."""
         mock_discover.return_value = [_mock_place("44000", "Los Angeles", 400000)]
+        mock_fips.return_value = None
         mock_employment.return_value = Decimal("0.0300")
         mock_census.return_value = _mock_census_metrics()
         mock_housing.return_value = None  # housing API fails
