@@ -58,27 +58,7 @@ Format: `### [LIMIT-ID] Short description` followed by location, impact, workaro
 
 ---
 
-### [LIMIT-04] GrowthArea `composite_score` is a Python `@property`, not a DB column
-
-**Location:** `core/models.py:674-688` (property definition), `core/views.py:680` (Python sort)
-
-**Impact:** Sorting GrowthAreas by `composite_score` happens in Python memory via `sorted(..., key=lambda ga: ga.composite_score, reverse=True)`. With the current 73 pre-configured cities this is instantaneous, but it will not scale to thousands of entries. No DB index can support this sort, and pagination queries cannot filter/sort by score on the database side.
-
-**Workaround:** Acceptable for alpha. When the city list grows beyond ~500 entries, `composite_score` should be promoted to a persisted `Decimal` field with a DB index, recomputed on a schedule or via a trigger. This also enables efficient `WHERE composite_score >= X` filtering.
-
-**Fix tracked in:** Not yet filed. Track as a post-MVP scalability concern.
-
----
-
 ### [LIMIT-05] SQLite is the default database; Postgres reserved for post-MVP production
-
-**Location:** `.env` (DATABASE_URL default), `docker-compose.yml` (Postgres service commented out)
-
-**Impact:** SQLite lacks concurrent-write support, row-level locking, and many Postgres-specific features (array columns, full-text search, `PGroonga`/`pgvector`, etc.). Under concurrent user load, write contention will cause `database is locked` errors. The Postgres service in `docker-compose.yml` is commented out and requires manual activation.
-
-**Workaround:** For alpha/single-user local dev, SQLite is sufficient. To switch to Postgres: uncomment `DATABASE_URL` and `POSTGRES_*` in `.env`, uncomment the `db` service in `docker-compose.yml`, and rebuild. A migration (systematic data migration, not just schema) will be needed for the switch.
-
-**Fix tracked in:** Not yet filed. Tracked as "post-MVP production deployment" prerequisite.
 
 ---
 
@@ -222,6 +202,18 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
+### [LIMIT-19] GrowthArea.rent_growth_rate field exists but is never populated
+
+**Location:** `core/models/growth.py` — `GrowthArea.rent_growth_rate` field
+
+**Impact:** The field is declared and has a help text suggesting it comes from Census ACS, but no code path populates it. It is not displayed in any template, not included in GACS, and has no data source wired to it. Future agents seeing the field may assume rent growth data is available when it is not.
+
+**Workaround:** None. The field stays null until a rent growth data source is integrated (HUD FMR longitudinal data or ACS B25064 series).
+
+**Fix tracked in:** GACS-FMR-1 — wire HUD FMR or ACS gross rent data into GrowthArea.
+
+---
+
 ## Resolved Limitations
 
 ### [LIMIT-R01] Docker container permissions — `app` user could not write `db.sqlite3`
@@ -233,3 +225,13 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 **Fix date:** 2026-07-03 (included in PR #196).
 
 **Note:** The fix grants the `app` user write access to the entire `/app` tree, not just `/app/.runtime`. This is acceptable for alpha. If a finer-grained permission model is needed later (defence in depth), create a dedicated `/app/data/` subdirectory and chown only that directory.
+
+### [LIMIT-R02] GrowthArea composite_score was a Python @property, not a DB column
+
+**Fixed in:** GrowthArea model refactored to store composite_score as a persisted DecimalField.
+
+**Impact before fix:** Sorting GrowthAreas by composite_score happened in Python memory via sorted(), which would not scale to thousands of entries. No DB index could support this sort, and pagination queries could not filter/sort by score on the database side.
+
+**Fix date:** 2026-07-08 (models refactored)
+
+**Note:** Promoted to persisted `DecimalField`, computed on `save()`. DB-level `.order_by('-composite_score')` used in growth_areas view (lines 701, 733). GACS scores are now fully queryable and sortable at the database level.
