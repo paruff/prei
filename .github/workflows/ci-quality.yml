@@ -1,4 +1,4 @@
-name: Post-Commit — PR Gates
+name: Post-Commit PR Gates
 
 on:
   pull_request:
@@ -216,9 +216,8 @@ jobs:
   # ── Summary gate ──────────────────────────────────────────────────────────
 
   pr-gates-pass:
-    name: "✅ All Gates Passed"
-    needs:
-      [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, coverage]
+    name: "All Gates Passed"
+    needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, coverage]
     runs-on: ubuntu-latest
     if: always()
     steps:
