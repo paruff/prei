@@ -36,6 +36,10 @@
           Discover
           <span class="sub-label">Find properties from public sources</span>
         </a>
+        <a href="{% url 'pipeline_screener' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_screener' %}active{% endif %}" role="menuitem">
+          Screener
+          <span class="sub-label">View screening results by market</span>
+        </a>
         <a href="{% url 'vrm_properties_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'vrm_properties_list' %}active{% endif %}" role="menuitem">
           Foreclosures
           <span class="sub-label">Browse VRM properties</span>

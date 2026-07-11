@@ -38,9 +38,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
-      - name: Install linters
-        run: pip install ruff bandit
-      - name: Ruff check
+      - name: Install dependencies
+        run: pip install ruff==0.15.20 bandit==1.8.0
+      - name: Ruff
+        run: ruff check .
         run: ruff check .
       - name: Ruff format
         run: ruff format --check .
@@ -96,6 +97,7 @@ jobs:
       - uses: ./.github/actions/python-setup
       - name: Install system deps
         run: sudo apt-get install -y libcairo2-dev
+      - name: Install dependencies
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
       - name: Collect static files

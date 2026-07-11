@@ -10,4 +10,5 @@
 #   B310: urlopen — used for known trusted external data source (HUD)
 #   B311: random — used for web scraping delays, not crypto
 #   B324: hashlib — MD5 used for cache key generation only, not security
-skips: [B101, B105, B106, B110, B112, B310, B311, B324]
+#   B105/B106: hardcoded_password — removed in Bandit 1.8+ (consolidated into B107)
+skips: [B101, B110, B112, B310, B311, B324]
