@@ -147,6 +147,43 @@ class PipelineProperty(models.Model):
         max_length=64, db_index=True, blank=True, default=""
     )
 
+    # ── Location fields (populated at discovery time) ─────────────────
+    city = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="City name copied from source record at discovery time",
+    )
+    state = models.CharField(
+        max_length=2,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="2-letter state code copied from source record",
+    )
+    zip_code = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="ZIP code copied from source record",
+    )
+    county = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="County name copied from source record — links to QCEW and FMR data",
+    )
+    growth_area = models.ForeignKey(
+        "GrowthArea",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="pipeline_properties",
+        help_text="Growth area this property was discovered under — set at discovery time",
+    )
+
     # ── Pipeline stage ───────────────────────────────────────────────
     stage = models.CharField(
         max_length=20, choices=Stage.choices, default=Stage.DISCOVERED

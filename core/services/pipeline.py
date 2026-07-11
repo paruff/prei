@@ -213,6 +213,7 @@ def get_source_record(pipeline_property: Any) -> Any | None:
 def create_from_vrm(
     vrm_property: Any,
     user: Any,
+    growth_area: Any | None = None,
 ) -> Tuple[Any, bool]:
     """Create a PipelineProperty from a VrmProperty and run screening.
 
@@ -222,6 +223,7 @@ def create_from_vrm(
     Args:
         vrm_property: VrmProperty instance.
         user: Django User who owns this pipeline entry.
+        growth_area: Optional GrowthArea this property was discovered under.
 
     Returns:
         Tuple of (PipelineProperty, created). created=False if a PP
@@ -239,6 +241,11 @@ def create_from_vrm(
         defaults={
             "address": vrm_property.address or "",
             "address_hash": "",
+            "city": vrm_property.city or "",
+            "state": vrm_property.state or "",
+            "zip_code": vrm_property.zip_code or "",
+            "county": vrm_property.county or "",
+            "growth_area": growth_area,
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": vrm_property.list_price,
@@ -339,6 +346,7 @@ def create_from_foreclosure(
 def create_from_hud(
     hud_property: Any,
     user: Any,
+    growth_area: Any | None = None,
 ) -> Tuple[Any, bool]:
     """Create a PipelineProperty from a HudProperty and run screening.
 
@@ -348,6 +356,7 @@ def create_from_hud(
     Args:
         hud_property: HudProperty instance.
         user: Django User who owns this pipeline entry.
+        growth_area: Optional GrowthArea this property was discovered under.
 
     Returns:
         Tuple of (PipelineProperty, created).
@@ -369,6 +378,11 @@ def create_from_hud(
         defaults={
             "address": hud_property.address or "",
             "address_hash": "",
+            "city": hud_property.city or "",
+            "state": hud_property.state or "",
+            "zip_code": hud_property.zip_code or "",
+            "county": hud_property.county or "",
+            "growth_area": growth_area,
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": price,
@@ -407,6 +421,7 @@ def create_from_hud(
 def create_from_usda(
     usda_property: Any,
     user: Any,
+    growth_area: Any | None = None,
 ) -> Tuple[Any, bool]:
     """Create a PipelineProperty from a UsdaProperty and run screening.
 
@@ -416,6 +431,7 @@ def create_from_usda(
     Args:
         usda_property: UsdaProperty instance.
         user: Django User who owns this pipeline entry.
+        growth_area: Optional GrowthArea this property was discovered under.
 
     Returns:
         Tuple of (PipelineProperty, created).
@@ -435,6 +451,11 @@ def create_from_usda(
         defaults={
             "address": usda_property.address or "",
             "address_hash": "",
+            "city": usda_property.city or "",
+            "state": usda_property.state or "",
+            "zip_code": usda_property.zip_code or "",
+            "county": usda_property.county or "",
+            "growth_area": growth_area,
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": usda_property.list_price,
@@ -473,6 +494,7 @@ def create_from_usda(
 def create_from_county_notice(
     county_notice: Any,
     user: Any,
+    growth_area: Any | None = None,
 ) -> Tuple[Any, bool]:
     """Create a PipelineProperty from a CountyForeclosureNotice and run screening.
 
@@ -483,6 +505,7 @@ def create_from_county_notice(
     Args:
         county_notice: CountyForeclosureNotice instance.
         user: Django User who owns this pipeline entry.
+        growth_area: Optional GrowthArea this property was discovered under.
 
     Returns:
         Tuple of (PipelineProperty, created).
@@ -502,6 +525,11 @@ def create_from_county_notice(
         defaults={
             "address": county_notice.address or "",
             "address_hash": "",
+            "city": county_notice.city or "",
+            "state": county_notice.state or "",
+            "zip_code": county_notice.zip_code or "",
+            "county": county_notice.county or "",
+            "growth_area": growth_area,
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": county_notice.unpaid_balance,
