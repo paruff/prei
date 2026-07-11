@@ -6,6 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         ("core", "0043_add_location_fields_to_pipeline_property"),
+        ("core", "0044_add_pipeline_source_type_source_id_index"),
     ]
 
     operations = [

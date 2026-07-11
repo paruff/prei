@@ -197,10 +197,6 @@ def _eval_gacs_score(
         try:
             from core.models import GrowthArea
 
-    if growth_area is None:
-        try:
-            from core.models import GrowthArea
-
             growth_area = GrowthArea.objects.filter(
                 state=state, city_name__iexact=city
             ).first()
