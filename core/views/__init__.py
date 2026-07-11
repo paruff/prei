@@ -1646,8 +1646,7 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
 
     # --- Base queryset ---
     qs = (
-        PipelineProperty.objects
-        .filter(user=request.user)
+        PipelineProperty.objects.filter(user=request.user)
         .select_related("growth_area", "investment_analysis")
         .order_by("-screening_passed", "-created_at")
     )
@@ -1681,8 +1680,7 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
                 rescreened += 1
             messages.success(
                 request,
-                f"{rescreened} propert"
-                f"{'y' if rescreened == 1 else 'ies'} re-screened.",
+                f"{rescreened} propert{'y' if rescreened == 1 else 'ies'} re-screened.",
             )
             return redirect(request.get_full_path())
 
@@ -1694,9 +1692,7 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
             pp.stage = PipelineProperty.Stage.UNDERWRITING
             pp.underwriting_at = timezone.now()
             pp.save(update_fields=["stage", "underwriting_at", "updated_at"])
-            messages.success(
-                request, f"{pp.address[:40]} moved to Underwriting."
-            )
+            messages.success(request, f"{pp.address[:40]} moved to Underwriting.")
         except PipelineProperty.DoesNotExist:
             pass
         return redirect(request.get_full_path())
@@ -1719,29 +1715,33 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
     passed_count = qs.filter(screening_passed=True).count()
     failed_count = qs.filter(screening_passed=False).count()
     unscreened_count = qs.filter(screening_passed__isnull=True).count()
-    passed_pct = (
-        (passed_count / total * 100) if total > 0 else 0
-    )
+    passed_pct = (passed_count / total * 100) if total > 0 else 0
 
     # --- All growth areas for the filter dropdown ---
-    user_growth_areas = GrowthArea.objects.filter(
-        pipeline_properties__user=request.user
-    ).distinct().order_by("state", "city_name")
+    user_growth_areas = (
+        GrowthArea.objects.filter(pipeline_properties__user=request.user)
+        .distinct()
+        .order_by("state", "city_name")
+    )
 
-    return render(request, "pipeline/screener.html", {
-        "growth_area": growth_area,
-        "properties": qs,
-        "criteria": criteria,
-        "total": total,
-        "passed_count": passed_count,
-        "failed_count": failed_count,
-        "unscreened_count": unscreened_count,
-        "passed_pct": passed_pct,
-        "status_filter": status_filter,
-        "passed_filter": passed_filter,
-        "user_growth_areas": user_growth_areas,
-        "ga_id": ga_id,
-    })
+    return render(
+        request,
+        "pipeline/screener.html",
+        {
+            "growth_area": growth_area,
+            "properties": qs,
+            "criteria": criteria,
+            "total": total,
+            "passed_count": passed_count,
+            "failed_count": failed_count,
+            "unscreened_count": unscreened_count,
+            "passed_pct": passed_pct,
+            "status_filter": status_filter,
+            "passed_filter": passed_filter,
+            "user_growth_areas": user_growth_areas,
+            "ga_id": ga_id,
+        },
+    )
 
 
 @login_required
@@ -2949,9 +2949,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
             "key": "hud",
             "label": "HUD REO",
             "description": "Government-owned HUD foreclosures",
-            "count": HudProperty.objects.filter(
-                state=state, city__iexact=city
-            ).count(),
+            "count": HudProperty.objects.filter(state=state, city__iexact=city).count(),
             "is_active": True,
         },
         {
@@ -2967,9 +2965,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
             "key": "vrm",
             "label": "VRM (VA REO)",
             "description": "VA-owned foreclosures via VRM Properties",
-            "count": VrmProperty.objects.filter(
-                state=state, city__iexact=city
-            ).count(),
+            "count": VrmProperty.objects.filter(state=state, city__iexact=city).count(),
             "is_active": True,
         },
         {
@@ -2986,7 +2982,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
             "label": "County Foreclosure Notices",
             "description": "County-level NTS/auction records",
             "count": CountyForeclosureNotice.objects.filter(
-                state=state, city__iexact=city,
+                state=state,
+                city__iexact=city,
                 document_type__in=["nts", "sheriff_sale", "auction"],
             ).count(),
             "is_active": True,
@@ -3001,19 +2998,21 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
 
     # --- GET: show discovery form ---
     if request.method == "GET":
-        return render(request, "property_discovery.html", {
-            "growth_area": growth_area,
-            "source_status": source_status,
-            "already_discovered": already_discovered,
-        })
+        return render(
+            request,
+            "property_discovery.html",
+            {
+                "growth_area": growth_area,
+                "source_status": source_status,
+                "already_discovered": already_discovered,
+            },
+        )
 
     # --- POST: run discovery ---
     selected_sources = request.POST.getlist("sources")
     if not selected_sources:
         messages.warning(request, "Please select at least one source.")
-        return redirect(
-            f"{request.path}?growth_area_id={growth_area.pk}"
-        )
+        return redirect(f"{request.path}?growth_area_id={growth_area.pk}")
 
     # Get or create user screening criteria for auto-screening
     try:
@@ -3035,7 +3034,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         results["sources_attempted"].append("HUD")
         try:
             hud_qs = HudProperty.objects.filter(
-                state=state, city__iexact=city,
+                state=state,
+                city__iexact=city,
                 status="active",
             )
             for hud in hud_qs:
@@ -3046,8 +3046,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                     results["discovered"] += 1
                     if criteria:
                         result = screen_property(
-                            pp, criteria,
-                            source_record=get_source_record(pp)
+                            pp, criteria, source_record=get_source_record(pp)
                         )
                         pp.screening_passed = result.passed
                         pp.save(update_fields=["screening_passed", "updated_at"])
@@ -3066,7 +3065,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         results["sources_attempted"].append("USDA")
         try:
             usda_qs = UsdaProperty.objects.filter(
-                state=state, city__iexact=city,
+                state=state,
+                city__iexact=city,
                 status="active",
             )
             for usda in usda_qs:
@@ -3077,8 +3077,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                     results["discovered"] += 1
                     if criteria:
                         result = screen_property(
-                            pp, criteria,
-                            source_record=get_source_record(pp)
+                            pp, criteria, source_record=get_source_record(pp)
                         )
                         pp.screening_passed = result.passed
                         pp.save(update_fields=["screening_passed", "updated_at"])
@@ -3097,7 +3096,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         results["sources_attempted"].append("VRM")
         try:
             vrm_qs = VrmProperty.objects.filter(
-                state=state, city__iexact=city,
+                state=state,
+                city__iexact=city,
                 status="for_sale",
             )
             for vrm in vrm_qs:
@@ -3108,8 +3108,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                     results["discovered"] += 1
                     if criteria:
                         result = screen_property(
-                            pp, criteria,
-                            source_record=get_source_record(pp)
+                            pp, criteria, source_record=get_source_record(pp)
                         )
                         pp.screening_passed = result.passed
                         pp.save(update_fields=["screening_passed", "updated_at"])
@@ -3128,7 +3127,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         results["sources_attempted"].append("Foreclosures")
         try:
             notice_qs = CountyForeclosureNotice.objects.filter(
-                state=state, city__iexact=city,
+                state=state,
+                city__iexact=city,
             )
             for notice in notice_qs:
                 pp, created = create_from_county_notice(
@@ -3138,8 +3138,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                     results["discovered"] += 1
                     if criteria:
                         result = screen_property(
-                            pp, criteria,
-                            source_record=get_source_record(pp)
+                            pp, criteria, source_record=get_source_record(pp)
                         )
                         pp.screening_passed = result.passed
                         pp.save(update_fields=["screening_passed", "updated_at"])
@@ -3159,11 +3158,9 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
     messages.success(
         request,
         f"Discovered {results['discovered']} new properties in {city}, {state}. "
-        f"{results['screening_passed']} passed screening."
+        f"{results['screening_passed']} passed screening.",
     )
-    return redirect(
-        f"{{% url 'pipeline_screener' %}}?growth_area_id={growth_area.pk}"
-    )
+    return redirect(f"{{% url 'pipeline_screener' %}}?growth_area_id={growth_area.pk}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
