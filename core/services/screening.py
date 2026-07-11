@@ -200,6 +200,8 @@ def _eval_gacs_score(
             state=state, city_name__iexact=city
         ).first()
     except Exception:
+        # Broad catch: DB connection failure, import error, etc.
+        # Non-critical — screening continues without GACS deduction
         growth_area = None
 
     if growth_area is None or growth_area.composite_score is None:

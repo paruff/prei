@@ -246,6 +246,11 @@ class PipelineProperty(models.Model):
                 name="unique_user_source_property",
             ),
         ]
+        indexes = [
+            models.Index(
+                fields=["source_type", "source_id"], name="idx_pp_source_type_source_id"
+            ),
+        ]
         ordering = ["-updated_at"]
         verbose_name = "Pipeline Property"
         verbose_name_plural = "Pipeline Properties"
