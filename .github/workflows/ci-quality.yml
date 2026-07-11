@@ -98,6 +98,8 @@ jobs:
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --verbosity 0
       - name: Run unit tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
@@ -124,6 +126,8 @@ jobs:
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --verbosity 0
       - name: Run integration tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
