@@ -354,7 +354,7 @@ class CountyForeclosureNotice(models.Model):
     lender_name = models.CharField(max_length=255, blank=True, default="")
     trustee_name = models.CharField(max_length=255, blank=True, default="")
     address = models.CharField(max_length=255)
-    city = models.CharField(max_length=128)
+    city = models.CharField(max_length=128, db_index=True)
     state = models.CharField(max_length=2, db_index=True)
     zip_code = models.CharField(max_length=16, blank=True, default="")
     county = models.CharField(max_length=128, db_index=True)
