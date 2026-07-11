@@ -161,7 +161,7 @@ jobs:
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
           coverage run --parallel-mode -m pytest tests/ \
             -q --tb=short \
-            -k "e2e or docker or container or startup or add_to_pipeline"
+            -k "e2e or docker or container or startup or add_to_pipeline or export"
       - name: Upload coverage data
         uses: actions/upload-artifact@v5
         with:

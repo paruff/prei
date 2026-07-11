@@ -113,7 +113,7 @@ class TestGrowthExplorerPostErrors:
     """POST behaviour — error handling for invalid input and missing config."""
 
     @pytest.mark.django_db
-    def test_empty_state_shows_error(        self, authed_client) -> None:
+    def test_empty_state_shows_error(self, authed_client) -> None:
         """POST with empty state returns form with error message."""
         with patch.dict(os.environ, API_ENV):
             resp = authed_client.post(reverse("growth_explorer"), {"state": ""})
@@ -122,7 +122,7 @@ class TestGrowthExplorerPostErrors:
         assert "Invalid state selected" in resp.content.decode()
 
     @pytest.mark.django_db
-    def test_invalid_state_shows_error(        self, authed_client) -> None:
+    def test_invalid_state_shows_error(self, authed_client) -> None:
         """POST with invalid state code returns form with error."""
         with patch.dict(os.environ, API_ENV):
             resp = authed_client.post(reverse("growth_explorer"), {"state": "XX"})
@@ -131,7 +131,7 @@ class TestGrowthExplorerPostErrors:
         assert "Invalid state selected" in resp.content.decode()
 
     @pytest.mark.django_db
-    def test_missing_census_key_shows_error(        self, authed_client) -> None:
+    def test_missing_census_key_shows_error(self, authed_client) -> None:
         """POST without CENSUS_API_KEY shows configuration error."""
         with patch.dict(os.environ, clear=True):
             resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
