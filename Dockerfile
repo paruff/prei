@@ -1,13 +1,18 @@
 # syntax=docker/dockerfile:1.7
 # ↑ enables BuildKit features — put this as line 1
 
-ARG PYTHON_VERSION=3.14.6
+# Pin to exact patch version for reproducible builds.
+# PYTHON_IMAGE_VERSION = full semver for the FROM tag.
+# PYTHON_VERSION      = major.minor for the filesystem path
+# (Python always installs to /usr/local/lib/python3.X regardless of patch).
+ARG PYTHON_IMAGE_VERSION=3.14.6
+ARG PYTHON_VERSION=3.14
 
 # ── Version metadata (injected by CI, or default for local dev) ────────────
 ARG VERSION=0.0.0-dev
 ARG COMMIT=unknown
 
-FROM python:${PYTHON_VERSION}-slim-bookworm AS base
+FROM python:${PYTHON_IMAGE_VERSION}-slim-bookworm AS base
 
 ARG VERSION
 ARG COMMIT
