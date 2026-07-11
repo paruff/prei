@@ -32,9 +32,6 @@ def test_makefile_no_duplicate_targets() -> None:
     content = MAKEFILE.read_text()
     targets = []
     for line in content.splitlines():
-        # Skip recipe lines (start with tab — Makefile recipes use \t prefix)
-        if line.startswith("\t"):
-            continue
         line = line.strip()
         # Match target lines: "target:" or "target: deps"
         if (
@@ -43,8 +40,8 @@ def test_makefile_no_duplicate_targets() -> None:
             and not line.startswith(".")
             and ":" in line
         ):
-            # Skip variable assignments (=)
-            if "=" not in line.split(":")[0]:
+            # Skip recipe lines (start with tab) and variable assignments (=)
+            if not line.startswith("\t") and "=" not in line.split(":")[0]:
                 name = line.split(":")[0].strip()
                 if name and not name.startswith("$"):
                     targets.append(name)
