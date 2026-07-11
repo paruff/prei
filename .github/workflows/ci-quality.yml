@@ -42,7 +42,6 @@ jobs:
         run: pip install ruff==0.15.20 bandit==1.8.0
       - name: Ruff
         run: ruff check .
-        run: ruff check .
       - name: Ruff format
         run: ruff format --check .
       - name: Bandit (security lint)
