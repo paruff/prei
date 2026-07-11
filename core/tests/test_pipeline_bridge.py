@@ -1,9 +1,17 @@
 """Integration test: Growth Area Explorer pipeline bridge."""
 
 import pytest
+from django.contrib.auth.models import User
 from django.urls import reverse
 from unittest.mock import patch
 from decimal import Decimal
+
+
+@pytest.fixture
+def authed_client(client):
+    user = User.objects.create_user("t", "t@t.com", "pass")
+    client.force_login(user)
+    return client
 
 
 @patch.dict("os.environ", {"CENSUS_API_KEY": "test-key"})
@@ -21,7 +29,7 @@ class TestPipelineBridge:
         mock_census,
         mock_emp,
         mock_discover,
-        client,
+        authed_client,
     ):
         """POST with pipeline_city triggers discovery pipeline."""
         mock_discover.return_value = [
@@ -52,7 +60,7 @@ class TestPipelineBridge:
             "county": [],
         }
 
-        resp = client.post(
+        resp = authed_client.post(
             reverse("growth_explorer"),
             {"state": "CA", "pipeline_city": "Los Angeles"},
         )
@@ -73,7 +81,7 @@ class TestPipelineBridge:
         mock_census,
         mock_emp,
         mock_discover,
-        client,
+        authed_client,
     ):
         """POST without pipeline_city does not trigger discovery."""
         mock_discover.return_value = [
@@ -90,7 +98,7 @@ class TestPipelineBridge:
         }
         mock_housing.return_value = 85
 
-        resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+        resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
         assert resp.status_code == 200
         html = resp.content.decode()
         assert "Property Discovery" not in html
