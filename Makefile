@@ -66,7 +66,7 @@ test-unit:
 	$(call ensure_django)
 	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ tests_bdd/ \
 		-q --tb=short \
-		-k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline"
+		-k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not export"
 
 test-integration:
 	$(call ensure_django)
@@ -80,7 +80,7 @@ test-e2e:
 	@echo "Running E2E tests (requires Playwright browser)..."
 	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ \
 		-v --tb=short \
-		-k "e2e or docker or container or startup or add_to_pipeline"
+		-k "e2e or docker or container or startup or add_to_pipeline or export"
 
 check: ensure-env
 	$(call ensure_django)

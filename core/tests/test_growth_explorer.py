@@ -20,6 +20,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 
@@ -29,6 +30,17 @@ from core.models import GrowthArea
 # ===========================================================================
 #  Fixtures / helpers
 # ===========================================================================
+
+
+@pytest.fixture
+def user():
+    return User.objects.create_user("testuser", "test@example.com", "password")
+
+
+@pytest.fixture
+def authed_client(client, user):
+    client.force_login(user)
+    return client
 
 
 def _mock_place(
@@ -73,9 +85,9 @@ class TestGrowthExplorerGet:
     """GET behaviour — renders the state-picker form."""
 
     @pytest.mark.django_db
-    def test_get_returns_200(self, client) -> None:
+    def test_get_returns_200(self, authed_client) -> None:
         """GET /growth-explorer/ returns 200 with states in context."""
-        resp = client.get(reverse("growth_explorer"))
+        resp = authed_client.get(reverse("growth_explorer"))
         assert resp.status_code == 200
         assert "states" in resp.context
         states = resp.context["states"]
@@ -83,9 +95,9 @@ class TestGrowthExplorerGet:
         assert states[0] == ("AL", "Alabama")
 
     @pytest.mark.django_db
-    def test_get_renders_form_html(self, client) -> None:
+    def test_get_renders_form_html(self, authed_client) -> None:
         """GET response contains the state-picker form elements."""
-        resp = client.get(reverse("growth_explorer"))
+        resp = authed_client.get(reverse("growth_explorer"))
         html = resp.content.decode()
         assert "Growth Area Explorer" in html
         assert 'name="state"' in html
@@ -101,41 +113,41 @@ class TestGrowthExplorerPostErrors:
     """POST behaviour — error handling for invalid input and missing config."""
 
     @pytest.mark.django_db
-    def test_empty_state_shows_error(self, client) -> None:
+    def test_empty_state_shows_error(        self, authed_client) -> None:
         """POST with empty state returns form with error message."""
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": ""})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": ""})
 
         assert resp.status_code == 200
         assert "Invalid state selected" in resp.content.decode()
 
     @pytest.mark.django_db
-    def test_invalid_state_shows_error(self, client) -> None:
+    def test_invalid_state_shows_error(        self, authed_client) -> None:
         """POST with invalid state code returns form with error."""
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": "XX"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "XX"})
 
         assert resp.status_code == 200
         assert "Invalid state selected" in resp.content.decode()
 
     @pytest.mark.django_db
-    def test_missing_census_key_shows_error(self, client) -> None:
+    def test_missing_census_key_shows_error(        self, authed_client) -> None:
         """POST without CENSUS_API_KEY shows configuration error."""
         with patch.dict(os.environ, clear=True):
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
             assert resp.status_code == 200
             assert "CENSUS_API_KEY" in resp.content.decode()
 
     @patch("core.views.discover_places_in_state")
     @pytest.mark.django_db
     def test_no_places_found_shows_error(
-        self, mock_discover: MagicMock, client
+        self, mock_discover: MagicMock, authed_client
     ) -> None:
         """POST that finds no places returns error message."""
         mock_discover.return_value = []
 
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": "WY"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "WY"})
 
         assert resp.status_code == 200
         assert "No Census data returned" in resp.content.decode()
@@ -143,7 +155,7 @@ class TestGrowthExplorerPostErrors:
     @patch("core.views.discover_places_in_state")
     @pytest.mark.django_db
     def test_place_without_census_data_skipped(
-        self, mock_discover: MagicMock, client
+        self, mock_discover: MagicMock, authed_client
     ) -> None:
         """A place that returns None from fetch_place_growth_metrics is skipped
         (not included in results, no GrowthArea created)."""
@@ -172,7 +184,7 @@ class TestGrowthExplorerPostErrors:
             ]
             mock_housing.return_value = 80
 
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
 
         assert resp.status_code == 200
         # Only the successful place is in the results
@@ -204,7 +216,7 @@ class TestGrowthExplorerPostSuccess:
         mock_census: MagicMock,
         mock_employment: MagicMock,
         mock_discover: MagicMock,
-        client,
+        authed_client,
     ) -> None:
         """Successful POST creates GrowthArea rows for each place."""
         mock_fips.return_value = None
@@ -217,7 +229,7 @@ class TestGrowthExplorerPostSuccess:
         mock_housing.return_value = 85
 
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
 
         assert resp.status_code == 200
         assert GrowthArea.objects.filter(state="CA", city_name="Los Angeles").exists()
@@ -242,7 +254,7 @@ class TestGrowthExplorerPostSuccess:
         mock_census: MagicMock,
         mock_employment: MagicMock,
         mock_discover: MagicMock,
-        client,
+        authed_client,
     ) -> None:
         """POST updates an existing GrowthArea with fresh data."""
         GrowthArea.objects.create(
@@ -266,7 +278,7 @@ class TestGrowthExplorerPostSuccess:
         mock_housing.return_value = 90
 
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
 
         assert resp.status_code == 200
         la = GrowthArea.objects.get(state="CA", city_name="Los Angeles")
@@ -289,7 +301,7 @@ class TestGrowthExplorerPostSuccess:
         mock_census: MagicMock,
         mock_employment: MagicMock,
         mock_discover: MagicMock,
-        client,
+        authed_client,
     ) -> None:
         """All places from one state share the same employment_growth_rate,
         because the view calls fetch_employment_growth() once and reuses
@@ -306,7 +318,7 @@ class TestGrowthExplorerPostSuccess:
         mock_housing.return_value = 75
 
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
 
         assert resp.status_code == 200
         areas = GrowthArea.objects.filter(state="CA")
@@ -330,7 +342,7 @@ class TestGrowthExplorerPostSuccess:
         mock_census: MagicMock,
         mock_employment: MagicMock,
         mock_discover: MagicMock,
-        client,
+        authed_client,
     ) -> None:
         """Results in the response context are sorted by composite_score desc.
 
@@ -359,7 +371,7 @@ class TestGrowthExplorerPostSuccess:
         mock_housing.side_effect = [90, 60, 75]
 
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
 
         assert resp.status_code == 200
         results = resp.context["results"]
@@ -389,7 +401,7 @@ class TestGrowthExplorerPostSuccess:
         mock_census: MagicMock,
         mock_employment: MagicMock,
         mock_discover: MagicMock,
-        client,
+        authed_client,
     ) -> None:
         """The state-level employment growth value is passed to the template
         context so the UI can display it with a footnote."""
@@ -400,7 +412,7 @@ class TestGrowthExplorerPostSuccess:
         mock_housing.return_value = 80
 
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
 
         assert resp.status_code == 200
         assert resp.context["emp_growth"] == Decimal("0.0375")
@@ -419,7 +431,7 @@ class TestGrowthExplorerPostSuccess:
         mock_census: MagicMock,
         mock_employment: MagicMock,
         mock_discover: MagicMock,
-        client,
+        authed_client,
     ) -> None:
         """When fetch_housing_demand_index returns None, the view defaults to 50."""
         mock_discover.return_value = [_mock_place("44000", "Los Angeles", 400000)]
@@ -429,7 +441,7 @@ class TestGrowthExplorerPostSuccess:
         mock_housing.return_value = None  # housing API fails
 
         with patch.dict(os.environ, API_ENV):
-            resp = client.post(reverse("growth_explorer"), {"state": "CA"})
+            resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
 
         assert resp.status_code == 200
         la = GrowthArea.objects.get(state="CA", city_name="Los Angeles")
