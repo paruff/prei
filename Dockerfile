@@ -53,6 +53,7 @@ FROM base AS runtime
 ARG PYTHON_VERSION
 ARG VERSION
 ARG COMMIT
+ARG BUILD_DATE
 COPY --from=deps /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python${PYTHON_VERSION}
 COPY --from=deps /usr/local/bin /usr/local/bin
 # Re-upgrade pip, setuptools, and wheel so the base image's stale dist-info is replaced.
@@ -66,7 +67,8 @@ COPY . .
 RUN mkdir -p /app/.meta && \
     echo -n "$VERSION" > /app/.meta/version && \
     echo -n "$COMMIT" > /app/.meta/commit && \
-    echo "prei_version=$VERSION commit=$COMMIT" > /app/.meta/build-info
+    echo -n "$BUILD_DATE" > /app/.meta/build-date && \
+    echo "prei_version=$VERSION commit=$COMMIT build_date=$BUILD_DATE" > /app/.meta/build-info
 
 # OCI labels (overridden by docker/metadata-action in CI, present as defaults locally)
 LABEL org.opencontainers.image.title="PREI - Real Estate Investment Analyzer" \

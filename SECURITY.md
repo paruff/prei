@@ -2,7 +2,7 @@
 
 > **prei** is a Django 6.0 LTS application for passive residential real estate investment analytics.
 > Stack: Python 3.14 · Django · SQLite/PostgreSQL · DRF · numpy-financial
-> 
+>
 > This document covers responsible disclosure, stack-specific rules enforced in code review,
 > the current security posture, known gaps that require remediation, and the developer
 > security checklist applied to every PR.

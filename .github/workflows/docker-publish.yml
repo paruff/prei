@@ -57,8 +57,10 @@ jobs:
           else
             VERSION="0.0.0-dev+sha-${GITHUB_SHA::7}"
           fi
+          BUILD_DATE=$(date -u +%y.%m.%d.%H)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "commit=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "build-date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
       - name: Build image
         id: build
         uses: docker/build-push-action@v7
@@ -71,6 +73,7 @@ jobs:
           build-args: |
             VERSION=${{ steps.version.outputs.version }}
             COMMIT=${{ steps.version.outputs.commit }}
+            BUILD_DATE=${{ steps.version.outputs.build-date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: "job-finish"

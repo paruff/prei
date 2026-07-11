@@ -40,8 +40,8 @@
 
     <div class="form-grid-2">
       {% for source in source_status %}
-      <label class="card" style="cursor:pointer">
-        <div style="display:flex; align-items:flex-start; gap:0.75rem">
+      <label class="card card-selectable">
+        <div class="card-selectable-inner">
           <input type="checkbox"
                  name="sources"
                  value="{{ source.key }}"

@@ -107,8 +107,8 @@
 </main>
 
 <footer class="page-footer">
-  <span>PREI &copy; {% now "Y" %} v{{ version|default:"0.0.0-dev" }}</span>
-  {% if git_commit %}<span class="ml-link" title="Git commit">{{ git_commit }}</span>{% endif %}
+  <span>PREI 2026 · v{{ version|default:"0.0.0-dev" }}
+    {%- if build_date %} · {{ build_date }}+sha-{{ git_commit|default:"unknown" }}{% endif %}</span>
 </footer>
 
 <script>

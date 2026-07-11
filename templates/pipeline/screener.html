@@ -53,7 +53,7 @@
 <!-- Filter bar -->
 <div class="filter-bar">
   <!-- Growth area chooser -->
-  <form method="get" style="display:inline">
+  <form method="get" class="form-inline">
     <select name="growth_area_id" onchange="this.form.submit()" class="form-input">
       <option value="">All Markets</option>
       {% for ga in user_growth_areas %}
@@ -87,7 +87,7 @@
 
   <!-- Rescreen -->
   {% if criteria %}
-  <form method="post" style="display:inline">
+  <form method="post" class="form-inline">
     {% csrf_token %}
     <input type="hidden" name="action" value="rescreen">
     {% if ga_id %}
@@ -166,7 +166,7 @@
         </td>
         <td>
           {% if pp.screening_passed %}
-          <form method="post" style="display:inline">
+          <form method="post" class="form-inline">
             {% csrf_token %}
             <input type="hidden" name="action" value="advance">
             <input type="hidden" name="property_id" value="{{ pp.pk }}">
@@ -178,7 +178,7 @@
             </button>
           </form>
           {% endif %}
-          <form method="post" style="display:inline">
+          <form method="post" class="form-inline">
             {% csrf_token %}
             <input type="hidden" name="action" value="kill">
             <input type="hidden" name="property_id" value="{{ pp.pk }}">

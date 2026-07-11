@@ -59,6 +59,28 @@ def _read_version() -> str:
     return "0.0.0-dev"
 
 
+def _read_build_date() -> str:
+    """Read build date from baked-in file (Docker) or return empty string.
+
+    Priority:
+    1. ``/app/.meta/build-date`` — written during Docker build
+    2. ``BUILD_DATE`` env var
+    3. ``""`` — fallback (local dev)
+    """
+    try:
+        text = Path("/app/.meta/build-date").read_text().strip()
+        if text:
+            return text
+    except FileNotFoundError, OSError:
+        pass
+
+    env_date = getenv("BUILD_DATE")
+    if env_date:
+        return env_date
+
+    return ""
+
+
 def _read_git_commit() -> str:
     """Read short commit SHA from baked-in file (Docker) or git (dev).
 
@@ -268,6 +290,7 @@ def version(request):  # type: ignore[no-untyped-def]
     return {
         "version": _read_version(),
         "git_commit": _read_git_commit(),
+        "build_date": _read_build_date(),
         "api_keys_configured": bool(census_key and bls_key),
         "census_key_configured": bool(census_key),
         "bls_key_configured": bool(bls_key),
