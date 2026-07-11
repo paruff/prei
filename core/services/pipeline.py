@@ -284,6 +284,7 @@ def create_from_vrm(
 def create_from_foreclosure(
     foreclosure_property: Any,
     user: Any,
+    growth_area: Any | None = None,
 ) -> Tuple[Any, bool]:
     """Create a PipelineProperty from a ForeclosureProperty and run screening.
 
@@ -293,6 +294,7 @@ def create_from_foreclosure(
     Args:
         foreclosure_property: ForeclosureProperty instance.
         user: Django User who owns this pipeline entry.
+        growth_area: Optional GrowthArea this property was discovered under.
 
     Returns:
         Tuple of (PipelineProperty, created).
@@ -309,6 +311,11 @@ def create_from_foreclosure(
         defaults={
             "address": foreclosure_property.street or "",
             "address_hash": "",
+            "city": foreclosure_property.city or "",
+            "state": foreclosure_property.state or "",
+            "zip_code": foreclosure_property.zip_code or "",
+            "county": foreclosure_property.county or "",
+            "growth_area": growth_area,
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": foreclosure_property.opening_bid,

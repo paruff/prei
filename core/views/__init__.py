@@ -3160,7 +3160,9 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         f"Discovered {results['discovered']} new properties in {city}, {state}. "
         f"{results['screening_passed']} passed screening.",
     )
-    return redirect(f"{{% url 'pipeline_screener' %}}?growth_area_id={growth_area.pk}")
+    from django.urls import reverse
+
+    return redirect(f"{reverse('pipeline_screener')}?growth_area_id={growth_area.pk}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

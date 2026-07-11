@@ -1,13 +1,21 @@
 import pytest
 from decimal import Decimal
+from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import MarketSnapshot, Listing
 
 
+@pytest.fixture
+def authed_client(client):
+    user = User.objects.create_user("t", "t@t.com", "pass")
+    client.force_login(user)
+    return client
+
+
 @pytest.mark.django_db
-def test_growth_areas_renders_with_seeded_snapshots(client):
+def test_growth_areas_renders_with_seeded_snapshots(authed_client):
     MarketSnapshot.objects.create(
         area_type="zip",
         zip_code="78701",
@@ -22,7 +30,7 @@ def test_growth_areas_renders_with_seeded_snapshots(client):
         rent_index=Decimal("1600"),
         price_trend=Decimal("0.10"),
     )
-    resp = client.get(reverse("growth_areas"))
+    resp = authed_client.get(reverse("growth_areas"))
     assert resp.status_code == 200
     html = resp.content.decode()
     assert "78701" in html
@@ -30,7 +38,7 @@ def test_growth_areas_renders_with_seeded_snapshots(client):
 
 
 @pytest.mark.django_db
-def test_growth_areas_shows_undervalued_listings(client):
+def test_growth_areas_shows_undervalued_listings(authed_client):
     Listing.objects.create(
         source="dummy",
         address="A",
@@ -59,6 +67,6 @@ def test_growth_areas_shows_undervalued_listings(client):
         url="https://example.com/ga-b",
         posted_at=timezone.now(),
     )
-    resp = client.get(reverse("growth_areas"))
+    resp = authed_client.get(reverse("growth_areas"))
     assert resp.status_code == 200
     assert "Undervalued Listings" in resp.content.decode()

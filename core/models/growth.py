@@ -320,7 +320,7 @@ class GrowthArea(models.Model):
         pop_rate = self.population_growth_rate or Decimal("0")
         income_rate = self.median_income_growth or Decimal("0")
         rent_rate = self.rent_growth_rate or Decimal("0")
-        supply_idx = Decimal(self.supply_constraint_index or 0)
+        supply_idx = (Decimal(self.supply_constraint_index or 0)) / Decimal("100")
         school_score_val = (
             (self.school_score / Decimal("10")) if self.school_score else Decimal("0")
         )

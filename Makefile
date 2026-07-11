@@ -80,7 +80,7 @@ test-e2e:
 	@echo "Running E2E tests (requires Playwright browser)..."
 	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ \
 		-v --tb=short \
-		-k "e2e or docker or container or startup or add_to_pipeline"
+		-k "e2e or docker or container or startup or add_to_pipeline or export"
 
 check: ensure-env
 	$(call ensure_django)
