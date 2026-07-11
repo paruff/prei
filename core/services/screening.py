@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from django.contrib.auth.models import User
 
     from core.models import (
-        GrowthArea,
         PipelineProperty,
         ScreeningCriteria,
     )
@@ -172,11 +171,12 @@ def _eval_gacs_score(
     criteria: ScreeningCriteria,
     state: str | None,
     city: str | None,
+    growth_area: Any = None,
 ) -> tuple[Decimal, Optional[str], Optional[str]]:
     """Evaluate GACS score soft criterion.
 
-    Looks up GrowthArea by (state, city). If found and the property's
-    market score is below the user's minimum, deducts proportionally.
+    Uses the passed growth_area if available (avoids a DB lookup).
+    Falls back to looking up GrowthArea by (state, city) if not provided.
 
     Returns:
         Tuple of (deduction, pass_msg, fail_msg).
@@ -193,16 +193,21 @@ def _eval_gacs_score(
             None,
         )
 
-    try:
-        from core.models import GrowthArea
+    if growth_area is None:
+        try:
+            from core.models import GrowthArea
 
-        growth_area: GrowthArea | None = GrowthArea.objects.filter(
-            state=state, city_name__iexact=city
-        ).first()
-    except Exception:
-        # Broad catch: DB connection failure, import error, etc.
-        # Non-critical — screening continues without GACS deduction
-        growth_area = None
+    if growth_area is None:
+        try:
+            from core.models import GrowthArea
+
+            growth_area = GrowthArea.objects.filter(
+                state=state, city_name__iexact=city
+            ).first()
+        except Exception:
+            # Broad catch: DB connection failure, import error, etc.
+            # Non-critical — screening continues without GACS deduction
+            growth_area = None
 
     if growth_area is None or growth_area.composite_score is None:
         return (
@@ -564,6 +569,7 @@ def screen_property(
     pipeline_property: Any,
     criteria: ScreeningCriteria,
     source_record: Any | None = None,
+    growth_area: Any | None = None,
 ) -> ScreeningResult:
     """Evaluate a PipelineProperty against ScreeningCriteria.
 
@@ -696,7 +702,9 @@ def screen_property(
     soft_failures: list[str] = []
 
     # 5. GACS score
-    ded, pass_msg, fail_msg = _eval_gacs_score(pipeline_property, criteria, state, city)
+    ded, pass_msg, fail_msg = _eval_gacs_score(
+        pipeline_property, criteria, state, city, growth_area
+    )
     score -= ded
     if pass_msg:
         passes.append(pass_msg)

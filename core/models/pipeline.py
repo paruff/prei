@@ -186,12 +186,12 @@ class PipelineProperty(models.Model):
 
     # ── Pipeline stage ───────────────────────────────────────────────
     stage = models.CharField(
-        max_length=20, choices=Stage.choices, default=Stage.DISCOVERED
+        max_length=20, choices=Stage.choices, default=Stage.DISCOVERED, db_index=True
     )
     status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.ACTIVE
+        max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True
     )
-    screening_passed = models.BooleanField(null=True, blank=True)
+    screening_passed = models.BooleanField(null=True, blank=True, db_index=True)
     kill_reason = models.TextField(blank=True, default="")
 
     # ── Stage timestamps (null until stage is entered) ───────────────

@@ -721,6 +721,7 @@ def property_share(request, pk: int):
     )
 
 
+@login_required
 def growth_areas(request):
     """Display paginated growth areas sorted by composite score.
 
@@ -808,6 +809,7 @@ def growth_areas_export_csv(request: HttpRequest) -> HttpResponse:
     return response
 
 
+@login_required
 def growth_explorer(request: HttpRequest) -> HttpResponse:
     """Growth Area Explorer — discover and analyze top growth places in a state.
 
@@ -1242,9 +1244,11 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
         )
     if source_filter:
         stage_qs = stage_qs.filter(source_type=source_filter)
-    stage_counts: dict[str, int] = {}
-    for pp in stage_qs:
-        stage_counts[pp.stage] = stage_counts.get(pp.stage, 0) + 1
+    stage_counts: dict[str, int] = dict(
+        stage_qs.values("stage")
+        .annotate(count=Count("id"))
+        .values_list("stage", "count")
+    )
 
     # Build ordered list of (stage_label, count) for template display
     stage_order = [
@@ -1671,8 +1675,11 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
     # --- Re-screen if user POSTs "rescreen" action ---
     if request.method == "POST" and request.POST.get("action") == "rescreen":
         if criteria:
+            # Use unfiltered queryset — rescreen ALL user properties,
+            # not just the growth-area-filtered subset shown on screen
+            all_qs = PipelineProperty.objects.filter(user=request.user)
             rescreened = 0
-            for pp in qs:
+            for pp in all_qs:
                 source_record = get_source_record(pp)
                 result = screen_property(pp, criteria, source_record=source_record)
                 pp.screening_passed = result.passed
@@ -2916,9 +2923,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         create_from_hud,
         create_from_usda,
         create_from_vrm,
-        get_source_record,
     )
-    from core.services.screening import screen_property
 
     # --- Resolve growth area ---
     growth_area = None
@@ -3044,13 +3049,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 )
                 if created:
                     results["discovered"] += 1
-                    if criteria:
-                        result = screen_property(
-                            pp, criteria, source_record=get_source_record(pp)
-                        )
-                        pp.screening_passed = result.passed
-                        pp.save(update_fields=["screening_passed", "updated_at"])
-                        if result.passed:
+                    if criteria and pp.screening_passed is not None:
+                        if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
                             results["screening_failed"] += 1
@@ -3075,13 +3075,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 )
                 if created:
                     results["discovered"] += 1
-                    if criteria:
-                        result = screen_property(
-                            pp, criteria, source_record=get_source_record(pp)
-                        )
-                        pp.screening_passed = result.passed
-                        pp.save(update_fields=["screening_passed", "updated_at"])
-                        if result.passed:
+                    if criteria and pp.screening_passed is not None:
+                        if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
                             results["screening_failed"] += 1
@@ -3106,13 +3101,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 )
                 if created:
                     results["discovered"] += 1
-                    if criteria:
-                        result = screen_property(
-                            pp, criteria, source_record=get_source_record(pp)
-                        )
-                        pp.screening_passed = result.passed
-                        pp.save(update_fields=["screening_passed", "updated_at"])
-                        if result.passed:
+                    if criteria and pp.screening_passed is not None:
+                        if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
                             results["screening_failed"] += 1
@@ -3136,13 +3126,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 )
                 if created:
                     results["discovered"] += 1
-                    if criteria:
-                        result = screen_property(
-                            pp, criteria, source_record=get_source_record(pp)
-                        )
-                        pp.screening_passed = result.passed
-                        pp.save(update_fields=["screening_passed", "updated_at"])
-                        if result.passed:
+                    if criteria and pp.screening_passed is not None:
+                        if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
                             results["screening_failed"] += 1

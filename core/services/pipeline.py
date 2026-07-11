@@ -260,7 +260,9 @@ def create_from_vrm(
         return pp, False
 
     # Run screening immediately
-    result = screen_property(pp, criteria, source_record=vrm_property)
+    result = screen_property(
+        pp, criteria, source_record=vrm_property, growth_area=growth_area
+    )
 
     pp.screening_passed = result.passed
     pp.screening_at = timezone.now()
@@ -329,7 +331,9 @@ def create_from_foreclosure(
         return pp, False
 
     # Run screening immediately
-    result = screen_property(pp, criteria, source_record=foreclosure_property)
+    result = screen_property(
+        pp, criteria, source_record=foreclosure_property, growth_area=growth_area
+    )
 
     pp.screening_passed = result.passed
     pp.screening_at = timezone.now()
@@ -404,7 +408,9 @@ def create_from_hud(
         return pp, False
 
     # Run screening immediately
-    result = screen_property(pp, criteria, source_record=hud_property)
+    result = screen_property(
+        pp, criteria, source_record=hud_property, growth_area=growth_area
+    )
 
     pp.screening_passed = result.passed
     pp.screening_at = timezone.now()
@@ -477,7 +483,9 @@ def create_from_usda(
         return pp, False
 
     # Run screening immediately
-    result = screen_property(pp, criteria, source_record=usda_property)
+    result = screen_property(
+        pp, criteria, source_record=usda_property, growth_area=growth_area
+    )
 
     pp.screening_passed = result.passed
     pp.screening_at = timezone.now()
@@ -551,7 +559,9 @@ def create_from_county_notice(
         return pp, False
 
     # Run screening immediately
-    result = screen_property(pp, criteria, source_record=county_notice)
+    result = screen_property(
+        pp, criteria, source_record=county_notice, growth_area=growth_area
+    )
 
     pp.screening_passed = result.passed
     pp.screening_at = timezone.now()
