@@ -317,9 +317,9 @@
 </style>
 <script>
 (function() {
-  const form = document.getElementById('explorer-form');
-  const btn = document.getElementById('submit-btn');
-  const select = document.getElementById('id_state');
+  const form = document.getElementById('analysis-form');
+  const btn = document.getElementById('analyze-btn');
+  const select = document.getElementById('state-select');
   const overlay = document.getElementById('loading-overlay');
   const resultsSection = document.getElementById('results-section');
   if (!form || !btn || !select) return;
@@ -455,7 +455,7 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const newContent = doc.getElementById('results-section');
-      const newForm = doc.getElementById('explorer-form');
+      const newForm = doc.getElementById('analysis-form');
 
       if (newContent) {
         resultsSection.innerHTML = newContent.innerHTML;
