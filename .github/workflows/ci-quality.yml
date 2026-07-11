@@ -124,7 +124,7 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
-        run: pip install -r requirements.txt coverage
+        run: pip install -r requirements.txt
       - name: Install Playwright browsers
         run: playwright install --with-deps chromium
       - name: Django system checks

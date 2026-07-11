@@ -1,13 +1,18 @@
 # syntax=docker/dockerfile:1.7
 # ↑ enables BuildKit features — put this as line 1
 
+# Pin to exact patch version for reproducible builds.
+# PYTHON_IMAGE_VERSION = full semver for the FROM tag.
+# PYTHON_VERSION      = major.minor for the filesystem path
+# (Python always installs to /usr/local/lib/python3.X regardless of patch).
+ARG PYTHON_IMAGE_VERSION=3.14.6
 ARG PYTHON_VERSION=3.14
 
 # ── Version metadata (injected by CI, or default for local dev) ────────────
 ARG VERSION=0.0.0-dev
 ARG COMMIT=unknown
 
-FROM python:${PYTHON_VERSION}-slim AS base
+FROM python:${PYTHON_IMAGE_VERSION}-slim-bookworm AS base
 
 ARG VERSION
 ARG COMMIT
@@ -40,7 +45,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip "setuptools>=82" "wheel>=0.46.2" && \
+    pip install --upgrade pip==26.1.2 setuptools==83.0.0 wheel==0.46.2 && \
     pip install -r requirements.txt
 
 # ── final image ──────────────────────────────────────────────────────────
@@ -54,7 +59,7 @@ COPY --from=deps /usr/local/bin /usr/local/bin
 # setuptools 79.x vendors jaraco.context 5.3.0 (CVE-2026-23949) and wheel 0.45.1
 # (CVE-2026-24049); upgrading brings the patched vendored versions.
 # wheel 0.45.1 (standalone) also carries CVE-2026-24049; upgrade to 0.46.2+.
-RUN pip install --upgrade pip "setuptools>=82" "wheel>=0.46.2"
+RUN pip install --upgrade pip==26.1.2 setuptools==83.0.0 wheel==0.46.2
 COPY . .
 
 # Bake version into files so the runtime can read them without a .git dir

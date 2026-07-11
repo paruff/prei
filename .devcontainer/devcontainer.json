@@ -40,7 +40,7 @@
     "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN": "${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}",
     "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN_GITHUB_DEV": "${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN_GITHUB_DEV}"
   },
-  "postCreateCommand": "python -m pip install --upgrade pip 'setuptools>=82' 'wheel>=0.46.2' && python -m pip install -r requirements.txt && python manage.py migrate --noinput",
+  "postCreateCommand": "python -m pip install --upgrade pip==26.1.2 setuptools==83.0.0 wheel==0.46.2 && python -m pip install -r requirements.txt && python manage.py migrate --noinput",
   "postStartCommand": "python manage.py check",
   "customizations": {
     "vscode": {
