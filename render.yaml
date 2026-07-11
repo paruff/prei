@@ -6,6 +6,19 @@ services:
     preDeployCommand: python manage.py migrate --noinput
     startCommand: gunicorn investor_app.wsgi:application --bind 0.0.0.0:$PORT --workers 2
     healthCheckPath: /health/
+    # Post-deploy: trigger GitHub smoke-test workflow via repository_dispatch.
+    # Requires GITHUB_DISPATCH_TOKEN in Render env vars (GitHub PAT with repo scope).
+    postDeployCommand: |
+      if [ -n "$GITHUB_DISPATCH_TOKEN" ]; then
+        curl -sf -X POST https://api.github.com/repos/paruff/prei/dispatches \
+          -H "Authorization: Bearer $GITHUB_DISPATCH_TOKEN" \
+          -H "Accept: application/vnd.github+json" \
+          -d "{\"event_type\":\"deploy-complete\",\"client_payload\":{\"url\":\"$RENDER_EXTERNAL_URL\"}}" \
+          && echo "Smoke test triggered" \
+          || echo "(non-fatal) Smoke test trigger failed"
+      else
+        echo "GITHUB_DISPATCH_TOKEN not set — skipping smoke test trigger"
+      fi
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: investor_app.settings
@@ -23,6 +36,10 @@ services:
         fromDatabase:
           name: prei-db
           property: connectionString
+      - key: GITHUB_DISPATCH_TOKEN
+        # GitHub PAT with repo scope — enables post-deploy smoke test triggers.
+        # Set in Render dashboard. Optional; deploy succeeds without it.
+        sync: false
 
 databases:
   - name: prei-db

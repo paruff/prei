@@ -1,0 +1,71 @@
+name: Post-Deployment — Smoke Tests
+
+on:
+  repository_dispatch:
+    types: [deploy-complete]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Deployment URL to smoke-test"
+        required: true
+        default: "http://localhost:8000"
+
+concurrency:
+  group: post-deploy-${{ github.event.client_payload.url || inputs.url }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: "💨 Smoke Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve target URL
+        id: url
+        run: |
+          TARGET="${{ github.event.client_payload.url || inputs.url }}"
+          # Strip trailing slash for consistent URL construction
+          TARGET="${TARGET%/}"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "Testing against: $TARGET"
+
+      - name: Health check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/health/")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Health check failed (HTTP $STATUS)"
+            exit 1
+          fi
+          echo "✅ Health check passed"
+
+      - name: API — properties
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/properties/")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ /api/properties/ returned HTTP $STATUS"
+            exit 1
+          fi
+          echo "✅ /api/properties/ OK"
+
+      - name: API — growth areas
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/growth-areas/")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ /api/growth-areas/ returned HTTP $STATUS"
+            exit 1
+          fi
+          echo "✅ /api/growth-areas/ OK"
+
+      - name: API — foreclosures
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/foreclosures/")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ /api/foreclosures/ returned HTTP $STATUS"
+            exit 1
+          fi
+          echo "✅ /api/foreclosures/ OK"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "── Smoke test complete ──"
+          echo "  Target: ${{ steps.url.outputs.target }}"

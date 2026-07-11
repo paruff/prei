@@ -1,4 +1,4 @@
-name: Tier 1 Governance — PR Gates
+name: Post-Commit — PR Gates
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
     types: [opened, edited, synchronize, reopened]
 
 concurrency:
-  group: tier-1-${{ github.event.pull_request.number || github.ref }}
+  group: pr-gates-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -14,88 +14,46 @@ permissions:
   pull-requests: write
 
 jobs:
+  # ── Fast checks: no Django deps needed ────────────────────────────────────
+
   pr-title:
-    name: "📝 PR Title — Conventional Commit"
+    name: "📝 PR Title"
     runs-on: ubuntu-latest
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
       - name: Validate PR title
         uses: actions/github-script@v9
         with:
           script: |
             const title = context.payload.pull_request.title;
-
-            // Skip validation for WIP/draft PRs
-            const wipPrefix = /^(WIP:|\[WIP\])\s/i;
-            if (wipPrefix.test(title)) {
-              core.info(`WIP prefix detected, skipping validation for: "${title}"`);
-              return;
-            }
-
+            if (/^(WIP:|\[WIP\])\s/i.test(title)) { return; }
             const types = ['feat', 'fix', 'docs', 'style', 'refactor', 'perf', 'test', 'build', 'ci', 'chore', 'revert'];
-            // Conventional Commits: type(optional-scope)!: subject
-            // subject: start with lowercase letter, then any text
-            const pattern = new RegExp(
-              `^(${types.join('|')})(\\([a-z0-9/._-]+\\))?!?:\\s[a-z].+`
-            );
-
+            const pattern = new RegExp(`^(${types.join('|')})(\\([a-z0-9/._-]+\\))?!?:\\s[a-z].+`);
             if (!pattern.test(title)) {
-              const msg =
-                `PR title "${title}" does not follow Conventional Commits format.\n\n` +
-                `Expected: type(optional-scope): description\n` +
-                `Allowed types: ${types.join(', ')}\n\n` +
-                `The subject must start with a lowercase letter, per ` +
-                `the Conventional Commits spec.\n\n` +
-                `Examples:\n  "feat(ui): add button"\n  "fix: resolve timeout"\n  ` +
-                `"chore(ci): bump dependency version"`;
-              core.setFailed(msg);
-            } else {
-              core.info(`PR title "${title}" follows Conventional Commits format.`);
+              core.setFailed(`PR title "${title}" does not follow Conventional Commits. Expected: type(scope): description`);
             }
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
 
   lint:
-    name: "🔍 Tier 1 — Lint"
+    name: "🔍 Lint"
     runs-on: ubuntu-latest
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
-      - name: Install dependencies
+      - name: Install linters
         run: pip install ruff bandit
-      - name: Ruff
+      - name: Ruff check
         run: ruff check .
       - name: Ruff format
         run: ruff format --check .
-      - name: Bandit (Python security lint)
+      - name: Bandit (security lint)
         run: bandit -r core/ investor_app/ -x ".venv,migrations" -c .bandit -f txt
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
 
   secrets:
-    name: "🔑 Tier 1 — Secrets Scan"
+    name: "🔑 Secrets"
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -103,102 +61,175 @@ jobs:
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
 
-  tests:
-    name: "🧪 Tier 1 — Tests"
+  # ── Django system checks (no test runner, just verification) ──────────────
+
+  django-checks:
+    name: "🩺 Django Checks"
     runs-on: ubuntu-latest
     env:
-      DEBUG: "False"
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
+      SECRET_KEY: ci-checks-django
+      DEBUG: "True"
+      DATABASE_URL: "sqlite:///tmp/ci_check_db.sqlite3"
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
-      - name: Install system dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: System checks
+        run: python manage.py check
+      - name: Missing migrations
+        run: python manage.py makemigrations --check --dry-run --noinput
+      - name: Static files
+        run: python manage.py collectstatic --noinput --verbosity 0
+
+  # ── Test matrix: parallel by layer ────────────────────────────────────────
+
+  tests-unit:
+    name: "🧪 Unit Tests"
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install system deps
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
-      - name: Install Playwright browsers
-        run: playwright install --with-deps chromium
-      - name: Django system checks
-        run: python manage.py check
-        env:
-          DJANGO_SETTINGS_MODULE: investor_app.settings
-          SECRET_KEY: ci-check-secret-key
-          DEBUG: "True"
-          DATABASE_URL: sqlite:///tmp/test_db.sqlite3
-      - name: Check for missing migrations
-        run: python manage.py makemigrations --check --dry-run --noinput
-        env:
-          DJANGO_SETTINGS_MODULE: investor_app.settings
-          SECRET_KEY: ci-check-secret-key
-          DEBUG: "True"
-          DATABASE_URL: sqlite:///tmp/test_db.sqlite3
-      - name: Collect static files
-        run: python manage.py collectstatic --noinput
-      - name: Run tests
+      - name: Run unit tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          coverage run -m pytest -q --tb=short
-          coverage report --fail-under=70
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
+          coverage run --parallel-mode -m pytest tests/ core/tests/ tests_bdd/ \
+            -q --tb=short \
+            -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline"
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-unit
+          path: .coverage.*
+          include-hidden-files: true
+          retention-days: 1
 
-  typecheck:
-    name: "🔷 Tier 1 — Typecheck"
+  tests-integration:
+    name: "🔗 Integration Tests"
     runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
-      - name: Install system dependencies
+      - name: Install system deps
+        run: sudo apt-get install -y libcairo2-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt coverage
+      - name: Run integration tests
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          coverage run --parallel-mode -m pytest tests/ core/tests/ \
+            -q --tb=short \
+            -k "integration"
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-integration
+          path: .coverage.*
+          include-hidden-files: true
+          retention-days: 1
+
+  tests-e2e:
+    name: "🌐 E2E Tests"
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install system deps
+        run: sudo apt-get install -y libcairo2-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt coverage
+      - name: Install Playwright
+        run: playwright install --with-deps chromium
+      - name: Run E2E tests
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          coverage run --parallel-mode -m pytest tests/ \
+            -q --tb=short \
+            -k "e2e or docker or container or startup or add_to_pipeline"
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-e2e
+          path: .coverage.*
+          include-hidden-files: true
+          retention-days: 1
+
+  typecheck:
+    name: "🔷 Typecheck"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install system deps
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Mypy
         run: mypy core/ investor_app/finance/ --ignore-missing-imports
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
 
-  tier-1-summary:
-    name: "✅ Tier 1 Complete"
-    needs: [pr-title, lint, secrets, tests, typecheck]
+  # ── Coverage combine (gate: all test jobs must pass) ──────────────────────
+
+  coverage:
+    name: "📊 Coverage"
+    needs: [tests-unit, tests-integration, tests-e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install coverage
+        run: pip install coverage
+      - name: Download unit coverage
+        uses: actions/download-artifact@v5
+        with:
+          name: coverage-unit
+      - name: Download integration coverage
+        uses: actions/download-artifact@v5
+        with:
+          name: coverage-integration
+      - name: Download e2e coverage
+        uses: actions/download-artifact@v5
+        with:
+          name: coverage-e2e
+      - name: Combine and report
+        run: |
+          coverage combine
+          coverage report --fail-under=70
+
+  # ── Summary gate ──────────────────────────────────────────────────────────
+
+  pr-gates-pass:
+    name: "✅ All Gates Passed"
+    needs:
+      [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, coverage]
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: "job-start"
+      - name: Verify all gates
         run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
-      - name: Check Tier 1 gates
-        run: |
-          if [ "${{ needs.pr-title.result }}" != "success" ] ||
-             [ "${{ needs.lint.result }}" != "success" ] ||
-             [ "${{ needs.secrets.result }}" != "success" ] ||
-             [ "${{ needs.tests.result }}" != "success" ] ||
-             [ "${{ needs.typecheck.result }}" != "success" ]; then
-            echo "❌ Tier 1 governance failed"
+          FAILED=""
+          if [ "${{ needs.pr-title.result }}" != "success" ]; then FAILED="$FAILED pr-title"; fi
+          if [ "${{ needs.lint.result }}" != "success" ]; then FAILED="$FAILED lint"; fi
+          if [ "${{ needs.secrets.result }}" != "success" ]; then FAILED="$FAILED secrets"; fi
+          if [ "${{ needs.django-checks.result }}" != "success" ]; then FAILED="$FAILED django-checks"; fi
+          if [ "${{ needs.tests-unit.result }}" != "success" ]; then FAILED="$FAILED tests-unit"; fi
+          if [ "${{ needs.tests-integration.result }}" != "success" ]; then FAILED="$FAILED tests-integration"; fi
+          if [ "${{ needs.tests-e2e.result }}" != "success" ]; then FAILED="$FAILED tests-e2e"; fi
+          if [ "${{ needs.typecheck.result }}" != "success" ]; then FAILED="$FAILED typecheck"; fi
+          if [ "${{ needs.coverage.result }}" != "success" ]; then FAILED="$FAILED coverage"; fi
+          if [ -n "$FAILED" ]; then
+            echo "❌ Failed gates:${FAILED}"
             exit 1
           fi
-          echo "✅ Tier 1 governance passed"
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
+          echo "✅ All gates passed"
