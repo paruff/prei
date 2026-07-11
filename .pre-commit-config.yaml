@@ -24,7 +24,7 @@ repos:
   # --- mypy: static type checking ---
   # Version should match pip-resolved version from requirements.txt (mypy>=0.991)
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.0
+    rev: v2.2.0  # Must match pip-resolved version from requirements.txt
     hooks:
       - id: mypy
         additional_dependencies:

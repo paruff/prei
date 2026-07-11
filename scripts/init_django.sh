@@ -9,7 +9,7 @@ if [ -d "$PROJECT_NAME" ]; then
   exit 1
 fi
 
-python -m pip install --upgrade pip
+python -m pip install --upgrade pip==26.1.2
 pip install -r requirements.txt
 
 django-admin startproject "$PROJECT_NAME" .
