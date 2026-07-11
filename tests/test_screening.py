@@ -731,7 +731,8 @@ class TestIntegration:
         configured_criteria.max_price_to_rent_ratio = Decimal("200")
         configured_criteria.min_gacs_score = Decimal("10")
         configured_criteria.save()
-        # growth_area composite_score will be computed on save as ~19.68
+        # growth_area composite_score will be computed on save as ~7.76
+        # With supply_constraint_index normalized (divided by 100): ~1.82
 
         from core.models import PipelineProperty
 
@@ -750,8 +751,8 @@ class TestIntegration:
 
         result = screen_property(pp, configured_criteria, vrm_property)
         assert result.passed
-        # GACS v2: score 7.76 vs min 10 → deducts 4.48 from 100 = 95.52
-        assert result.score == Decimal("95.52"), f"Expected 95.52, got {result.score}"
+        # GACS v2: score ~1.82 vs min 10 → deducts 16.36 from 100 = 83.64
+        assert result.score == Decimal("83.64"), f"Expected 83.64, got {result.score}"
         assert len(result.hard_failures) == 0
         assert len(result.soft_failures) == 1  # GACS below minimum
         assert len(result.passes) >= 4
