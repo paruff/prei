@@ -349,13 +349,17 @@ class GrowthArea(models.Model):
         - real value from API → ~14 points
         - employment: QCEW county-level = 17, FRED state-level = 8
         - rent growth when FMR source available = 14
+        - landlord score and FMR year add ~8 points each as metadata signals
         """
         c = 0
         # Employment: QCEW (county_fips set) = 17 pts, FRED fallback = 8 pts
         if self.employment_growth_rate is not None:
             c += 17 if self.county_fips else 8
-        c += 14  # population_growth_rate: required
-        c += 14  # median_income_growth: required
+        # Population and income: required fields (no DB default)
+        if self.population_growth_rate is not None:
+            c += 14
+        if self.median_income_growth is not None:
+            c += 14
         if self.school_score is not None:
             c += 14
         if self.rent_growth_rate is not None:
@@ -367,6 +371,11 @@ class GrowthArea(models.Model):
             c += 14
         if self.net_migration_rate is not None:
             c += 14
+        # Additional metadata signals (lower weight)
+        if self.fmr_year is not None:
+            c += 8  # HUD FMR data populated
+        if self.landlord_score is not None:
+            c += 8  # Landlord friendliness score
         return min(c, 100)
 
     @property
@@ -378,8 +387,6 @@ class GrowthArea(models.Model):
         Natural increase is approximated as 0.5% of prior population.
         Returns None if population data is unavailable.
         """
-        from decimal import Decimal
-
         pop = self.population
         prior_pop = None
         # We can reverse-engineer prior pop from current pop and growth rate
@@ -392,6 +399,22 @@ class GrowthArea(models.Model):
         return None
 
     def save(self, *args, **kwargs):
-        """Precompute composite_score on save."""
-        self.composite_score = self._compute_composite_score()
+        """Precompute composite_score on save.
+
+        Recomputes score only when update_fields is not specified, or when
+        it includes scoring-relevant fields. This avoids unnecessary score
+        recomputation for bulk saves or metadata-only updates.
+        """
+        scoring_fields = {
+            "employment_growth_rate",
+            "population_growth_rate",
+            "median_income_growth",
+            "school_score",
+            "rent_growth_rate",
+            "supply_constraint_index",
+            "net_migration_rate",
+        }
+        uf = kwargs.get("update_fields")
+        if uf is None or scoring_fields & set(uf):
+            self.composite_score = self._compute_composite_score()
         super().save(*args, **kwargs)
