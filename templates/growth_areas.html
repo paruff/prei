@@ -92,7 +92,12 @@
                   {% endif %}
                 {% endwith %}
               </td>
-              <td><a href="{% url 'vrm_properties_list' %}?state={{ ga.state }}" class="btn">Foreclosures</a> <button class="btn" onclick="var r=document.getElementById('breakdown-{{ forloop.counter0 }}');r.hidden=!r.hidden">Score</button></td>
+              <td>
+                <a href="{% url 'property_discovery' %}?growth_area_id={{ ga.pk }}"
+                   class="btn btn-primary">Discover Properties</a>
+                <a href="{% url 'pipeline_screener' %}?growth_area_id={{ ga.pk }}"
+                   class="btn">View Screened</a>
+              </td>
             </tr>
             <tr id="breakdown-{{ forloop.counter0 }}" hidden>
               <td colspan="11">

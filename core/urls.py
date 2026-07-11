@@ -96,6 +96,11 @@ urlpatterns = [
         name="pipeline_add_from_source",
     ),
     path(
+        "pipeline/screener/",
+        views.pipeline_screener,
+        name="pipeline_screener",
+    ),
+    path(
         "pipeline/screening/settings/",
         views.pipeline_screening_settings,
         name="pipeline_screening_settings",

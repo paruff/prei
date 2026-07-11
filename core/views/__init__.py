@@ -1614,6 +1614,137 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def pipeline_screener(request: HttpRequest) -> HttpResponse:
+    """Market-centric screening view.
+
+    Shows PipelineProperty records for a growth area with pass/fail
+    screening results, sorted by screening result then source type.
+
+    GET params:
+      growth_area_id: filter to a specific growth area (required for
+                      market-centric view, optional for all-markets view)
+      status: ACTIVE (default), KILLED, ON_HOLD
+      passed: 1 = passed only, 0 = failed only, blank = all
+    """
+    from core.models import (
+        GrowthArea,
+        PipelineProperty,
+        ScreeningCriteria,
+    )
+    from core.services.pipeline import get_source_record
+    from core.services.screening import screen_property
+
+    # --- Resolve growth area filter ---
+    ga_id = request.GET.get("growth_area_id", "")
+    growth_area = None
+    if ga_id:
+        growth_area = get_object_or_404(GrowthArea, pk=ga_id)
+
+    # --- Filter params ---
+    status_filter = request.GET.get("status", "ACTIVE")
+    passed_filter = request.GET.get("passed", "")
+
+    # --- Base queryset ---
+    qs = (
+        PipelineProperty.objects
+        .filter(user=request.user)
+        .select_related("growth_area", "investment_analysis")
+        .order_by("-screening_passed", "-created_at")
+    )
+
+    if growth_area:
+        qs = qs.filter(growth_area=growth_area)
+
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+
+    if passed_filter == "1":
+        qs = qs.filter(screening_passed=True)
+    elif passed_filter == "0":
+        qs = qs.filter(screening_passed=False)
+
+    # --- Get or create screening criteria ---
+    try:
+        criteria = ScreeningCriteria.objects.get(user=request.user)
+    except ScreeningCriteria.DoesNotExist:
+        criteria = None
+
+    # --- Re-screen if user POSTs "rescreen" action ---
+    if request.method == "POST" and request.POST.get("action") == "rescreen":
+        if criteria:
+            rescreened = 0
+            for pp in qs:
+                source_record = get_source_record(pp)
+                result = screen_property(pp, criteria, source_record=source_record)
+                pp.screening_passed = result.passed
+                pp.save(update_fields=["screening_passed", "updated_at"])
+                rescreened += 1
+            messages.success(
+                request,
+                f"{rescreened} propert"
+                f"{'y' if rescreened == 1 else 'ies'} re-screened.",
+            )
+            return redirect(request.get_full_path())
+
+    # --- Advance to underwriting action ---
+    if request.method == "POST" and request.POST.get("action") == "advance":
+        pp_id = request.POST.get("property_id")
+        try:
+            pp = PipelineProperty.objects.get(pk=pp_id, user=request.user)
+            pp.stage = PipelineProperty.Stage.UNDERWRITING
+            pp.underwriting_at = timezone.now()
+            pp.save(update_fields=["stage", "underwriting_at", "updated_at"])
+            messages.success(
+                request, f"{pp.address[:40]} moved to Underwriting."
+            )
+        except PipelineProperty.DoesNotExist:
+            pass
+        return redirect(request.get_full_path())
+
+    # --- Kill action ---
+    if request.method == "POST" and request.POST.get("action") == "kill":
+        pp_id = request.POST.get("property_id")
+        kill_reason = request.POST.get("kill_reason", "Failed screening review")
+        try:
+            pp = PipelineProperty.objects.get(pk=pp_id, user=request.user)
+            pp.status = PipelineProperty.Status.KILLED
+            pp.kill_reason = kill_reason
+            pp.save(update_fields=["status", "kill_reason", "updated_at"])
+        except PipelineProperty.DoesNotExist:
+            pass
+        return redirect(request.get_full_path())
+
+    # --- Summary counts ---
+    total = qs.count()
+    passed_count = qs.filter(screening_passed=True).count()
+    failed_count = qs.filter(screening_passed=False).count()
+    unscreened_count = qs.filter(screening_passed__isnull=True).count()
+    passed_pct = (
+        (passed_count / total * 100) if total > 0 else 0
+    )
+
+    # --- All growth areas for the filter dropdown ---
+    user_growth_areas = GrowthArea.objects.filter(
+        pipeline_properties__user=request.user
+    ).distinct().order_by("state", "city_name")
+
+    return render(request, "pipeline/screener.html", {
+        "growth_area": growth_area,
+        "properties": qs,
+        "criteria": criteria,
+        "total": total,
+        "passed_count": passed_count,
+        "failed_count": failed_count,
+        "unscreened_count": unscreened_count,
+        "passed_pct": passed_pct,
+        "status_filter": status_filter,
+        "passed_filter": passed_filter,
+        "user_growth_areas": user_growth_areas,
+        "ga_id": ga_id,
+    })
+
+
+@login_required
 def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
     """View and edit the user's pipeline screening criteria.
 
@@ -2757,45 +2888,281 @@ def sell_index(request: HttpRequest) -> HttpResponse:
 
 
 def property_discovery(request: HttpRequest) -> HttpResponse:
-    """Property Discovery page — browse sources and request property feeds.
+    """Market-centric property discovery.
 
-    Shows all available ``PropertySource`` records grouped by type,
-    along with the current user's recent ``DiscoveryRequest`` submissions.
-    Users can submit new requests to be fulfilled by future scrapers.
+    Shows available property sources for a chosen growth area with
+    counts of existing records. POST runs discovery for checked sources
+    synchronously and adds results to pipeline.
+
+    GET:
+      /discovery/                           → redirect to growth_areas
+      /discovery/?growth_area_id=42         → market-centric page
+      /discovery/?state=TX&city=Austin      → fallback state+city lookup
+    POST:
+      Runs discovery for checked sources, creates PipelineProperty
+      records, and redirects to the screener for this growth area.
     """
-    from core.models import DiscoveryRequest, PropertySource
+    from core.models import (
+        CountyForeclosureNotice,
+        GrowthArea,
+        HudProperty,
+        PipelineProperty,
+        ScreeningCriteria,
+        UsdaProperty,
+        VrmProperty,
+    )
+    from core.services.pipeline import (
+        create_from_county_notice,
+        create_from_hud,
+        create_from_usda,
+        create_from_vrm,
+        get_source_record,
+    )
+    from core.services.screening import screen_property
 
-    # Handle new discovery request
-    if request.method == "POST" and "request_discovery" in request.POST:
-        source_id = request.POST.get("source_id", "")
-        location = request.POST.get("location", "").strip()
-        if source_id and location:
-            DiscoveryRequest.objects.create(
-                user=request.user,
-                source_id=source_id,
-                location=location,
-            )
+    # --- Resolve growth area ---
+    growth_area = None
+    ga_id = request.GET.get("growth_area_id") or request.POST.get("growth_area_id")
+    if ga_id:
+        growth_area = get_object_or_404(GrowthArea, pk=ga_id)
+    else:
+        state = (request.GET.get("state") or request.POST.get("state", "")).upper()
+        city = request.GET.get("city") or request.POST.get("city", "")
+        if state and city:
+            growth_area = GrowthArea.objects.filter(
+                state=state, city_name__iexact=city
+            ).first()
 
-    sources = PropertySource.objects.all()
-    user_requests = DiscoveryRequest.objects.filter(user=request.user)[:20]
+    if not growth_area:
+        messages.warning(
+            request,
+            "Please choose a growth area first.",
+        )
+        return redirect("growth_areas")
 
-    # Group sources
-    free_sources = sources.filter(is_free=True)
-    paid_sources = sources.filter(is_free=False)
-    active_sources = sources.filter(is_active=True)
-    planned_sources = sources.filter(is_active=False)
+    # --- Available sources with counts ---
+    state = growth_area.state
+    city = growth_area.city_name
 
-    return render(
-        request,
-        "property_discovery.html",
+    source_status = [
         {
-            "sources": sources,
-            "free_sources": free_sources,
-            "paid_sources": paid_sources,
-            "active_sources": active_sources,
-            "planned_sources": planned_sources,
-            "user_requests": user_requests,
+            "key": "hud",
+            "label": "HUD REO",
+            "description": "Government-owned HUD foreclosures",
+            "count": HudProperty.objects.filter(
+                state=state, city__iexact=city
+            ).count(),
+            "is_active": True,
         },
+        {
+            "key": "usda",
+            "label": "USDA REO",
+            "description": "USDA Rural Development foreclosures",
+            "count": UsdaProperty.objects.filter(
+                state=state, city__iexact=city
+            ).count(),
+            "is_active": True,
+        },
+        {
+            "key": "vrm",
+            "label": "VRM (VA REO)",
+            "description": "VA-owned foreclosures via VRM Properties",
+            "count": VrmProperty.objects.filter(
+                state=state, city__iexact=city
+            ).count(),
+            "is_active": True,
+        },
+        {
+            "key": "attom",
+            "label": "ATTOM Pre-foreclosure",
+            "description": "NOD/NTS pre-foreclosure notices",
+            "count": CountyForeclosureNotice.objects.filter(
+                state=state, city__iexact=city
+            ).count(),
+            "is_active": True,
+        },
+        {
+            "key": "county",
+            "label": "County Foreclosure Notices",
+            "description": "County-level NTS/auction records",
+            "count": CountyForeclosureNotice.objects.filter(
+                state=state, city__iexact=city,
+                document_type__in=["nts", "sheriff_sale", "auction"],
+            ).count(),
+            "is_active": True,
+        },
+    ]
+
+    # Already-discovered count for this growth area
+    already_discovered = PipelineProperty.objects.filter(
+        user=request.user,
+        growth_area=growth_area,
+    ).count()
+
+    # --- GET: show discovery form ---
+    if request.method == "GET":
+        return render(request, "property_discovery.html", {
+            "growth_area": growth_area,
+            "source_status": source_status,
+            "already_discovered": already_discovered,
+        })
+
+    # --- POST: run discovery ---
+    selected_sources = request.POST.getlist("sources")
+    if not selected_sources:
+        messages.warning(request, "Please select at least one source.")
+        return redirect(
+            f"{request.path}?growth_area_id={growth_area.pk}"
+        )
+
+    # Get or create user screening criteria for auto-screening
+    try:
+        criteria = ScreeningCriteria.objects.get(user=request.user)
+    except ScreeningCriteria.DoesNotExist:
+        criteria = None
+
+    results = {
+        "discovered": 0,
+        "already_existed": 0,
+        "screening_passed": 0,
+        "screening_failed": 0,
+        "sources_attempted": [],
+        "errors": [],
+    }
+
+    # --- HUD ---
+    if "hud" in selected_sources:
+        results["sources_attempted"].append("HUD")
+        try:
+            hud_qs = HudProperty.objects.filter(
+                state=state, city__iexact=city,
+                status="active",
+            )
+            for hud in hud_qs:
+                pp, created = create_from_hud(
+                    hud, request.user, growth_area=growth_area
+                )
+                if created:
+                    results["discovered"] += 1
+                    if criteria:
+                        result = screen_property(
+                            pp, criteria,
+                            source_record=get_source_record(pp)
+                        )
+                        pp.screening_passed = result.passed
+                        pp.save(update_fields=["screening_passed", "updated_at"])
+                        if result.passed:
+                            results["screening_passed"] += 1
+                        else:
+                            results["screening_failed"] += 1
+                else:
+                    results["already_existed"] += 1
+        except Exception as exc:
+            logger.error("Discovery HUD error for %s: %s", city, exc)
+            results["errors"].append(f"HUD: {exc}")
+
+    # --- USDA ---
+    if "usda" in selected_sources:
+        results["sources_attempted"].append("USDA")
+        try:
+            usda_qs = UsdaProperty.objects.filter(
+                state=state, city__iexact=city,
+                status="active",
+            )
+            for usda in usda_qs:
+                pp, created = create_from_usda(
+                    usda, request.user, growth_area=growth_area
+                )
+                if created:
+                    results["discovered"] += 1
+                    if criteria:
+                        result = screen_property(
+                            pp, criteria,
+                            source_record=get_source_record(pp)
+                        )
+                        pp.screening_passed = result.passed
+                        pp.save(update_fields=["screening_passed", "updated_at"])
+                        if result.passed:
+                            results["screening_passed"] += 1
+                        else:
+                            results["screening_failed"] += 1
+                else:
+                    results["already_existed"] += 1
+        except Exception as exc:
+            logger.error("Discovery USDA error for %s: %s", city, exc)
+            results["errors"].append(f"USDA: {exc}")
+
+    # --- VRM ---
+    if "vrm" in selected_sources:
+        results["sources_attempted"].append("VRM")
+        try:
+            vrm_qs = VrmProperty.objects.filter(
+                state=state, city__iexact=city,
+                status="for_sale",
+            )
+            for vrm in vrm_qs:
+                pp, created = create_from_vrm(
+                    vrm, request.user, growth_area=growth_area
+                )
+                if created:
+                    results["discovered"] += 1
+                    if criteria:
+                        result = screen_property(
+                            pp, criteria,
+                            source_record=get_source_record(pp)
+                        )
+                        pp.screening_passed = result.passed
+                        pp.save(update_fields=["screening_passed", "updated_at"])
+                        if result.passed:
+                            results["screening_passed"] += 1
+                        else:
+                            results["screening_failed"] += 1
+                else:
+                    results["already_existed"] += 1
+        except Exception as exc:
+            logger.error("Discovery VRM error for %s: %s", city, exc)
+            results["errors"].append(f"VRM: {exc}")
+
+    # --- ATTOM + County (both use CountyForeclosureNotice) ---
+    if "attom" in selected_sources or "county" in selected_sources:
+        results["sources_attempted"].append("Foreclosures")
+        try:
+            notice_qs = CountyForeclosureNotice.objects.filter(
+                state=state, city__iexact=city,
+            )
+            for notice in notice_qs:
+                pp, created = create_from_county_notice(
+                    notice, request.user, growth_area=growth_area
+                )
+                if created:
+                    results["discovered"] += 1
+                    if criteria:
+                        result = screen_property(
+                            pp, criteria,
+                            source_record=get_source_record(pp)
+                        )
+                        pp.screening_passed = result.passed
+                        pp.save(update_fields=["screening_passed", "updated_at"])
+                        if result.passed:
+                            results["screening_passed"] += 1
+                        else:
+                            results["screening_failed"] += 1
+                else:
+                    results["already_existed"] += 1
+        except Exception as exc:
+            logger.error("Discovery foreclosure error for %s: %s", city, exc)
+            results["errors"].append(f"Foreclosure: {exc}")
+
+    # Redirect to screener filtered by this growth area
+    # NOTE: DiscoveryRequest creation is intentionally skipped.
+    # PipelineProperty.growth_area FK serves as the audit trail.
+    messages.success(
+        request,
+        f"Discovered {results['discovered']} new properties in {city}, {state}. "
+        f"{results['screening_passed']} passed screening."
+    )
+    return redirect(
+        f"{{% url 'pipeline_screener' %}}?growth_area_id={growth_area.pk}"
     )
 
 

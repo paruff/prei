@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}
+  Screened Properties
+  {% if growth_area %} — {{ growth_area.city_name }}, {{ growth_area.state }}{% endif %}
+{% endblock %}
+{% load humanize %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Screened Properties</h1>
+    <p class="page-sub">
+      {% if growth_area %}
+        {{ growth_area.city_name }}, {{ growth_area.state }}
+        &middot; GACS {{ growth_area.composite_score|floatformat:4 }}
+        &middot; Landlord {{ growth_area.landlord_score|default:"—" }}/10
+      {% else %}
+        All Markets
+      {% endif %}
+    </p>
+  </div>
+  {% if growth_area %}
+  <a href="{% url 'property_discovery' %}?growth_area_id={{ growth_area.pk }}"
+     class="btn btn-primary">+ Discover More</a>
+  {% endif %}
+</div>
+
+<!-- KPI summary -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Found</div>
+    <div class="kpi-value">{{ total }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Passed Screening</div>
+    <div class="kpi-value num-good">{{ passed_count }}</div>
+    <div class="kpi-sub">
+      {% if total > 0 %}
+        {{ passed_count }}/{{ total }} ({{ passed_pct|floatformat:0 }}%)
+      {% endif %}
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Failed Screening</div>
+    <div class="kpi-value num-bad">{{ failed_count }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Not Yet Screened</div>
+    <div class="kpi-value">{{ unscreened_count }}</div>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+  <!-- Growth area chooser -->
+  <form method="get" style="display:inline">
+    <select name="growth_area_id" onchange="this.form.submit()" class="form-input">
+      <option value="">All Markets</option>
+      {% for ga in user_growth_areas %}
+        <option value="{{ ga.pk }}"
+          {% if ga.pk|stringformat:"s" == ga_id %}selected{% endif %}>
+          {{ ga.city_name }}, {{ ga.state }}
+        </option>
+      {% endfor %}
+    </select>
+    {% if passed_filter %}
+      <input type="hidden" name="passed" value="{{ passed_filter }}">
+    {% endif %}
+    {% if status_filter != "ACTIVE" %}
+      <input type="hidden" name="status" value="{{ status_filter }}">
+    {% endif %}
+  </form>
+
+  <!-- Pass/fail filter -->
+  <a href="?{% if ga_id %}growth_area_id={{ ga_id }}&{% endif %}passed=1"
+     class="chip {% if passed_filter == '1' %}chip-success is-active{% else %}chip-default{% endif %}">
+    Passed Only
+  </a>
+  <a href="?{% if ga_id %}growth_area_id={{ ga_id }}&{% endif %}passed=0"
+     class="chip {% if passed_filter == '0' %}chip-danger is-active{% else %}chip-default{% endif %}">
+    Failed Only
+  </a>
+  <a href="?{% if ga_id %}growth_area_id={{ ga_id }}{% endif %}"
+     class="chip chip-default">
+    All
+  </a>
+
+  <!-- Rescreen -->
+  {% if criteria %}
+  <form method="post" style="display:inline">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="rescreen">
+    {% if ga_id %}
+      <input type="hidden" name="growth_area_id" value="{{ ga_id }}">
+    {% endif %}
+    <button type="submit" class="btn">Re-Screen All</button>
+  </form>
+  {% else %}
+  <a href="{% url 'pipeline_screening_settings' %}" class="btn">
+    Set Screening Criteria First
+  </a>
+  {% endif %}
+</div>
+
+{% if not criteria %}
+<div class="message message-warning">
+  You have no screening criteria set.
+  <a href="{% url 'pipeline_screening_settings' %}">Set your criteria</a>
+  to see pass/fail results.
+</div>
+{% endif %}
+
+<!-- Property table -->
+{% if properties %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Address</th>
+        <th>Source</th>
+        <th>Price</th>
+        <th>Beds</th>
+        <th>Sqft</th>
+        <th>Est. Rent</th>
+        <th>Screening</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pp in properties %}
+      <tr>
+        <td>
+          <a href="{% url 'pipeline_detail' pk=pp.pk %}">
+            {{ pp.address|truncatechars:45 }}
+          </a>
+          <br>
+          <small class="page-sub">
+            {{ pp.city }}, {{ pp.state }} {{ pp.zip_code }}
+          </small>
+        </td>
+        <td>
+          <span class="chip chip-default">
+            {{ pp.get_source_type_display }}
+          </span>
+        </td>
+        <td class="col-right num">
+          {% if pp.price %}${{ pp.price|intcomma }}{% else %}—{% endif %}
+        </td>
+        <td class="col-right">{{ pp.beds|default:"—" }}</td>
+        <td class="col-right">
+          {% if pp.sqft %}{{ pp.sqft|floatformat:0|intcomma }}{% else %}—{% endif %}
+        </td>
+        <td class="col-right num">
+          {% if pp.estimated_rent %}
+            ${{ pp.estimated_rent|intcomma }}/mo
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if pp.screening_passed is None %}
+            <span class="chip chip-default">Not screened</span>
+          {% elif pp.screening_passed %}
+            <span class="chip chip-success">✓ Passed</span>
+          {% else %}
+            <span class="chip chip-danger">✗ Failed</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if pp.screening_passed %}
+          <form method="post" style="display:inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="advance">
+            <input type="hidden" name="property_id" value="{{ pp.pk }}">
+            {% if ga_id %}
+              <input type="hidden" name="growth_area_id" value="{{ ga_id }}">
+            {% endif %}
+            <button type="submit" class="btn btn-primary">
+              → Underwriting
+            </button>
+          </form>
+          {% endif %}
+          <form method="post" style="display:inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="kill">
+            <input type="hidden" name="property_id" value="{{ pp.pk }}">
+            <input type="hidden" name="kill_reason" value="Failed screening review">
+            {% if ga_id %}
+              <input type="hidden" name="growth_area_id" value="{{ ga_id }}">
+            {% endif %}
+            <button type="submit" class="btn btn-danger">Kill</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-title">No properties found</div>
+  <p class="empty-state-body">
+    {% if growth_area %}
+      No properties discovered in {{ growth_area.city_name }}, {{ growth_area.state }} yet.
+    {% else %}
+      No properties discovered yet.
+    {% endif %}
+  </p>
+  {% if growth_area %}
+  <a href="{% url 'property_discovery' %}?growth_area_id={{ growth_area.pk }}"
+     class="btn btn-primary">
+    Discover Properties Now
+  </a>
+  {% else %}
+  <a href="{% url 'growth_areas' %}" class="btn btn-primary">
+    Choose a Growth Area
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
