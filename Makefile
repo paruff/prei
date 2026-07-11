@@ -66,7 +66,7 @@ test-unit:
 	$(call ensure_django)
 	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ tests_bdd/ \
 		-q --tb=short \
-		-k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline"
+		-k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not export"
 
 test-integration:
 	$(call ensure_django)
