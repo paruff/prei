@@ -670,3 +670,91 @@
   border: 2px solid white;
   box-shadow: 0 1px 4px rgba(0,0,0,0.2);
 }
+
+/* ── Kanban Board ──────────────────────────────────────────────── */
+
+.kanban-board {
+  display: flex;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  padding-bottom: var(--sp-4);
+  min-height: calc(100vh - 200px);
+}
+
+.kanban-column {
+  flex: 0 0 240px;
+  background: var(--surface-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+}
+
+.kanban-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.kanban-column-title {
+  font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-neutral-700);
+}
+
+.kanban-count { font-size: var(--text-xs); }
+
+.kanban-cards {
+  flex: 1;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  transition: background 0.2s;
+  border-radius: var(--radius);
+  padding: 2px;
+}
+
+.kanban-cards--over { background: rgba(37, 99, 235, 0.08); }
+
+.kanban-card {
+  background: var(--surface-primary);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+  cursor: grab;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.10); }
+.kanban-card--dragging { opacity: 0.5; transform: rotate(2deg); }
+
+.kanban-card-address {
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--sp-1);
+}
+
+.kanban-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+
+.kanban-card-price {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-neutral-600);
+}
+
+.kanban-empty {
+  color: var(--color-neutral-300);
+  text-align: center;
+  padding: var(--sp-4);
+  font-size: var(--text-lg);
+}
