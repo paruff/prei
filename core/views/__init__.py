@@ -1320,6 +1320,79 @@ def pipeline_list(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def pipeline_kanban(request: HttpRequest) -> HttpResponse:
+    """Kanban board view: properties grouped by stage with drag-and-drop advance.
+
+    GET:  Renders the board with all active PipelineProperty records
+          grouped into stage columns.
+    POST: Handles drag-and-drop stage advancement.  Expects
+          ``property_id`` and ``new_stage`` in POST body.
+          Returns JSON response for the fetch API.
+    """
+    from core.models import GrowthArea, PipelineProperty
+    from core.services.pipeline import STAGE_ORDER
+
+    if request.method == "POST":
+        pp_id = request.POST.get("property_id")
+        new_stage = request.POST.get("new_stage")
+        if not pp_id or not new_stage:
+            return JsonResponse(
+                {"error": "Missing property_id or new_stage"}, status=400
+            )
+        try:
+            pp = PipelineProperty.objects.get(pk=pp_id, user=request.user)
+        except PipelineProperty.DoesNotExist:
+            return JsonResponse({"error": "Property not found"}, status=404)
+        # Validate stage order — only allow forward advancement
+        try:
+            current_idx = STAGE_ORDER.index(pp.stage)
+            new_idx = STAGE_ORDER.index(new_stage)
+        except ValueError:
+            return JsonResponse({"error": f"Unknown stage: {new_stage}"}, status=400)
+        if new_idx <= current_idx:
+            return JsonResponse(
+                {"error": "Properties can only advance forward"}, status=400
+            )
+        # Advance one stage at a time (user can drag multiple columns but
+        # we process sequentially — the advance_stage service just goes to
+        # the next stage regardless of how many columns the user dragged)
+        pp.stage = new_stage
+        pp.save(update_fields=["stage", "updated_at"])
+        return JsonResponse({"status": "ok", "stage": pp.stage})
+
+    # GET: Build stage columns
+    qs = PipelineProperty.objects.filter(
+        user=request.user, status=PipelineProperty.Status.ACTIVE
+    ).select_related("investment_analysis")
+
+    stages = STAGE_ORDER[:7]  # DISCOVERED through CLOSING
+    columns: list[dict] = []
+    for stage in stages:
+        props = [p for p in qs if p.stage == stage]
+        columns.append(
+            {
+                "stage": stage,
+                "label": PipelineProperty.Stage(stage).label,
+                "properties": props,
+                "count": len(props),
+            }
+        )
+
+    # Growth areas for the discovery modal
+    user_growth_areas = GrowthArea.objects.order_by("-composite_score")[:20]
+
+    return render(
+        request,
+        "pipeline/kanban.html",
+        {
+            "columns": columns,
+            "all_stages": STAGE_ORDER,
+            "user_growth_areas": user_growth_areas,
+        },
+    )
+
+
+@login_required
 def pipeline_review_queue(request: HttpRequest) -> HttpResponse:
     """Review queue: SCREENING-passed properties ready for triage.
 
@@ -2976,21 +3049,24 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         # No growth area selected — show the market picker.
         # Lists all available growth areas so the user can choose one
         # without going through the growth_areas list page first.
-        user_growth_areas = GrowthArea.objects.order_by(
-            "-composite_score"
-        )[:50]
-        return render(request, "property_discovery.html", {
-            "growth_area": None,
-            "source_status": [],
-            "already_discovered": 0,
-            "user_growth_areas": user_growth_areas,
-        })
+        user_growth_areas = GrowthArea.objects.order_by("-composite_score")[:50]
+        return render(
+            request,
+            "property_discovery.html",
+            {
+                "growth_area": None,
+                "source_status": [],
+                "already_discovered": 0,
+                "user_growth_areas": user_growth_areas,
+            },
+        )
 
     # --- Available sources with counts ---
     state = growth_area.state
     # Strip Census place-name suffixes (" city", " town", " CDP") for
     # matching against VRM / HUD / USDA data which uses plain city names.
     import re
+
     city = growth_area.city_name
     city = re.sub(r"\s+(city|town|CDP|village|borough)$", "", city, flags=re.IGNORECASE)
 

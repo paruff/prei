@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Pipeline Kanban{% endblock %}
+{% load static humanize %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pipeline.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Pipeline</h1>
+    <p class="page-sub">Drag properties between columns to advance stages</p>
+  </div>
+  <a href="{% url 'pipeline_list' %}" class="btn">List View</a>
+</div>
+
+<div class="kanban-board" id="kanban-board">
+  {% for col in columns %}
+  <div class="kanban-column" data-stage="{{ col.stage }}">
+    <div class="kanban-column-header">
+      <span class="kanban-column-title">{{ col.label }}</span>
+      <span class="chip chip-default kanban-count">{{ col.count }}</span>
+    </div>
+
+    <div class="kanban-cards" id="col-{{ col.stage }}">
+      {% for pp in col.properties %}
+      <div class="kanban-card"
+           draggable="true"
+           data-id="{{ pp.pk }}"
+           data-stage="{{ pp.stage }}">
+        <div class="kanban-card-address">
+          <a href="{% url 'pipeline_detail' pk=pp.pk %}">{{ pp.address|truncatechars:35 }}</a>
+        </div>
+        <div class="kanban-card-meta">
+          <span class="chip chip-default">{{ pp.get_source_type_display }}</span>
+          {% if pp.price %}
+          <span class="kanban-card-price">${{ pp.price|intcomma }}</span>
+          {% endif %}
+        </div>
+        {% if pp.screening_passed is not None %}
+        <div class="kanban-card-screening">
+          {% if pp.screening_passed %}
+          <span class="chip chip-success">✓ Passed</span>
+          {% else %}
+          <span class="chip chip-danger">✗ Failed</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="kanban-empty">&mdash;</div>
+      {% endfor %}
+    </div>
+
+    {% if col.stage == 'DISCOVERED' %}
+    <button class="btn btn-primary kanban-discover-btn"
+            onclick="openDiscoveryModal()">+ Discover</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Discovery Modal ──────────────────────────────────────────────── #}
+<div class="kanban-modal-overlay" id="discovery-modal" style="display:none">
+  <div class="kanban-modal">
+    <div class="kanban-modal-header">
+      <h2>Discover Properties</h2>
+      <button class="btn" onclick="closeDiscoveryModal()">✕</button>
+    </div>
+    <div class="kanban-modal-body" id="discovery-body">
+      <p class="page-sub">Choose a growth area to discover properties from.</p>
+      <div id="discovery-market-list">
+        {% for ga in user_growth_areas %}
+        <button class="kanban-market-btn"
+                onclick="selectMarket('{{ ga.pk }}', '{{ ga.city_name|escapejs }}')">
+          <strong>{{ ga.city_name }}</strong>, {{ ga.state }}
+          <span class="chip chip-default">GACS {{ ga.composite_score|floatformat:1 }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      <div id="discovery-sources" style="display:none">
+        <p class="page-sub">
+          Select sources for <strong id="discovery-market-name"></strong>
+        </p>
+        {% csrf_token %}
+        <label class="kanban-source-option">
+          <input type="checkbox" name="sources" value="hud" checked> HUD REO
+        </label>
+        <label class="kanban-source-option">
+          <input type="checkbox" name="sources" value="usda" checked> USDA REO
+        </label>
+        <label class="kanban-source-option">
+          <input type="checkbox" name="sources" value="vrm" checked> VRM (VA REO)
+        </label>
+        <label class="kanban-source-option">
+          <input type="checkbox" name="sources" value="attom"> ATTOM Pre-foreclosure
+        </label>
+        <label class="kanban-source-option">
+          <input type="checkbox" name="sources" value="county"> County Notices
+        </label>
+        <div class="form-actions" style="margin-top:var(--sp-4)">
+          <button class="btn btn-primary" id="discovery-run-btn" onclick="runDiscovery()"
+                  data-url="{% url 'property_discovery' %}">
+            Discover Properties
+          </button>
+          <button class="btn" onclick="closeDiscoveryModal()">Cancel</button>
+        </div>
+        <div id="discovery-status" class="message message-info" style="display:none;margin-top:var(--sp-3)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Drag and Drop ───────────────────────────────────────────────────
+(function() {
+  var cards = document.querySelectorAll('.kanban-card');
+  var columns = document.querySelectorAll('.kanban-cards');
+  var draggedCard = null;
+
+  cards.forEach(function(card) {
+    card.addEventListener('dragstart', function(e) {
+      draggedCard = card;
+      card.classList.add('kanban-card--dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', function(e) {
+      card.classList.remove('kanban-card--dragging');
+      draggedCard = null;
+    });
+  });
+
+  columns.forEach(function(col) {
+    col.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('kanban-cards--over');
+    });
+    col.addEventListener('dragleave', function() {
+      col.classList.remove('kanban-cards--over');
+    });
+    col.addEventListener('drop', function(e) {
+      e.preventDefault();
+      col.classList.remove('kanban-cards--over');
+      if (!draggedCard) return;
+
+      var newStage = col.closest('.kanban-column').dataset.stage;
+      var currentStage = draggedCard.dataset.stage;
+      if (newStage === currentStage) return;
+
+      // Move card visually first
+      col.appendChild(draggedCard);
+      draggedCard.dataset.stage = newStage;
+      updateCounts();
+
+      // Persist via fetch
+      var formData = new FormData();
+      formData.append('property_id', draggedCard.dataset.id);
+      formData.append('new_stage', newStage);
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+      fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+        body: formData
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.status !== 'ok') {
+            // Revert on failure
+            var oldCol = document.getElementById('col-' + currentStage);
+            if (oldCol) oldCol.appendChild(draggedCard);
+            draggedCard.dataset.stage = currentStage;
+            updateCounts();
+          }
+        })
+        .catch(function() {
+          // Revert on error
+          var oldCol = document.getElementById('col-' + currentStage);
+          if (oldCol) oldCol.appendChild(draggedCard);
+          draggedCard.dataset.stage = currentStage;
+          updateCounts();
+        });
+    });
+  });
+
+  function updateCounts() {
+    document.querySelectorAll('.kanban-column').forEach(function(col) {
+      var stage = col.dataset.stage;
+      var count = document.querySelectorAll('#col-' + stage + ' .kanban-card').length;
+      var chip = col.querySelector('.kanban-count');
+      if (chip) chip.textContent = count;
+    });
+  }
+})();
+
+// ── Discovery Modal ─────────────────────────────────────────────────
+var selectedMarketId = null;
+
+function openDiscoveryModal() {
+  document.getElementById('discovery-modal').style.display = 'flex';
+  document.getElementById('discovery-market-list').style.display = 'block';
+  document.getElementById('discovery-sources').style.display = 'none';
+  selectedMarketId = null;
+}
+
+function closeDiscoveryModal() {
+  document.getElementById('discovery-modal').style.display = 'none';
+}
+
+function selectMarket(id, name) {
+  selectedMarketId = id;
+  document.getElementById('discovery-market-name').textContent = name;
+  document.getElementById('discovery-market-list').style.display = 'none';
+  document.getElementById('discovery-sources').style.display = 'block';
+}
+
+function runDiscovery() {
+  if (!selectedMarketId) return;
+  var btn = document.getElementById('discovery-run-btn');
+  var status = document.getElementById('discovery-status');
+  btn.disabled = true;
+  btn.textContent = 'Discovering...';
+  status.style.display = 'block';
+  status.textContent = 'Running discovery...';
+
+  var sources = [];
+  document.querySelectorAll('#discovery-sources input:checked').forEach(function(cb) {
+    sources.push(cb.value);
+  });
+
+  var formData = new FormData();
+  formData.append('growth_area_id', selectedMarketId);
+  sources.forEach(function(s) { formData.append('sources', s); });
+  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  fetch('{% url "property_discovery" %}', {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+    body: formData
+  }).then(function(r) {
+    if (r.redirected) {
+      closeDiscoveryModal();
+      window.location.reload();
+      return;
+    }
+    return r.text();
+  }).then(function(html) {
+    if (html) {
+      status.innerHTML = '<p>Discovery complete. <a href="javascript:window.location.reload()">Refresh</a> to see results.</p>';
+      status.className = 'message message-success';
+    }
+  }).catch(function(err) {
+    status.textContent = 'Error: ' + err.message;
+    status.className = 'message message-error';
+  }).finally(function() {
+    btn.disabled = false;
+    btn.textContent = 'Discover Properties';
+  });
+}
+</script>
+{% endblock %}
