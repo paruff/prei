@@ -159,8 +159,7 @@
                 {% endwith %}
               </td>
               <td>
-                <a href="{% url 'vrm_properties_list' %}?state={{ r.growth_area.state }}" class="btn">View Foreclosures</a>
-                <button type="submit" name="pipeline_city" value="{{ r.place_name }}" class="btn" title="Run property discovery pipeline for {{ r.place_name }}, {{ r.growth_area.state }}">🔍 Discover</button>
+                <a href="{% url 'property_discovery' %}?growth_area_id={{ r.growth_area.pk }}" class="btn btn-primary">Discover Properties</a>
                 <button type="button" class="btn" onclick="var r=document.getElementById('ge-breakdown-{{ forloop.counter0 }}');r.hidden=!r.hidden">Score</button>
               </td>
             </tr>

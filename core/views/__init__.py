@@ -3388,16 +3388,20 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         return redirect(f"{request.path}?growth_area_id={growth_area.pk}")
 
     # Trigger source data collection when needed.
-    # VRM: synchronous scrape (30-120s) if no data for this state
-    # HUD/USDA: background thread ingestion (slow nationwide download)
+    # All collection runs in background threads — Gunicorn worker timeout = 30s.
     if "vrm" in selected_sources:
         vrm_count = VrmProperty.objects.filter(state=state).count()
         if vrm_count == 0:
-            try:
+            import threading
+
+            from django.db import connection as _conn
+
+            def _scrape_vrm(state_code: str) -> None:
+                _conn.close()
                 from core.integrations.sources.vrm_scraper import VrmScraper
 
                 scraper = VrmScraper()
-                listings = scraper.collect_state_listings(state)
+                listings = scraper.collect_state_listings(state_code)
                 now = timezone.now()
                 for listing in listings:
                     listing["scraped_at"] = now
@@ -3406,15 +3410,14 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                         vrm_property_id=listing["vrm_property_id"],
                         defaults=listing,
                     )
-                if listings:
-                    messages.info(
-                        request, f"Scraped {len(listings)} VRM listings for {state}."
-                    )
-            except Exception as exc:
-                logger.error("Discovery VRM scrape for %s failed: %s", state, exc)
-                messages.warning(
-                    request, f"VRM scrape failed. Scrape manually from VRM Properties."
-                )
+
+            t = threading.Thread(target=_scrape_vrm, args=(state,), daemon=True)
+            t.start()
+            messages.info(
+                request,
+                f"VRM scrape for {state} started in background. "
+                "Refresh the page in a minute to see results.",
+            )
 
     if "hud" in selected_sources:
         hud_count = HudProperty.objects.count()
