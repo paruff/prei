@@ -1,10 +1,12 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke
+.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev
 
 PYTHON ?= python
 ENV_FILE ?= .env
 REQUIREMENTS ?= requirements.txt
+IMAGE_NAME := $(shell basename $$(pwd))
+DOCKER_TAG := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 
 # Check Django is installed; install deps if not (handles recovery containers
 # or incomplete devcontainer postCreateCommand).
@@ -27,10 +29,20 @@ help:
 	@echo "  make test-integration   Run integration tests"
 	@echo "  make test-e2e           Run E2E tests (requires Playwright browser)"
 	@echo "  make check              Run Django checks, lint, and all tests"
+	@echo "  make smoke              Smoke test against http://localhost:8000"
+	@echo "  ── Docker workflow ──"
+	@echo "  make docker-dev         Build + start Docker stack locally (migrate + seed)"
+	@echo "  make build              Build Docker image"
+	@echo "  make up                 Build + start in daemon mode + smoke test"
+	@echo "  make down               Stop containers"
+	@echo "  make restart            Stop, rebuild, start"
+	@echo "  make logs               Tail container logs (--tail=100)"
+	@echo "  make clean              Remove all images, containers, volumes"
+	@echo "  ── Deploy ──"
 	@echo "  make deploy-dev         Start Docker stack on Docker host"
 	@echo "  make deploy-local       Start Django locally + smoke test"
 	@echo "  make deploy-devcontainer Start devcontainer + smoke test"
-	@echo "  make smoke              Smoke test against http://localhost:8000"
+	@echo "  ── GitOps ──"
 	@echo "  make gitops-validate    Run GitOps best-practice validation"
 	@echo "  make gitops-hook-install Install GitOps pre-commit hook"
 
@@ -137,3 +149,40 @@ gitops-validate:
 gitops-hook-install:
 	@git config core.hooksPath .githooks
 	@echo "GitOps pre-commit hook installed (core.hooksPath = .githooks)"
+
+# ── Docker workflow (local build, no CI needed) ─────────────────────────
+# Use these to test the Docker image locally — same as what CI would
+# publish, but built on your machine.  Faster than commit → CI → pull → up.
+
+build:
+	@echo "Building Docker image..."
+	@docker compose build
+
+up: build
+	@docker compose up -d
+	@sleep 3
+	@$(MAKE) smoke
+
+down:
+	@docker compose down
+
+restart: down up
+
+logs:
+	@docker compose logs -f --tail=100
+
+clean:
+	@docker compose down --rmi all --volumes --remove-orphans 2>/dev/null; true
+	@echo "🧹 Docker state cleaned"
+
+docker-dev: ensure-env build up
+	$(call ensure_django)
+	@docker compose exec web $(PYTHON) manage.py migrate
+	@docker compose exec web $(PYTHON) manage.py seed_data
+	@echo ""
+	@echo "✅ Docker dev stack running on http://localhost:8000"
+	@echo "   make logs     — tail container logs"
+	@echo "   make restart  — stop, rebuild, start"
+	@echo "   make down     — stop containers"
+	@echo "   make clean    — remove images + volumes"
+	@echo ""
