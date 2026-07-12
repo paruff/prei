@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} — {{ entry.property_record.address|truncatechars:30 }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ action }}</h1>
+    <p class="page-sub">
+      {{ entry.property_record.address }}
+      &middot; {{ entry.get_stage_display }}
+      {% if entry.asking_rent %} &middot; ${{ entry.asking_rent|floatformat:0 }}/mo{% endif %}
+    </p>
+  </div>
+  <a href="{% url 'leasing_detail' pk=entry.pk %}" class="btn">Back</a>
+</div>
+
+<div class="card">
+  <form method="post">
+    {% csrf_token %}
+
+    {% if stage == "SHOWING" %}
+    <div class="form-group">
+      <label class="form-label">Advance to Application after showing?</label>
+      <label class="checkbox-label">
+        <input type="checkbox" name="advance" value="1" checked>
+        Yes, advance to Application stage
+      </label>
+    </div>
+
+    {% elif stage == "APPLICATION" %}
+    <div class="form-group">
+      <label class="form-label" for="id_applicant">Applicant Name</label>
+      <input type="text" name="applicant_name" id="id_applicant" class="form-input"
+             value="{{ entry.applicant_name }}" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="id_app_date">Application Date</label>
+      <input type="date" name="application_date" id="id_app_date" class="form-input"
+             value="{{ entry.application_date|date:'Y-m-d'|default:'' }}">
+    </div>
+
+    {% elif stage == "SCREENING" %}
+    <div class="form-group">
+      <label class="form-label">Screening Result</label>
+      <label class="checkbox-label">
+        <input type="radio" name="screening_passed" value="true" checked> Passed
+      </label>
+      <label class="checkbox-label">
+        <input type="radio" name="screening_passed" value="false"> Failed
+      </label>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="id_notes">Notes</label>
+      <textarea name="screening_notes" id="id_notes" class="form-input" rows="3"
+                placeholder="Credit score, rental history, etc.">{{ entry.screening_notes }}</textarea>
+    </div>
+    <label class="checkbox-label">
+      <input type="checkbox" name="advance" value="1" checked>
+      Advance to Approved stage (if screening passed)
+    </label>
+
+    {% elif stage == "LEASE_SIGNED" %}
+    <div class="form-row">
+      <div class="form-field-group">
+        <label class="form-label" for="id_start">Lease Start Date</label>
+        <input type="date" name="lease_start_date" id="id_start" class="form-input" required>
+      </div>
+      <div class="form-field-group">
+        <label class="form-label" for="id_end">Lease End Date</label>
+        <input type="date" name="lease_end_date" id="id_end" class="form-input">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="id_rent">Monthly Rent ($)</label>
+      <input type="number" name="monthly_rent" id="id_rent" class="form-input"
+             step="0.01" min="0" value="{{ entry.asking_rent|default:0 }}" required>
+    </div>
+
+    {% elif stage == "MOVE_IN" %}
+    <div class="form-group">
+      <label class="form-label" for="id_move_in">Move-In Date</label>
+      <input type="date" name="move_in_date" id="id_move_in" class="form-input">
+    </div>
+
+    {% elif stage == "STABILIZED" %}
+    <div class="form-group">
+      <label class="form-label" for="id_stab">Stabilization Date</label>
+      <input type="date" name="stabilized_date" id="id_stab" class="form-input">
+    </div>
+    <p class="form-hint">
+      The property will be marked as FILLED after stabilization.
+    </p>
+
+    {% endif %}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{ action }}</button>
+      <a href="{% url 'leasing_detail' pk=entry.pk %}" class="btn">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
