@@ -1,21 +1,74 @@
 {% extends "base.html" %}
-{% block title %}Discover Properties — {{ growth_area.city_name }}, {{ growth_area.state }}{% endblock %}
+{% block title %}Discover Properties{% if growth_area %} — {{ growth_area.city_name }}, {{ growth_area.state }}{% endif %}{% endblock %}
 {% load humanize math_filters %}
 {% block content %}
 
 <div class="page-header">
   <div>
-    <h1 class="page-title">
-      Discover Properties
-    </h1>
+    <h1 class="page-title">Discover Properties</h1>
     <p class="page-sub">
-      {{ growth_area.city_name }}, {{ growth_area.state }}
-      &mdash; GACS Score: {{ growth_area.composite_score|floatformat:4 }}
-      &middot; Landlord Score: {{ growth_area.landlord_score|default:"—" }}/10
+      {% if growth_area %}
+        {{ growth_area.city_name }}, {{ growth_area.state }}
+        &mdash; GACS: {{ growth_area.composite_score|floatformat:1 }}
+        &middot; Landlord: {{ growth_area.landlord_score|default:"—" }}/10
+      {% else %}
+        Choose a growth area below to find properties.
+      {% endif %}
     </p>
   </div>
+  {% if growth_area %}
   <a href="{% url 'growth_areas' %}" class="btn">← Growth Areas</a>
+  {% endif %}
 </div>
+
+{% if not growth_area %}
+{# No market selected — show growth area picker #}
+{% if user_growth_areas %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>City</th>
+        <th>State</th>
+        <th>GACS</th>
+        <th>Conf.</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ga in user_growth_areas %}
+      <tr>
+        <td>{{ ga.city_name }}</td>
+        <td>{{ ga.state }}</td>
+        <td class="col-right">{{ ga.composite_score|floatformat:1 }}</td>
+        <td>
+          {% with conf=ga.data_confidence %}
+          {% if conf >= 80 %}<span class="chip chip-success">{{ conf }}%</span>
+          {% elif conf >= 50 %}<span class="chip chip-warning">{{ conf }}%</span>
+          {% else %}<span class="chip chip-danger">{{ conf }}%</span>{% endif %}
+          {% endwith %}
+        </td>
+        <td>
+          <a href="{% url 'property_discovery' %}?growth_area_id={{ ga.pk }}"
+             class="btn btn-primary">Discover Properties →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-title">No growth areas yet</div>
+  <p class="empty-state-body">
+    Run a growth analysis first to populate markets, then return here to discover properties.
+  </p>
+  <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Analyze a State</a>
+</div>
+{% endif %}
+
+{% else %}
+{# Growth area selected — show source checkboxes and KPIs #}
 
 {% if already_discovered > 0 %}
 <div class="message message-success">
@@ -109,5 +162,7 @@
     <a href="{% url 'growth_areas' %}" class="btn">Cancel</a>
   </div>
 </form>
+
+{% endif %}{# growth_area selected #}
 
 {% endblock %}

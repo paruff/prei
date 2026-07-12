@@ -44,7 +44,7 @@
               <td>{{ s.state }}</td>
               <td class="col-right num">{{ s.rent_index|floatformat:0 }}</td>
               <td class="col-right num">{{ s.price_trend|floatformat:2 }}%</td>
-              <td><a href="{% url 'vrm_properties_list' %}?state={{ s.state }}" class="btn">Foreclosures</a></td>
+              <td><a href="{% url 'vrm_properties_list' %}?state={{ s.state }}" class="btn">Browse Properties</a></td>
             </tr>
           {% endfor %}
         </tbody>
