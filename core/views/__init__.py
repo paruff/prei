@@ -3434,37 +3434,28 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         if hud_count == 0:
             try:
                 from core.services.ingestion import ingest_hud_reo
-                import threading
-                from django.db import connection
 
-                def _run_hud():
-                    connection.close()
-                    ingest_hud_reo()
-
-                t = threading.Thread(target=_run_hud, daemon=True)
-                t.start()
+                result = ingest_hud_reo()
                 messages.info(
                     request,
-                    "HUD data download started in background. Properties will appear shortly.",
+                    f"HUD data loaded: {result['created']} properties indexed nationwide. "
+                    f"Run discovery again to find properties in this market.",
                 )
             except Exception as exc:
                 logger.error("Discovery HUD ingestion failed: %s", exc)
+                messages.warning(request, "HUD data download failed. Try again later.")
 
     if "usda" in selected_sources:
         usda_count = UsdaProperty.objects.count()
         if usda_count == 0:
             try:
                 from core.services.ingestion import ingest_usda_reo
-                import threading
-                from django.db import connection
 
-                def _run_usda():
-                    connection.close()
-                    ingest_usda_reo()
-
-                t = threading.Thread(target=_run_usda, daemon=True)
-                t.start()
-                messages.info(request, "USDA data download started in background.")
+                result = ingest_usda_reo()
+                if result.get("created", 0) > 0:
+                    messages.info(request, f"USDA data loaded: {result['created']} properties.")
+                else:
+                    messages.info(request, "USDA data not yet available. Use manage.py ingest_usda_reo.")
             except Exception as exc:
                 logger.error("Discovery USDA ingestion failed: %s", exc)
 
