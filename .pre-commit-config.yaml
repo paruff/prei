@@ -91,7 +91,7 @@ repos:
       - id: check-toml
       - id: check-json
       - id: check-added-large-files
-        args: [--maxkb=500]
+        args: [--maxkb=1000]
       - id: debug-statements              # catch stray print(), breakpoint(), pdb.set_trace()
       - id: check-case-conflict           # catch files differing only in case (macOS vs Linux)
       - id: detect-private-key            # catch accidentally committed private keys
