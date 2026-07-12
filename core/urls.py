@@ -131,6 +131,36 @@ urlpatterns = [
     path("leasing/add/", views.leasing_add, name="leasing_add"),
     path("leasing/<int:pk>/", views.leasing_detail, name="leasing_detail"),
     path(
+        "leasing/<int:pk>/showing/",
+        views.leasing_showing,
+        name="leasing_showing",
+    ),
+    path(
+        "leasing/<int:pk>/application/",
+        views.leasing_application,
+        name="leasing_application",
+    ),
+    path(
+        "leasing/<int:pk>/screening/",
+        views.leasing_screening,
+        name="leasing_screening",
+    ),
+    path(
+        "leasing/<int:pk>/lease/",
+        views.leasing_lease,
+        name="leasing_lease",
+    ),
+    path(
+        "leasing/<int:pk>/move-in/",
+        views.leasing_move_in,
+        name="leasing_move_in",
+    ),
+    path(
+        "leasing/<int:pk>/stabilize/",
+        views.leasing_stabilize,
+        name="leasing_stabilize",
+    ),
+    path(
         "settings/investment-targets/",
         views.investment_targets_edit,
         name="investment_targets_edit",

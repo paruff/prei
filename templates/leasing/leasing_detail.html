@@ -71,14 +71,30 @@
       </div>
     </div>
 
-    {# Action buttons #}
+    {# Stage-specific actions #}
     <div class="pipeline-action-bar">
       {% if entry.status == 'ACTIVE' and entry.stage != 'STABILIZED' %}
-        <span class="btn btn-primary btn-placeholder">Advance Stage</span>
+        {% if entry.stage == 'LISTING' %}
+          <a href="{% url 'leasing_showing' pk=entry.pk %}" class="btn btn-primary">Record Showing</a>
+        {% elif entry.stage == 'SHOWING' %}
+          <a href="{% url 'leasing_application' pk=entry.pk %}" class="btn btn-primary">Record Application</a>
+        {% elif entry.stage == 'APPLICATION' %}
+          <a href="{% url 'leasing_screening' pk=entry.pk %}" class="btn btn-primary">Screen Applicant</a>
+        {% elif entry.stage == 'SCREENING' and entry.screening_passed %}
+          <a href="{% url 'leasing_lease' pk=entry.pk %}" class="btn btn-primary">Record Lease</a>
+        {% elif entry.stage == 'SCREENING' %}
+          <a href="{% url 'leasing_lease' pk=entry.pk %}" class="btn btn-outline">Record Lease</a>
+        {% elif entry.stage == 'APPROVED' %}
+          <a href="{% url 'leasing_lease' pk=entry.pk %}" class="btn btn-primary">Record Lease</a>
+        {% elif entry.stage == 'LEASE_SIGNED' %}
+          <a href="{% url 'leasing_move_in' pk=entry.pk %}" class="btn btn-primary">Move In</a>
+        {% elif entry.stage == 'MOVE_IN' %}
+          <a href="{% url 'leasing_stabilize' pk=entry.pk %}" class="btn btn-primary">Stabilize</a>
+        {% endif %}
       {% endif %}
       {% if entry.status == 'ACTIVE' %}
-        <span class="btn btn-danger btn-placeholder">Fill</span>
-        <span class="btn btn-outline btn-placeholder">Hold</span>
+        <span class="btn btn-placeholder">Fill</span>
+        <span class="btn btn-placeholder">Hold</span>
       {% endif %}
       {% if entry.status == 'FILLED' or entry.stage == 'STABILIZED' %}
         <a href="{% url 'portfolio_dashboard' %}" class="btn btn-primary">View in Portfolio &rarr;</a>
