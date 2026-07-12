@@ -60,12 +60,13 @@ def _read_version() -> str:
 
 
 def _read_build_date() -> str:
-    """Read build date from baked-in file (Docker) or return empty string.
+    """Read build date from baked-in file (Docker) or derive from git (dev).
 
     Priority:
     1. ``/app/.meta/build-date`` — written during Docker build
-    2. ``BUILD_DATE`` env var
-    3. ``""`` — fallback (local dev)
+    2. ``BUILD_DATE`` env var — injected during Docker build
+    3. Git HEAD commit timestamp — local development
+    4. ``""`` — fallback
     """
     try:
         text = Path("/app/.meta/build-date").read_text().strip()
@@ -77,6 +78,18 @@ def _read_build_date() -> str:
     env_date = getenv("BUILD_DATE")
     if env_date:
         return env_date
+
+    # 3. Git HEAD file timestamp (local dev)
+    git_dir = _find_git_dir()
+    if git_dir is not None:
+        head_file = git_dir / "HEAD"
+        if head_file.exists():
+            from datetime import datetime, timezone
+
+            mtime = head_file.stat().st_mtime
+            return datetime.fromtimestamp(mtime, tz=timezone.utc).strftime(
+                "%y.%m.%d.%H"
+            )
 
     return ""
 
