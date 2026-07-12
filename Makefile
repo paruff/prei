@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev
+.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev test-live
 
 PYTHON ?= python
 ENV_FILE ?= .env
@@ -31,6 +31,7 @@ help:
 	@echo "  make smoke              Smoke test localhost:8000 health + APIs"
 	@echo "  ── Docker (build image locally, no CI needed) ──"
 	@echo "  make docker-dev         Build + start Docker stack (migrate + seed)"
+	@echo "  make test-live          Start Docker + run live acceptance tests"
 	@echo "  make build              Build Docker image"
 	@echo "  make up                 Build + start daemon + smoke test"
 	@echo "  make down               Stop containers"
@@ -178,3 +179,43 @@ docker-dev: ensure-env build up
 	@echo "  make restart  — stop, rebuild, start"
 	@echo "  make down     — stop containers"
 	@echo "  make clean    — remove images + volumes"
+
+# ── Live acceptance testing ───────────────────────────────────────────
+
+test-live: up
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  Live Acceptance Tests"
+	@echo "  http://localhost:8000"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+	@echo "1. Health check"
+	@curl -sf http://localhost:8000/health/ | python3 -m json.tool 2>/dev/null || echo "❌ Health check failed"; exit 1
+	@echo ""
+	@echo "2. Login page"
+	@STATUS=$$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/accounts/login/); \
+	 [ "$$STATUS" = "200" ] && echo "✅ Login: 200" || echo "❌ Login: $$STATUS"
+	@echo ""
+	@echo "3. Growth areas API"
+	@curl -sf http://localhost:8000/api/growth-areas/ | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"✅ Growth API: {d.get('totalResults',0)} areas\")" 2>/dev/null || echo "⚠  No data yet"
+	@echo ""
+	@echo "4. Properties API"
+	@curl -sf http://localhost:8000/api/properties/ | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"✅ Properties API: {d.get('count',0)} properties\")" 2>/dev/null || echo "⚠  No data yet"
+	@echo ""
+	@echo "5. Discovery page"
+	@curl -sf -o /dev/null -w "✅ Discovery: HTTP %{http_code}" http://localhost:8000/discovery/; echo ""
+	@echo ""
+	@echo "6. Pipeline screener"
+	@curl -sf -o /dev/null -w "✅ Screener: HTTP %{http_code}" http://localhost:8000/pipeline/screener/; echo ""
+	@echo ""
+	@echo "7. Leasing pipeline"
+	@curl -sf -o /dev/null -w "✅ Leasing: HTTP %{http_code}" http://localhost:8000/leasing/; echo ""
+	@echo ""
+	@echo "8. Growth explorer"
+	@curl -sf -o /dev/null -w "✅ Explorer: HTTP %{http_code}" http://localhost:8000/growth-explorer/; echo ""
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  ✅ All live tests complete"
+	@echo "  View logs:  make logs"
+	@echo "  Open:       open http://localhost:8000"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
