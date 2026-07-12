@@ -456,6 +456,7 @@ class TestSoftGacsScore:
         # Set composite_score below the minimum.  We use a direct update
         # because the model's save() method recomputes the score.
         from core.models import GrowthArea
+
         GrowthArea.objects.filter(pk=growth_area.pk).update(
             composite_score=Decimal("50.00")
         )
@@ -839,6 +840,7 @@ class TestIntegration:
         configured_criteria.allowed_states = ["TX"]
         configured_criteria.save()
         from core.models import GrowthArea
+
         GrowthArea.objects.filter(pk=growth_area.pk).update(
             composite_score=Decimal("50.00")
         )
