@@ -401,7 +401,7 @@ section without pre-building Phase 3.
 
 ## 8. Navigation Structure
 
-### Confirmed top-level nav (paruff 2026-07-07):
+### Confirmed top-level nav (paruff 2026-07-07, revised 2026-07-12):
 
 ```
 Growth Areas | Purchase Pipeline | Portfolio | Leasing Pipeline
@@ -414,11 +414,12 @@ Growth Areas | Purchase Pipeline | Portfolio | Leasing Pipeline
 - Target Markets (/growth/) [ranked list]
 
 **Purchase Pipeline**
-- My Pipeline (/pipeline/) [kanban/list of all PipelineProperty]
-- Add Property (/pipeline/add/)
-- Screening Criteria (/pipeline/screening/settings/)
-- VRM Foreclosures (/vrm/) [existing — discovery source]
-- All Foreclosures (/foreclosures/) [existing ForeclosureProperty]
+- 🔍 Discover   (/discovery/) — market picker → source checkboxes → screener
+- ✅ Screen     (/pipeline/screener/) — screening pass/fail results
+- 📊 Underwrite (/pipeline/review/) — properties ready for decision
+- 📋 Kanban     (/pipeline/kanban/) — drag-and-drop pipeline board
+- 📋 Pipeline   (/pipeline/list/) — list view (all stages)
+- ⚙️ Criteria   (/pipeline/screening/settings/) — sliders + thresholds
 
 **Portfolio**
 - Dashboard (/portfolio/) [existing]
@@ -427,6 +428,7 @@ Growth Areas | Purchase Pipeline | Portfolio | Leasing Pipeline
 
 **Leasing Pipeline**
 - Active Listings (/leasing/)
+- Leasing Kanban (/leasing/kanban/) — drag-and-drop leasing board
 - Add Listing (/leasing/add/)
 
 ### Previous nav (to be replaced):
@@ -462,10 +464,77 @@ No business logic in models, views, or management commands.
 - AC10: Nav reflects the four top-level sections with correct submenus
 - AC11: All new models use Decimal for currency (never float)
 - AC12: All migrations reviewed and approved by paruff before running
+- AC-PK1: Pipeline Kanban loads with all 7 stage columns, drag-and-drop functional
+- AC-PK2: Discovery modal opens from Kanban's "+ Discover" button, shows growth area picker
+- AC-PK3: Sliders render and show live value updates on drag
+- AC-PK4: Screening criteria save updates and re-screens properties
+- AC-LK1: Leasing Kanban board renders with leasing stage columns
+- AC-LK2: Leasing Pipeline cards show asking rent, days-on-market badge
 
 ---
 
-## 11. What Is Explicitly NOT In This Spec
+## 12. Kanban CRM Board (2026-07-12)
+
+### 12.1 Purpose
+
+A visual drag-and-drop board replacing the list view as the primary
+pipeline interaction surface. PipelineProperty cards move through
+acquisition stages as columns.
+
+### 12.2 Columns
+
+```
+DISCOVERED → SCREENING → UNDERWRITING → OFFER → DUE_DILIGENCE → CLOSING
+```
+
+The DISCOVERED column has a "+ Discover" button that opens a modal
+to source new properties from a growth area.
+
+### 12.3 Card Display
+
+Each card shows: address (truncated, links to detail), source badge,
+price, screening pass/fail chip.
+
+### 12.4 Drag-and-Drop
+
+HTML5 drag-and-drop. Dropping on a later column calls the
+`pipeline_kanban` POST endpoint. Only forward advancement allowed.
+API failure reverts card to original column.
+
+---
+
+## 13. Screening Sliders (2026-07-12)
+
+Range sliders replace number inputs for visual threshold adjustment:
+
+| Slider | Range | Default |
+|---|---|---|
+| Min price | $0–$2,000,000 | $0 |
+| Max price | $0–$2,000,000 | $0 |
+| Min gross yield | 0–20% | 7% |
+| Max PTR | 0–50 | 15 |
+| Min bedrooms | 1–10 | 1 |
+| Min GACS | 0–100 | 0 |
+
+Each slider shows current value in a label that updates live on drag.
+
+---
+
+## 14. Leasing Pipeline Kanban
+
+### 14.1 Purpose
+
+Same drag-and-drop applied to leasing: LISTING → SHOWING →
+APPLICATION → SCREENING → APPROVED → LEASE_SIGNED → MOVE_IN → STABILIZED
+
+### 14.2 Card Display
+
+Each card shows property address, asking rent, days-on-market badge,
+applicant info (at APPLICATION+ stages).
+
+---
+
+## 11 (revised). What Is Explicitly NOT In This Spec
 
 - Automated property discovery or scraping
 - MLS / IDX integration

@@ -1,158 +1,140 @@
 {% extends "base.html" %}
+{% load static humanize %}
 
-{% block title %}Screening Settings — prei{% endblock %}
+{% block title %}Screening Criteria — PREI{% endblock %}
+{% load static %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pipeline.css' %}">
+{% endblock %}
 
 {% block content %}
-<div class="pipeline-page">
-
-  <div class="pipeline-detail-header">
-    <div>
-      <a href="{% url 'pipeline_list' %}" class="back-link">&larr; Back to Pipeline</a>
-      <h1>Screening Criteria</h1>
-    </div>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Screening Criteria</h1>
+    <p class="page-sub">Drag sliders to set thresholds. Properties outside these bounds are filtered or scored lower.</p>
   </div>
-
-  {# Top note #}
-  <div class="form-note">
-    These criteria are applied automatically when you add a property to your pipeline.
-  </div>
-
-  <form method="post">
-    {% csrf_token %}
-
-    <div class="pipeline-detail-body">
-
-      {# Price range #}
-      <div class="pipeline-detail-section">
-        <h2>Price Range</h2>
-        <p class="help-text">Filter by purchase price range.</p>
-        <div class="form-row">
-          <div class="form-field-group">
-            <label class="field-label">Min Price ($)</label>
-            <input type="number" name="min_price" step="0.01" min="0"
-                   value="{{ criteria.min_price|default:'' }}" class="field-input input-lg">
-          </div>
-          <div class="form-field-group">
-            <label class="field-label">Max Price ($)</label>
-            <input type="number" name="max_price" step="0.01" min="0"
-                   value="{{ criteria.max_price|default:'' }}" class="field-input input-lg">
-          </div>
-        </div>
-      </div>
-
-      {# Yield and ratio #}
-      <div class="pipeline-detail-section">
-        <h2>Yield &amp; Ratio</h2>
-        <div class="form-note-inline">
-          Yield screening requires a rent estimate. Properties without rent estimates will have yield criteria skipped. Currently, only VRM properties have rent estimates.
-        </div>
-        <div class="form-row">
-          <div class="form-field-group">
-            <label class="field-label">Min Gross Yield (%)</label>
-            <input type="number" name="min_gross_yield_pct" step="0.01" min="0"
-                   value="{{ criteria.min_gross_yield_pct|default:'' }}" class="field-input input-md">
-            <span class="help-text">Annual rent / price. Only VRM properties with rent.</span>
-          </div>
-          <div class="form-field-group">
-            <label class="field-label">Max P/R Ratio</label>
-            <input type="number" name="max_price_to_rent_ratio" step="0.1" min="0"
-                   value="{{ criteria.max_price_to_rent_ratio|default:'' }}" class="field-input input-md">
-            <span class="help-text">Lower = better cashflow. Only VRM properties.</span>
-          </div>
-        </div>
-      </div>
-
-      {# Beds, sqft, year built #}
-      <div class="pipeline-detail-section">
-        <h2>Size &amp; Age</h2>
-        <div class="form-row">
-          <div class="form-field-group">
-            <label class="field-label">Min Beds</label>
-            <input type="number" name="min_beds" min="0"
-                   value="{{ criteria.min_beds }}" class="field-input input-xs">
-          </div>
-          <div class="form-field-group">
-            <label class="field-label">Max Beds</label>
-            <input type="number" name="max_beds" min="0"
-                   value="{{ criteria.max_beds|default:'' }}" class="field-input input-xs">
-          </div>
-          <div class="form-field-group">
-            <label class="field-label">Min Sq Ft</label>
-            <input type="number" name="min_sqft" min="0"
-                   value="{{ criteria.min_sqft|default:'' }}" class="field-input input-sm">
-          </div>
-          <div class="form-field-group">
-            <label class="field-label">Max Year Built</label>
-            <input type="number" name="max_year_built" min="1900" max="2030"
-                   value="{{ criteria.max_year_built|default:'' }}" class="field-input input-sm">
-            <span class="help-text">Exclude older properties.</span>
-          </div>
-        </div>
-      </div>
-
-      {# Property types #}
-      <div class="pipeline-detail-section">
-        <h2>Property Types</h2>
-        <p class="help-text">Allowed property types (leave all unchecked to allow all).</p>
-        <div class="form-checkbox-grid">
-          {% for pt in property_type_choices %}
-          <label class="checkbox-label">
-            <input type="checkbox" name="allowed_property_types" value="{{ pt }}"
-                   {% if pt in criteria.allowed_property_types or not criteria.allowed_property_types %}checked{% endif %}>
-            {{ pt|title }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      {# States #}
-      <div class="pipeline-detail-section full-width">
-        <h2>Allowed States</h2>
-        <p class="help-text">Leave all unchecked to allow all states.</p>
-        <div class="form-checkbox-grid-wide">
-          {% for code, name in US_STATES %}
-          <label class="checkbox-label checkbox-min">
-            <input type="checkbox" name="allowed_states" value="{{ code }}"
-                   {% if code in criteria.allowed_states or not criteria.allowed_states %}checked{% endif %}>
-            {{ code }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      {# Foreclosure statuses #}
-      <div class="pipeline-detail-section">
-        <h2>Foreclosure Statuses</h2>
-        <p class="help-text">Allowed foreclosure statuses (leave unchecked for all).</p>
-        <div class="form-checkbox-grid">
-          {% for fs in foreclosure_status_choices %}
-          <label class="checkbox-label">
-            <input type="checkbox" name="allowed_foreclosure_statuses" value="{{ fs }}"
-                   {% if fs in criteria.allowed_foreclosure_statuses or not criteria.allowed_foreclosure_statuses %}checked{% endif %}>
-            {{ fs|title }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      {# GACS score #}
-      <div class="pipeline-detail-section">
-        <h2>Market Score</h2>
-        <div class="form-field-group">
-          <label class="field-label">Min GACS Score</label>
-          <input type="number" name="min_gacs_score" step="0.01" min="0"
-                 value="{{ criteria.min_gacs_score|default:'' }}" class="field-input input-md">
-          <span class="help-text">Only applied if GACS scores have been computed.</span>
-        </div>
-      </div>
-
-    </div>{# end grid #}
-
-    {# Save button #}
-    <div class="form-submit-row">
-      <button type="submit" class="btn btn-primary">Save Screening Criteria</button>
-    </div>
-
-  </form>
 </div>
+
+<form method="post" id="screening-form">
+  {% csrf_token %}
+
+  {# ── Price Slider ──────────────────────────────────────────────── #}
+  <div class="card">
+    <h2 class="card-title">Price Range</h2>
+    <div class="form-row">
+      <div class="form-field-group">
+        <label class="field-label">
+          Min Price: <strong id="min-price-label">${{ criteria.min_price|default:0|floatformat:0|intcomma }}</strong>
+        </label>
+        <input type="range" name="min_price_slider" min="0" max="2000000" step="10000"
+               value="{{ criteria.min_price|default:0 }}" class="slider-input"
+               oninput="updateLabel('min_price','min-price-label','$','intcomma')">
+        <input type="hidden" name="min_price" value="{{ criteria.min_price|default:'' }}">
+      </div>
+      <div class="form-field-group">
+        <label class="field-label">
+          Max Price: <strong id="max-price-label">${{ criteria.max_price|default:2000000|floatformat:0|intcomma }}</strong>
+        </label>
+        <input type="range" name="max_price_slider" min="0" max="2000000" step="10000"
+               value="{{ criteria.max_price|default:2000000 }}" class="slider-input"
+               oninput="updateLabel('max_price','max-price-label','$','intcomma')">
+        <input type="hidden" name="max_price" value="{{ criteria.max_price|default:'' }}">
+      </div>
+    </div>
+  </div>
+
+  {# ── Yield & Ratio Sliders ─────────────────────────────────────── #}
+  <div class="card">
+    <h2 class="card-title">Yield &amp; Price-to-Rent</h2>
+    <div class="form-note-inline">
+      Only VRM properties have rent estimates. Other sources skip these checks.
+    </div>
+    <div class="form-row">
+      <div class="form-field-group">
+        <label class="field-label">
+          Min Gross Yield: <strong id="yield-label">{{ criteria.min_gross_yield_pct|default:7 }}%</strong>
+        </label>
+        <input type="range" name="min_gross_yield_slider" min="0" max="20" step="0.5"
+               value="{{ criteria.min_gross_yield_pct|default:7 }}" class="slider-input"
+               oninput="updateLabel('min_gross_yield','yield-label','','%')">
+        <input type="hidden" name="min_gross_yield_pct" value="{{ criteria.min_gross_yield_pct|default:7 }}">
+      </div>
+      <div class="form-field-group">
+        <label class="field-label">
+          Max Price/Rent Ratio: <strong id="ptr-label">{{ criteria.max_price_to_rent_ratio|default:15 }}</strong>
+        </label>
+        <input type="range" name="max_ptr_slider" min="1" max="50" step="1"
+               value="{{ criteria.max_price_to_rent_ratio|default:15 }}" class="slider-input"
+               oninput="updateLabel('max_price_to_rent_ratio','ptr-label','','')">
+        <input type="hidden" name="max_price_to_rent_ratio" value="{{ criteria.max_price_to_rent_ratio|default:15 }}">
+      </div>
+    </div>
+  </div>
+
+  {# ── Beds & GACS Sliders ───────────────────────────────────────── #}
+  <div class="card">
+    <h2 class="card-title">Size &amp; Market Score</h2>
+    <div class="form-row">
+      <div class="form-field-group">
+        <label class="field-label">
+          Min Bedrooms: <strong id="beds-label">{{ criteria.min_beds|default:1 }}</strong>
+        </label>
+        <input type="range" name="min_beds_slider" min="1" max="10" step="1"
+               value="{{ criteria.min_beds|default:1 }}" class="slider-input"
+               oninput="updateLabel('min_beds','beds-label','','')">
+        <input type="hidden" name="min_beds" value="{{ criteria.min_beds|default:1 }}">
+      </div>
+      <div class="form-field-group">
+        <label class="field-label">
+          Min GACS Score: <strong id="gacs-label">{{ criteria.min_gacs_score|default:0 }}</strong>
+        </label>
+        <input type="range" name="min_gacs_slider" min="0" max="100" step="1"
+               value="{{ criteria.min_gacs_score|default:0 }}" class="slider-input"
+               oninput="updateLabel('min_gacs_score','gacs-label','','')">
+        <input type="hidden" name="min_gacs_score" value="{{ criteria.min_gacs_score|default:'' }}">
+      </div>
+    </div>
+  </div>
+
+  {# ── Property Types ────────────────────────────────────────────── #}
+  <div class="card">
+    <h2 class="card-title">Property Types</h2>
+    <div class="form-checkbox-grid">
+      {% for pt in property_type_choices %}
+      <label class="checkbox-label">
+        <input type="checkbox" name="allowed_property_types" value="{{ pt }}"
+               {% if pt in criteria.allowed_property_types or not criteria.allowed_property_types %}checked{% endif %}>
+        {{ pt|title }}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── Save ──────────────────────────────────────────────────────── #}
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save &amp; Re-Screen</button>
+    <a href="{% url 'pipeline_list' %}" class="btn">Cancel</a>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function updateLabel(fieldName, labelId, prefix, suffix) {
+    var slider = document.querySelector('[name="' + fieldName + '_slider"]');
+    var hidden = document.querySelector('[name="' + fieldName + '"]');
+    var label = document.getElementById(labelId);
+    if (!slider || !hidden || !label) return;
+    var val = slider.value;
+    hidden.value = val || '';
+    var display = val;
+    if (prefix === '$' && suffix === 'intcomma') {
+      display = '$' + Number(val).toLocaleString();
+    } else {
+      display = prefix + val + suffix;
+    }
+    label.textContent = display;
+  }
+</script>
 {% endblock %}
