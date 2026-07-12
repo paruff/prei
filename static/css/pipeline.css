@@ -814,3 +814,15 @@
   padding: var(--sp-2) 0;
   cursor: pointer;
 }
+
+.kanban-hidden {
+  display: none;
+}
+
+.kanban-form-actions {
+  margin-top: var(--sp-4);
+}
+
+.kanban-status {
+  margin-top: var(--sp-3);
+}

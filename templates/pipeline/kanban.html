@@ -61,7 +61,7 @@
 </div>
 
 {# ── Discovery Modal ──────────────────────────────────────────────── #}
-<div class="kanban-modal-overlay" id="discovery-modal" style="display:none">
+<div class="kanban-modal-overlay kanban-hidden" id="discovery-modal">
   <div class="kanban-modal">
     <div class="kanban-modal-header">
       <h2>Discover Properties</h2>
@@ -78,7 +78,7 @@
         </button>
         {% endfor %}
       </div>
-      <div id="discovery-sources" style="display:none">
+      <div id="discovery-sources" class="kanban-hidden">
         <p class="page-sub">
           Select sources for <strong id="discovery-market-name"></strong>
         </p>
@@ -98,14 +98,14 @@
         <label class="kanban-source-option">
           <input type="checkbox" name="sources" value="county"> County Notices
         </label>
-        <div class="form-actions" style="margin-top:var(--sp-4)">
+        <div class="form-actions kanban-form-actions">
           <button class="btn btn-primary" id="discovery-run-btn" onclick="runDiscovery()"
                   data-url="{% url 'property_discovery' %}">
             Discover Properties
           </button>
           <button class="btn" onclick="closeDiscoveryModal()">Cancel</button>
         </div>
-        <div id="discovery-status" class="message message-info" style="display:none;margin-top:var(--sp-3)"></div>
+        <div id="discovery-status" class="message message-info kanban-hidden kanban-status"></div>
       </div>
     </div>
   </div>
@@ -199,21 +199,21 @@
 var selectedMarketId = null;
 
 function openDiscoveryModal() {
-  document.getElementById('discovery-modal').style.display = 'flex';
-  document.getElementById('discovery-market-list').style.display = 'block';
-  document.getElementById('discovery-sources').style.display = 'none';
+  document.getElementById('discovery-modal').classList.remove('kanban-hidden');
+  document.getElementById('discovery-market-list').classList.remove('kanban-hidden');
+  document.getElementById('discovery-sources').classList.add('kanban-hidden');
   selectedMarketId = null;
 }
 
 function closeDiscoveryModal() {
-  document.getElementById('discovery-modal').style.display = 'none';
+  document.getElementById('discovery-modal').classList.add('kanban-hidden');
 }
 
 function selectMarket(id, name) {
   selectedMarketId = id;
   document.getElementById('discovery-market-name').textContent = name;
-  document.getElementById('discovery-market-list').style.display = 'none';
-  document.getElementById('discovery-sources').style.display = 'block';
+  document.getElementById('discovery-market-list').classList.add('kanban-hidden');
+  document.getElementById('discovery-sources').classList.remove('kanban-hidden');
 }
 
 function runDiscovery() {
@@ -222,7 +222,7 @@ function runDiscovery() {
   var status = document.getElementById('discovery-status');
   btn.disabled = true;
   btn.textContent = 'Discovering...';
-  status.style.display = 'block';
+  status.classList.remove('kanban-hidden');
   status.textContent = 'Running discovery...';
 
   var sources = [];
