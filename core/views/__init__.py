@@ -3387,6 +3387,36 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         messages.warning(request, "Please select at least one source.")
         return redirect(f"{request.path}?growth_area_id={growth_area.pk}")
 
+    # Trigger VRM scrape for this state if VRM is checked and data is needed.
+    # Scrapes run synchronously (30-120s) — the template shows a loading spinner.
+    if "vrm" in selected_sources:
+        vrm_count = VrmProperty.objects.filter(state=state).count()
+        if vrm_count == 0:
+            try:
+                from core.integrations.sources.vrm_scraper import VrmScraper
+
+                scraper = VrmScraper()
+                listings = scraper.collect_state_listings(state)
+                now = timezone.now()
+                for listing in listings:
+                    listing["scraped_at"] = now
+                    listing["last_seen_at"] = now
+                    VrmProperty.objects.update_or_create(
+                        vrm_property_id=listing["vrm_property_id"],
+                        defaults=listing,
+                    )
+                if listings:
+                    messages.info(
+                        request,
+                        f"Scraped {len(listings)} VRM listings for {state}.",
+                    )
+            except Exception as exc:
+                logger.error("Discovery VRM scrape for %s failed: %s", state, exc)
+                messages.warning(
+                    request,
+                    f"VRM scrape for {state} failed. Check the VRM Properties page to scrape manually.",
+                )
+
     # Get or create user screening criteria for auto-screening
     try:
         criteria = ScreeningCriteria.objects.get(user=request.user)

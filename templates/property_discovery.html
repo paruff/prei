@@ -165,4 +165,21 @@
 
 {% endif %}{# growth_area selected #}
 
+{# Loading overlay shown during discovery POST #}
+<div id="discovery-loading" class="kanban-modal-overlay kanban-hidden">
+  <div class="kanban-modal">
+    <h2 style="text-align:center">Discovering Properties...</h2>
+    <p class="page-sub" style="text-align:center" id="discovery-status-msg">
+      Scraping data sources and creating pipeline entries.
+      This may take a minute for large states.
+    </p>
+  </div>
+</div>
+
+<script>
+  document.querySelector('form[method="post"]')?.addEventListener('submit', function() {
+    document.getElementById('discovery-loading').classList.remove('kanban-hidden');
+  });
+</script>
+
 {% endblock %}
