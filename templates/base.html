@@ -33,36 +33,25 @@
       </button>
       <div class="nav-dropdown-menu" id="pipeline-menu" role="menu">
         <a href="{% url 'property_discovery' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'property_discovery' %}active{% endif %}" role="menuitem">
-          Discover
-          <span class="sub-label">Find properties from public sources</span>
+          🔍 Discover
+          <span class="sub-label">Pick a growth area, check sources, find properties</span>
         </a>
         <a href="{% url 'pipeline_screener' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_screener' %}active{% endif %}" role="menuitem">
-          Screener
-          <span class="sub-label">View screening results by market</span>
-        </a>
-        <a href="{% url 'vrm_properties_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'vrm_properties_list' %}active{% endif %}" role="menuitem">
-          Foreclosures
-          <span class="sub-label">Browse VRM properties</span>
-        </a>
-        <a href="{% url 'pipeline_screening_settings' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_screening_settings' %}active{% endif %}" role="menuitem">
-          Screen
-          <span class="sub-label">Configure screening criteria</span>
-        </a>
-        <a href="{% url 'brrrr_calculator' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'brrrr_calculator' %}active{% endif %}" role="menuitem">
-          Underwriting
-          <span class="sub-label">Analyze returns and risk</span>
+          ✅ Screen
+          <span class="sub-label">Review screening pass/fail results</span>
         </a>
         <a href="{% url 'pipeline_review_queue' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_review_queue' %}active{% endif %}" role="menuitem">
-          Review queue
+          📊 Underwrite
           <span class="sub-label">Properties ready for your decision</span>
         </a>
         <a href="{% url 'pipeline_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_list' %}active{% endif %}" role="menuitem">
-          My Pipeline
-          <span class="sub-label">Track all pipeline properties</span>
+          📋 Pipeline
+          <span class="sub-label">Offers, due diligence, closing — all stages</span>
         </a>
-        <a href="{% url 'leasing_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'leasing_list' %}active{% endif %}" role="menuitem">
-          Rehab &amp; Lease
-          <span class="sub-label">Renovation and leasing pipeline</span>
+        <hr class="nav-divider">
+        <a href="{% url 'pipeline_screening_settings' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_screening_settings' %}active{% endif %}" role="menuitem">
+          ⚙️ Screening Criteria
+          <span class="sub-label">Configure your screening thresholds</span>
         </a>
       </div>
     </div>
