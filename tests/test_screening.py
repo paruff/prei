@@ -453,9 +453,13 @@ class TestSoftGacsScore:
         """GACS score below minimum deducts points."""
         configured_criteria.min_gacs_score = Decimal("70")
         configured_criteria.save()
-        # Update growth_area with a score we control
-        growth_area.composite_score = Decimal("50.00")
-        growth_area.save()
+        # Set composite_score below the minimum.  We use a direct update
+        # because the model's save() method recomputes the score.
+        from core.models import GrowthArea
+        GrowthArea.objects.filter(pk=growth_area.pk).update(
+            composite_score=Decimal("50.00")
+        )
+        growth_area.refresh_from_db()
 
         # Need state=TX in allowed for pipeline with TX source
         configured_criteria.allowed_states = ["TX"]
@@ -731,8 +735,8 @@ class TestIntegration:
         configured_criteria.max_price_to_rent_ratio = Decimal("200")
         configured_criteria.min_gacs_score = Decimal("10")
         configured_criteria.save()
-        # growth_area composite_score will be computed on save as ~7.76
-        # With supply_constraint_index normalized (divided by 100): ~1.82
+        # growth_area composite_score will be computed on save as ~1.82 raw
+        # With ×100 scaling: ~181.50
 
         from core.models import PipelineProperty
 
@@ -751,10 +755,10 @@ class TestIntegration:
 
         result = screen_property(pp, configured_criteria, vrm_property)
         assert result.passed
-        # GACS v2: score ~1.82 vs min 10 → deducts 16.36 from 100 = 83.64
-        assert result.score == Decimal("83.64"), f"Expected 83.64, got {result.score}"
+        # GACS v2: composite_score × 100 ≈ 181.50 >= min 10 → no deduction
+        assert result.score == Decimal("100.00"), f"Expected 100.00, got {result.score}"
         assert len(result.hard_failures) == 0
-        assert len(result.soft_failures) == 1  # GACS below minimum
+        assert len(result.soft_failures) == 0  # GACS above minimum — all green
         assert len(result.passes) >= 4
 
     def test_foreclosure_property_skips_yield(
@@ -834,8 +838,11 @@ class TestIntegration:
         configured_criteria.max_price_to_rent_ratio = Decimal("100.00")
         configured_criteria.allowed_states = ["TX"]
         configured_criteria.save()
-        growth_area.composite_score = Decimal("50.00")
-        growth_area.save()
+        from core.models import GrowthArea
+        GrowthArea.objects.filter(pk=growth_area.pk).update(
+            composite_score=Decimal("50.00")
+        )
+        growth_area.refresh_from_db()
 
         from core.models import PipelineProperty
 

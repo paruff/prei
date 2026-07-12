@@ -45,9 +45,8 @@ class TestGrowthAreaModel:
             data_timestamp=timezone.now(),
         )
 
-        # (4.0 * 0.30) + (2.0 * 0.15) + (3.0 * 0.15) + (50/100 * 0.10)
-        # = 1.2 + 0.3 + 0.45 + 0.05 = 2.00
-        expected_score = Decimal("2.00")
+        # (4.0*0.30 + 2.0*0.15 + 3.0*0.15 + 0.5*0.10) × 100 = 200.00
+        expected_score = Decimal("200.00")
         assert area.composite_score == expected_score
 
     def test_composite_score_with_zero_values(self):
@@ -80,9 +79,8 @@ class TestGrowthAreaModel:
             data_timestamp=timezone.now(),
         )
 
-        # (-2.0 * 0.30) + (-1.0 * 0.15) + (-1.5 * 0.15) + (50/100 * 0.10)
-        # = -0.6 + -0.15 + -0.225 + 0.05 = -0.925
-        expected_score = Decimal("-0.925")
+        # (-2.0*0.30 + -1.0*0.15 + -1.5*0.15 + 0.5*0.10) × 100 = -92.50
+        expected_score = Decimal("-92.50")
         assert area.composite_score == expected_score
 
     def test_string_representation(self):
