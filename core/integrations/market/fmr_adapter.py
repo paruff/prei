@@ -20,6 +20,9 @@ from core.integrations.market.hud_fmr import FMRClient
 
 logger = logging.getLogger(__name__)
 
+# Cache failed states to avoid spamming warnings for every city
+_fmr_failed: set[str] = set()
+
 CURRENT_FMR_YEAR = 2026
 PRIOR_FMR_YEAR = 2025
 
@@ -46,7 +49,9 @@ def fetch_fmr_entity_id(state_code: str, city_name: str) -> str | None:
     try:
         counties = client.list_counties(state_code)
     except Exception as exc:
-        logger.warning("Failed to list counties for %s: %s", state_code, exc)
+        if state_code not in _fmr_failed:
+            logger.warning("Failed to list counties for %s: %s", state_code, exc)
+            _fmr_failed.add(state_code)
         return None
 
     expected = f"{city_name} County".lower()
