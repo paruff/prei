@@ -78,6 +78,7 @@ urlpatterns = [
     path("pipeline/", views.pipeline_dashboard, name="pipeline_dashboard"),
     path("pipeline/portfolio/", views.portfolio_dashboard, name="portfolio_dashboard"),
     path("pipeline/list/", views.pipeline_list, name="pipeline_list"),
+    path("pipeline/kanban/", views.pipeline_kanban, name="pipeline_kanban"),
     path("pipeline/review/", views.pipeline_review_queue, name="pipeline_review_queue"),
     path(
         "pipeline/review/csv/",
