@@ -54,16 +54,16 @@
         <label class="field-label">
           Min Gross Yield: <strong id="yield-label">{{ criteria.min_gross_yield_pct|default:7 }}%</strong>
         </label>
-        <input type="range" name="min_gross_yield_slider" min="0" max="20" step="0.5"
+        <input type="range" name="min_gross_yield_pct_slider" min="0" max="20" step="0.5"
                value="{{ criteria.min_gross_yield_pct|default:7 }}" class="slider-input"
-               oninput="updateLabel('min_gross_yield','yield-label','','%')">
+               oninput="updateLabel('min_gross_yield_pct','yield-label','','%')">
         <input type="hidden" name="min_gross_yield_pct" value="{{ criteria.min_gross_yield_pct|default:7 }}">
       </div>
       <div class="form-field-group">
         <label class="field-label">
           Max Price/Rent Ratio: <strong id="ptr-label">{{ criteria.max_price_to_rent_ratio|default:15 }}</strong>
         </label>
-        <input type="range" name="max_ptr_slider" min="1" max="50" step="1"
+        <input type="range" name="max_price_to_rent_ratio_slider" min="1" max="50" step="1"
                value="{{ criteria.max_price_to_rent_ratio|default:15 }}" class="slider-input"
                oninput="updateLabel('max_price_to_rent_ratio','ptr-label','','')">
         <input type="hidden" name="max_price_to_rent_ratio" value="{{ criteria.max_price_to_rent_ratio|default:15 }}">
@@ -88,7 +88,7 @@
         <label class="field-label">
           Min GACS Score: <strong id="gacs-label">{{ criteria.min_gacs_score|default:0 }}</strong>
         </label>
-        <input type="range" name="min_gacs_slider" min="0" max="100" step="1"
+        <input type="range" name="min_gacs_score_slider" min="0" max="100" step="1"
                value="{{ criteria.min_gacs_score|default:0 }}" class="slider-input"
                oninput="updateLabel('min_gacs_score','gacs-label','','')">
         <input type="hidden" name="min_gacs_score" value="{{ criteria.min_gacs_score|default:'' }}">
