@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Leasing Kanban{% endblock %}
+{% load static humanize %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pipeline.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Leasing Pipeline</h1>
+    <p class="page-sub">Drag properties between columns to advance leasing stages</p>
+  </div>
+  <div>
+    <a href="{% url 'leasing_list' %}" class="btn">List View</a>
+    <a href="{% url 'leasing_add' %}" class="btn btn-primary">+ Add Listing</a>
+  </div>
+</div>
+
+<div class="kanban-board" id="kanban-board">
+  {% for col in columns %}
+  <div class="kanban-column" data-stage="{{ col.stage }}">
+    <div class="kanban-column-header">
+      <span class="kanban-column-title">{{ col.label }}</span>
+      <span class="chip chip-default kanban-count">{{ col.count }}</span>
+    </div>
+
+    <div class="kanban-cards" id="col-{{ col.stage }}">
+      {% for lp in col.properties %}
+      <div class="kanban-card"
+           draggable="true"
+           data-id="{{ lp.pk }}"
+           data-stage="{{ lp.stage }}">
+        <div class="kanban-card-address">
+          <strong>{{ lp.property_record.address|truncatechars:35 }}</strong>
+        </div>
+        <div class="kanban-card-meta">
+          {% if lp.asking_rent %}
+          <span class="kanban-card-price">${{ lp.asking_rent|intcomma }}/mo</span>
+          {% endif %}
+        </div>
+        {% if lp.listed_date %}
+        <div class="kanban-card-meta">
+          <span class="chip chip-info">
+            {{ lp.listed_date|timesince:today|cut:" ago" }} on market
+          </span>
+        </div>
+        {% endif %}
+        {% if lp.stage >= "APPLICATION" and lp.applicant_name %}
+        <div class="kanban-card-meta">
+          <span class="chip chip-default">{{ lp.applicant_name }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="kanban-empty">&mdash;</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var cards = document.querySelectorAll('.kanban-card');
+  var columns = document.querySelectorAll('.kanban-cards');
+  var draggedCard = null;
+
+  cards.forEach(function(card) {
+    card.addEventListener('dragstart', function(e) {
+      draggedCard = card;
+      card.classList.add('kanban-card--dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', function(e) {
+      card.classList.remove('kanban-card--dragging');
+      draggedCard = null;
+    });
+  });
+
+  columns.forEach(function(col) {
+    col.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('kanban-cards--over');
+    });
+    col.addEventListener('dragleave', function() {
+      col.classList.remove('kanban-cards--over');
+    });
+    col.addEventListener('drop', function(e) {
+      e.preventDefault();
+      col.classList.remove('kanban-cards--over');
+      if (!draggedCard) return;
+
+      var newStage = col.closest('.kanban-column').dataset.stage;
+      var currentStage = draggedCard.dataset.stage;
+      if (newStage === currentStage) return;
+
+      col.appendChild(draggedCard);
+      draggedCard.dataset.stage = newStage;
+      updateCounts();
+
+      var formData = new FormData();
+      formData.append('property_id', draggedCard.dataset.id);
+      formData.append('new_stage', newStage);
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+      fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+        body: formData
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.status !== 'ok') {
+            var oldCol = document.getElementById('col-' + currentStage);
+            if (oldCol) oldCol.appendChild(draggedCard);
+            draggedCard.dataset.stage = currentStage;
+            updateCounts();
+          }
+        })
+        .catch(function() {
+          var oldCol = document.getElementById('col-' + currentStage);
+          if (oldCol) oldCol.appendChild(draggedCard);
+          draggedCard.dataset.stage = currentStage;
+          updateCounts();
+        });
+    });
+  });
+
+  function updateCounts() {
+    document.querySelectorAll('.kanban-column').forEach(function(col) {
+      var stage = col.dataset.stage;
+      var count = document.querySelectorAll('#col-' + stage + ' .kanban-card').length;
+      var chip = col.querySelector('.kanban-count');
+      if (chip) chip.textContent = count;
+    });
+  }
+})();
+</script>
+{% endblock %}

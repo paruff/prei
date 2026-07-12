@@ -127,6 +127,7 @@ urlpatterns = [
         name="pipeline_closing_create",
     ),
     path("leasing/", views.leasing_list, name="leasing_list"),
+    path("leasing/kanban/", views.leasing_kanban, name="leasing_kanban"),
     path("leasing/add/", views.leasing_add, name="leasing_add"),
     path("leasing/<int:pk>/", views.leasing_detail, name="leasing_detail"),
     path(

@@ -2241,6 +2241,79 @@ def leasing_list(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def leasing_kanban(request: HttpRequest) -> HttpResponse:
+    """Kanban board for the leasing pipeline — drag-and-drop stage advancement.
+
+    Columns: LISTING → SHOWING → APPLICATION → SCREENING → APPROVED →
+             LEASE_SIGNED → MOVE_IN → STABILIZED
+    """
+    from core.models import LeasingPipelineProperty
+    from datetime import date
+
+    qs = LeasingPipelineProperty.objects.filter(
+        user=request.user, status=LeasingPipelineProperty.Status.ACTIVE
+    ).select_related("property_record")
+
+    LEASING_STAGES = [
+        "LISTING",
+        "SHOWING",
+        "APPLICATION",
+        "SCREENING",
+        "APPROVED",
+        "LEASE_SIGNED",
+        "MOVE_IN",
+        "STABILIZED",
+    ]
+
+    if request.method == "POST":
+        pp_id = request.POST.get("property_id")
+        new_stage = request.POST.get("new_stage")
+        if not pp_id or not new_stage:
+            return JsonResponse(
+                {"error": "Missing property_id or new_stage"}, status=400
+            )
+        try:
+            lp = LeasingPipelineProperty.objects.get(pk=pp_id, user=request.user)
+        except LeasingPipelineProperty.DoesNotExist:
+            return JsonResponse({"error": "Property not found"}, status=404)
+        try:
+            new_idx = LEASING_STAGES.index(new_stage)
+            current_idx = LEASING_STAGES.index(lp.stage)
+        except ValueError:
+            return JsonResponse({"error": f"Unknown stage: {new_stage}"}, status=400)
+        if new_idx <= current_idx:
+            return JsonResponse(
+                {"error": "Properties can only advance forward"}, status=400
+            )
+        lp.stage = new_stage
+        lp.save(update_fields=["stage", "updated_at"])
+        return JsonResponse({"status": "ok", "stage": lp.stage})
+
+    # GET: Build stage columns
+    today = date.today()
+    columns: list[dict] = []
+    for stage in LEASING_STAGES:
+        props = [p for p in qs if p.stage == stage]
+        columns.append(
+            {
+                "stage": stage,
+                "label": LeasingPipelineProperty.Stage(stage).label,
+                "properties": props,
+                "count": len(props),
+            }
+        )
+
+    return render(
+        request,
+        "leasing/leasing_kanban.html",
+        {
+            "columns": columns,
+            "today": today,
+        },
+    )
+
+
+@login_required
 def leasing_add(request: HttpRequest) -> HttpResponse:
     """Add a new leasing pipeline entry."""
     from core.models import LeasingPipelineProperty, Property
