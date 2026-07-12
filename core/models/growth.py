@@ -294,7 +294,11 @@ class GrowthArea(models.Model):
         return self._compute_composite_score()
 
     def _compute_composite_score(self) -> Decimal | None:
-        """Calculate composite growth score based on weighted metrics.
+        """Calculate composite growth score (GACS index, 0-100).
+
+        All growth rates are stored as decimal fractions (0.04 = 4%).
+        The raw weighted sum is multiplied by 100 to produce a human-readable
+        index where 0 = no growth, 100 = exceptional across all factors.
 
         Returns None if none of the weighted factors are available (all are None/zero).
         Missing factors are treated as 0 so a partial score is still computable.
@@ -325,9 +329,7 @@ class GrowthArea(models.Model):
             (self.school_score / Decimal("10")) if self.school_score else Decimal("0")
         )
         migration_rate = (
-            (self.net_migration_rate / Decimal("100"))
-            if self.net_migration_rate
-            else Decimal("0")
+            self.net_migration_rate if self.net_migration_rate else Decimal("0")
         )
 
         score = (
@@ -339,7 +341,9 @@ class GrowthArea(models.Model):
             + supply_idx * supply_weight
             + migration_rate * migration_weight
         )
-        return score
+        # Scale to 0-100 range for human readability.
+        # Raw weighted sum is ~0-1 (all inputs on 0-1 scale, weights sum to 1.0).
+        return (score * Decimal("100")).quantize(Decimal("0.01"))
 
     @property
     def data_confidence(self) -> int:

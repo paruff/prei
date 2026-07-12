@@ -956,12 +956,25 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
     # 4a. Upsert GrowthArea rows sequentially (SQLite does not support concurrent writes)
     results = []
     for data in place_data_list:
-        # School quality (15% of GACS) is not populated during explorer runs because
-        # _fetch_place_data does not return a ZIP code.  School scores can be set
-        # manually via the admin or via a future batch enrichment command that
-        # resolves city→ZIP→GreatSchools rating.
-        # See core/integrations/market/schools.py for the fetch_school_rating adapter.
+        # School quality (10% of GACS) — resolved via city→ZIP mapping + GreatSchools API.
+        # The mapping covers ~40 major US cities; uncapped cities get None (no penalty).
         school_score = None
+        zip_code = None
+        try:
+            from core.integrations.market.city_zip_map import lookup_city_zip
+
+            zip_code = lookup_city_zip(state, data["place_name"])
+        except Exception:
+            pass
+        if zip_code and data.get("run_school_api", False):
+            try:
+                from core.integrations.market.schools import fetch_school_rating
+                from django.conf import settings
+
+                gs_key = getattr(settings, "GREATSCHOOLS_API_KEY", "")
+                school_score = fetch_school_rating(zip_code, gs_key)
+            except Exception:
+                pass
 
         # Compute net migration from population data
         from core.models.growth import compute_net_migration
@@ -981,6 +994,24 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             if qcew_growth is not None:
                 emp_rate = qcew_growth
 
+        # Rent growth (15% of GACS) — county-level HUD FMR YoY change
+        rent_growth = None
+        fmr_year = None
+        fmr_2br = None
+        if county_fips:
+            try:
+                from core.integrations.market.fmr_adapter import fetch_fmr_data
+
+                fmr_result = fetch_fmr_data(
+                    state, county_fips, city_name=data["place_name"]
+                )
+                if fmr_result:
+                    rent_growth = fmr_result.get("rent_growth_rate")
+                    fmr_year = fmr_result.get("fmr_year")
+                    fmr_2br = fmr_result.get("fmr_2br")
+            except Exception:
+                pass
+
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
             city_name=data["place_name"],
@@ -992,6 +1023,9 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "median_income_growth": data["income_growth"],
                 "housing_demand_index": data["housing_demand"],
                 "school_score": school_score,
+                "rent_growth_rate": rent_growth,
+                "fmr_year": fmr_year,
+                "fmr_2br": fmr_2br,
                 "net_migration": net_mig,
                 "net_migration_rate": net_mig_rate,
                 "county_fips": county_fips or "",

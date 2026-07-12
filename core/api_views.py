@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict
 
@@ -12,6 +13,8 @@ from django.db import DatabaseError
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.pagination import PageNumberPagination
@@ -2309,11 +2312,13 @@ class VrmPropertyListAPI(APIView):
         )
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class VrmPropertyScrapeAPI(APIView):
     """
-    POST /api/v1/vrm-properties/scrape/ {"state": "VA"}
+    GET /api/v1/vrm-properties/scrape/?state=VA
 
-    Trigger a VRM scrape for the given state.
+    Trigger a VRM scrape for the given state. Runs in a background thread
+    so the request returns immediately — refresh to see results.
     """
 
     permission_classes = [permissions.AllowAny]
@@ -2331,44 +2336,43 @@ class VrmPropertyScrapeAPI(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            from core.integrations.sources.vrm_scraper import VrmScraper
+        # Run scrape in background thread — Gunicorn worker timeout (30s)
+        # is too short for full state scrapes (60-120s).
+        from django.db import connection
 
-            scraper = VrmScraper()
-            listings = scraper.collect_state_listings(state)
+        def _run_scrape() -> None:
+            connection.close()  # Don't share the request's DB connection
+            try:
+                from core.integrations.sources.vrm_scraper import VrmScraper
 
-            now = timezone.now()
-            created_count = 0
-            updated_count = 0
-            for listing in listings:
-                listing["scraped_at"] = now
-                listing["last_seen_at"] = now
-                _, created = VrmProperty.objects.update_or_create(
-                    vrm_property_id=listing["vrm_property_id"],
-                    defaults=listing,
-                )
-                if created:
-                    created_count += 1
-                else:
-                    updated_count += 1
+                scraper = VrmScraper()
+                listings = scraper.collect_state_listings(state)
 
-            return Response(
-                {
-                    "status": "completed",
-                    "state": state,
-                    "total_listings": len(listings),
-                    "created": created_count,
-                    "updated": updated_count,
-                }
-            )
-        except Exception as e:
-            logger.error(f"VRM scrape failed for state={state}: {e}")
-            return Response(
-                {"error": f"Scrape failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+                now = timezone.now()
+                for listing in listings:
+                    listing["scraped_at"] = now
+                    listing["last_seen_at"] = now
+                    VrmProperty.objects.update_or_create(
+                        vrm_property_id=listing["vrm_property_id"],
+                        defaults=listing,
+                    )
+            except Exception as exc:
+                logger.error("Background VRM scrape failed for %s: %s", state, exc)
+
+        t = threading.Thread(target=_run_scrape, daemon=True)
+        t.start()
+
+        return Response(
+            {
+                "status": "started",
+                "state": state,
+                "message": f"Scraping {state} in the background. "
+                "Refresh the page in a minute to see results.",
+            }
+        )
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class VrmPropertyImportAPI(APIView):
     permission_classes = [permissions.AllowAny]
     """
