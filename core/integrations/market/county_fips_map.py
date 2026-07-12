@@ -68,9 +68,72 @@ CITY_COUNTY_FIPS: dict[tuple[str, str], str] = {
     ("DC", "Washington"): "11001",
     # ── Oregon ─────────────────────────────────────────────────────
     ("OR", "Portland"): "41051",
+    # ── Alabama ────────────────────────────────────────────────────
+    ("AL", "Birmingham"): "01073",
+    ("AL", "Montgomery"): "01101",
+    ("AL", "Huntsville"): "01089",
+    ("AL", "Mobile"): "01097",
+    ("AL", "Tuscaloosa"): "01125",
+    ("AL", "Auburn"): "01081",
+    ("AL", "Hoover"): "01073",
+    ("AL", "Dothan"): "01069",
+    ("AL", "Decatur"): "01079",
+    ("AL", "Madison"): "01089",
+    # ── Arizona (more) ─────────────────────────────────────────────
+    ("AZ", "Tucson"): "04019",
+    ("AZ", "Mesa"): "04013",
+    ("AZ", "Chandler"): "04013",
+    # ── South Carolina ─────────────────────────────────────────────
+    ("SC", "Charleston"): "45019",
+    ("SC", "Columbia"): "45079",
+    ("SC", "Greenville"): "45045",
+    # ── Florida (more) ─────────────────────────────────────────────
+    ("FL", "St. Petersburg"): "12103",
+    ("FL", "Port St. Lucie"): "12111",
+    ("FL", "Cape Coral"): "12071",
+    ("FL", "Tallahassee"): "12073",
+    ("FL", "Fort Lauderdale"): "12011",
+    ("FL", "Hialeah"): "12086",
+    ("FL", "Gainesville"): "12001",
+    # ── Georgia (more) ─────────────────────────────────────────────
+    ("GA", "Augusta"): "13245",
+    ("GA", "Columbus"): "13215",
+    ("GA", "Savannah"): "13051",
+    ("GA", "Athens"): "13059",
+    # ── North Carolina (more) ──────────────────────────────────────
+    ("NC", "Greensboro"): "37081",
+    ("NC", "Durham"): "37063",
+    ("NC", "Winston-Salem"): "37067",
+    ("NC", "Fayetteville"): "37051",
+    ("NC", "Asheville"): "37021",
+    # ── Ohio (more) ────────────────────────────────────────────────
+    ("OH", "Toledo"): "39095",
+    ("OH", "Akron"): "39153",
+    ("OH", "Dayton"): "39113",
+    # ── Indiana (more) ─────────────────────────────────────────────
+    ("IN", "Fort Wayne"): "18003",
+    ("IN", "Evansville"): "18163",
+    ("IN", "South Bend"): "18141",
+    # ── Texas (more) ───────────────────────────────────────────────
+    ("TX", "El Paso"): "48141",
+    ("TX", "Arlington"): "48439",
+    ("TX", "Corpus Christi"): "48355",
+    ("TX", "Plano"): "48085",
+    ("TX", "Lubbock"): "48303",
+    ("TX", "Laredo"): "48479",
+    ("TX", "Irving"): "48113",
+    ("TX", "Frisco"): "48085",
 }
 
 
 def lookup_county_fips(state_code: str, city_name: str) -> str | None:
-    """Look up county FIPS code for a state/city pair."""
-    return CITY_COUNTY_FIPS.get((state_code.strip().upper(), city_name.strip().title()))
+    """Look up county FIPS code for a state/city pair.
+
+    Strips Census place-name suffixes (city, town, CDP, etc.) before
+    matching, since the FIPS map uses plain city names.
+    """
+    import re
+
+    city = city_name.strip()
+    city = re.sub(r"\s+(city|town|CDP|village|borough)$", "", city, flags=re.IGNORECASE)
+    return CITY_COUNTY_FIPS.get((state_code.strip().upper(), city.strip().title()))

@@ -104,10 +104,11 @@
                 <table class="data-table">
                   <thead><tr><th>Component</th><th>Value</th><th>Weight</th></tr></thead>
                   <tbody>
-                    <tr><td>Employment growth</td><td>{{ ga.employment_growth_rate|mul:100|floatformat:2 }}%</td><td>35%</td></tr>
-                    <tr><td>Population growth</td><td>{{ ga.population_growth_rate|mul:100|floatformat:2 }}%</td><td>20%</td></tr>
+                    <tr><td>Employment growth</td><td>{{ ga.employment_growth_rate|mul:100|floatformat:2 }}%</td><td>30%</td></tr>
+                    <tr><td>Population growth</td><td>{{ ga.population_growth_rate|mul:100|floatformat:2 }}%</td><td>15%</td></tr>
                     <tr><td>Income growth</td><td>{{ ga.median_income_growth|mul:100|floatformat:2 }}%</td><td>15%</td></tr>
-                    <tr><td>School quality</td><td>{{ ga.school_score|default:"—" }}</td><td>15%</td></tr>
+                    <tr><td>School quality</td><td>{{ ga.school_score|default:"—" }}</td><td>10%</td></tr>
+                    <tr><td>Rent growth (FMR)</td><td>{% if ga.rent_growth_rate %}{{ ga.rent_growth_rate|mul:100|floatformat:2 }}%{% else %}—{% endif %}</td><td>15%</td></tr>
                     <tr><td>Supply constraint</td><td>{{ ga.supply_constraint_index }}</td><td>10%</td></tr>
                     <tr><td>Net migration</td><td>{{ ga.net_migration_rate|default:"—" }}</td><td>5%</td></tr>
                   </tbody>
