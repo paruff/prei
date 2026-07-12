@@ -27,7 +27,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 QCEW_BASE = "https://data.bls.gov/cew/data/api"
-REQUEST_TIMEOUT = 15
+REQUEST_TIMEOUT = 5  # seconds — must be short to avoid Gunicorn worker timeout (30s)
 
 
 def fetch_county_employment_growth(
