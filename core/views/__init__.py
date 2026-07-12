@@ -2976,21 +2976,24 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         # No growth area selected — show the market picker.
         # Lists all available growth areas so the user can choose one
         # without going through the growth_areas list page first.
-        user_growth_areas = GrowthArea.objects.order_by(
-            "-composite_score"
-        )[:50]
-        return render(request, "property_discovery.html", {
-            "growth_area": None,
-            "source_status": [],
-            "already_discovered": 0,
-            "user_growth_areas": user_growth_areas,
-        })
+        user_growth_areas = GrowthArea.objects.order_by("-composite_score")[:50]
+        return render(
+            request,
+            "property_discovery.html",
+            {
+                "growth_area": None,
+                "source_status": [],
+                "already_discovered": 0,
+                "user_growth_areas": user_growth_areas,
+            },
+        )
 
     # --- Available sources with counts ---
     state = growth_area.state
     # Strip Census place-name suffixes (" city", " town", " CDP") for
     # matching against VRM / HUD / USDA data which uses plain city names.
     import re
+
     city = growth_area.city_name
     city = re.sub(r"\s+(city|town|CDP|village|borough)$", "", city, flags=re.IGNORECASE)
 
