@@ -3387,8 +3387,9 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         messages.warning(request, "Please select at least one source.")
         return redirect(f"{request.path}?growth_area_id={growth_area.pk}")
 
-    # Trigger VRM scrape for this state if VRM is checked and data is needed.
-    # Scrapes run synchronously (30-120s) — the template shows a loading spinner.
+    # Trigger source data collection when needed.
+    # VRM: synchronous scrape (30-120s) if no data for this state
+    # HUD/USDA: background thread ingestion (slow nationwide download)
     if "vrm" in selected_sources:
         vrm_count = VrmProperty.objects.filter(state=state).count()
         if vrm_count == 0:
@@ -3407,15 +3408,52 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                     )
                 if listings:
                     messages.info(
-                        request,
-                        f"Scraped {len(listings)} VRM listings for {state}.",
+                        request, f"Scraped {len(listings)} VRM listings for {state}."
                     )
             except Exception as exc:
                 logger.error("Discovery VRM scrape for %s failed: %s", state, exc)
                 messages.warning(
-                    request,
-                    f"VRM scrape for {state} failed. Check the VRM Properties page to scrape manually.",
+                    request, f"VRM scrape failed. Scrape manually from VRM Properties."
                 )
+
+    if "hud" in selected_sources:
+        hud_count = HudProperty.objects.count()
+        if hud_count == 0:
+            try:
+                from core.services.ingestion import ingest_hud_reo
+                import threading
+                from django.db import connection
+
+                def _run_hud():
+                    connection.close()
+                    ingest_hud_reo()
+
+                t = threading.Thread(target=_run_hud, daemon=True)
+                t.start()
+                messages.info(
+                    request,
+                    "HUD data download started in background. Properties will appear shortly.",
+                )
+            except Exception as exc:
+                logger.error("Discovery HUD ingestion failed: %s", exc)
+
+    if "usda" in selected_sources:
+        usda_count = UsdaProperty.objects.count()
+        if usda_count == 0:
+            try:
+                from core.services.ingestion import ingest_usda_reo
+                import threading
+                from django.db import connection
+
+                def _run_usda():
+                    connection.close()
+                    ingest_usda_reo()
+
+                t = threading.Thread(target=_run_usda, daemon=True)
+                t.start()
+                messages.info(request, "USDA data download started in background.")
+            except Exception as exc:
+                logger.error("Discovery USDA ingestion failed: %s", exc)
 
     # Get or create user screening criteria for auto-screening
     try:
