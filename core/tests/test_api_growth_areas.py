@@ -24,15 +24,16 @@ def sample_growth_areas(db):
 
     areas = []
 
-    # California areas with higher growth metrics
+    # California areas with higher growth metrics (stored as decimal fractions,
+    # e.g. 0.10 = 10% — matching Census ACS and FRED data formats)
     areas.append(
         GrowthArea.objects.create(
             state="CA",
             city_name="Sacramento",
             metro_area="Sacramento-Roseville-Folsom, CA",
-            population_growth_rate=Decimal("10.0"),
-            employment_growth_rate=Decimal("15.0"),
-            median_income_growth=Decimal("12.0"),
+            population_growth_rate=Decimal("0.10"),
+            employment_growth_rate=Decimal("0.15"),
+            median_income_growth=Decimal("0.12"),
             housing_demand_index=250,
             latitude=Decimal("38.5816"),
             longitude=Decimal("-121.4944"),
@@ -45,9 +46,9 @@ def sample_growth_areas(db):
             state="CA",
             city_name="San Francisco",
             metro_area="San Francisco-Oakland-Berkeley, CA",
-            population_growth_rate=Decimal("8.0"),
-            employment_growth_rate=Decimal("10.0"),
-            median_income_growth=Decimal("9.0"),
+            population_growth_rate=Decimal("0.08"),
+            employment_growth_rate=Decimal("0.10"),
+            median_income_growth=Decimal("0.09"),
             housing_demand_index=200,
             latitude=Decimal("37.7749"),
             longitude=Decimal("-122.4194"),
@@ -61,9 +62,9 @@ def sample_growth_areas(db):
             state="TX",
             city_name="Austin",
             metro_area="Austin-Round Rock, TX",
-            population_growth_rate=Decimal("12.0"),
-            employment_growth_rate=Decimal("18.0"),
-            median_income_growth=Decimal("15.0"),
+            population_growth_rate=Decimal("0.12"),
+            employment_growth_rate=Decimal("0.18"),
+            median_income_growth=Decimal("0.15"),
             housing_demand_index=300,
             latitude=Decimal("30.2672"),
             longitude=Decimal("-97.7431"),
