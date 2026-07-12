@@ -97,7 +97,8 @@
 
 <footer class="page-footer">
   <span>PREI 2026 · v{{ version|default:"0.0.0-dev" }}
-    {% if build_date %} · {{ build_date }}+sha-{{ git_commit|default:"unknown" }}{% endif %}</span>
+    {%- if branch %} · {{ branch }}{% endif %}
+    {%- if build_date %} · {{ build_date }}+sha-{{ git_commit|default:"unknown" }}{% endif %}</span>
 </footer>
 
 <script>

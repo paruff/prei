@@ -94,6 +94,42 @@ def _read_build_date() -> str:
     return ""
 
 
+def _read_branch() -> str:
+    """Read branch name from baked-in file (Docker) or git HEAD (dev).
+
+    Priority:
+    1. ``/app/.meta/branch`` — written during Docker build
+    2. ``BRANCH`` env var — injected during Docker build
+    3. Git HEAD ref — local development (e.g. "refs/heads/main" → "main")
+    4. ``""`` — fallback
+    """
+    try:
+        text = Path("/app/.meta/branch").read_text().strip()
+        if text:
+            return text
+    except FileNotFoundError, OSError:
+        pass
+
+    env_branch = getenv("BRANCH")
+    if env_branch:
+        return env_branch
+
+    # 3. Git HEAD symbolic ref (local dev)
+    git_dir = _find_git_dir()
+    if git_dir is not None:
+        head_file = git_dir / "HEAD"
+        try:
+            head_content = head_file.read_text().strip()
+            if head_content.startswith("ref: refs/heads/"):
+                return head_content[16:]  # strip "ref: refs/heads/"
+            if head_content.startswith("ref: "):
+                return head_content[5:]
+        except FileNotFoundError, OSError:
+            pass
+
+    return ""
+
+
 def _read_git_commit() -> str:
     """Read short commit SHA from baked-in file (Docker) or git (dev).
 
@@ -304,6 +340,7 @@ def version(request):  # type: ignore[no-untyped-def]
         "version": _read_version(),
         "git_commit": _read_git_commit(),
         "build_date": _read_build_date(),
+        "branch": _read_branch(),
         "api_keys_configured": bool(census_key and bls_key),
         "census_key_configured": bool(census_key),
         "bls_key_configured": bool(bls_key),

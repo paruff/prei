@@ -61,6 +61,7 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "commit=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "build-date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
+          echo "branch=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
       - name: Build image
         id: build
         uses: docker/build-push-action@v7
@@ -74,6 +75,7 @@ jobs:
             VERSION=${{ steps.version.outputs.version }}
             COMMIT=${{ steps.version.outputs.commit }}
             BUILD_DATE=${{ steps.version.outputs.build-date }}
+            BRANCH=${{ steps.version.outputs.branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: "job-finish"
