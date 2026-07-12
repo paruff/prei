@@ -3410,10 +3410,16 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 for listing in listings:
                     listing["scraped_at"] = now
                     listing["last_seen_at"] = now
-                    VrmProperty.objects.update_or_create(
-                        vrm_property_id=listing["vrm_property_id"],
-                        defaults=listing,
-                    )
+                    try:
+                        VrmProperty.objects.update_or_create(
+                            vrm_property_id=listing["vrm_property_id"],
+                            defaults=listing,
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            "Background VRM scrape: failed to save listing %s: %s",
+                            listing.get("vrm_property_id"), exc,
+                        )
 
             t = threading.Thread(target=_scrape_vrm, args=(state,), daemon=True)
             t.start()

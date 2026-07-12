@@ -123,6 +123,18 @@ DATABASES = {
     )
 }
 
+# Enable SQLite WAL mode + busy timeout for concurrent reads/writes.
+# Prevents "database is locked" errors from background threads (e.g. VRM scrape).
+if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
+    opts = DATABASES["default"].setdefault("OPTIONS", {})
+    opts.setdefault("init_command", (
+        "PRAGMA journal_mode=WAL;"
+        "PRAGMA busy_timeout=5000;"
+        "PRAGMA synchronous=NORMAL;"
+    ))
+    # Also set a timeout so Django waits instead of failing immediately
+    DATABASES["default"].setdefault("timeout", 20)
+
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
