@@ -18,7 +18,7 @@ ruff==0.15.21  # Must match .pre-commit-config.yaml rev: v0.15.20
 mypy==2.2.0
 django-stubs==6.0.7
 djangorestframework-stubs==3.17.0
-types-psycopg2==2.9.21.20260518
+types-psycopg2==2.9.21.20260712
 types-reportlab==4.5.1.20260521
 # Pre-commit tooling — must match .pre-commit-config.yaml rev:
 bandit==1.8.0          # rev: 1.8.0
