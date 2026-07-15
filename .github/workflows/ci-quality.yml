@@ -195,15 +195,15 @@ jobs:
       - name: Install coverage
         run: pip install coverage
       - name: Download unit coverage
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: coverage-unit
       - name: Download integration coverage
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: coverage-integration
       - name: Download e2e coverage
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: coverage-e2e
       - name: Combine and report
