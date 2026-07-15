@@ -12,7 +12,7 @@ gunicorn==26.0.0
 pytest==9.1.1
 pytest-django==4.12.0
 pytest-bdd==8.1.0
-coverage==7.15.0
+coverage==7.15.1
 pytest-asyncio==1.4.0
 ruff==0.15.20  # Must match .pre-commit-config.yaml rev: v0.15.20
 mypy==2.2.0
