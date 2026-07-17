@@ -1075,10 +1075,10 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             data["population"], data["pop_growth"]
         )
 
-        # Employment: use stored QCEW if available, otherwise FRED state-level.
-        # QCEW/FMR HTTP calls are too slow for web views (gunicorn 30s timeout)
-        # and are only made in management commands (populate_growth_areas).
+        # Employment: try QCEW county-level on first run, fall back to FRED.
+        # On subsequent runs, preserve existing QCEW data.
         from core.data.us_lookup import lookup_county_fips
+        from core.integrations.market.qcew_adapter import fetch_county_employment_growth
 
         city_county_fips = lookup_county_fips(state, data["place_name"])
         existing = GrowthArea.objects.filter(
@@ -1086,24 +1086,48 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
         ).first()
 
         if existing and existing.employment_growth_rate and existing.county_fips:
-            # Already have QCEW data from a prior populate run — keep it
+            # Already have QCEW data from a prior run — keep it
             emp_rate = existing.employment_growth_rate
             county_fips_to_store = existing.county_fips
+        elif city_county_fips:
+            # First run — try QCEW county-level (one HTTP call, 5s timeout)
+            try:
+                qcew = fetch_county_employment_growth(city_county_fips, year=2024)
+                if qcew is not None:
+                    emp_rate = qcew
+                    county_fips_to_store = city_county_fips
+                else:
+                    emp_rate = safe_emp_growth
+                    county_fips_to_store = city_county_fips
+            except Exception:
+                emp_rate = safe_emp_growth
+                county_fips_to_store = city_county_fips
         else:
-            # No stored QCEW — use FRED state-level for now
             emp_rate = safe_emp_growth
-            county_fips_to_store = city_county_fips or ""
+            county_fips_to_store = ""
 
-        # FMR data: preserve existing values, do not overwrite with None.
-        # FMR is populated by populate_growth_areas management command.
+        # FMR data: try on first run, preserve on subsequent runs.
         if existing and existing.fmr_2br is not None:
             rent_growth = existing.rent_growth_rate
             fmr_year = existing.fmr_year
             fmr_2br = existing.fmr_2br
+        elif city_county_fips:
+            try:
+                from core.integrations.market.fmr_adapter import fetch_fmr_data
+
+                fmr_result = fetch_fmr_data(
+                    state, city_county_fips, city_name=data["place_name"]
+                )
+                if fmr_result:
+                    rent_growth = fmr_result.get("rent_growth_rate")
+                    fmr_year = fmr_result.get("fmr_year")
+                    fmr_2br = fmr_result.get("fmr_2br")
+                else:
+                    rent_growth = fmr_year = fmr_2br = None
+            except Exception:
+                rent_growth = fmr_year = fmr_2br = None
         else:
-            rent_growth = None
-            fmr_year = None
-            fmr_2br = None
+            rent_growth = fmr_year = fmr_2br = None
 
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
