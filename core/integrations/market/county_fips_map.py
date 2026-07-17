@@ -100,6 +100,23 @@ CITY_COUNTY_FIPS: dict[tuple[str, str], str] = {
     ("GA", "Columbus"): "13215",
     ("GA", "Savannah"): "13051",
     ("GA", "Athens"): "13059",
+    ("GA", "Warner Robins"): "13153",
+    ("GA", "Roswell"): "13121",
+    ("GA", "Sandy Springs"): "13121",
+    ("GA", "South Fulton"): "13121",
+    ("GA", "Athens-Clarke County"): "13059",
+    ("GA", "Augusta-Richmond County"): "13245",
+    ("GA", "Macon-Bibb County"): "13021",
+    # ── Arizona (more) ─────────────────────────────────────────────
+    ("AZ", "Scottsdale"): "04013",
+    ("AZ", "Glendale"): "04013",
+    ("AZ", "Tempe"): "04013",
+    ("AZ", "Gilbert"): "04013",
+    ("AZ", "Surprise"): "04013",
+    ("AZ", "Peoria"): "04013",
+    # ── California (more) ──────────────────────────────────────────
+    ("CA", "Anaheim"): "06059",
+    ("CA", "Bakersfield"): "06029",
     # ── North Carolina (more) ──────────────────────────────────────
     ("NC", "Greensboro"): "37081",
     ("NC", "Durham"): "37063",
@@ -136,4 +153,6 @@ def lookup_county_fips(state_code: str, city_name: str) -> str | None:
 
     city = city_name.strip()
     city = re.sub(r"\s+(city|town|CDP|village|borough)$", "", city, flags=re.IGNORECASE)
+    city = re.sub(r"\s+unified government \(balance\)$", "", city, flags=re.IGNORECASE)
+    city = re.sub(r"\s+consolidated government \(balance\)$", "", city, flags=re.IGNORECASE)
     return CITY_COUNTY_FIPS.get((state_code.strip().upper(), city.strip().title()))
