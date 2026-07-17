@@ -93,5 +93,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
     CMD python -c "import sys, urllib.request\ntry:\n  urllib.request.urlopen('http://localhost:8000/api/health/')\nexcept Exception as e:\n  print(f'health check failed: {e}', file=sys.stderr)\n  sys.exit(1)"
 ENTRYPOINT ["sh", "./scripts/entrypoint.sh"]
-CMD ["gunicorn", "investor_app.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
+CMD ["gunicorn", "investor_app.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120"]
 # test

@@ -4,7 +4,7 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
     preDeployCommand: python manage.py migrate --noinput
-    startCommand: gunicorn investor_app.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+    startCommand: gunicorn investor_app.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     healthCheckPath: /health/
     # Post-deploy: trigger GitHub smoke-test workflow via repository_dispatch.
     # Requires GITHUB_DISPATCH_TOKEN in Render env vars (GitHub PAT with repo scope).
