@@ -7,7 +7,6 @@ web views (for hosted deployments without CLI access).
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import requests
 from django.utils import timezone
@@ -210,7 +209,9 @@ def ingest_sheriff_sales() -> dict[str, int]:
                 notice["last_seen_at"] = now
                 notice["document_type"] = "sheriff_sale"
                 _, created = CountyForeclosureNotice.objects.update_or_create(
-                    case_number=notice.get("case_number", f"SHF-{county}-{total_created}"),
+                    case_number=notice.get(
+                        "case_number", f"SHF-{county}-{total_created}"
+                    ),
                     defaults={**notice, "state": "TX", "county": county.title()},
                 )
                 if created:

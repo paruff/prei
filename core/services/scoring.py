@@ -328,17 +328,40 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     )
 
 
-# ── Deprecated v1 wrapper ─────────────────────────────────────────────────────
+# ── Listing scoring (replaces deprecated score_listing_v1) ─────────────────────
+
+
+def score_listing(listing) -> Decimal:
+    """Score a Listing using price-per-sqft normalisation and freshness.
+
+    Higher score is better.  This is the current listing scoring function;
+    it replaces the deprecated ``score_listing_v1``.
+
+    Returns:
+        Decimal score (higher = better deal).
+    """
+    price = Decimal(str(listing.price)) if listing.price is not None else Decimal("0")
+    sq_ft = Decimal(listing.sq_ft or 0)
+    ppsf = (price / sq_ft) if sq_ft > 0 else Decimal("0")
+
+    from django.utils import timezone
+
+    now = timezone.now()
+    age_hours = Decimal(max(1, (now - listing.posted_at).total_seconds() / 3600))
+    freshness = Decimal(1) / age_hours
+
+    ppsf_clamped = ppsf if ppsf > 0 else Decimal("1000000")
+    return (Decimal(1000000) / ppsf_clamped) + (freshness * Decimal(10))
+
+
+# ── Deprecated v1 wrapper (kept for backward compat) ──────────────────────────
 
 
 def score_listing_v1_deprecated(*args, **kwargs):
-    """Deprecated: use score_listing_v2 instead."""
+    """Deprecated: use ``score_listing`` instead."""
     warnings.warn(
-        "score_listing_v1 is deprecated and will be removed in a future release. "
-        "Use core.services.scoring.score_listing_v2 for underwriting-grade scores.",
+        "score_listing_v1_deprecated is deprecated; use core.services.scoring.score_listing.",
         DeprecationWarning,
         stacklevel=2,
     )
-    from investor_app.finance.utils import score_listing_v1
-
-    return score_listing_v1(*args, **kwargs)
+    return score_listing(*args, **kwargs)

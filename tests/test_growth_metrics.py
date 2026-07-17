@@ -428,7 +428,7 @@ class PopulateGrowthAreasCommandTest(TestCase):
         "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
-    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
+    @patch("core.data.us_lookup.lookup_county_fips")
     def test_creates_growth_area_on_success(
         self, mock_fips, mock_housing, mock_employment, mock_census
     ):
@@ -471,7 +471,7 @@ class PopulateGrowthAreasCommandTest(TestCase):
         "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
-    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
+    @patch("core.data.us_lookup.lookup_county_fips")
     def test_updates_existing_growth_area(
         self, mock_fips, mock_housing, mock_employment, mock_census
     ):
@@ -538,7 +538,7 @@ class PopulateGrowthAreasCommandTest(TestCase):
         "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
-    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
+    @patch("core.data.us_lookup.lookup_county_fips")
     def test_handles_multiple_cities(
         self, mock_fips, mock_housing, mock_employment, mock_census
     ):
@@ -588,7 +588,7 @@ class PopulateGrowthAreasCommandTest(TestCase):
         "core.management.commands.populate_growth_areas.FREDAdapter.fetch_state_employment_growth"
     )
     @patch("core.management.commands.populate_growth_areas.fetch_housing_demand_index")
-    @patch("core.integrations.market.county_fips_map.lookup_county_fips")
+    @patch("core.data.us_lookup.lookup_county_fips")
     def test_handles_census_failure_gracefully(
         self, mock_fips, mock_housing, mock_employment, mock_census
     ):

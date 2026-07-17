@@ -3,10 +3,13 @@
 from decimal import Decimal
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Listing, MarketSnapshot
+
+User = get_user_model()
 
 
 def _make_listing(**kwargs) -> Listing:
@@ -29,21 +32,33 @@ def _make_listing(**kwargs) -> Listing:
     return Listing.objects.create(**defaults)
 
 
+@pytest.fixture
+def authed_client(client, db):
+    """Return a test client with an authenticated user session."""
+    user = User.objects.create_user(
+        username="listing_tester",
+        email="listing@example.com",
+        password="testpass123",
+    )
+    client.force_login(user)
+    return client
+
+
 @pytest.mark.django_db
-def test_report_listing_returns_200(client):
+def test_report_listing_returns_200(authed_client):
     """GET listing/<id>/report/ returns HTTP 200 for an existing listing."""
     listing = _make_listing()
     url = reverse("report_listing", kwargs={"listing_id": listing.id})
-    resp = client.get(url)
+    resp = authed_client.get(url)
     assert resp.status_code == 200
 
 
 @pytest.mark.django_db
-def test_report_listing_context_keys_present(client):
+def test_report_listing_context_keys_present(authed_client):
     """Context must include score, ppsf, and kpis keys."""
     listing = _make_listing()
     url = reverse("report_listing", kwargs={"listing_id": listing.id})
-    resp = client.get(url)
+    resp = authed_client.get(url)
     assert resp.status_code == 200
     assert "score" in resp.context
     assert "ppsf" in resp.context
@@ -52,24 +67,24 @@ def test_report_listing_context_keys_present(client):
 
 
 @pytest.mark.django_db
-def test_report_listing_kpis_keys(client):
+def test_report_listing_kpis_keys(authed_client):
     """kpis dict must contain cap_rate, cash_on_cash, dscr, noi."""
     listing = _make_listing()
     url = reverse("report_listing", kwargs={"listing_id": listing.id})
-    resp = client.get(url)
+    resp = authed_client.get(url)
     kpis = resp.context["kpis"]
     for key in ("cap_rate", "cash_on_cash", "dscr", "noi"):
         assert key in kpis, f"kpis missing '{key}'"
 
 
 @pytest.mark.django_db
-def test_report_listing_no_market_snapshot_still_200(client):
+def test_report_listing_no_market_snapshot_still_200(authed_client):
     """Page loads without error even when no MarketSnapshot exists for the ZIP."""
     listing = _make_listing(zip_code="99999")
     # Ensure no snapshot exists for this ZIP
     MarketSnapshot.objects.filter(zip_code="99999").delete()
     url = reverse("report_listing", kwargs={"listing_id": listing.id})
-    resp = client.get(url)
+    resp = authed_client.get(url)
     assert resp.status_code == 200
     assert resp.context["market_snapshot"] is None
     # Page still renders the market data section with N/A fallback
@@ -78,7 +93,7 @@ def test_report_listing_no_market_snapshot_still_200(client):
 
 
 @pytest.mark.django_db
-def test_report_listing_with_market_snapshot(client):
+def test_report_listing_with_market_snapshot(authed_client):
     """When a MarketSnapshot exists, market data is shown in the response."""
     listing = _make_listing(zip_code="78701")
     MarketSnapshot.objects.create(
@@ -90,7 +105,7 @@ def test_report_listing_with_market_snapshot(client):
         school_rating=Decimal("8.0"),
     )
     url = reverse("report_listing", kwargs={"listing_id": listing.id})
-    resp = client.get(url)
+    resp = authed_client.get(url)
     assert resp.status_code == 200
     assert resp.context["market_snapshot"] is not None
     content = resp.content.decode()
@@ -98,19 +113,19 @@ def test_report_listing_with_market_snapshot(client):
 
 
 @pytest.mark.django_db
-def test_report_listing_404_for_unknown_id(client):
+def test_report_listing_404_for_unknown_id(authed_client):
     """GET listing/<nonexistent-id>/report/ returns HTTP 404."""
     url = reverse("report_listing", kwargs={"listing_id": 999999})
-    resp = client.get(url)
+    resp = authed_client.get(url)
     assert resp.status_code == 404
 
 
 @pytest.mark.django_db
-def test_report_listing_kpis_nonzero_for_valid_listing(client):
+def test_report_listing_kpis_nonzero_for_valid_listing(authed_client):
     """KPIs are non-zero when listing has a valid price."""
     listing = _make_listing(price=Decimal("300000"), sq_ft=1500)
     url = reverse("report_listing", kwargs={"listing_id": listing.id})
-    resp = client.get(url)
+    resp = authed_client.get(url)
     kpis = resp.context["kpis"]
     assert kpis["noi"] != Decimal("0"), "NOI should be non-zero for a priced listing"
     assert kpis["cap_rate"] != Decimal("0"), "Cap rate should be non-zero"

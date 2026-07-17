@@ -37,35 +37,81 @@ jobs:
           fi
           echo "✅ Health check passed"
 
-      - name: API — properties
+      - name: API — listings
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/properties/")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/listings/")
           if [ "$STATUS" != "200" ]; then
-            echo "❌ /api/properties/ returned HTTP $STATUS"
+            echo "❌ /api/listings/ returned HTTP $STATUS"
             exit 1
           fi
-          echo "✅ /api/properties/ OK"
+          echo "✅ /api/listings/ OK"
 
       - name: API — growth areas
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/growth-areas/")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/v1/real-estate/growth-areas")
           if [ "$STATUS" != "200" ]; then
-            echo "❌ /api/growth-areas/ returned HTTP $STATUS"
+            echo "❌ /api/v1/real-estate/growth-areas returned HTTP $STATUS"
             exit 1
           fi
-          echo "✅ /api/growth-areas/ OK"
+          echo "✅ /api/v1/real-estate/growth-areas OK"
 
       - name: API — foreclosures
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/foreclosures/")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/v1/foreclosures")
           if [ "$STATUS" != "200" ]; then
-            echo "❌ /api/foreclosures/ returned HTTP $STATUS"
+            echo "❌ /api/v1/foreclosures returned HTTP $STATUS"
             exit 1
           fi
-          echo "✅ /api/foreclosures/ OK"
+          echo "✅ /api/v1/foreclosures OK"
 
       - name: Summary
         if: always()
         run: |
           echo "── Smoke test complete ──"
           echo "  Target: ${{ steps.url.outputs.target }}"
+
+  rollback:
+    name: "🔄 Rollback on Failure"
+    needs: smoke
+    if: failure() && vars.GITOPS_REPO != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITOPS_REPO: ${{ vars.GITOPS_REPO }}
+      GITOPS_MANIFEST_PATH: ${{ vars.GITOPS_MANIFEST_PATH || 'overlays/production/kustomization.yaml' }}
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Rollback triggered — smoke tests failed"
+          echo "GitOps repo: ${{ env.GITOPS_REPO }}"
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          token: ${{ secrets.GITOPS_DEPLOY_KEY || secrets.GITHUB_TOKEN }}
+          path: gitops
+      - name: Revert to previous commit
+        working-directory: gitops
+        run: |
+          PREV_SHA=$(git rev-parse HEAD~1)
+          if [ -z "$PREV_SHA" ]; then
+            echo "::error::No previous commit to rollback to"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git revert --no-edit "$PREV_SHA..HEAD"
+          git push
+          echo "✅ Rolled back GitOps repo to $PREV_SHA"
+      - name: Trigger Render rollback (optional)
+        if: vars.RENDER_ROLLBACK_HOOK != ''
+        run: |
+          echo "Triggering Render rollback..."
+          curl -sf -X POST "${{ vars.RENDER_ROLLBACK_HOOK }}" || echo "⚠ Render rollback hook failed (non-fatal)"
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Rollback complete"

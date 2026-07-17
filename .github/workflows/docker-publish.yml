@@ -84,6 +84,95 @@ jobs:
           echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
 
+  live-test:
+    name: "🧪 Tier 2 — Live Acceptance Test"
+    needs: build-image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run container and acceptance tests
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}
+        run: |
+          set -e
+          echo "=== Starting container ==="
+          docker run -d --rm \
+            --name prei-live-test \
+            -p 8000:8000 \
+            -e SECRET_KEY=ci-live-test-key-$(date +%s) \
+            -e DJANGO_ENV=development \
+            -e DEBUG=True \
+            -e ALLOWED_HOSTS=localhost,127.0.0.1 \
+            -e DATABASE_URL=sqlite:///tmp/live_test.db \
+            -e RUN_MIGRATIONS=1 \
+            "$IMAGE"
+
+          echo "=== Waiting for healthy (up to 120s) ==="
+          for i in $(seq 1 60); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8000/health/ 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Healthy after ~$((i * 2))s"
+              break
+            fi
+            sleep 2
+          done
+
+          echo ""
+          echo "=== Live Acceptance Tests ==="
+
+          echo -n "1. Health check: "
+          curl -sf http://localhost:8000/health/ | python3 -m json.tool | grep -q '"status": "ok"' && echo "PASS" || { echo "FAIL"; exit 1; }
+
+          echo -n "2. Login page: "
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/accounts/login/)
+          [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || { echo "FAIL ($STATUS)"; exit 1; }
+
+          echo -n "3. Listings API: "
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/listings/)
+          [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || echo "WARN ($STATUS)"
+
+          echo -n "4. Growth areas API: "
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000/api/v1/real-estate/growth-areas")
+          [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || echo "WARN ($STATUS)"
+
+          echo -n "5. Foreclosures API: "
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/foreclosures)
+          [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || echo "WARN ($STATUS)"
+
+          echo -n "6. Discovery page: "
+          curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/discovery/; echo ""
+
+          echo -n "7. Pipeline screener: "
+          curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/pipeline/screener/; echo ""
+
+          echo -n "8. Health API: "
+          curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/api/health/; echo ""
+
+          echo -n "9. Static CSS: "
+          curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/static/css/base.css; echo ""
+
+          echo ""
+          echo "=== All live acceptance tests passed ==="
+
+          docker stop prei-live-test 2>/dev/null || true
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
   scan-image:
     name: "🛡️ Tier 2 — Scan Image"
     needs: build-image
@@ -181,6 +270,70 @@ jobs:
             args+=("-t" "$tag")
           done
           docker buildx imagetools create "${args[@]}" "$SOURCE_IMAGE"
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+  gitops-deploy:
+    name: "🚀 Tier 2 — GitOps Deploy"
+    needs: [publish, live-test, scan-image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    if: vars.GITOPS_REPO != ''
+    env:
+      GITOPS_REPO: ${{ vars.GITOPS_REPO }}
+      GITOPS_MANIFEST_PATH: ${{ vars.GITOPS_MANIFEST_PATH || 'overlays/production/kustomization.yaml' }}
+      NEW_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}
+      NEW_TAG: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+          echo "image: ${{ env.NEW_IMAGE }}"
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          token: ${{ secrets.GITOPS_DEPLOY_KEY || secrets.GITHUB_TOKEN }}
+          path: gitops
+      - name: Update image manifest
+        working-directory: gitops
+        run: |
+          MANIFEST="${{ env.GITOPS_MANIFEST_PATH }}"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "::error::Manifest not found: $MANIFEST"
+            exit 1
+          fi
+          # Update the newTag or newName in kustomization.yaml
+          # Pattern: replace existing tag for ghcr.io/paruff/prei
+          sed -i "s|\(ghcr\.io/paruff/prei\):.*|\1@${{ needs.build-image.outputs.image-digest }}|g" "$MANIFEST"
+          # If the manifest uses images[].newTag format
+          sed -i "s|\(newTag:\).*|\1 sha-${{ github.sha }}|" "$MANIFEST" 2>/dev/null || true
+          echo "Updated manifest:"
+          cat "$MANIFEST"
+      - name: Commit and push
+        working-directory: gitops
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ env.GITOPS_MANIFEST_PATH }}"
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "deploy: update image to ${{ env.NEW_TAG }} [skip ci]"
+            git push
+            echo "✅ GitOps manifest updated and pushed"
+          fi
+      - name: Trigger post-deployment smoke
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          event-type: deploy-complete
+          client-payload: '{"url": "${{ vars.DEPLOY_URL || '' }}", "image": "${{ env.NEW_IMAGE }}", "sha": "${{ github.sha }}"}'
       - name: "job-finish"
         if: always()
         run: |

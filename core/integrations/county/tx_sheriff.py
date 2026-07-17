@@ -10,8 +10,6 @@ The scraper uses Playwright to render the page and parse the table.
 from __future__ import annotations
 
 import logging
-from datetime import date
-from decimal import Decimal
 from typing import Any
 
 from core.integrations.county.tx_base import scrape_county_nts
@@ -24,7 +22,11 @@ SHERIFF_COUNTIES = [
         "endpoint": "https://www.harriscountyso.org/Public/RealAuctions",
         "selectors": {
             "table": "table.auction-table",
-            "alt_tables": ["table#auctions", "table.table-striped", "div.auction-list table"],
+            "alt_tables": [
+                "table#auctions",
+                "table.table-striped",
+                "div.auction-list table",
+            ],
         },
     },
     {
@@ -40,7 +42,11 @@ SHERIFF_COUNTIES = [
         "endpoint": "https://www.traviscountytx.gov/sheriff/civil-district/foreclosure-sales",
         "selectors": {
             "table": "table.foreclosure-table",
-            "alt_tables": ["table#foreclosures", "table.table-striped", "div.foreclosure-list table"],
+            "alt_tables": [
+                "table#foreclosures",
+                "table.table-striped",
+                "div.foreclosure-list table",
+            ],
         },
     },
     {
@@ -65,7 +71,11 @@ SHERIFF_COUNTIES = [
 def scrape_sheriff_sales(county_name: str) -> list[dict[str, Any]]:
     """Scrape sheriff sale notices for a specific county."""
     config = next(
-        (c for c in SHERIFF_COUNTIES if c["county_name"].lower() == county_name.lower()),
+        (
+            c
+            for c in SHERIFF_COUNTIES
+            if c["county_name"].lower() == county_name.lower()
+        ),
         None,
     )
     if not config:
