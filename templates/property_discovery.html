@@ -165,6 +165,59 @@
 
 {% endif %}{# growth_area selected #}
 
+{# ── POST Results (shown after discovery runs) ───────────────────── #}
+{% if show_results and discovery_results %}
+<div class="card">
+  <h2 class="card-title">Discovery Results</h2>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Discovered</div>
+      <div class="kpi-value num-good">{{ discovery_results.discovered }}</div>
+      <div class="kpi-sub">new properties</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Passed Screening</div>
+      <div class="kpi-value num-good">{{ discovery_results.screening_passed }}</div>
+      <div class="kpi-sub">passed criteria</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Failed Screening</div>
+      <div class="kpi-value num-bad">{{ discovery_results.screening_failed }}</div>
+      <div class="kpi-sub">didn't meet criteria</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Already Existed</div>
+      <div class="kpi-value">{{ discovery_results.already_existed }}</div>
+      <div class="kpi-sub">in your pipeline</div>
+    </div>
+  </div>
+
+  {% if discovery_results.discovered > 0 %}
+  <div class="message message-success" style="margin-top:var(--sp-3)">
+    {{ discovery_results.discovered }} new propert{{ discovery_results.discovered|pluralize:"y,ies" }} discovered!
+    {{ discovery_results.screening_passed }} passed screening.
+  </div>
+  {% else %}
+  <div class="message message-warning" style="margin-top:var(--sp-3)">
+    No new properties found. {% if discovery_results.errors %}Errors: {{ discovery_results.errors|join:"; " }}{% endif %}
+    Data may need to be loaded first — check <a href="{% url 'system_status' %}">System Status</a>.
+  </div>
+  {% endif %}
+
+  {% if discovery_results.sources_attempted %}
+  <p class="page-sub" style="margin-top:var(--sp-2)">
+    Sources queried: {{ discovery_results.sources_attempted|join:", " }}
+  </p>
+  {% endif %}
+
+  <div class="form-actions" style="margin-top:var(--sp-4)">
+    <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}"
+       class="btn btn-primary">View in Screener →</a>
+    <a href="?growth_area_id={{ growth_area.pk }}" class="btn">Discover More</a>
+  </div>
+</div>
+{% endif %}
+
 {# Loading overlay shown during discovery POST #}
 <div id="discovery-loading" class="kanban-modal-overlay kanban-hidden">
   <div class="kanban-modal">

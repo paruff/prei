@@ -3701,17 +3701,17 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
             logger.error("Discovery foreclosure error for %s: %s", city, exc)
             results["errors"].append(f"Foreclosure: {exc}")
 
-    # Redirect to screener filtered by this growth area
-    # NOTE: DiscoveryRequest creation is intentionally skipped.
-    # PipelineProperty.growth_area FK serves as the audit trail.
-    messages.success(
-        request,
-        f"Discovered {results['discovered']} new properties in {city}, {state}. "
-        f"{results['screening_passed']} passed screening.",
-    )
-    from django.urls import reverse
-
-    return redirect(f"{reverse('pipeline_screener')}?growth_area_id={growth_area.pk}")
+    # Show results in-page instead of redirecting to screener.
+    # User sees exactly what was found per source without losing context.
+    return render(request, "property_discovery.html", {
+        "growth_area": growth_area,
+        "source_status": source_status,
+        "already_discovered": PipelineProperty.objects.filter(
+            user=request.user, growth_area=growth_area
+        ).count(),
+        "discovery_results": results,
+        "show_results": True,
+    })
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
