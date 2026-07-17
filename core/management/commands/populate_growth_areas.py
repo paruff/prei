@@ -247,7 +247,7 @@ class Command(BaseCommand):
 
                 # 2b. QCEW county-level employment (replaces FRED when county is known)
                 county_fips = ""
-                from core.integrations.market.county_fips_map import lookup_county_fips
+                from core.data.us_lookup import lookup_county_fips
                 from core.integrations.market.qcew_adapter import (
                     fetch_county_employment_growth,
                 )
@@ -313,9 +313,7 @@ class Command(BaseCommand):
                 )
 
                 # 5. HUD FMR: 2BR rent benchmark + year-over-year growth
-                from core.integrations.market.county_fips_map import (
-                    lookup_county_fips,
-                )
+                from core.data.us_lookup import lookup_county_fips
 
                 cfips = lookup_county_fips(state_code, city_name)
                 fmr_defaults: dict[str, Any] = {}
