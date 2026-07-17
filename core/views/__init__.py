@@ -188,6 +188,25 @@ def system_status(request: HttpRequest) -> HttpResponse:
             from core.services.ingestion import ingest_usda_reo
             result = ingest_usda_reo()
             messages.info(request, f"USDA: {result.get('note', 'complete')}.")
+        elif action == "populate_growth":
+            import threading
+            from django.db import connection as _conn
+            TARGET_STATES = ["TX", "FL", "GA", "NC", "AZ", "OH", "IN", "AL", "SC"]
+            def _run():
+                _conn.close()
+                from django.core.management import call_command
+                try:
+                    call_command("populate_growth_areas", states=TARGET_STATES, force=True)
+                except Exception as e:
+                    import logging
+                    logging.getLogger("prei.system").error("Populate growth failed: %s", e)
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            messages.success(
+                request,
+                f"Growth area analysis started for {len(TARGET_STATES)} states in background. "
+                "Refresh in 2-3 minutes to see county-level data."
+            )
         return redirect("system_status")
 
     return render(request, "system.html", {
