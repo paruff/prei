@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}System Status — PREI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">System Status</h1>
+  <p class="page-sub">Data inventory and operations — no CLI needed.</p>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">HUD Properties</div>
+    <div class="kpi-value">{{ hud_count }}</div>
+    <div class="kpi-sub">{{ hud_states }} states</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">USDA Properties</div>
+    <div class="kpi-value">{{ usda_count }}</div>
+    <div class="kpi-sub">{{ usda_states }} states</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">VRM Properties</div>
+    <div class="kpi-value">{{ vrm_count }}</div>
+    <div class="kpi-sub">{{ vrm_states }} states</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">County Notices</div>
+    <div class="kpi-value">{{ county_count }}</div>
+    <div class="kpi-sub">foreclosure notices</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Growth Areas</div>
+    <div class="kpi-value">{{ ga_count }}</div>
+    <div class="kpi-sub">{{ ga_states }} states · {{ ga_fips_pct }}% FIPS</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Pipeline</div>
+    <div class="kpi-value">{{ pipeline_count }}</div>
+    <div class="kpi-sub">{{ pipeline_stages }} stages</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:var(--sp-5)">
+  <h2 class="card-title">Data Operations</h2>
+  <div class="form-actions" style="flex-wrap:wrap;gap:var(--sp-3)">
+    <form method="post" class="form-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="ingest_hud">
+      <button class="btn btn-primary" {% if hud_done %}disabled{% endif %}>
+        {% if hud_done %}HUD Already Loaded ✓{% else %}Load HUD Data{% endif %}
+      </button>
+    </form>
+    <form method="post" class="form-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="ingest_usda">
+      <button class="btn btn-primary" {% if usda_done %}disabled{% endif %}>
+        USDA (coming soon)
+      </button>
+    </form>
+    <a href="{% url 'vrm_properties_list' %}" class="btn">Scrape VRM →</a>
+    <a href="{% url 'growth_explorer' %}" class="btn">Analyze State →</a>
+  </div>
+</div>
+
+{% if messages %}
+<div class="message-list" style="margin-top:var(--sp-4)">
+  {% for m in messages %}
+  <div class="message message-{{ m.tags }}">{{ m }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

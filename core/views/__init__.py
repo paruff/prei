@@ -160,6 +160,55 @@ def health_check(request: HttpRequest) -> JsonResponse:
 
 
 @login_required
+def system_status(request: HttpRequest) -> HttpResponse:
+    """System status page — data inventory and operations (no CLI needed)."""
+    from core.models import (
+        GrowthArea, HudProperty, UsdaProperty, VrmProperty,
+        CountyForeclosureNotice, PipelineProperty,
+    )
+
+    hud_count = HudProperty.objects.count()
+    usda_count = UsdaProperty.objects.count()
+    vrm_count = VrmProperty.objects.count()
+    county_count = CountyForeclosureNotice.objects.count()
+    ga_count = GrowthArea.objects.count()
+    ga_with_fips = GrowthArea.objects.exclude(county_fips="").count()
+    pipeline_count = PipelineProperty.objects.count()
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "ingest_hud":
+            try:
+                from core.services.ingestion import ingest_hud_reo
+                result = ingest_hud_reo()
+                messages.success(request, f"HUD: {result['created']} loaded, {result['updated']} updated.")
+            except Exception as e:
+                messages.error(request, f"HUD ingestion failed: {e}")
+        elif action == "ingest_usda":
+            from core.services.ingestion import ingest_usda_reo
+            result = ingest_usda_reo()
+            messages.info(request, f"USDA: {result.get('note', 'complete')}.")
+        return redirect("system_status")
+
+    return render(request, "system.html", {
+        "hud_count": hud_count,
+        "hud_states": HudProperty.objects.values("state").distinct().count(),
+        "hud_done": hud_count > 0,
+        "usda_count": usda_count,
+        "usda_states": UsdaProperty.objects.values("state").distinct().count(),
+        "usda_done": usda_count > 0,
+        "vrm_count": vrm_count,
+        "vrm_states": VrmProperty.objects.values("state").distinct().count(),
+        "county_count": county_count,
+        "ga_count": ga_count,
+        "ga_states": GrowthArea.objects.values("state").distinct().count(),
+        "ga_fips_pct": f"{ga_with_fips * 100 // max(ga_count, 1)}",
+        "pipeline_count": pipeline_count,
+        "pipeline_stages": PipelineProperty.objects.values("stage").distinct().count(),
+    })
+
+
+@login_required
 def dashboard(request):
     if _is_client_only_user(request.user):
         return redirect("property_list")

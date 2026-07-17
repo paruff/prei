@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("onboard/", views.onboard, name="onboard"),
     path("health/", views.health_check, name="health_check"),
+    path("system/", views.system_status, name="system_status"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("properties/add/", views.property_add, name="property_add"),
     path("properties/create/", views.property_add, name="property_create"),
