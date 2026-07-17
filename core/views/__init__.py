@@ -984,8 +984,8 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
         )
 
         # Attempt county-level employment via QCEW (replaces FRED when county is known)
-        # Wrap in try/except — QCEW API may be slow or unavailable.
-        from core.integrations.market.county_fips_map import lookup_county_fips
+        # Uses comprehensive US city database (29,727 cities) with FIPS fallback.
+        from core.data.us_lookup import lookup_county_fips
         from core.integrations.market.qcew_adapter import fetch_county_employment_growth
 
         emp_rate = safe_emp_growth

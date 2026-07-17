@@ -1,72 +1,76 @@
-"""Comprehensive US city → county lookup.
+"""Comprehensive US city → county FIPS lookup.
 
-Generated from the US Cities Database (29,727 cities, 50 states).
-Source: https://github.com/kelvins/US-Cities-Database (public domain).
+Replaces the hardcoded county_fips_map.py with data-driven coverage
+across 29,727 US cities and 86 county→FIPS mappings.
 
-Provides:
-  - lookup_county(state_code, city_name) → county name or None
-  - lookup_county_fips(state_code, city_name) → county FIPS or None
-
-Replaces the hardcoded county_fips_map.py with data-driven coverage.
+Data sources:
+  - city_county.json: 29,727 city→county name mappings
+  - county_fips.json: 86 county name→FIPS code mappings
 """
 
 from __future__ import annotations
 
+import json
 import re
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
-
-# ---------------------------------------------------------------------------
-# City → county name mapping (29,727 entries)
-# Key: "ST|City" → county name
-# ---------------------------------------------------------------------------
-_city_county: dict[str, str] = {}
+from pathlib import Path
 
 
-def _load() -> dict[str, str]:
-    """Load the city→county mapping from embedded JSON data."""
-    import json
-    from pathlib import Path
-
-    data_file = Path(__file__).parent / "city_county.json"
-    if not data_file.exists():
+def _load_json(name: str) -> dict[str, str]:
+    path = Path(__file__).parent / name
+    if not path.exists():
         return {}
-    result: dict[str, str] = json.loads(data_file.read_text())
-    return result
+    return json.loads(path.read_text())
 
 
-_city_county = _load()
+_city_county: dict[str, str] = _load_json("city_county.json")
+_county_fips: dict[str, str] = _load_json("county_fips.json")
 
-# County name → FIPS mapping for the most common counties
-_county_fips: dict[tuple[str, str], str] = {}
+# Deprecated: kept for backward compatibility only.
+from core.integrations.market.county_fips_map import (
+    lookup_county_fips as _legacy_fips,
+)
 
 
-def lookup_county(state_code: str, city_name: str) -> str | None:
-    """Look up the county name for a city in a state.
-
-    Strips Census suffixes before lookup.
-    """
-    city = re.sub(
-        r"\s+(city|town|CDP|village|borough)$",
-        "",
-        city_name.strip(),
-        flags=re.IGNORECASE,
-    )
-    key = f"{state_code.strip().upper()}|{city.strip().title()}"
-    return _city_county.get(key)
+def _strip_census_suffix(city_name: str) -> str:
+    """Normalize Census place names to plain city names."""
+    city = city_name.strip()
+    city = re.sub(r"\s+(city|town|CDP|village|borough)$", "", city, flags=re.IGNORECASE)
+    city = re.sub(r"\s+unified government \(balance\)$", "", city, flags=re.IGNORECASE)
+    city = re.sub(r"\s+consolidated government \(balance\)$", "", city, flags=re.IGNORECASE)
+    return city.strip()
 
 
 def lookup_county_fips(state_code: str, city_name: str) -> str | None:
-    """Look up county FIPS code for a state/city pair.
+    """Get county FIPS code for a US city using comprehensive data.
 
-    Falls back to the hardcoded FIPS map for known counties.
+    Chain: city_name → county_name → county_FIPS
+
+    1. Try the legacy hardcoded map first (97 entries, precise)
+    2. Fall back to comprehensive city_county.json (29,727 entries)
+    3. Look up county name in county_fips.json (86 entries)
     """
-    from core.integrations.market.county_fips_map import lookup_county_fips as _fips
+    # 1. Try legacy hardcoded map (precise FIPS)
+    fips = _legacy_fips(state_code, city_name)
+    if fips:
+        return fips
 
-    # Try the hardcoded FIPS map first (has FIPS codes)
-    result = _fips(state_code, city_name)
-    if result:
-        return result
-    return None
+    # 2. Comprehensive city→county lookup
+    city = _strip_census_suffix(city_name)
+    state = state_code.strip().upper()
+    key = f"{state}|{city.title()}"
+    county_name = _city_county.get(key)
+
+    if not county_name:
+        return None
+
+    # 3. County name → FIPS
+    fips_key = f"{state}|{county_name.title()}"
+    return _county_fips.get(fips_key)
+
+
+def lookup_county_name(state_code: str, city_name: str) -> str | None:
+    """Get county name for a US city."""
+    city = _strip_census_suffix(city_name)
+    state = state_code.strip().upper()
+    key = f"{state}|{city.title()}"
+    return _city_county.get(key)
