@@ -196,7 +196,13 @@ def system_status(request: HttpRequest) -> HttpResponse:
             from core.services.ingestion import ingest_usda_reo
 
             result = ingest_usda_reo()
-            messages.info(request, f"USDA: {result.get('note', 'complete')}.")
+            if result.get("error"):
+                messages.warning(request, f"USDA: {result['error']}")
+            else:
+                messages.success(
+                    request,
+                    f"USDA: {result['created']} loaded, {result['updated']} updated.",
+                )
         elif action == "populate_growth":
             import threading
             from django.db import connection as _conn
@@ -3703,15 +3709,19 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
 
     # Show results in-page instead of redirecting to screener.
     # User sees exactly what was found per source without losing context.
-    return render(request, "property_discovery.html", {
-        "growth_area": growth_area,
-        "source_status": source_status,
-        "already_discovered": PipelineProperty.objects.filter(
-            user=request.user, growth_area=growth_area
-        ).count(),
-        "discovery_results": results,
-        "show_results": True,
-    })
+    return render(
+        request,
+        "property_discovery.html",
+        {
+            "growth_area": growth_area,
+            "source_status": source_status,
+            "already_discovered": PipelineProperty.objects.filter(
+                user=request.user, growth_area=growth_area
+            ).count(),
+            "discovery_results": results,
+            "show_results": True,
+        },
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

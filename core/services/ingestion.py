@@ -88,25 +88,44 @@ def ingest_hud_reo() -> dict[str, int]:
     return {"created": created, "updated": updated, "skipped": skipped}
 
 
+USDA_TXT_URL = (
+    "https://www.sc.egov.usda.gov/data/files/Property/FSASFHFOREData9-7-18.txt"
+)
+
+
 def ingest_usda_reo() -> dict[str, int]:
-    """Download and ingest USDA REO properties.
+    """Download and ingest USDA REO properties from fixed-width TXT file."""
+    from core.models import UsdaProperty
 
-    Placeholder — full USDA ingestion requires parsing a fixed-width TXT file.
-    For now, returns metadata only.
-    """
     if "usda" in _ingestion_run:
-        return {
-            "created": 0,
-            "updated": 0,
-            "skipped": 0,
-            "note": "already ran this session",
-        }
+        return {"created": 0, "updated": 0, "skipped": 0, "note": "already ran"}
 
-    _ingestion_run.add("usda")
-    logger.info("USDA ingestion: full TXT parser not yet wired to service module")
-    return {
-        "created": 0,
-        "updated": 0,
-        "skipped": 0,
-        "note": "USDA ingestion not yet wired — use manage.py ingest_usda_reo",
-    }
+    try:
+        from core.management.commands.ingest_usda_reo import _parse_usda_txt
+
+        logger.info("Downloading USDA REO data from %s", USDA_TXT_URL)
+        resp = requests.get(USDA_TXT_URL, timeout=60)
+        resp.raise_for_status()
+        records = _parse_usda_txt(resp.text)
+
+        now = timezone.now()
+        created = updated = 0
+        for rec in records:
+            rec["scraped_at"] = now
+            rec["last_seen_at"] = now
+            _, was_created = UsdaProperty.objects.update_or_create(
+                usda_case_number=rec["usda_case_number"],
+                defaults=rec,
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+
+        _ingestion_run.add("usda")
+        logger.info("USDA ingestion: %d created, %d updated", created, updated)
+        return {"created": created, "updated": updated, "skipped": 0}
+    except Exception as e:
+        _ingestion_run.add("usda")
+        logger.error("USDA ingestion failed: %s", e)
+        return {"created": 0, "updated": 0, "skipped": 0, "error": str(e)}

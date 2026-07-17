@@ -52,6 +52,13 @@
     </form>
     <form method="post" class="form-inline">
       {% csrf_token %}
+      <input type="hidden" name="action" value="ingest_usda">
+      <button class="btn btn-primary" {% if usda_done %}disabled{% endif %}>
+        {% if usda_done %}USDA Loaded ✓{% else %}Load USDA Data{% endif %}
+      </button>
+    </form>
+    <form method="post" class="form-inline">
+      {% csrf_token %}
       <input type="hidden" name="action" value="populate_growth">
       <button class="btn btn-primary">
         Analyze Growth Areas (9 states)
