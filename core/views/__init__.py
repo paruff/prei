@@ -1032,38 +1032,35 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             data["population"], data["pop_growth"]
         )
 
-        # Attempt county-level employment via QCEW (replaces FRED when county is known)
-        # Uses comprehensive US city database (29,727 cities) with FIPS fallback.
+        # Employment: use stored QCEW if available, otherwise FRED state-level.
+        # QCEW/FMR HTTP calls are too slow for web views (gunicorn 30s timeout)
+        # and are only made in management commands (populate_growth_areas).
         from core.data.us_lookup import lookup_county_fips
-        from core.integrations.market.qcew_adapter import fetch_county_employment_growth
 
-        emp_rate = safe_emp_growth
-        county_fips = lookup_county_fips(state, data["place_name"])
-        if county_fips:
-            try:
-                qcew_growth = fetch_county_employment_growth(county_fips, year=2024)
-                if qcew_growth is not None:
-                    emp_rate = qcew_growth
-            except Exception:
-                pass  # QCEW unavailable — keep FRED fallback
+        city_county_fips = lookup_county_fips(state, data["place_name"])
+        existing = GrowthArea.objects.filter(
+            state=state, city_name=data["place_name"]
+        ).first()
 
-        # Rent growth (15% of GACS) — county-level HUD FMR YoY change
-        rent_growth = None
-        fmr_year = None
-        fmr_2br = None
-        if county_fips:
-            try:
-                from core.integrations.market.fmr_adapter import fetch_fmr_data
+        if existing and existing.employment_growth_rate and existing.county_fips:
+            # Already have QCEW data from a prior populate run — keep it
+            emp_rate = existing.employment_growth_rate
+            county_fips_to_store = existing.county_fips
+        else:
+            # No stored QCEW — use FRED state-level for now
+            emp_rate = safe_emp_growth
+            county_fips_to_store = city_county_fips or ""
 
-                fmr_result = fetch_fmr_data(
-                    state, county_fips, city_name=data["place_name"]
-                )
-                if fmr_result:
-                    rent_growth = fmr_result.get("rent_growth_rate")
-                    fmr_year = fmr_result.get("fmr_year")
-                    fmr_2br = fmr_result.get("fmr_2br")
-            except Exception:
-                pass
+        # FMR data: preserve existing values, do not overwrite with None.
+        # FMR is populated by populate_growth_areas management command.
+        if existing and existing.fmr_2br is not None:
+            rent_growth = existing.rent_growth_rate
+            fmr_year = existing.fmr_year
+            fmr_2br = existing.fmr_2br
+        else:
+            rent_growth = None
+            fmr_year = None
+            fmr_2br = None
 
         growth_area, _ = GrowthArea.objects.update_or_create(
             state=state,
@@ -1081,7 +1078,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 "fmr_2br": fmr_2br,
                 "net_migration": net_mig,
                 "net_migration_rate": net_mig_rate,
-                "county_fips": county_fips or "",
+                "county_fips": county_fips_to_store,
                 "landlord_score": get_state_landlord_score(state)["score"],
                 "data_timestamp": timezone.now(),
             },
