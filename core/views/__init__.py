@@ -231,6 +231,29 @@ def system_status(request: HttpRequest) -> HttpResponse:
                 f"Growth area analysis started for {len(TARGET_STATES)} states in background. "
                 "Refresh in 2-3 minutes to see county-level data.",
             )
+        elif action == "scrape_counties":
+            import threading
+            from django.db import connection as _conn
+
+            def _run():
+                _conn.close()
+                from core.services.ingestion import ingest_tx_counties
+
+                try:
+                    ingest_tx_counties()
+                except Exception as e:
+                    import logging
+
+                    logging.getLogger("prei.system").error(
+                        "County scrape failed: %s", e
+                    )
+
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            messages.success(
+                request,
+                "County foreclosure scrape started for all 11 TX counties in background.",
+            )
         return redirect("system_status")
 
     return render(

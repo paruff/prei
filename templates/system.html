@@ -64,6 +64,13 @@
         Analyze Growth Areas (9 states)
       </button>
     </form>
+    <form method="post" class="form-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="scrape_counties">
+      <button class="btn btn-primary">
+        Scrape TX Counties (11)
+      </button>
+    </form>
     <a href="{% url 'vrm_properties_list' %}" class="btn">Scrape VRM →</a>
   </div>
 </div>

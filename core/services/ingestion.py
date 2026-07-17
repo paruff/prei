@@ -129,3 +129,65 @@ def ingest_usda_reo() -> dict[str, int]:
         _ingestion_run.add("usda")
         logger.error("USDA ingestion failed: %s", e)
         return {"created": 0, "updated": 0, "skipped": 0, "error": str(e)}
+
+
+def ingest_tx_counties() -> dict[str, int]:
+    """Scrape all 11 Texas county foreclosure notices.
+
+    Runs each county scraper via Playwright, upserts results into
+    CountyForeclosureNotice.
+    """
+    from core.models import CountyForeclosureNotice
+
+    TX_COUNTIES = [
+        "harris",
+        "dallas",
+        "tarrant",
+        "bexar",
+        "travis",
+        "collin",
+        "denton",
+        "el_paso",
+        "fort_bend",
+        "hidalgo",
+        "montgomery",
+    ]
+    total_created = 0
+    total_updated = 0
+    errors = []
+
+    for county in TX_COUNTIES:
+        try:
+            mod = __import__(
+                f"core.integrations.county.{county}_tx",
+                fromlist=["scrape"],
+            )
+            if hasattr(mod, "scrape_dallas_county_nts"):
+                notices = mod.scrape_dallas_county_nts()
+            elif hasattr(mod, "scrape"):
+                notices = mod.scrape()
+            else:
+                errors.append(f"{county}: no scrape function")
+                continue
+
+            now = timezone.now()
+            for notice in notices:
+                notice["scraped_at"] = now
+                notice["last_seen_at"] = now
+                _, created = CountyForeclosureNotice.objects.update_or_create(
+                    case_number=notice.get("case_number", ""),
+                    defaults={**notice, "state": "TX", "county": county.title()},
+                )
+                if created:
+                    total_created += 1
+                else:
+                    total_updated += 1
+        except Exception as exc:
+            logger.error("County scraper %s failed: %s", county, exc)
+            errors.append(f"{county}: {exc}")
+
+    return {
+        "created": total_created,
+        "updated": total_updated,
+        "errors": errors,
+    }
