@@ -153,10 +153,11 @@ def get_rent_estimate(
 
     # Fall back to a reasonable default based on 2BR FMR
     if zip_code:
-        logger.info(
-            "ZIP-level FMR lookup not yet implemented via API — use county-level"
-        )
-        # For now, county-level is the best we can do
-        pass
+        # Log once per session — this is called per-property during screening
+        if not getattr(_get_rent_estimate, "_zip_warned", False):
+            logger.info(
+                "ZIP-level FMR lookup not yet implemented via API — using county-level"
+            )
+            _get_rent_estimate._zip_warned = True  # type: ignore[attr-defined]
 
     return None

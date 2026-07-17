@@ -309,6 +309,7 @@ GROWTH_AREAS_CACHE_DURATION = 86400  # 24 hours
 # FRED API key for economic data (employment growth, unemployment)
 FRED_API_KEY: str = env("FRED_API_KEY", default="")
 HUD_API_KEY: str = env("HUD_API_KEY", default="")
+ATTOM_API_KEY: str = env("ATTOM_API_KEY", default="")  # ATTOM preforeclosure + property data
 
 REHAB_COST_PER_SQFT: dict[str, Decimal] = {
     "cosmetic": Decimal(
