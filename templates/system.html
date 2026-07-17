@@ -66,6 +66,13 @@
     </form>
     <form method="post" class="form-inline">
       {% csrf_token %}
+      <input type="hidden" name="action" value="sheriff_sales">
+      <button class="btn btn-primary">
+        Scrape Sheriff Sales (5)
+      </button>
+    </form>
+    <form method="post" class="form-inline">
+      {% csrf_token %}
       <input type="hidden" name="action" value="scrape_counties">
       <button class="btn btn-primary">
         Scrape TX Counties (11)

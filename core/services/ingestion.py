@@ -191,3 +191,39 @@ def ingest_tx_counties() -> dict[str, int]:
         "updated": total_updated,
         "errors": errors,
     }
+
+
+def ingest_sheriff_sales() -> dict[str, int]:
+    """Scrape sheriff sale notices for all 5 major TX counties."""
+    from core.models import CountyForeclosureNotice
+
+    total_created = 0
+    errors = []
+    from core.integrations.county.tx_sheriff import scrape_all_sheriff_sales
+
+    results = scrape_all_sheriff_sales()
+    now = timezone.now()
+    for county, notices in results.items():
+        for notice in notices:
+            try:
+                notice["scraped_at"] = now
+                notice["last_seen_at"] = now
+                notice["document_type"] = "sheriff_sale"
+                _, created = CountyForeclosureNotice.objects.update_or_create(
+                    case_number=notice.get("case_number", f"SHF-{county}-{total_created}"),
+                    defaults={**notice, "state": "TX", "county": county.title()},
+                )
+                if created:
+                    total_created += 1
+            except Exception as exc:
+                errors.append(f"{county}: {exc}")
+    return {"created": total_created, "updated": 0, "errors": errors}
+
+
+def get_hud_dollar_homes():
+    """Return HUD REO properties priced under $100 (Dollar Home program candidates)."""
+    from core.models import HudProperty
+
+    return HudProperty.objects.filter(
+        asking_price__isnull=False, asking_price__lt=100
+    ).order_by("state", "city")

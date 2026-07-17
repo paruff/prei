@@ -231,6 +231,20 @@ def system_status(request: HttpRequest) -> HttpResponse:
                 f"Growth area analysis started for {len(TARGET_STATES)} states in background. "
                 "Refresh in 2-3 minutes to see county-level data.",
             )
+        elif action == "sheriff_sales":
+            import threading
+            from django.db import connection as _conn
+            def _run():
+                _conn.close()
+                from core.services.ingestion import ingest_sheriff_sales
+                try:
+                    result = ingest_sheriff_sales()
+                    logger.info("Sheriff scrape: %d created", result.get("created", 0))
+                except Exception as e:
+                    logger.error("Sheriff scrape failed: %s", e)
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            messages.success(request, "Sheriff sale scrape started for 5 TX counties in background.")
         elif action == "scrape_counties":
             import threading
             from django.db import connection as _conn
