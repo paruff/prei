@@ -163,8 +163,12 @@ def health_check(request: HttpRequest) -> JsonResponse:
 def system_status(request: HttpRequest) -> HttpResponse:
     """System status page — data inventory and operations (no CLI needed)."""
     from core.models import (
-        GrowthArea, HudProperty, UsdaProperty, VrmProperty,
-        CountyForeclosureNotice, PipelineProperty,
+        GrowthArea,
+        HudProperty,
+        UsdaProperty,
+        VrmProperty,
+        CountyForeclosureNotice,
+        PipelineProperty,
     )
 
     hud_count = HudProperty.objects.count()
@@ -180,51 +184,71 @@ def system_status(request: HttpRequest) -> HttpResponse:
         if action == "ingest_hud":
             try:
                 from core.services.ingestion import ingest_hud_reo
+
                 result = ingest_hud_reo()
-                messages.success(request, f"HUD: {result['created']} loaded, {result['updated']} updated.")
+                messages.success(
+                    request,
+                    f"HUD: {result['created']} loaded, {result['updated']} updated.",
+                )
             except Exception as e:
                 messages.error(request, f"HUD ingestion failed: {e}")
         elif action == "ingest_usda":
             from core.services.ingestion import ingest_usda_reo
+
             result = ingest_usda_reo()
             messages.info(request, f"USDA: {result.get('note', 'complete')}.")
         elif action == "populate_growth":
             import threading
             from django.db import connection as _conn
+
             TARGET_STATES = ["TX", "FL", "GA", "NC", "AZ", "OH", "IN", "AL", "SC"]
+
             def _run():
                 _conn.close()
                 from django.core.management import call_command
+
                 try:
-                    call_command("populate_growth_areas", states=TARGET_STATES, force=True)
+                    call_command(
+                        "populate_growth_areas", states=TARGET_STATES, force=True
+                    )
                 except Exception as e:
                     import logging
-                    logging.getLogger("prei.system").error("Populate growth failed: %s", e)
+
+                    logging.getLogger("prei.system").error(
+                        "Populate growth failed: %s", e
+                    )
+
             t = threading.Thread(target=_run, daemon=True)
             t.start()
             messages.success(
                 request,
                 f"Growth area analysis started for {len(TARGET_STATES)} states in background. "
-                "Refresh in 2-3 minutes to see county-level data."
+                "Refresh in 2-3 minutes to see county-level data.",
             )
         return redirect("system_status")
 
-    return render(request, "system.html", {
-        "hud_count": hud_count,
-        "hud_states": HudProperty.objects.values("state").distinct().count(),
-        "hud_done": hud_count > 0,
-        "usda_count": usda_count,
-        "usda_states": UsdaProperty.objects.values("state").distinct().count(),
-        "usda_done": usda_count > 0,
-        "vrm_count": vrm_count,
-        "vrm_states": VrmProperty.objects.values("state").distinct().count(),
-        "county_count": county_count,
-        "ga_count": ga_count,
-        "ga_states": GrowthArea.objects.values("state").distinct().count(),
-        "ga_fips_pct": f"{ga_with_fips * 100 // max(ga_count, 1)}",
-        "pipeline_count": pipeline_count,
-        "pipeline_stages": PipelineProperty.objects.values("stage").distinct().count(),
-    })
+    return render(
+        request,
+        "system.html",
+        {
+            "hud_count": hud_count,
+            "hud_states": HudProperty.objects.values("state").distinct().count(),
+            "hud_done": hud_count > 0,
+            "usda_count": usda_count,
+            "usda_states": UsdaProperty.objects.values("state").distinct().count(),
+            "usda_done": usda_count > 0,
+            "vrm_count": vrm_count,
+            "vrm_states": VrmProperty.objects.values("state").distinct().count(),
+            "county_count": county_count,
+            "ga_count": ga_count,
+            "ga_states": GrowthArea.objects.values("state").distinct().count(),
+            "ga_fips_pct": f"{ga_with_fips * 100 // max(ga_count, 1)}",
+            "pipeline_count": pipeline_count,
+            "pipeline_stages": PipelineProperty.objects.values("stage")
+            .distinct()
+            .count(),
+        },
+    )
 
 
 @login_required
@@ -2746,6 +2770,7 @@ def search_listings(request):
     )
 
 
+@login_required
 def analyze_property(request, property_id: int):
     from decimal import Decimal
 
@@ -2799,6 +2824,7 @@ def analyze_property(request, property_id: int):
     )
 
 
+@login_required
 def report_listing(request, listing_id: int):
     try:
         lst = Listing.objects.get(id=listing_id)
@@ -2836,6 +2862,7 @@ def report_listing(request, listing_id: int):
     return render(request, "property_report.html", context)
 
 
+@login_required
 def report_property(request, property_id: int):
     try:
         prop = Property.objects.get(id=property_id)
@@ -3256,6 +3283,7 @@ def markets_list(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
 def brrrr_calculator(request: HttpRequest) -> HttpResponse:
     """Standalone BRRRR calculator page — no login required.
 
@@ -3312,6 +3340,7 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
 def sell_index(request: HttpRequest) -> HttpResponse:
     """Sell/Disposition stub page — placeholder for future disposition tools."""
     return render(request, "sell_index.html")
@@ -3483,7 +3512,8 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                     except Exception as exc:
                         logger.error(
                             "Background VRM scrape: failed to save listing %s: %s",
-                            listing.get("vrm_property_id"), exc,
+                            listing.get("vrm_property_id"),
+                            exc,
                         )
 
             t = threading.Thread(target=_scrape_vrm, args=(state,), daemon=True)
@@ -3518,9 +3548,14 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
 
                 result = ingest_usda_reo()
                 if result.get("created", 0) > 0:
-                    messages.info(request, f"USDA data loaded: {result['created']} properties.")
+                    messages.info(
+                        request, f"USDA data loaded: {result['created']} properties."
+                    )
                 else:
-                    messages.info(request, "USDA data not yet available. Use manage.py ingest_usda_reo.")
+                    messages.info(
+                        request,
+                        "USDA data not yet available. Use manage.py ingest_usda_reo.",
+                    )
             except Exception as exc:
                 logger.error("Discovery USDA ingestion failed: %s", exc)
 
