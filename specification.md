@@ -1,4 +1,4 @@
-# Specification: GitOps Phase 1 — Deployment Manifests
+# Specification: GitOps Phase 2 — uFawkesObs Integration
 # Written: 2026-07-18
 # Status: Draft for feature-flow implementation
 
@@ -6,24 +6,26 @@
 
 ## 0. Executive Summary
 
-Create the `deploy/` directory with docker-compose manifests and wire the
-`gitops-deploy` CI job to automatically update image tags on every successful
-build. This is Phase 1 of the GitOps compliance roadmap — prerequisite for
-uFawkesObs integration.
+Phase 2 documents the uFawkesObs integration and adds the webhook/configuration
+needed for uFawkesObs to monitor this project's GitOps pipeline. When uFawkesObs
+is deployed, it will collect DORA metrics: deploy frequency, lead time, change
+failure rate, and mean time to recovery.
 
 ---
 
 ## 1. Problem Statement
 
-**Current state:** No deployment manifests in git. The `gitops-deploy` job in
-`docker-publish.yml` assumes a separate GitOps repo with kustomization.yaml
-that doesn't exist. Image tags are not tracked as declarative state.
+**Current state:**
+- No uFawkesObs integration documentation or configuration
+- No webhook registered with uFawkesObs
+- No DORA metrics collection pipeline
+- `post-deployment.yml` doesn't notify uFawkesObs on deploy events
 
 **Desired state:**
-- `deploy/base/docker-compose.yml` — declarative service definition
-- `deploy/overlays/production/docker-compose.override.yml` — production overrides
-- CI automatically writes the image digest to the production manifest on build
-- `GITOPS_REPO` variable points to this repo (self-hosted manifest)
+- `docs/UFAWKES_OBS_SETUP.md` — complete integration guide
+- `post-deployment.yml` sends webhook to uFawkesObs on deploy success/failure
+- DORA metrics collection script that uFawkesObs can consume
+- Configuration variables documented for `GITOPS_REPO`, webhook URL, etc.
 
 ---
 
@@ -31,11 +33,10 @@ that doesn't exist. Image tags are not tracked as declarative state.
 
 | ID | Description | Priority |
 |---|---|---|
-| F-01 | `deploy/base/docker-compose.yml` defines the service (port 8000, env vars, volumes) | P0 |
-| F-02 | `deploy/overlays/production/docker-compose.override.yml` overrides image tag and secrets | P0 |
-| F-03 | `docker-publish.yml` gitops-deploy job writes image digest to production overlay | P0 |
-| F-04 | `GITOPS_REPO` defaults to this repo when set to self-reference or empty | P1 |
-| F-05 | `scripts/gitops-validate.sh` includes `deploy/` manifests in validation | P1 |
+| F-01 | UFAWKES_OBS_SETUP.md documents the complete integration flow | P0 |
+| F-02 | post-deployment.yml posts deploy events to uFawkesObs webhook | P1 |
+| F-03 | DORA metrics script outputs JSON that uFawkesObs can consume | P1 |
+| F-04 | GitHub variables documented (UFAWKES_WEBHOOK_URL, GITOPS_REPO, etc.) | P0 |
 
 ---
 
@@ -43,8 +44,7 @@ that doesn't exist. Image tags are not tracked as declarative state.
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-01 | `deploy/base/docker-compose.yml` exists with service definition | unit |
-| AC-02 | `deploy/overlays/production/docker-compose.override.yml` exists with image tag placeholder | unit |
-| AC-03 | gitops-validate.sh runs successfully against deploy/ manifests | unit |
-| AC-04 | docker-publish.yml references `deploy/overlays/production/docker-compose.override.yml` | unit |
-| AC-05 | Manifest files are valid docker-compose YAML | unit |
+| AC-01 | docs/UFAWKES_OBS_SETUP.md exists with integration steps | unit |
+| AC-02 | Document includes webhook registration instructions | unit |
+| AC-03 | post-deployment.yml has a deploy-notify step that POSTs to uFawkesObs | unit |
+| AC-04 | scripts/dora-metrics.sh outputs JSON with deploy_frequency, lead_time, change_failure_rate, mttr | unit |
