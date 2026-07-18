@@ -48,10 +48,13 @@ class FMRClient:
         if resp.status_code == 403:
             raise FMRError(
                 "HUD API key not authorized for FMR dataset. "
-                "403 means the key is valid but NOT registered for FMR. "
-                "Register at: https://www.huduser.gov/portal/dataset/fmr-api.html "
-                "(even if your key works for other HUD datasets, FMR requires "
-                "separate activation)."
+                "The key authenticates (not a 401) but lacks FMR permission. "
+                "Fix:\n"
+                "1. Go to https://www.huduser.gov/portal/dataset/fmr-api.html\n"
+                "2. Ensure FAIR MARKET RENT is the Selected Dataset\n"
+                "3. Create a NEW token (tokens created before selecting FMR\n"
+                "   may not have FMR access even if the dataset is now selected)\n"
+                "4. Set the new token as HUD_API_KEY in your environment"
             )
         if resp.status_code == 404:
             raise FMRError(f"No data found: {path}")
