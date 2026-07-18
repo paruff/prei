@@ -1,4 +1,4 @@
-# Specification: Phase C — Deployment Reliability
+# Specification: Phase D — Observability
 # Written: 2026-07-18
 # Status: Draft for feature-flow implementation
 
@@ -6,46 +6,42 @@
 
 ## 0. Executive Summary
 
-Phase C makes deployment safe and measurable. Not through canary infrastructure
-(which requires K8s/replicas this project doesn't have), but through the three
-controls available today: automated security scanning, flaky test elimination,
-and reliability metrics.
-
-C-1 (canary) is documented as an architectural plan, not implemented.
+Phase D makes the application observable: structured logging, request timing,
+alerting thresholds, and auto-validated API docs. Without observability, a
+production issue is invisible until a user reports it.
 
 ---
 
 ## 1. Problem Statement
 
 **Current state:**
-- OWASP ZAP runs in passive baseline mode only — no active scanning for injection/XSS
-- Flaky tests are not detected or quarantined — "rerun CI" culture wastes time
-- No SLOs defined — no way to measure deployment reliability
-- No canary deployment capability — deploy means "ship to 100% and pray"
+- Django default text logging — not machine-parseable
+- No request timing or latency tracking
+- No alerting thresholds defined
+- `docs/API_SURFACE.md` is manually maintained and out of date (last updated May 2026)
 
 **Desired state:**
-- OWASP ZAP full active scan against staging with authentication support
-- pytest-retry plugin detects and retries flaky tests; quarantines after N failures
-- SLO dashboard: deployment frequency, change failure rate, mean time to recovery
-- Canary deployment plan documented for future infra
+- JSON-formatted logs with structured fields (request_id, method, path, status, duration_ms)
+- Request timing middleware that logs every HTTP request
+- CI-based alerting checks for deploy failure rate
+- API_SURFACE.md validated in CI against actual code signatures
 
 ---
 
 ## 2. Scope
 
-### Implement
-
 | Task | Description |
 |---|---|
-| C-2 | Full OWASP ZAP active scan (auth-aware, spider, XSS/injection rules) |
-| C-3 | SLO foundation: deploy frequency + failure rate tracked in CI |
-| C-4 | Flaky test retry + quarantine mechanism via pytest-rerunfailures |
+| D-1 | Structured JSON logging via `django-structlog` |
+| D-2 | Request timing middleware with structured log output |
+| D-3 | Alerting threshold checks in CI (deploy failure rate > 10% warns) |
+| D-4 | API surface doc validation script + CI gate |
 
-### Document (not implement)
+### Out of Scope (needs infra not available)
 
-| Task | Description |
-|---|---|
-| C-1 | Canary deployment architecture plan — reference for future K8s migration |
+- OpenTelemetry distributed tracing (needs collector + backend)
+- Production alerting/paging (needs monitoring service)
+- Dashboard generation (needs Grafana or equivalent)
 
 ---
 
@@ -53,12 +49,11 @@ C-1 (canary) is documented as an architectural plan, not implemented.
 
 | ID | Description | Priority |
 |---|---|---|
-| F-01 | OWASP ZAP full scan runs against staging URL with auth context | P0 |
-| F-02 | Active scan includes XSS, SQL injection, CSRF, auth bypass rules | P0 |
-| F-03 | Flaky test detection: retry once, quarantine after 3 flakes | P1 |
-| F-04 | SLO metrics: deployment frequency (last 30 days), change failure rate (%) | P1 |
-| F-05 | SLO metrics computed from CI run history and reported in PR description | P1 |
-| F-06 | Canary deployment plan documented in docs/DEPLOYMENT_STRATEGY.md | P2 |
+| F-01 | Request logging outputs JSON with: method, path, status, duration_ms, request_id | P0 |
+| F-02 | Structured logging uses django-structlog (already compatible with Django 5.2) | P0 |
+| F-03 | Request timing middleware measures every HTTP request at the WSGI level | P1 |
+| F-04 | CI check warns if deploy failure rate exceeds 10% over the last 10 runs | P1 |
+| F-05 | API surface validation script checks actual code against docs/API_SURFACE.md | P1 |
 
 ---
 
@@ -66,10 +61,9 @@ C-1 (canary) is documented as an architectural plan, not implemented.
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-01 | `post-deployment.yml` security job uses full ZAP scan with `-a` (active) flag | unit |
-| AC-02 | ZAP scan configuration includes auth context (session token or credentials) | unit |
-| AC-03 | CI quality gate includes `--reruns 1 --reruns-delay 5` on unit tests | unit |
-| AC-04 | A test that fails twice is marked as flaky with `@pytest.mark.flaky` | unit |
-| AC-05 | SLO report is generated from CI run data and attached to build summary | unit |
-| AC-06 | `make test-slos` computes deploy frequency and failure rate from git log | unit |
-| AC-07 | `docs/DEPLOYMENT_STRATEGY.md` exists with canary architecture plan | unit |
+| AC-01 | JSON logging middleware installed and configured | unit |
+| AC-02 | Request logs contain method, path, status_code, duration_ms fields | live-system |
+| AC-03 | `make test-alerts` runs deploy failure rate check | unit |
+| AC-04 | Alert check warns when failure rate > 10% in last 10 Tier 2 runs | unit |
+| AC-05 | `scripts/validate-api-surface.sh` checks docs/API_SURFACE.md against source | unit |
+| AC-06 | CI gate runs API surface validation on every PR | unit |

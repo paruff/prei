@@ -191,6 +191,16 @@ test-finance-math:
 test-slos:
 	@./scripts/slo-report.sh
 
+# ── Alerting check ──────────────────────────────────────────────────────
+
+test-alerts:
+	@./scripts/alert-check.sh
+
+# ── API surface validation ──────────────────────────────────────────────
+
+test-api-surface:
+	@./scripts/validate-api-surface.sh
+
 # ── HTTP acceptance tests (against deployed app) ────────────────────────────
 
 test-acceptance:
