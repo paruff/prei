@@ -1,62 +1,98 @@
-# Design: GitOps Phase 3 — Hardening
-# Written: 2026-07-18
-# Status: Draft
+# Design: P0 — CRM Kanban + Data Health
+# Written: 2026-07-19
 
 ---
 
-## 1. Architecture
+## 1. Kanban Board
 
-### 1.1 GitHub Environment
+### 1.1 URL + Template
 
-```
-Settings → Environments → "production"
-  ├── Required reviewers: paruff
-  ├── Wait timer: 0 minutes
-  └── Deployment branches: main
-```
+- URL: `/pipeline/kanban/` (new view)
+- Template: `templates/pipeline/kanban.html` (existing, needs wiring)
+- CSS: existing `static/css/pipeline.css`
+- JS: SortableJS via CDN for drag-and-drop
 
-The `docker-publish.yml` publish job references this environment, enforcing
-approval before image publishing.
+### 1.2 Backend API
 
-### 1.2 Image Signature Verification
+New endpoint: `POST /pipeline/<id>/transition/`
 
-The `docker-publish.yml` already uses `actions/attest-build-provenance@v4`
-for Cosign keyless signing. Phase 3 adds verification in `post-deployment.yml`:
-
-```yaml
-- name: Verify image signature
-  run: |
-    gh attestation verify \
-      "oci://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ github.event.client_payload.image }}" \
-      --repo ${{ github.repository }}
+```python
+def transition_stage(request, pipeline_id):
+    prop = get_object_or_404(PipelineProperty, id=pipeline_id)
+    new_stage = request.POST["stage"]
+    validate_stage_transition(prop.current_stage, new_stage)  # forward-only
+    prop.current_stage = new_stage
+    prop.save()
+    return JsonResponse({"status": "ok", "new_stage": new_stage})
 ```
 
-### 1.3 Drift Detection
+### 1.3 Stage Rules
 
-`scripts/drift-check.sh` compares the deployed health endpoint with the
-expected state from git manifests:
-
-```bash
-# Query deployed health
-DEPLOYED=$(curl -sf "$DEPLOY_URL/health/" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
-
-# Expected state: "ok"
-if [ "$DEPLOYED" != "ok" ]; then
-  echo "::error::Drift detected: deployed health is '$DEPLOYED', expected 'ok'"
-  exit 1
-fi
+```
+DISCOVERED → SCREENING → UNDERWRITING → OFFER → DUE_DILIGENCE → CLOSING → ACQUIRED
 ```
 
-For a more complete drift check (when K8s is available), compare the deployed
-image digest with the gitops manifest.
+Forward-only. No skipping. No backward movement (use admin to fix mistakes).
+
+### 1.4 JavaScript (vanilla + SortableJS)
+
+```javascript
+// SortableJS makes columns draggable
+new Sortable(column, {
+  group: 'pipeline',
+  onEnd: function(evt) {
+    const card = evt.item;
+    const newStage = evt.to.dataset.stage;
+    const pipelineId = card.dataset.id;
+    fetch(`/pipeline/${pipelineId}/transition/`, {
+      method: 'POST',
+      body: new URLSearchParams({stage: newStage}),
+    });
+  }
+});
+```
 
 ---
 
-## 2. File Changes
+## 2. Data Source Health Dashboard
+
+### 2.1 Model
+
+```python
+class DataSourceHealth(models.Model):
+    source_name = models.CharField(max_length=64, unique=True)
+    last_run = models.DateTimeField(null=True)
+    record_count = models.IntegerField(default=0)
+    status = models.CharField(max_length=16, default="unknown")  # ok | error
+    error_message = models.TextField(blank=True)
+```
+
+### 2.2 View Update
+
+Update `system_status` view to query `DataSourceHealth` and pass to template.
+
+### 2.3 Template
+
+Health table under the existing counts section:
+```html
+<table class="data-source-health">
+  <thead><tr><th>Source</th><th>Last Run</th><th>Records</th><th>Status</th></tr></thead>
+  {{% for h in health %}}<tr>...</tr>{{% endfor %}}
+</table>
+```
+
+---
+
+## 3. File Changes
 
 | File | Change | Purpose |
 |---|---|---|
-| `.github/workflows/docker-publish.yml` | Add `environment: production` to publish job | F-01, F-02 |
-| `.github/workflows/post-deployment.yml` | Add image signature verification step | F-04 |
-| `scripts/drift-check.sh` | New: drift detection script | F-05 |
-| `docs/GITOPS_COMPLIANCE_AUDIT.md` | Update to mark Phase 3 complete | Documentation |
+| `templates/pipeline/kanban.html` | Modified | Wire up SortableJS + stage columns |
+| `core/views/__init__.py` | Modified | Add kanban view + transition API |
+| `core/models/pipeline.py` | Modified | Add DataSourceHealth model |
+| `core/views/__init__.py` | Modified | Update system_status with health data |
+| `templates/pipeline/system_status.html` | Modified | Add health table |
+| `core/urls.py` | Modified | Add /pipeline/kanban/ + transition URL |
+| `static/js/kanban.js` | New | SortableJS drag-and-drop logic |
+| `requirements.txt` | Modified | Add django-cors-headers (if needed for API) |
+| `core/migrations/` | New | Migration for DataSourceHealth |

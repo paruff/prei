@@ -165,6 +165,7 @@ def health_check(request: HttpRequest) -> JsonResponse:
 def system_status(request: HttpRequest) -> HttpResponse:
     """System status page — data inventory and operations (no CLI needed)."""
     from core.models import (
+        DataSourceHealth,
         GrowthArea,
         HudProperty,
         UsdaProperty,
@@ -297,6 +298,7 @@ def system_status(request: HttpRequest) -> HttpResponse:
             "pipeline_stages": PipelineProperty.objects.values("stage")
             .distinct()
             .count(),
+            "health": DataSourceHealth.objects.all(),
         },
     )
 
