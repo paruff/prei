@@ -1,0 +1,28 @@
+# Base service definition — prei.
+# Overridden by deploy/overlays/*/docker-compose.override.yml per environment.
+# Image tag updated automatically by the gitops-deploy CI job.
+
+services:
+  web:
+    image: ghcr.io/paruff/prei:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///data/db.sqlite3}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - DJANGO_ENV=production
+      - DEBUG=False
+      - RUN_MIGRATIONS=1
+    volumes:
+      - prei-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  prei-data:

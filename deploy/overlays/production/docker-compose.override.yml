@@ -1,0 +1,10 @@
+# Production overrides.
+# Image digest updated automatically by the gitops-deploy CI job on every build.
+
+services:
+  web:
+    image: ghcr.io/paruff/prei@sha256:PLACEHOLDER
+    restart: always
+    environment:
+      - DJANGO_ENV=production
+      - DEBUG=False

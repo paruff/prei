@@ -1,4 +1,4 @@
-# Specification: Phase D — Observability
+# Specification: GitOps Phase 1 — Deployment Manifests
 # Written: 2026-07-18
 # Status: Draft for feature-flow implementation
 
@@ -6,64 +6,45 @@
 
 ## 0. Executive Summary
 
-Phase D makes the application observable: structured logging, request timing,
-alerting thresholds, and auto-validated API docs. Without observability, a
-production issue is invisible until a user reports it.
+Create the `deploy/` directory with docker-compose manifests and wire the
+`gitops-deploy` CI job to automatically update image tags on every successful
+build. This is Phase 1 of the GitOps compliance roadmap — prerequisite for
+uFawkesObs integration.
 
 ---
 
 ## 1. Problem Statement
 
-**Current state:**
-- Django default text logging — not machine-parseable
-- No request timing or latency tracking
-- No alerting thresholds defined
-- `docs/API_SURFACE.md` is manually maintained and out of date (last updated May 2026)
+**Current state:** No deployment manifests in git. The `gitops-deploy` job in
+`docker-publish.yml` assumes a separate GitOps repo with kustomization.yaml
+that doesn't exist. Image tags are not tracked as declarative state.
 
 **Desired state:**
-- JSON-formatted logs with structured fields (request_id, method, path, status, duration_ms)
-- Request timing middleware that logs every HTTP request
-- CI-based alerting checks for deploy failure rate
-- API_SURFACE.md validated in CI against actual code signatures
+- `deploy/base/docker-compose.yml` — declarative service definition
+- `deploy/overlays/production/docker-compose.override.yml` — production overrides
+- CI automatically writes the image digest to the production manifest on build
+- `GITOPS_REPO` variable points to this repo (self-hosted manifest)
 
 ---
 
-## 2. Scope
-
-| Task | Description |
-|---|---|
-| D-1 | Structured JSON logging via `django-structlog` |
-| D-2 | Request timing middleware with structured log output |
-| D-3 | Alerting threshold checks in CI (deploy failure rate > 10% warns) |
-| D-4 | API surface doc validation script + CI gate |
-
-### Out of Scope (needs infra not available)
-
-- OpenTelemetry distributed tracing (needs collector + backend)
-- Production alerting/paging (needs monitoring service)
-- Dashboard generation (needs Grafana or equivalent)
-
----
-
-## 3. Requirements
+## 2. Requirements
 
 | ID | Description | Priority |
 |---|---|---|
-| F-01 | Request logging outputs JSON with: method, path, status, duration_ms, request_id | P0 |
-| F-02 | Structured logging uses django-structlog (already compatible with Django 5.2) | P0 |
-| F-03 | Request timing middleware measures every HTTP request at the WSGI level | P1 |
-| F-04 | CI check warns if deploy failure rate exceeds 10% over the last 10 runs | P1 |
-| F-05 | API surface validation script checks actual code against docs/API_SURFACE.md | P1 |
+| F-01 | `deploy/base/docker-compose.yml` defines the service (port 8000, env vars, volumes) | P0 |
+| F-02 | `deploy/overlays/production/docker-compose.override.yml` overrides image tag and secrets | P0 |
+| F-03 | `docker-publish.yml` gitops-deploy job writes image digest to production overlay | P0 |
+| F-04 | `GITOPS_REPO` defaults to this repo when set to self-reference or empty | P1 |
+| F-05 | `scripts/gitops-validate.sh` includes `deploy/` manifests in validation | P1 |
 
 ---
 
-## 4. Acceptance Criteria
+## 3. Acceptance Criteria
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-01 | JSON logging middleware installed and configured | unit |
-| AC-02 | Request logs contain method, path, status_code, duration_ms fields | live-system |
-| AC-03 | `make test-alerts` runs deploy failure rate check | unit |
-| AC-04 | Alert check warns when failure rate > 10% in last 10 Tier 2 runs | unit |
-| AC-05 | `scripts/validate-api-surface.sh` checks docs/API_SURFACE.md against source | unit |
-| AC-06 | CI gate runs API surface validation on every PR | unit |
+| AC-01 | `deploy/base/docker-compose.yml` exists with service definition | unit |
+| AC-02 | `deploy/overlays/production/docker-compose.override.yml` exists with image tag placeholder | unit |
+| AC-03 | gitops-validate.sh runs successfully against deploy/ manifests | unit |
+| AC-04 | docker-publish.yml references `deploy/overlays/production/docker-compose.override.yml` | unit |
+| AC-05 | Manifest files are valid docker-compose YAML | unit |

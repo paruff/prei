@@ -328,7 +328,7 @@ jobs:
     if: vars.GITOPS_REPO != ''
     env:
       GITOPS_REPO: ${{ vars.GITOPS_REPO }}
-      GITOPS_MANIFEST_PATH: ${{ vars.GITOPS_MANIFEST_PATH || 'overlays/production/kustomization.yaml' }}
+      GITOPS_MANIFEST_PATH: ${{ vars.GITOPS_MANIFEST_PATH || 'deploy/overlays/production/docker-compose.override.yml' }}
     steps:
       - name: "job-start"
         run: |
@@ -349,9 +349,10 @@ jobs:
             echo "::error::Manifest not found: $MANIFEST"
             exit 1
           fi
-          # Update the newTag or newName in kustomization.yaml
-          # Pattern: replace existing tag for ghcr.io/paruff/prei
-          sed -i "s|\(ghcr\.io/paruff/prei\):.*|\1@${{ needs.build-image.outputs.image-digest }}|g" "$MANIFEST"
+          # Replace PALCEHOLDER with actual image digest
+          sed -i "s|sha256:PLACEHOLDER|${{ needs.build-image.outputs.image-digest }}|g" "$MANIFEST"
+          # Also update tag-based references (for base manifest)
+          sed -i "s|\(ghcr\.io/paruff/prei\)[:@].*|\1@${{ needs.build-image.outputs.image-digest }}|g" "$MANIFEST"
           # If the manifest uses images[].newTag format
           sed -i "s|\(newTag:\).*|\1 sha-${{ github.sha }}|" "$MANIFEST" 2>/dev/null || true
           echo "Updated manifest:"

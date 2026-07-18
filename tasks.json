@@ -1,57 +1,54 @@
 {
   "meta": {
     "project": "prei",
-    "session": "phase-d-observability-20260718",
+    "session": "gitops-phase1-manifests-20260718",
     "date": "2026-07-18",
-    "feature": "Top 0.1% — Phase D (Observability)",
+    "feature": "GitOps Phase 1 — Deployment Manifests",
     "spec": "specification.md",
     "design": "design.md"
   },
   "tasks": [
     {
-      "id": "T-D1",
-      "summary": "Add structured JSON logging with django-structlog",
-      "description": "Add django-structlog and python-json-logger to requirements.txt. Configure investor_app/settings.py with JSON formatter, structlog processors, and console handler. Every request gets structured log output.",
+      "id": "T-G1",
+      "summary": "Create deploy/base/docker-compose.yml",
+      "description": "Create the base docker-compose manifest with the service definition: image placeholder, port 8000, environment variables (SECRET_KEY, DATABASE_URL, ALLOWED_HOSTS, DJANGO_ENV, DEBUG, RUN_MIGRATIONS), healthcheck, restart policy.",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-D1-01", "description": "django-structlog and python-json-logger in requirements.txt", "test_type": "unit"},
-        {"id": "AC-D1-02", "description": "settings.py has structlog.configure() with JSON formatter", "test_type": "unit"},
-        {"id": "AC-D1-03", "description": "python manage.py check passes with the new config", "test_type": "live-system"}
+        {"id": "AC-G1-01", "description": "deploy/base/docker-compose.yml exists", "test_type": "unit"},
+        {"id": "AC-G1-02", "description": "Manifest includes healthcheck with curl to /health/", "test_type": "unit"},
+        {"id": "AC-G1-03", "description": "Manifest is valid docker-compose YAML (parses without error)", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-D2",
-      "summary": "Create request timing middleware",
-      "description": "Create core/middleware.py with RequestTimingMiddleware class. Measures every HTTP request (method, path, status, duration_ms, request_id) and logs as structured JSON. Register in settings.MIDDLEWARE as the last middleware.",
-      "depends_on": ["T-D1"],
+      "id": "T-G2",
+      "summary": "Create deploy/overlays/production/docker-compose.override.yml",
+      "description": "Create the production overlay that overrides the image tag with a sha256 placeholder (replaced by CI) and sets restart: always.",
+      "depends_on": ["T-G1"],
       "acceptance_criteria": [
-        {"id": "AC-D2-01", "description": "core/middleware.py exists with RequestTimingMiddleware", "test_type": "unit"},
-        {"id": "AC-D2-02", "description": "Middleware logs method, path, status_code, duration_ms fields", "test_type": "unit"},
-        {"id": "AC-D2-03", "description": "python manage.py check passes with middleware registered", "test_type": "unit"},
-        {"id": "AC-D2-04", "description": "Local container shows JSON log output on requests", "test_type": "live-system"}
+        {"id": "AC-G2-01", "description": "deploy/overlays/production/docker-compose.override.yml exists", "test_type": "unit"},
+        {"id": "AC-G2-02", "description": "Overlay contains image with sha256:PLACEHOLDER", "test_type": "unit"},
+        {"id": "AC-G2-03", "description": "Overlay is valid docker-compose YAML", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-D3",
-      "summary": "Create deploy failure rate alert check",
-      "description": "Create scripts/alert-check.sh that queries the last 10 Tier 2 Governance runs via gh CLI. Computes failure rate as percentage. Emits CI warning if > 10%. Add make test-alerts target.",
-      "depends_on": [],
+      "id": "T-G3",
+      "summary": "Update docker-publish.yml default GITOPS_MANIFEST_PATH",
+      "description": "Change the default GITOPS_MANIFEST_PATH from 'overlays/production/kustomization.yaml' to 'deploy/overlays/production/docker-compose.override.yml' in the gitops-deploy job env block.",
+      "depends_on": ["T-G2"],
       "acceptance_criteria": [
-        {"id": "AC-D3-01", "description": "scripts/alert-check.sh exists and executable", "test_type": "unit"},
-        {"id": "AC-D3-02", "description": "Script outputs failure rate as percentage", "test_type": "unit"},
-        {"id": "AC-D3-03", "description": "make test-alerts runs the script", "test_type": "unit"}
+        {"id": "AC-G3-01", "description": "GITOPS_MANIFEST_PATH default is deploy/overlays/production/docker-compose.override.yml", "test_type": "unit"},
+        {"id": "AC-G3-02", "description": "sed command in Update image manifest step still works with docker-compose format", "test_type": "unit"},
+        {"id": "AC-G3-03", "description": "Workflow YAML is valid", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-D4",
-      "summary": "Create API surface validation script + CI gate",
-      "description": "Create scripts/validate-api-surface.sh that validates docs/API_SURFACE.md against actual source code. Checks that every documented function signature still exists in the codebase. Add a CI gate in ci-quality.yml that runs this on every PR.",
-      "depends_on": [],
+      "id": "T-G4",
+      "summary": "Update scripts/gitops-validate.sh to include deploy/ manifests",
+      "description": "Add deploy/**/*.yml to the list of files/directories that gitops-validate.sh checks. This ensures pre-commit and CI validate manifest YAML validity.",
+      "depends_on": ["T-G1", "T-G2"],
       "acceptance_criteria": [
-        {"id": "AC-D4-01", "description": "scripts/validate-api-surface.sh exists and executable", "test_type": "unit"},
-        {"id": "AC-D4-02", "description": "Script exits 0 when docs match code", "test_type": "unit"},
-        {"id": "AC-D4-03", "description": "Script exits 1 when a documented function is missing", "test_type": "unit"},
-        {"id": "AC-D4-04", "description": "ci-quality.yml has api-surface job that runs the script", "test_type": "unit"}
+        {"id": "AC-G4-01", "description": "gitops-validate.sh validates deploy/ manifests", "test_type": "unit"},
+        {"id": "AC-G4-02", "description": "scripts/gitops-validate.sh exits 0 on valid manifests", "test_type": "unit"}
       ]
     }
   ]
