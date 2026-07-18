@@ -287,14 +287,12 @@ jobs:
     env:
       GITOPS_REPO: ${{ vars.GITOPS_REPO }}
       GITOPS_MANIFEST_PATH: ${{ vars.GITOPS_MANIFEST_PATH || 'overlays/production/kustomization.yaml' }}
-      NEW_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}
-      NEW_TAG: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
     steps:
       - name: "job-start"
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-          echo "image: ${{ env.NEW_IMAGE }}"
+          echo "image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}"
       - name: Checkout GitOps repo
         uses: actions/checkout@v7
         with:
@@ -325,7 +323,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "deploy: update image to ${{ env.NEW_TAG }} [skip ci]"
+            git commit -m "deploy: update image to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }} [skip ci]"
             git push
             echo "✅ GitOps manifest updated and pushed"
           fi
@@ -333,7 +331,8 @@ jobs:
         uses: peter-evans/repository-dispatch@v4
         with:
           event-type: deploy-complete
-          client-payload: '{"url": "${{ vars.DEPLOY_URL || '' }}", "image": "${{ env.NEW_IMAGE }}", "sha": "${{ github.sha }}"}'
+          client-payload: >
+            {"url":"${{ vars.DEPLOY_URL || '' }}","image":"${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}","sha":"${{ github.sha }}"}
       - name: "job-finish"
         if: always()
         run: |
