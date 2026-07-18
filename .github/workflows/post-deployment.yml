@@ -1,4 +1,4 @@
-name: Post-Deployment — Smoke Tests
+name: Post-Deployment — Acceptance Pipeline
 
 on:
   repository_dispatch:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: "Deployment URL to smoke-test"
+        description: "Deployment URL to validate"
         required: true
         default: "http://localhost:8000"
 
@@ -15,15 +15,18 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ── Fast pre-flight: basic HTTP reachability ──────────────────────────────
+
   smoke:
     name: "💨 Smoke Tests"
     runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.url.outputs.target }}
     steps:
       - name: Resolve target URL
         id: url
         run: |
           TARGET="${{ github.event.client_payload.url || inputs.url }}"
-          # Strip trailing slash for consistent URL construction
           TARGET="${TARGET%/}"
           echo "target=$TARGET" >> "$GITHUB_OUTPUT"
           echo "Testing against: $TARGET"
@@ -46,33 +49,67 @@ jobs:
           fi
           echo "✅ /api/listings/ OK"
 
-      - name: API — growth areas
-        run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/v1/real-estate/growth-areas")
-          if [ "$STATUS" != "200" ]; then
-            echo "❌ /api/v1/real-estate/growth-areas returned HTTP $STATUS"
-            exit 1
-          fi
-          echo "✅ /api/v1/real-estate/growth-areas OK"
-
-      - name: API — foreclosures
-        run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/api/v1/foreclosures")
-          if [ "$STATUS" != "200" ]; then
-            echo "❌ /api/v1/foreclosures returned HTTP $STATUS"
-            exit 1
-          fi
-          echo "✅ /api/v1/foreclosures OK"
-
       - name: Summary
         if: always()
         run: |
           echo "── Smoke test complete ──"
           echo "  Target: ${{ steps.url.outputs.target }}"
 
+  # ── HTTP-level content acceptance tests ───────────────────────────────────
+
+  acceptance:
+    name: "🧪 Acceptance Tests"
+    needs: smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install dependencies
+        run: pip install httpx beautifulsoup4 pytest -q
+      - name: Run acceptance tests
+        env:
+          BASE_URL: ${{ needs.smoke.outputs.target }}
+        run: |
+          python -m pytest tests/acceptance/ -q --tb=short -v
+
+  # ── Performance budgets via Lighthouse ────────────────────────────────────
+
+  performance:
+    name: "📈 Performance"
+    needs: smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            ${{ needs.smoke.outputs.target }}/health/
+            ${{ needs.smoke.outputs.target }}/discovery/
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+  # ── DAST security scan ────────────────────────────────────────────────────
+
+  security:
+    name: "🛡️ Security Scan"
+    needs: smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: OWASP ZAP Baseline
+        uses: zaproxy/action-baseline@v1
+        with:
+          target: ${{ needs.smoke.outputs.target }}
+          allow_issue_writing: false
+          fail_action: true
+          cmd_options: "-I"
+
+  # ── Rollback on any gate failure ──────────────────────────────────────────
+
   rollback:
     name: "🔄 Rollback on Failure"
-    needs: smoke
+    needs: [smoke, acceptance, performance, security]
     if: failure() && vars.GITOPS_REPO != ''
     runs-on: ubuntu-latest
     permissions:
@@ -84,7 +121,7 @@ jobs:
       - name: "job-start"
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "Rollback triggered — smoke tests failed"
+          echo "Rollback triggered — gate failure detected"
           echo "GitOps repo: ${{ env.GITOPS_REPO }}"
       - name: Checkout GitOps repo
         uses: actions/checkout@v7
