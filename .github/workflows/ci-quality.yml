@@ -188,6 +188,9 @@ jobs:
   acceptance-check:
     name: "🧪 Acceptance Tests"
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ci-acceptance-check-key
+      DATABASE_URL: sqlite:////tmp/acceptance_check.sqlite3
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
