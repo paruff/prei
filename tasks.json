@@ -1,52 +1,41 @@
 {
   "meta": {
     "project": "prei",
-    "session": "gitops-phase3-hardening-20260718",
-    "date": "2026-07-18",
-    "feature": "GitOps Phase 3 — Hardening",
+    "session": "p1-screening-leasing-20260719",
+    "date": "2026-07-19",
+    "feature": "P1 — Screening UX + Leasing Kanban",
     "spec": "specification.md",
     "design": "design.md"
   },
   "tasks": [
     {
-      "id": "T-H1",
-      "summary": "Add GitHub Environment reference to docker-publish.yml",
-      "description": "Add environment: production to the publish job in docker-publish.yml. This requires manual creation of the 'production' environment in GitHub Settings with required reviewers.",
+      "id": "T-S1",
+      "summary": "Add batch filter bar to screener template + view",
+      "description": "Add filter inputs (price_min, price_max, rent_min, cap_rate_min) above the screening results table. Update the screener view to accept and apply these query params to the queryset.",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-H1-01", "description": "publish job has environment: production", "test_type": "unit"},
-        {"id": "AC-H1-02", "description": "Workflow YAML valid", "test_type": "unit"}
+        {"id": "AC-S1-01", "description": "Screener page renders filter bar with price/rent/cap rate inputs", "test_type": "live-system"},
+        {"id": "AC-S1-02", "description": "Filter by price_max returns only properties under that price", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-H2",
-      "summary": "Add image signature verification to post-deployment.yml",
-      "description": "Add a verify-signature step to the post-deployment smoke job (before curl tests) that uses gh attestation verify to check the deployed image matches the attested build provenance.",
-      "depends_on": [],
+      "id": "T-S2",
+      "summary": "Add sortable column headers to screener results table",
+      "description": "Add clickable column headers (price, cap rate, GRM, score) that toggle sort direction. Update view to accept sort/order query params and apply order_by to the queryset.",
+      "depends_on": ["T-S1"],
       "acceptance_criteria": [
-        {"id": "AC-H2-01", "description": "post-deployment smoke job has verify-signature step", "test_type": "unit"},
-        {"id": "AC-H2-02", "description": "Step uses gh attestation verify with the deploy image digest", "test_type": "unit"},
-        {"id": "AC-H2-03", "description": "Step is conditional on image digest being present", "test_type": "unit"}
+        {"id": "AC-S2-01", "description": "Clicking price header sorts by price", "test_type": "live-system"},
+        {"id": "AC-S2-02", "description": "Second click toggles sort direction", "test_type": "live-system"}
       ]
     },
     {
-      "id": "T-H3",
-      "summary": "Create drift detection script",
-      "description": "Create scripts/drift-check.sh that compares deployed state (health endpoint, image tag) against git manifests. Runs as part of post-deployment validation. Add make drift-check target.",
+      "id": "T-L1",
+      "summary": "Verify leasing kanban JS parameter names match backend",
+      "description": "Read the leasing kanban template JS to verify the fetch POST uses property_id and new_stage parameters that match the backend view. Fix if mismatched (same issue as pipeline kanban).",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-H3-01", "description": "scripts/drift-check.sh exists and executable", "test_type": "unit"},
-        {"id": "AC-H3-02", "description": "make drift-check runs the script", "test_type": "unit"}
-      ]
-    },
-    {
-      "id": "T-H4",
-      "summary": "Update GitOps compliance audit to mark Phase 3 complete",
-      "description": "Update docs/GITOPS_COMPLIANCE_AUDIT.md Phase 3 section to mark tasks as complete. Update the score from 7/9 to 9/9 compliant.",
-      "depends_on": ["T-H1", "T-H2", "T-H3"],
-      "acceptance_criteria": [
-        {"id": "AC-H4-01", "description": "Audit shows Phase 3 as complete", "test_type": "unit"},
-        {"id": "AC-H4-02", "description": "Score updated to reflect hardening completion", "test_type": "unit"}
+        {"id": "AC-L1-01", "description": "Leasing kanban view returns HTML with 8 stage columns", "test_type": "live-system"},
+        {"id": "AC-L1-02", "description": "JS fetch uses property_id and new_stage parameter names", "test_type": "unit"}
       ]
     }
   ]

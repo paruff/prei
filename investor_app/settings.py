@@ -5,7 +5,11 @@ from pathlib import Path
 from decimal import Decimal
 
 import environ
-import structlog
+
+try:
+    import structlog
+except ImportError:
+    structlog = None  # type: ignore[assignment]
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -221,18 +225,19 @@ _log_formatter = "verbose" if DEBUG else "simple"
 
 # ── Structured logging (Phase D — Observability) ─────────────────────────────
 
-structlog.configure(
-    processors=[
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.dev.set_exc_info,
-        structlog.processors.JSONRenderer(),
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    cache_logger_on_first_use=True,
-)
+if structlog is not None:
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.add_logger_name,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.dev.set_exc_info,
+            structlog.processors.JSONRenderer(),
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
 
 LOGGING = {
     "version": 1,
