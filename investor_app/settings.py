@@ -5,6 +5,7 @@ from pathlib import Path
 from decimal import Decimal
 
 import environ
+import structlog
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -163,6 +164,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.RequestTimingMiddleware",
 ]
 
 ROOT_URLCONF = "investor_app.urls"
@@ -216,6 +218,21 @@ LOG_LEVEL = env("LOG_LEVEL", default="INFO")
 # Structured logging for analytics pipelines and services.
 # Use verbose formatter (includes pathname + lineno) in DEBUG mode; simple otherwise.
 _log_formatter = "verbose" if DEBUG else "simple"
+
+# ── Structured logging (Phase D — Observability) ─────────────────────────────
+
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.dev.set_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
+)
 
 LOGGING = {
     "version": 1,

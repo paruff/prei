@@ -1,4 +1,4 @@
-# Design: Phase C — Deployment Reliability
+# Design: Phase D — Observability
 # Written: 2026-07-18
 # Status: Draft
 
@@ -6,65 +6,69 @@
 
 ## 1. Architecture
 
-### C-2: Full OWASP ZAP Active Scan
+### D-1: Structured JSON Logging
 
-Update `post-deployment.yml` security job to use active scanning:
+Use `django-structlog` + `python-json-logger`. Configuration in `investor_app/settings.py`:
 
-```yaml
-security:
-  name: "🛡️ Security Scan"
-  needs: smoke
-  runs-on: ubuntu-latest
-  steps:
-    - name: OWASP ZAP Full Scan
-      uses: zaproxy/action-full-scan@v1
-      with:
-        target: ${{ needs.smoke.outputs.target }}
-        allow_issue_writing: false
-        fail_action: true
-        rules_file_name: ".zap/rules.tsv"
-        cmd_options: "-a -j"  # active scan + auth
+```python
+import structlog
+
+LOGGING = {
+    "version": 1,
+    "formatters": {
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(timestamp)s %(level)s %(name)s %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "json"},
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+}
+
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+)
 ```
 
-Configuration file: `.zap/rules.tsv` with severity thresholds.
+### D-2: Request Timing Middleware
 
-### C-3: SLO Dashboard
+A lightweight Django middleware at `core/middleware.py`:
 
-A script at `scripts/slo-report.sh` that computes:
+```python
+import time, uuid, structlog
 
-```
-Deploy Frequency (30d):   12 deployments
-Change Failure Rate:       8.3% (1 failure / 12 deploys)
-Mean Time to Recovery:     5 min
-Last Deploy:              2026-07-18 14:00 UTC
-```
+logger = structlog.get_logger(__name__)
 
-Uses GitHub API to count successful vs failed workflow runs.
+class RequestTimingMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
 
-### C-4: Flaky Test Detection
-
-1. Add `pytest-rerunfailures` to `requirements.txt` and `pytest.ini`
-2. Update CI unit test command to include `--reruns 1 --reruns-delay 5`
-3. Add `.flake-reports/` directory for flaky test tracking
-4. Add a quarantine step that checks `.flake-reports/` for tests failing ≥3 times
-
-```ini
-# pytest.ini
-addopts = --reruns 1 --reruns-delay 5
+    def __call__(self, request):
+        request.request_id = str(uuid.uuid4())[:8]
+        start = time.monotonic()
+        response = self.get_response(request)
+        duration_ms = int((time.monotonic() - start) * 1000)
+        logger.info("request", method=request.method, path=request.path,
+                     status=response.status_code, duration_ms=duration_ms,
+                     request_id=request.request_id)
+        return response
 ```
 
-### C-1: Canary Deployment Plan
+### D-3: Alerting Thresholds
 
-Document `docs/DEPLOYMENT_STRATEGY.md` describing the future canary architecture:
+A script `scripts/alert-check.sh` that queries the last 10 Tier 2 Governance runs and computes failure rate. Warnings via `::warning::` annotation in CI.
 
-```
-traffic splitter
-  ├── 95% → stable replica (current image)
-  └──  5% → canary replica (new image)
-          → monitor for 5 min
-          → if healthy: promote to 100%
-          → if unhealthy: rollback
-```
+### D-4: API Surface Validation
+
+A script `scripts/validate-api-surface.sh` that checks `docs/API_SURFACE.md` for stale function references by grepping the source code for documented functions. Fails CI if any documented function is missing from the source.
 
 ---
 
@@ -72,11 +76,11 @@ traffic splitter
 
 | File | Change | Purpose |
 |---|---|---|
-| `post-deployment.yml` | Update security job to full scan | C-2 |
-| `.zap/rules.tsv` | New: ZAP severity rules | C-2 |
-| `pytest.ini` | Add --reruns args | C-4 |
-| `requirements.txt` | Add pytest-rerunfailures | C-4 |
-| `ci-quality.yml` | Update unit test command with --reruns | C-4 |
-| `scripts/slo-report.sh` | New: SLO computation script | C-3 |
-| `docs/DEPLOYMENT_STRATEGY.md` | New: Canary plan | C-1 |
-| `Makefile` | Add test-slos target | C-3 |
+| `requirements.txt` | Add `django-structlog`, `python-json-logger` | D-1 |
+| `investor_app/settings.py` | Add structlog + JSON logging config | D-1 |
+| `core/middleware.py` | New: RequestTimingMiddleware | D-2 |
+| `investor_app/settings.py` | Register middleware | D-2 |
+| `scripts/alert-check.sh` | New: deploy failure rate check | D-3 |
+| `scripts/validate-api-surface.sh` | New: API surface validation | D-4 |
+| `ci-quality.yml` | Add alert-check + api-surface gates | D-3, D-4 |
+| `Makefile` | Add test-alerts, test-api-surface targets | D-3, D-4 |
