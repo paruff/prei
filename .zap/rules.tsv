@@ -1,0 +1,4 @@
+# OWASP ZAP severity thresholds for post-deployment security scan.
+# Format: id <tab> threshold
+# Threshold values: High, Medium, Low, Off
+# Only rules with severity >= threshold are enforced; others are logged.

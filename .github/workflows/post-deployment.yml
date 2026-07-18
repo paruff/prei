@@ -97,13 +97,14 @@ jobs:
     needs: smoke
     runs-on: ubuntu-latest
     steps:
-      - name: OWASP ZAP Baseline
-        uses: zaproxy/action-baseline@v1
+      - name: OWASP ZAP Full Scan
+        uses: zaproxy/action-full-scan@v1
         with:
           target: ${{ needs.smoke.outputs.target }}
           allow_issue_writing: false
           fail_action: true
-          cmd_options: "-I"
+          cmd_options: "-a"
+    timeout-minutes: 10
 
   # ── Rollback on any gate failure ──────────────────────────────────────────
 
