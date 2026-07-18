@@ -6,9 +6,10 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
-from core.models import Property
-from core.services.scoring import score_listing_v2
+from core.models import Listing, Property
+from core.services.scoring import score_listing, score_listing_v2
 
 
 @pytest.fixture
@@ -68,3 +69,54 @@ class TestScoreListingV2:
         cheap_score = score_listing_v2(cheap_property, cheap_targets)
         expensive_score = score_listing_v2(expensive_property, expensive_targets)
         assert cheap_score.total_score > expensive_score.total_score
+
+
+class TestScoreListing:
+    """Tests for the Listing scoring function (replaces deprecated score_listing_v1)."""
+
+    @pytest.fixture
+    def listing(self, db) -> Listing:
+        return Listing.objects.create(
+            source="dummy",
+            address="123 Main St",
+            city="Austin",
+            state="TX",
+            zip_code="78701",
+            price=Decimal("300000"),
+            sq_ft=1500,
+            posted_at=timezone.now(),
+            url="https://example.com/listing/1",
+        )
+
+    def test_returns_decimal(self, listing: Listing) -> None:
+        result = score_listing(listing)
+        assert isinstance(result, Decimal)
+
+    def test_higher_score_for_lower_ppsf(self, listing: Listing) -> None:
+        """A listing with lower price-per-sqft should score higher."""
+        listing.price = Decimal("200000")
+        listing.sq_ft = 2000
+        cheap = score_listing(listing)
+        listing.price = Decimal("500000")
+        listing.sq_ft = 1000
+        expensive = score_listing(listing)
+        assert cheap > expensive
+
+    def test_zero_sq_ft_does_not_crash(self, listing: Listing) -> None:
+        """When sq_ft is 0, the function uses 0 and doesn't divide by zero."""
+        listing.sq_ft = 0
+        result = score_listing(listing)
+        assert isinstance(result, Decimal)
+
+    def test_recent_listing_scores_higher(self, listing: Listing) -> None:
+        """A listing posted very recently should have a higher freshness bonus."""
+        from datetime import timedelta
+        from django.utils import timezone as tz
+
+        listing.price = Decimal("300000")
+        listing.sq_ft = 1500
+        listing.posted_at = tz.now()
+        fresh = score_listing(listing)
+        listing.posted_at = tz.now() - timedelta(days=30)
+        stale = score_listing(listing)
+        assert fresh > stale

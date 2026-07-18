@@ -103,9 +103,9 @@ jobs:
       - name: Run unit tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          coverage run --parallel-mode -m pytest tests/ core/tests/ tests_bdd/ \
+          coverage run --parallel-mode -m pytest tests/ core/tests/ tests_bdd/ prei/pipeline/tests/ \
             -q --tb=short \
-            -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not export"
+            -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not export and not unreachable_url"
       - name: Upload coverage data
         uses: actions/upload-artifact@v5
         with:
