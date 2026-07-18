@@ -16,6 +16,7 @@
   {% include "components/kpi_card.html" with label="Avg DSCR" value=summary.avg_dscr|floatformat:2 sub="Minimum 1.25" %}
   {% include "components/kpi_card.html" with label="1% rule pass" value=summary.passes_one_pct_display sub="Of tracked properties" %}
   {% include "components/kpi_card.html" with label="Strong buy" value=summary.strong_buy_count|stringformat:"s" sub="Score >= 75 / 100" color_class="num-good" %}
+  {% include "components/kpi_card.html" with label="Total Equity" value=summary.total_equity|floatformat:0|add:"%" sub="Avg across portfolio" %}
 </div>
 
 <div class="filter-bar">
