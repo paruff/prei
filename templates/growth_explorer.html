@@ -2,496 +2,164 @@
 {% block title %}Growth Area Explorer{% endblock %}
 {% load humanize math_filters %}
 {% block content %}
+
 <div class="page-header">
   <div>
     <h1 class="page-title">Growth Area Explorer</h1>
-    <p class="page-sub">Analyze top growth markets. Picks the 10 largest cities in a state and scores them.</p>
+    <p class="page-sub">Find the best markets for buy-and-hold investing. Scores combine employment, population, income, and housing demand signals.</p>
   </div>
 </div>
 
-{# ── API key missing — no analysis possible ── #}
-{% if not api_keys_configured %}
-  <div class="message message-warning mb-form" role="alert">
-    <strong>⚠ Census API key not configured.</strong>
-    Add <code>CENSUS_API_KEY</code> to your <code>.env</code> file to enable growth analysis.
-    <a href="https://api.census.gov/data/key_signup.html" class="ml-link" target="_blank" rel="noopener">Get a free key →</a>
-  </div>
-{% endif %}
-
-{# ── Error from last analysis ── #}
-{% if error %}
-  <div class="message message-error mb-form" role="alert">{{ error }}</div>
-{% endif %}
-
-{# ── API status bar ── #}
-{% if api_keys_configured or fred_key_configured %}
-  <div class="message message-info mb-form" role="status" style="display: flex; gap: var(--sp-4); flex-wrap: wrap;">
-    {% if api_keys_configured %}
-      <span><span class="verdict-badge verdict-a" style="font-size: 0.8rem;">✓ Census</span></span>
-    {% else %}
-      <span><span class="verdict-badge verdict-c" style="font-size: 0.8rem;">✗ Census</span></span>
-    {% endif %}
-    {% if fred_key_configured %}
-      <span><span class="verdict-badge verdict-a" style="font-size: 0.8rem;">✓ FRED</span></span>
-    {% else %}
-      <span><span class="verdict-badge verdict-c" style="font-size: 0.8rem;">✗ FRED</span> <span class="page-sub">(optional, employment defaults to 0)</span></span>
-    {% endif %}
-    <span class="page-sub">Data: Census ACS (population, income) · FRED (employment)</span>
-  </div>
-{% endif %}
-
-{# ── State selector — always visible, prominent ── #}
-<form method="post" id="analysis-form" class="mb-form">
+<form method="post" id="analysis-form">
   {% csrf_token %}
-  <div class="form-row">
-    <div class="form-group">
-      <label for="state-select">State</label>
-      <select name="state" id="state-select" class="form-input" required aria-label="State">
-        <option value="">— Choose a state —</option>
-        {% for code, name in states %}
-          <option value="{{ code }}"{% if selected_state == code %} selected{% endif %}>{{ name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="form-group" style="align-self: flex-end;">
-      <button type="submit" class="btn btn-primary" id="analyze-btn">Analyze State</button>
+  <div class="card">
+    <h2 class="card-title">Select States to Analyze</h2>
+    <div class="form-row" style="gap: var(--sp-3); align-items: end;">
+      <div class="form-group">
+        <label>Tier</label>
+        <select name="tier" id="tier-select" class="form-input">
+          <option value="">All states</option>
+          <option value="landlord_friendly">Landlord-friendly (fast evictions, no rent control)</option>
+          <option value="mixed">Mixed</option>
+          <option value="tenant_friendly">Tenant-friendly (rent control, slow evictions)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Or pick states</label>
+        <select name="state" id="state-select" class="form-input">
+          <option value="">— All states —</option>
+          {% for code, name in states %}
+            <option value="{{ code }}"{% if selected_state == code %} selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="align-self: flex-end;">
+        <button type="submit" class="btn btn-primary" id="analyze-btn">Analyze Markets</button>
+      </div>
     </div>
   </div>
 </form>
 
-{# ── Warning banner ── #}
-<div class="message message-warning mb-form">
-  Scores use an experimental weighting model — not research-validated. Verify markets independently before investing.
+<div id="results-section"{% if results is None %} hidden{% endif %}>
+{% if results %}
+  <div class="card" style="margin-top: var(--sp-5);">
+    <h2 class="card-title">Top Markets</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>City</th>
+            <th>State</th>
+            <th>Score</th>
+            <th>Conf.</th>
+            <th>Key Signals</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+          <tr>
+            <td>
+              <strong>{{ r.place_name }}</strong>
+              <div class="form-hint">Pop: {{ r.population|intcomma }}</div>
+            </td>
+            <td>
+              {{ r.growth_area.state }}
+              {% if r.landlord_score >= 7 %}
+                <span class="chip chip-success" title="Landlord-friendly: fast evictions, no rent control">🟢 LL-friendly</span>
+              {% elif r.landlord_score <= 3 %}
+                <span class="chip chip-danger" title="Tenant-friendly: rent control, slow evictions">🔴 LL-hard</span>
+              {% else %}
+                <span class="chip chip-warning" title="Mixed: moderate landlord conditions">🟡 Mixed</span>
+              {% endif %}
+            </td>
+            <td class="score-num num-good">{{ r.growth_area.composite_score|default_if_none:""|floatformat:2 }}</td>
+            <td>
+              {% with conf=r.growth_area.data_confidence %}
+                {% if conf >= 80 %}<span class="chip chip-success">{{ conf }}%</span>
+                {% elif conf >= 50 %}<span class="chip chip-warning">{{ conf }}%</span>
+                {% else %}<span class="chip chip-danger">{{ conf }}%</span>{% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              <div style="font-size: 12px; line-height: 1.5;">
+                Emp: {{ r.growth_area.employment_growth_rate|mul:100|floatformat:1 }}% &middot;
+                Pop: {{ r.growth_area.population_growth_rate|mul:100|floatformat:1 }}% &middot;
+                Demand: {{ r.growth_area.housing_demand_index }}
+              </div>
+            </td>
+            <td>
+              <a href="{% url 'property_discovery' %}?growth_area_id={{ r.growth_area.pk }}" class="btn">Discover →</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
 </div>
 
-<!-- Loading Overlay -->
-<div id="loading-overlay" class="loading-overlay" hidden aria-hidden="true">
+<div id="loading-overlay" class="loading-overlay" hidden>
   <div class="loading-card card">
-    <div class="card-body">
+    <div class="card-body" style="text-align:center;">
       <div class="loading-spinner"></div>
-      <p id="loading-stage-0" class="loading-stage active" data-duration="5">Discovering top places in state...</p>
-      <p id="loading-stage-1" class="loading-stage" data-duration="10">Fetching population and income data from Census ACS...</p>
-      <p id="loading-stage-2" class="loading-stage" data-duration="30">Analyzing growth metrics for each place...</p>
-      <p id="loading-stage-3" class="loading-stage" data-duration="15">Computing composite scores and rankings...</p>
-      <p id="loading-stage-4" class="loading-stage" data-duration="60">Still working... processing place <span id="place-counter">0</span> of 10</p>
-      <p id="loading-stage-error" class="loading-stage error" hidden>
-        This is taking longer than expected. The Census/FRED API may be slow right now.<br>
-        <small>If this continues, the request will timeout after 2 minutes.</small>
-      </p>
-      <div class="progress-bar-wrap">
-        <div id="analysis-progress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-      </div>
+      <p>Analyzing growth markets...</p>
+      <div class="progress-bar-wrap"><div id="analysis-progress" class="progress-bar" role="progressbar"></div></div>
       <p class="form-hint" id="elapsed-timer">Elapsed: 0s</p>
     </div>
   </div>
 </div>
 
-<!-- Results Section -->
-<div id="results-section"{% if results is None and not error %} hidden{% endif %}>
-  <div class="message message-warning">Growth area scores use an experimental weighting model. Weights are a hypothesis — not research-validated. Verify markets independently before investing.</div>
-{% if results is not None %}
-  <div class="mt-section">
-    <div class="page-header">
-      <div>
-        <h2>Results for {% if results.0 %}{{ results.0.growth_area.state }}{% else %}{{ selected_state }}{% endif %}</h2>
-        {% if emp_growth is not None %}
-          <p class="form-hint">
-            <strong>State employment growth (5yr):</strong> {{ emp_growth|mul:100|floatformat:2 }}%
-            <span class="ml-link" title="Employment growth from FRED CES nonfarm payrolls">📍 State-level figure (FRED)</span>
-          </p>
-        {% endif %}
-      </div>
-      <a href="{% url 'growth_explorer' %}" class="btn">← New Analysis</a>
-    </div>
-
-    {% if results %}
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>City</th>
-              <th>State</th>
-              <th>Population</th>
-              <th>Pop Growth (5yr)</th>
-              <th>Emp Growth (5yr)*</th>
-              <th>Income Growth (5yr)</th>
-              <th>Housing Demand</th>
-              <th>Supply Constraint</th>
-              <th>Composite Score</th>
-              <th>Conf.</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in results %}
-            <tr>
-              <td class="col-right">{{ forloop.counter }}</td>
-              <td>{{ r.place_name }}</td>
-              <td>{{ r.growth_area.state }}
-                {% if r.landlord_score >= 7 %}
-                  <span class="verdict-badge verdict-a" title="{{ r.landlord_label }}: score {{ r.landlord_score }}/10 — fast evictions, no rent control">🟢</span>
-                {% elif r.landlord_score <= 3 %}
-                  <span class="verdict-badge verdict-c" title="{{ r.landlord_label }}: score {{ r.landlord_score }}/10 — slow evictions, rent control">🔴</span>
-                {% else %}
-                  <span class="verdict-badge verdict-moderate" title="{{ r.landlord_label }}: score {{ r.landlord_score }}/10">🟡</span>
-                {% endif %}
-              </td>
-              <td class="col-right num">{{ r.population|intcomma }}</td>
-              <td class="col-right num">{{ r.growth_area.population_growth_rate|mul:100|floatformat:2 }}%</td>
-              <td class="col-right num">{{ r.growth_area.employment_growth_rate|mul:100|floatformat:2 }}%</td>
-              <td class="col-right num">{{ r.growth_area.median_income_growth|mul:100|floatformat:2 }}%</td>
-              <td class="col-right">{{ r.growth_area.housing_demand_index }}</td>
-              <td class="col-right">
-                {{ r.growth_area.supply_constraint_index|default_if_none:"50" }}
-                <span class="chip chip-info" title="Computed from ACS housing-to-population ratio when available; defaults to 50">ACS-derived</span>
-              </td>
-              <td class="col-right score-num num-good">{{ r.growth_area.composite_score|default_if_none:""|floatformat:2 }}</td>
-              <td>
-                {% with conf=r.growth_area.data_confidence %}
-                  {% if conf >= 80 %}
-                    <span class="chip chip-success">{{ conf }}%</span>
-                  {% elif conf >= 50 %}
-                    <span class="chip chip-warning">{{ conf }}%</span>
-                  {% else %}
-                    <span class="chip chip-danger">{{ conf }}%</span>
-                  {% endif %}
-                {% endwith %}
-              </td>
-              <td>
-                <a href="{% url 'property_discovery' %}?growth_area_id={{ r.growth_area.pk }}" class="btn btn-primary">Discover Properties</a>
-                <button type="button" class="btn" onclick="var r=document.getElementById('ge-breakdown-{{ forloop.counter0 }}');r.hidden=!r.hidden">Score</button>
-              </td>
-            </tr>
-            <tr id="ge-breakdown-{{ forloop.counter0 }}" hidden>
-              <td colspan="12">
-                <table class="data-table">
-                  <thead><tr><th>Component</th><th>Value</th><th>Weight</th></tr></thead>
-                  <tbody>
-                    <tr><td>Employment growth</td><td>{{ r.growth_area.employment_growth_rate|mul:100|floatformat:2 }}%</td><td>35%</td></tr>
-                    <tr><td>Population growth</td><td>{{ r.growth_area.population_growth_rate|mul:100|floatformat:2 }}%</td><td>20%</td></tr>
-                    <tr><td>Income growth</td><td>{{ r.growth_area.median_income_growth|mul:100|floatformat:2 }}%</td><td>15%</td></tr>
-                    <tr><td>School quality</td><td>{{ r.growth_area.school_score|default:"—" }}</td><td>15%</td></tr>
-                    <tr><td>Supply constraint</td><td>{{ r.growth_area.supply_constraint_index }}</td><td>10%</td></tr>
-                    <tr><td>Net migration</td><td>{{ r.growth_area.net_migration_rate|default:"—" }}</td><td>5%</td></tr>
-                  </tbody>
-                </table>
-                <p class="page-sub">ACS vintage: auto-detected (2024 or latest available) &middot; Data timestamp: {{ r.growth_area.data_timestamp|date:"Y-m-d" }} &middot; Confidence: {{ r.growth_area.data_confidence }}%</p>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <p class="form-hint">
-        * Employment growth is a <strong>state-level</strong> figure from FRED (CES nonfarm payrolls) — same value for all places in the state.
-      </p>
-
-      <!-- Pipeline Discovery Results -->
-      {% if pipeline_results %}
-        <div class="card mb-form mt-section" id="pipeline-results">
-          <div class="card-title">
-            <span aria-hidden="true">🔍</span> Property Discovery: {{ pipeline_results.city }}, {{ selected_state }}
-          </div>
-          <div class="card-body">
-            {% if pipeline_results.error %}
-              <div class="message message-warning">
-                <strong>⚠ Pipeline error:</strong> {{ pipeline_results.error }}
-              </div>
-            {% else %}
-              <div class="kpi-grid">
-                <div class="kpi-card">
-                  <div class="kpi-label">Discovered</div>
-                  <div class="kpi-value num-good">{{ pipeline_results.total_discovered }}</div>
-                  <div class="kpi-sub">new properties found</div>
-                </div>
-                <div class="kpi-card">
-                  <div class="kpi-label">Passed Screening</div>
-                  <div class="kpi-value num-good">{{ pipeline_results.passed_screening }}</div>
-                  <div class="kpi-sub">above 7% yield / under 15x PTR</div>
-                </div>
-                <div class="kpi-card">
-                  <div class="kpi-label">Rejected</div>
-                  <div class="kpi-value num-warn">{{ pipeline_results.failed_screening }}</div>
-                  <div class="kpi-sub">below thresholds</div>
-                </div>
-                <div class="kpi-card">
-                  <div class="kpi-label">Duplicate/Failed</div>
-                  <div class="kpi-value">{{ pipeline_results.skipped_total }}</div>
-                  <div class="kpi-sub">skipped records</div>
-                </div>
-              </div>
-              <p class="form-hint">
-                Sources queried: {{ pipeline_results.sources_queried|join:", " }}.
-                Completed in {{ pipeline_results.execution_ms }}ms.
-                <a href="{% url 'vrm_properties_list' %}?state={{ selected_state }}" class="ml-link">→ Browse all VRM properties in {{ selected_state }}</a>
-              </p>
-            {% endif %}
-          </div>
-        </div>
-      {% endif %}
-    {% else %}
-      <!-- Empty results state -->
-      <div class="empty-state" role="status">
-        <div class="empty-state-icon" aria-hidden="true">🔍</div>
-        <h3>No places discovered</h3>
-        <p>Census returned no populated places for <strong>{{ selected_state }}</strong>.</p>
-        <div class="message message-info">
-          <strong>Possible causes:</strong>
-          <ul>
-            <li>The Census API key may not have permission for this query. Verify your <code>CENSUS_API_KEY</code> in <code>.env</code>.</li>
-            <li>The ACS data vintage may need updating. Check that the vintage is available for this geography.</li>
-            <li>The state may have very few Census-classified "places" (incorporated cities/towns).</li>
-          </ul>
-        </div>
-        <div class="form-actions">
-          <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Try another state</a>
-          <a href="{% url 'vrm_properties_list' %}?state={{ selected_state }}" class="btn">Browse VRM Properties for {{ selected_state }}</a>
-        </div>
-      </div>
-    {% endif %}
-  </div>
-{% endif %}
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<style>
-.loading-overlay:not([hidden]) {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(255, 255, 255, 0.92);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.loading-card {
-  max-width: 480px;
-  width: 90%;
-  text-align: center;
-}
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--color-border, #ddd);
-  border-top-color: var(--color-primary, #2563eb);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 16px;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-.loading-stage {
-  margin: 4px 0;
-  color: var(--color-text-muted, #6b7280);
-  display: none;
-}
-.loading-stage.active {
-  display: block;
-  color: var(--color-text, #111827);
-  font-weight: 500;
-}
-.loading-stage.error {
-  color: var(--color-error, #dc2626);
-}
-.loading-stage.error small {
-  color: var(--color-text-muted, #6b7280);
-}
-.progress-bar-wrap {
-  height: 6px;
-  background: var(--color-border, #e5e7eb);
-  border-radius: 3px;
-  margin-top: 16px;
-  overflow: hidden;
-}
-.progress-bar {
-  height: 100%;
-  width: 0%;
-  background: var(--color-primary, #2563eb);
-  border-radius: 3px;
-  transition: width 1s ease;
-}
-</style>
 <script>
 (function() {
   const form = document.getElementById('analysis-form');
   const btn = document.getElementById('analyze-btn');
-  const select = document.getElementById('state-select');
   const overlay = document.getElementById('loading-overlay');
-  const resultsSection = document.getElementById('results-section');
-  if (!form || !btn || !select) return;
+  const results = document.getElementById('results-section');
 
-  function showStage(index) {
-    for (let i = 0; i <= 5; i++) {
-      const el = document.getElementById('loading-stage-' + i);
-      if (el) el.hidden = (i !== index);
-    }
-  }
-
-  function setProgress(pct) {
-    const bar = document.getElementById('analysis-progress');
-    if (bar) bar.style.width = Math.min(pct, 100) + '%';
-  }
-
-  function resetForm(message) {
-    btn.classList.remove('btn-loading');
-    btn.disabled = false;
-    select.disabled = false;
-    const textSpan = btn.querySelector('.btn-text');
-    if (textSpan) textSpan.textContent = 'Analyze State';
-    overlay.hidden = true;
-    if (message) {
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'message message-error';
-      errorDiv.role = 'alert';
-      errorDiv.innerHTML = message;
-      resultsSection.hidden = false;
-      resultsSection.prepend(errorDiv);
-    }
-  }
-
-  form.addEventListener('submit', function(e) {
+  form?.addEventListener('submit', function(e) {
     e.preventDefault();
-
-    const state = select.value;
-    if (!state) {
-      resetForm('Please select a state.');
-      return;
-    }
-
-    const csrfInput = form.querySelector('[name=csrfmiddlewaretoken]');
-    const csrfToken = csrfInput ? csrfInput.value : '';
-
-    btn.classList.add('btn-loading');
-    btn.disabled = true;
-    const textSpan = btn.querySelector('.btn-text');
-    if (textSpan) textSpan.textContent = 'Analyzing\u2026';
-    select.disabled = true;
-
-    const prevError = resultsSection.querySelector('.message');
-    if (prevError) prevError.remove();
-
-    overlay.hidden = false;
-    showStage(0);
-    setProgress(0);
+    const csrf = form.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    overlay.hidden = false; btn.disabled = true;
 
     let elapsed = 0;
-    const timerEl = document.getElementById('elapsed-timer');
-    const timerInterval = setInterval(function() {
+    const timer = setInterval(() => {
       elapsed++;
-      if (timerEl) timerEl.textContent = 'Elapsed: ' + elapsed + 's';
-      if (elapsed < 5) {
-        showStage(0);
-        setProgress(5 + elapsed * 3);
-      } else if (elapsed < 15) {
-        showStage(1);
-        setProgress(20 + (elapsed - 5) * 2);
-      } else if (elapsed < 45) {
-        showStage(2);
-        setProgress(40 + (elapsed - 15));
-      } else if (elapsed < 60) {
-        showStage(3);
-        setProgress(70 + (elapsed - 45) * 0.5);
-      } else if (elapsed < 90) {
-        showStage(4);
-        document.getElementById('place-counter').textContent = Math.min(10, Math.floor((elapsed - 60) / 3));
-        setProgress(85);
-      } else {
-        document.getElementById('loading-stage-error').hidden = false;
-        setProgress(95);
-      }
+      document.getElementById('elapsed-timer').textContent = 'Elapsed: ' + elapsed + 's';
+      document.getElementById('analysis-progress').style.width = Math.min(elapsed * 2, 95) + '%';
     }, 1000);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(function() {
-      controller.abort();
-      clearInterval(timerInterval);
-      resetForm(
-        '⚠ Request timed out after 2 minutes. ' +
-        'The Census/FRED API may be slow or unreachable. ' +
-        '<a href="' + window.location.href + '" class="alert-link">Try again</a> ' +
-        'or check your API keys in <code>.env</code>.'
-      );
-    }, 130000);
+    setTimeout(() => controller.abort(), 130000);
 
     fetch(form.action || window.location.href, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: new URLSearchParams({
-        'csrfmiddlewaretoken': csrfToken,
-        'state': state,
-      }),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+      body: new URLSearchParams({csrfmiddlewaretoken: csrf, state: document.getElementById('state-select')?.value || '', tier: document.getElementById('tier-select')?.value || ''}),
       signal: controller.signal,
     })
-    .then(function(response) {
-      clearTimeout(timeoutId);
-      clearInterval(timerInterval);
-      overlay.hidden = true;
-
-      if (!response.ok) {
-        return response.text().then(function(text) {
-          if (response.status === 502) {
-            throw new Error('Server timeout (502 Bad Gateway). The analysis took too long. Try again or reduce the state size.');
-          } else if (response.status === 504) {
-            throw new Error('Gateway timeout (504). The upstream API took too long to respond.');
-          } else if (response.status === 500) {
-            throw new Error('Internal server error (500). Check server logs for details.');
-          } else if (response.status === 403) {
-            throw new Error('Access denied (403). Your API key may not have permission for this query.');
-          } else {
-            throw new Error('Server error (' + response.status + '). <a href="' + window.location.href + '" class="alert-link">Try again</a>.');
-          }
-        });
-      }
-      return response.text();
+    .then(r => r.text())
+    .then(html => {
+      clearInterval(timer); overlay.hidden = true; btn.disabled = false;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newResults = doc.getElementById('results-section');
+      if (newResults) { results.innerHTML = newResults.innerHTML; results.hidden = false; results.scrollIntoView({behavior:'smooth'}); }
     })
-    .then(function(html) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const newContent = doc.getElementById('results-section');
-      const newForm = doc.getElementById('analysis-form');
-
-      if (newContent) {
-        resultsSection.innerHTML = newContent.innerHTML;
-        resultsSection.hidden = false;
-        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      if (newForm) {
-        const newSelect = newForm.querySelector('#id_state');
-        if (newSelect) select.value = newSelect.value;
-      }
-
-      btn.classList.remove('btn-loading');
-      btn.disabled = false;
-      select.disabled = false;
-      if (textSpan) textSpan.textContent = 'Analyze State';
-    })
-    .catch(function(err) {
-      clearTimeout(timeoutId);
-      clearInterval(timerInterval);
-      overlay.hidden = true;
-
-      if (err.name === 'AbortError') {
-        return;
-      }
-      resetForm('⚠ ' + err.message);
-    });
-  });
-
-  window.addEventListener('pageshow', function(event) {
-    if (event.persisted) {
-      btn.classList.remove('btn-loading');
-      btn.disabled = false;
-      select.disabled = false;
-      overlay.hidden = true;
-    }
+    .catch(() => { clearInterval(timer); overlay.hidden = true; btn.disabled = false; });
   });
 })();
 </script>
+
+{% if not results %}
+<style>
+  .loading-overlay:not([hidden]) { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.92);display:flex;align-items:center;justify-content:center;z-index:1000; }
+  .loading-card { max-width:400px;width:90%; }
+  .loading-spinner { width:40px;height:40px;border:4px solid var(--color-border,#e5e7eb);border-top-color:var(--color-primary,#2563eb);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .progress-bar-wrap { height:6px;background:var(--color-border,#e5e7eb);border-radius:3px;margin-top:16px;overflow:hidden; }
+  .progress-bar { height:100%;width:0;background:var(--color-primary,#2563eb);border-radius:3px;transition:width 1s ease; }
+</style>
+{% endif %}
+
 {% endblock %}
