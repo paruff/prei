@@ -23,12 +23,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PREI_VERSION=${VERSION} \
     PREI_COMMIT=${COMMIT}
 
-# Update all OS packages to latest security patches and remove Perl
-# (not needed by this Python project) to eliminate Trivy alerts:
+# Remove Perl (not needed by this Python project) to eliminate Trivy alerts:
 #   #137 — perl-archive-tar path traversal via symlinks (Critical)
 #   #136 — Perl heap buffer overflow through 5.43.10 (Critical)
 RUN apt-get update && \
-    apt-get upgrade -y --no-install-recommends && \
     apt-get remove --purge -y --auto-remove perl libperl* && \
     rm -rf /var/lib/apt/lists/*
 

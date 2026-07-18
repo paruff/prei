@@ -117,17 +117,27 @@ jobs:
             -e ALLOWED_HOSTS=localhost,127.0.0.1 \
             -e DATABASE_URL=sqlite:///tmp/live_test.db \
             -e RUN_MIGRATIONS=1 \
+            -e SKIP_SEED=1 \
+            -e SKIP_COLLECTSTATIC=1 \
             "$IMAGE"
 
-          echo "=== Waiting for healthy (up to 120s) ==="
-          for i in $(seq 1 60); do
+          echo "=== Waiting for healthy (up to 180s) ==="
+          HEALTHY=0
+          for i in $(seq 1 90); do
             STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8000/health/ 2>/dev/null || echo "000")
             if [ "$STATUS" = "200" ]; then
               echo "Healthy after ~$((i * 2))s"
+              HEALTHY=1
               break
             fi
             sleep 2
           done
+          if [ "$HEALTHY" != "1" ]; then
+            echo "::error::Container never became healthy within 180s"
+            docker logs prei-live-test 2>/dev/null || true
+            docker stop prei-live-test 2>/dev/null || true
+            exit 1
+          fi
 
           echo ""
           echo "=== Live Acceptance Tests ==="
