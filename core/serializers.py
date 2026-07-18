@@ -17,7 +17,7 @@ from .models import (
     UserWatchlist,
     VrmProperty,
 )
-from investor_app.finance.utils import score_listing_v1
+from core.services.scoring import score_listing
 
 logger = logging.getLogger(__name__)
 
@@ -527,7 +527,7 @@ class ListingSerializer(serializers.ModelSerializer):
         if obj.id in score_by_listing_id:
             return score_by_listing_id[obj.id]
         try:
-            return score_listing_v1(obj)
+            return score_listing(obj)
         except ArithmeticError, ValueError, TypeError, AttributeError:
             logger.exception("Failed to score listing id=%s", getattr(obj, "id", None))
             return None

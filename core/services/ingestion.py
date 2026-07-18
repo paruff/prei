@@ -7,7 +7,6 @@ web views (for hosted deployments without CLI access).
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import requests
 from django.utils import timezone
@@ -27,7 +26,7 @@ USDA_BASE_URL = "https://www.rd.usda.gov/sites/default/files/reo-listings"
 _ingestion_run: set[str] = set()
 
 
-def ingest_hud_reo() -> dict[str, int]:
+def ingest_hud_reo() -> dict[str, int | str]:
     """Download and ingest HUD REO properties from ArcGIS GeoJSON.
 
     Returns:
@@ -93,7 +92,7 @@ USDA_TXT_URL = (
 )
 
 
-def ingest_usda_reo() -> dict[str, int]:
+def ingest_usda_reo() -> dict[str, int | str]:
     """Download and ingest USDA REO properties from fixed-width TXT file."""
     from core.models import UsdaProperty
 
@@ -131,7 +130,7 @@ def ingest_usda_reo() -> dict[str, int]:
         return {"created": 0, "updated": 0, "skipped": 0, "error": str(e)}
 
 
-def ingest_tx_counties() -> dict[str, int]:
+def ingest_tx_counties() -> dict[str, int | list[str]]:
     """Scrape all 11 Texas county foreclosure notices.
 
     Runs each county scraper via Playwright, upserts results into
@@ -193,7 +192,7 @@ def ingest_tx_counties() -> dict[str, int]:
     }
 
 
-def ingest_sheriff_sales() -> dict[str, int]:
+def ingest_sheriff_sales() -> dict[str, int | list[str]]:
     """Scrape sheriff sale notices for all 5 major TX counties."""
     from core.models import CountyForeclosureNotice
 
@@ -210,7 +209,9 @@ def ingest_sheriff_sales() -> dict[str, int]:
                 notice["last_seen_at"] = now
                 notice["document_type"] = "sheriff_sale"
                 _, created = CountyForeclosureNotice.objects.update_or_create(
-                    case_number=notice.get("case_number", f"SHF-{county}-{total_created}"),
+                    case_number=notice.get(
+                        "case_number", f"SHF-{county}-{total_created}"
+                    ),
                     defaults={**notice, "state": "TX", "county": county.title()},
                 )
                 if created:

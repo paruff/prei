@@ -14,21 +14,21 @@ import json
 import re
 from pathlib import Path
 
+# Backward-compat re-export — used by legacy callers
+from core.integrations.market.county_fips_map import (  # re-export for backward compat
+    lookup_county_fips as _legacy_fips,
+)
+
 
 def _load_json(name: str) -> dict[str, str]:
     path = Path(__file__).parent / name
     if not path.exists():
         return {}
-    return json.loads(path.read_text())
+    return json.loads(path.read_text())  # type: ignore[no-any-return]
 
 
 _city_county: dict[str, str] = _load_json("city_county.json")
 _county_fips: dict[str, str] = _load_json("county_fips.json")
-
-# Deprecated: kept for backward compatibility only.
-from core.integrations.market.county_fips_map import (
-    lookup_county_fips as _legacy_fips,
-)
 
 
 def _strip_census_suffix(city_name: str) -> str:
@@ -36,7 +36,9 @@ def _strip_census_suffix(city_name: str) -> str:
     city = city_name.strip()
     city = re.sub(r"\s+(city|town|CDP|village|borough)$", "", city, flags=re.IGNORECASE)
     city = re.sub(r"\s+unified government \(balance\)$", "", city, flags=re.IGNORECASE)
-    city = re.sub(r"\s+consolidated government \(balance\)$", "", city, flags=re.IGNORECASE)
+    city = re.sub(
+        r"\s+consolidated government \(balance\)$", "", city, flags=re.IGNORECASE
+    )
     return city.strip()
 
 

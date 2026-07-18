@@ -9,7 +9,7 @@ from typing import Any, TypedDict
 from django.contrib.auth.models import AbstractBaseUser
 
 from core.models import Listing, SavedSearch
-from investor_app.finance.utils import score_listing_v1
+from core.services.scoring import score_listing
 
 logger = logging.getLogger(__name__)
 THOUSANDS_DIVISOR = Decimal("1000")
@@ -48,7 +48,7 @@ def _normalize_ranked_results(ranked: Any) -> list[RankedListing]:
 
     for item in ranked:
         if isinstance(item, Listing):
-            normalized.append({"obj": item, "score": score_listing_v1(item)})
+            normalized.append({"obj": item, "score": score_listing(item)})
             continue
 
         if not isinstance(item, dict):
@@ -60,12 +60,12 @@ def _normalize_ranked_results(ranked: Any) -> list[RankedListing]:
 
         raw_score = item.get("score", item.get("composite_score"))
         if raw_score is None:
-            score = score_listing_v1(listing)
+            score = score_listing(listing)
         else:
             try:
                 score = Decimal(str(raw_score))
             except InvalidOperation, ValueError, TypeError:
-                score = score_listing_v1(listing)
+                score = score_listing(listing)
 
         normalized.append({"obj": listing, "score": score})
 
@@ -85,7 +85,7 @@ def _rank_listings(listings: list[Listing]) -> list[RankedListing]:
         )
 
     scored: list[RankedListing] = [
-        {"obj": listing, "score": score_listing_v1(listing)} for listing in listings
+        {"obj": listing, "score": score_listing(listing)} for listing in listings
     ]
     scored.sort(key=lambda item: item["score"], reverse=True)
     return scored

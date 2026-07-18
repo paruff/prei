@@ -154,5 +154,7 @@ def lookup_county_fips(state_code: str, city_name: str) -> str | None:
     city = city_name.strip()
     city = re.sub(r"\s+(city|town|CDP|village|borough)$", "", city, flags=re.IGNORECASE)
     city = re.sub(r"\s+unified government \(balance\)$", "", city, flags=re.IGNORECASE)
-    city = re.sub(r"\s+consolidated government \(balance\)$", "", city, flags=re.IGNORECASE)
+    city = re.sub(
+        r"\s+consolidated government \(balance\)$", "", city, flags=re.IGNORECASE
+    )
     return CITY_COUNTY_FIPS.get((state_code.strip().upper(), city.strip().title()))

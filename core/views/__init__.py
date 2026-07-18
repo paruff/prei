@@ -51,8 +51,10 @@ from prei.integrations.landlord_data import get_state_landlord_score
 from investor_app.finance.utils import (
     compute_analysis_for_property,
     calculate_whatif_monthly_cashflow,
-    score_listing_v1,
 )
+
+# Moved from deprecated investor_app.finance.utils:
+from core.services.scoring import score_listing
 
 # keep only the models that are actually used
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
@@ -234,17 +236,22 @@ def system_status(request: HttpRequest) -> HttpResponse:
         elif action == "sheriff_sales":
             import threading
             from django.db import connection as _conn
+
             def _run():
                 _conn.close()
                 from core.services.ingestion import ingest_sheriff_sales
+
                 try:
                     result = ingest_sheriff_sales()
                     logger.info("Sheriff scrape: %d created", result.get("created", 0))
                 except Exception as e:
                     logger.error("Sheriff scrape failed: %s", e)
+
             t = threading.Thread(target=_run, daemon=True)
             t.start()
-            messages.success(request, "Sheriff sale scrape started for 5 TX counties in background.")
+            messages.success(
+                request, "Sheriff sale scrape started for 5 TX counties in background."
+            )
         elif action == "scrape_counties":
             import threading
             from django.db import connection as _conn
@@ -2795,7 +2802,7 @@ def search_listings(request):
         except Exception:
             pass
 
-    items = [{"obj": lst, "score": score_listing_v1(lst)} for lst in qs[:200]]
+    items = [{"obj": lst, "score": score_listing(lst)} for lst in qs[:200]]
     if sort == "score":
         items.sort(key=lambda x: x["score"], reverse=True)
     elif sort == "price":
@@ -2900,7 +2907,7 @@ def report_listing(request, listing_id: int):
             request, "property_report.html", {"error": "Listing not found."}, status=404
         )
 
-    score = score_listing_v1(lst)
+    score = score_listing(lst)
     ppsf = price_per_sqft(lst)
     market_snapshot = MarketSnapshot.objects.filter(zip_code=lst.zip_code).first()
 

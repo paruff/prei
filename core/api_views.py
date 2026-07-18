@@ -37,9 +37,10 @@ from investor_app.finance.utils import (
     cash_on_cash as calc_coc,
     compute_analysis_for_property,
     dscr as calc_dscr,
-    score_listing_v1,
 )
 
+# Moved from deprecated investor_app.finance.utils:
+from core.services.scoring import score_listing
 from .models import (
     AuctionAlert,
     ForeclosureProperty,
@@ -149,7 +150,7 @@ class ListingListView(generics.ListAPIView):
         score_by_listing_id: dict[int, Decimal | None] = {}
         for listing in queryset:
             try:
-                score = score_listing_v1(listing)
+                score = score_listing(listing)
             except ArithmeticError, ValueError, TypeError, AttributeError:
                 score = None
                 logger.exception("Failed to score listing id=%s", listing.id)

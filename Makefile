@@ -131,10 +131,10 @@ deploy-devcontainer:
 
 smoke:
 	@echo "── Smoke test: http://localhost:8000 ──"
-	@curl -sf -o /dev/null -w "  health:        HTTP %{http_code}\n" http://localhost:8000/health/ || { echo "❌ Health check failed"; exit 1; }
-	@curl -sf -o /dev/null -w "  properties:    HTTP %{http_code}\n" http://localhost:8000/api/properties/ || echo "⚠  Properties API not responding"
-	@curl -sf -o /dev/null -w "  growth-areas:  HTTP %{http_code}\n" http://localhost:8000/api/growth-areas/ || echo "⚠  Growth areas API not responding"
-	@curl -sf -o /dev/null -w "  foreclosures:  HTTP %{http_code}\n" http://localhost:8000/api/foreclosures/ || echo "⚠  Foreclosures API not responding"
+	@curl -sf -o /dev/null -w "  health:           HTTP %{http_code}\n" http://localhost:8000/health/ || { echo "❌ Health check failed"; exit 1; }
+	@curl -sf -o /dev/null -w "  listings:         HTTP %{http_code}\n" http://localhost:8000/api/listings/ || echo "⚠  Listings API not responding"
+	@curl -sf -o /dev/null -w "  growth-areas:     HTTP %{http_code}\n" "http://localhost:8000/api/v1/real-estate/growth-areas" || echo "⚠  Growth areas API not responding"
+	@curl -sf -o /dev/null -w "  foreclosures:     HTTP %{http_code}\n" http://localhost:8000/api/v1/foreclosures || echo "⚠  Foreclosures API not responding"
 	@echo "✅ Smoke test complete"
 
 # ── GitOps ────────────────────────────────────────────────────────────────
@@ -197,10 +197,10 @@ test-live: up
 	 [ "$$STATUS" = "200" ] && echo "✅ Login: 200" || echo "❌ Login: $$STATUS"
 	@echo ""
 	@echo "3. Growth areas API"
-	@curl -sf http://localhost:8000/api/growth-areas/ | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"✅ Growth API: {d.get('totalResults',0)} areas\")" 2>/dev/null || echo "⚠  No data yet"
+	@curl -sf "http://localhost:8000/api/v1/real-estate/growth-areas" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"✅ Growth API: {d.get('totalResults',0)} areas\")" 2>/dev/null || echo "⚠  No data yet"
 	@echo ""
-	@echo "4. Properties API"
-	@curl -sf http://localhost:8000/api/properties/ | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"✅ Properties API: {d.get('count',0)} properties\")" 2>/dev/null || echo "⚠  No data yet"
+	@echo "4. Listings API"
+	@curl -sf http://localhost:8000/api/listings/ | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"✅ Listings API: {d.get('count',0)} listings\")" 2>/dev/null || echo "⚠  No data yet"
 	@echo ""
 	@echo "5. Discovery page"
 	@curl -sf -o /dev/null -w "✅ Discovery: HTTP %{http_code}" http://localhost:8000/discovery/; echo ""
