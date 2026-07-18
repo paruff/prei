@@ -1,4 +1,4 @@
-# Design: Phase B — Financial Math Verification
+# Design: Phase C — Deployment Reliability
 # Written: 2026-07-18
 # Status: Draft
 
@@ -6,98 +6,77 @@
 
 ## 1. Architecture
 
-### 1.1 Reference Implementation (`tests/finance_reference.py`)
+### C-2: Full OWASP ZAP Active Scan
 
-A standalone Python module with zero dependencies (no Django, no numpy). Each function
-is implemented independently from the production code — a second implementation of the
-same formula, written from the mathematical derivation.
-
-```
-tests/finance_reference.py
-  ├── ref_noi(income, expenses) → Decimal
-  ├── ref_cap_rate(noi, price) → Decimal
-  ├── ref_cash_on_cash(cash_flow, invested) → Decimal
-  ├── ref_dscr(noi, debt_service) → Decimal
-  ├── ref_monthly_mortgage(P, r, n) → Decimal
-  ├── ref_one_percent_rule(rent, price) → bool
-  ├── ref_gross_rent_multiplier(price, rent) → Decimal
-  └── ref_annual_depreciation(purchase, land) → Decimal
-```
-
-### 1.2 Test Suite (`tests/test_finance_math.py`)
-
-Parameterized tests using `@pytest.mark.parametrize`. Each test:
-1. Computes result via production function
-2. Computes result via reference function
-3. Asserts `abs(prod - ref) < tolerance`
-
-Edge case matrix:
-
-```
-                 zero    negative   extreme   precision
-noi               ✓        ✓          ✓          ✓
-cap_rate          ✓        ✓          ✓          ✓
-cash_on_cash      ✓        ✓          ✓          ✓
-dscr              ✓        ✓          ✓
-mortgage          ✓        ✓          ✓          ✓
-one_percent       ✓                               ✓
-grm               ✓        ✓          ✓
-depreciation      ✓        ✓
-```
-
-### 1.3 CI Gate
-
-Add a new job to `ci-quality.yml`:
+Update `post-deployment.yml` security job to use active scanning:
 
 ```yaml
-finance-math:
-  name: "💰 Financial Math"
+security:
+  name: "🛡️ Security Scan"
+  needs: smoke
   runs-on: ubuntu-latest
   steps:
-    - uses: actions/checkout@v7
-    - uses: ./.github/actions/python-setup
-    - name: Install deps
-      run: pip install -r requirements.txt
-    - name: Run financial math verification
-      run: python -m pytest tests/test_finance_math.py -v --tb=short
+    - name: OWASP ZAP Full Scan
+      uses: zaproxy/action-full-scan@v1
+      with:
+        target: ${{ needs.smoke.outputs.target }}
+        allow_issue_writing: false
+        fail_action: true
+        rules_file_name: ".zap/rules.tsv"
+        cmd_options: "-a -j"  # active scan + auth
 ```
 
-Add to `pr-gates-pass` needs list.
+Configuration file: `.zap/rules.tsv` with severity thresholds.
 
-### 1.4 Makefile Target
+### C-3: SLO Dashboard
 
-```makefile
-test-finance-math:
-	python -m pytest tests/test_finance_math.py -v --tb=short
+A script at `scripts/slo-report.sh` that computes:
+
+```
+Deploy Frequency (30d):   12 deployments
+Change Failure Rate:       8.3% (1 failure / 12 deploys)
+Mean Time to Recovery:     5 min
+Last Deploy:              2026-07-18 14:00 UTC
 ```
 
-### 1.5 Docstring Format
+Uses GitHub API to count successful vs failed workflow runs.
 
-Each function gets a docstring with:
-1. Mathematical formula in plain math notation
-2. Variable definitions
-3. Reference source (e.g., "per NAR Commercial Real Estate Standards")
+### C-4: Flaky Test Detection
+
+1. Add `pytest-rerunfailures` to `requirements.txt` and `pytest.ini`
+2. Update CI unit test command to include `--reruns 1 --reruns-delay 5`
+3. Add `.flake-reports/` directory for flaky test tracking
+4. Add a quarantine step that checks `.flake-reports/` for tests failing ≥3 times
+
+```ini
+# pytest.ini
+addopts = --reruns 1 --reruns-delay 5
+```
+
+### C-1: Canary Deployment Plan
+
+Document `docs/DEPLOYMENT_STRATEGY.md` describing the future canary architecture:
+
+```
+traffic splitter
+  ├── 95% → stable replica (current image)
+  └──  5% → canary replica (new image)
+          → monitor for 5 min
+          → if healthy: promote to 100%
+          → if unhealthy: rollback
+```
 
 ---
 
-## 2. Edge Case Definitions
+## 2. File Changes
 
-| Category | Definition | Examples |
+| File | Change | Purpose |
 |---|---|---|
-| Zero | Parameter is Decimal("0") | price=0, rent=0, rate=0 |
-| Negative | Parameter is negative | NOI=-1000, cash_flow=-500 |
-| Extreme | Parameter is 10x or 100x normal | price=10000000, rate=0.20 |
-| Precision | Result requires 10+ decimal places | rate=0.0475/12, 30-year loan |
-| Boundary | Parameter at formula boundary | rent = price * 0.01 (exact 1%) |
-| Currency | Decimal precision with 2dp inputs | price=99999.99, land=5000.01 |
-
----
-
-## 3. Risk Mitigation
-
-| Risk | Mitigation |
-|---|---|
-| Reference implementation replicates the same bug as production | Validate reference against at least one hand-calculated example per function |
-| Decimal precision differences | Use `Decimal("0.01")` tolerance, not `abs` floating point |
-| CI timeout (pip install) | Finance-math gate needs Django for tests, but tests shouldn't use the DB |
-| New functions added that aren't verified | `make test-finance-math` lists covered functions in output |
+| `post-deployment.yml` | Update security job to full scan | C-2 |
+| `.zap/rules.tsv` | New: ZAP severity rules | C-2 |
+| `pytest.ini` | Add --reruns args | C-4 |
+| `requirements.txt` | Add pytest-rerunfailures | C-4 |
+| `ci-quality.yml` | Update unit test command with --reruns | C-4 |
+| `scripts/slo-report.sh` | New: SLO computation script | C-3 |
+| `docs/DEPLOYMENT_STRATEGY.md` | New: Canary plan | C-1 |
+| `Makefile` | Add test-slos target | C-3 |

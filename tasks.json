@@ -1,76 +1,57 @@
 {
   "meta": {
     "project": "prei",
-    "session": "phase-b-financial-math-20260718",
+    "session": "phase-c-deployment-20260718",
     "date": "2026-07-18",
-    "feature": "Top 0.1% — Phase B (Financial Math)",
+    "feature": "Top 0.1% — Phase C (Deployment Reliability)",
     "spec": "specification.md",
     "design": "design.md"
   },
   "tasks": [
     {
-      "id": "T-B1",
-      "summary": "Create reference implementation for core KPI functions",
-      "description": "Create tests/finance_reference.py with independent reference implementations of:\n- ref_noi(income, expenses)\n- ref_cap_rate(noi, price)\n- ref_cash_on_cash(cash_flow, invested)\n- ref_dscr(noi, debt_service)\n- ref_monthly_mortgage(principal, annual_rate, years)\n- ref_one_percent_rule(rent, price)\n- ref_gross_rent_multiplier(price, annual_rent)\n- ref_annual_depreciation(purchase_price, land_value)\n\nEach function is a second implementation from the mathematical formula, not a copy of the production code. Uses pure Python Decimal math (no numpy, no Django).",
+      "id": "T-C2",
+      "summary": "Upgrade OWASP ZAP to full active scan in post-deployment.yml",
+      "description": "Replace the current zaproxy/action-baseline@v1 with zaproxy/action-full-scan@v1 in post-deployment.yml. Add .zap/rules.tsv with severity thresholds. The full scan performs active spidering, XSS/injection tests, and auth-aware scanning.",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-B1-01", "description": "tests/finance_reference.py exists with all 8 functions", "test_type": "unit"},
-        {"id": "AC-B1-02", "description": "ref_noi(1200, 400) == Decimal('800')", "test_type": "unit"},
-        {"id": "AC-B1-03", "description": "ref_cap_rate(Decimal('12000'), Decimal('200000')) == Decimal('0.06')", "test_type": "unit"},
-        {"id": "AC-B1-04", "description": "ref_one_percent_rule(Decimal('2000'), Decimal('200000')) is True", "test_type": "unit"},
-        {"id": "AC-B1-05", "description": "Reference values validated against hand-calculated examples", "test_type": "unit"}
+        {"id": "AC-C2-01", "description": "post-deployment.yml uses zaproxy/action-full-scan@v1", "test_type": "unit"},
+        {"id": "AC-C2-02", "description": ".zap/rules.tsv exists with severity thresholds (HIGH/CRITICAL fail)", "test_type": "unit"},
+        {"id": "AC-C2-03", "description": "Workflow YAML is valid", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-B2",
-      "summary": "Write parameterized test suite (50+ edge cases)",
-      "description": "Create tests/test_finance_math.py with @pytest.mark.parametrize tests covering:\n- NOI: 8 cases (zero income, zero expenses, negative, extreme, precision)\n- Cap rate: 8 cases (zero price, zero NOI, negative, 1/1000000)\n- Cash-on-cash: 8 cases (zero investment, negative cash flow)\n- DSCR: 8 cases (zero debt service, NOI < debt, ratio > 3)\n- Mortgage: 10 cases (zero P, zero r, 0-year, negative r, 30-year)\n- 1% rule: 6 cases (exact 1%, 0.99%, 1.01%, zero, currency)\n- GRM: 6 cases (zero rent, negative, extreme, precision)\n- Depreciation: 6 cases (zero land, land > purchase, 27.5 boundary)\n\nEach test compares production function to reference function with Decimal('0.01') tolerance.",
-      "depends_on": ["T-B1"],
-      "acceptance_criteria": [
-        {"id": "AC-B2-01", "description": "tests/test_finance_math.py exists with ≥50 parametrized cases", "test_type": "unit"},
-        {"id": "AC-B2-02", "description": "tests/test_finance_math.py imports from investor_app.finance.utils", "test_type": "unit"},
-        {"id": "AC-B2-03", "description": "tests/test_finance_math.py imports from tests.finance_reference", "test_type": "unit"},
-        {"id": "AC-B2-04", "description": "Every test case compares prod vs ref with abs(diff) < Decimal('0.01')", "test_type": "unit"},
-        {"id": "AC-B2-05", "description": "Edge cases cover zero, negative, extreme, precision, boundary, currency", "test_type": "unit"},
-        {"id": "AC-B2-06", "description": "All tests pass: python -m pytest tests/test_finance_math.py -v", "test_type": "unit"}
-      ]
-    },
-    {
-      "id": "T-B3",
-      "summary": "Add financial math gate to CI workflow",
-      "description": "Add a 'finance-math' job to ci-quality.yml that runs pytest tests/test_finance_math.py. Add it to the pr-gates-pass needs list and failure check.",
-      "depends_on": ["T-B2"],
-      "acceptance_criteria": [
-        {"id": "AC-B3-01", "description": "ci-quality.yml has a finance-math job", "test_type": "unit"},
-        {"id": "AC-B3-02", "description": "pr-gates-pass needs list includes finance-math", "test_type": "unit"},
-        {"id": "AC-B3-03", "description": "pr-gates-pass failure check includes finance-math", "test_type": "unit"},
-        {"id": "AC-B3-04", "description": "Workflow YAML is valid", "test_type": "unit"}
-      ]
-    },
-    {
-      "id": "T-B4",
-      "summary": "Add Makefile target for financial math verification",
-      "description": "Add 'test-finance-math' target to Makefile that runs the verification suite.",
-      "depends_on": ["T-B2"],
-      "acceptance_criteria": [
-        {"id": "AC-B4-01", "description": "make test-finance-math runs pytest tests/test_finance_math.py -v", "test_type": "unit"},
-        {"id": "AC-B4-02", "description": "Target passes when all tests pass, fails otherwise", "test_type": "unit"}
-      ]
-    },
-    {
-      "id": "T-B5",
-      "summary": "Document mathematical formulas in production KPI docstrings",
-      "description": "Update the docstrings of all 8 core KPI production functions to include:\n1. The mathematical formula in plain-text math notation\n2. Variable definitions for each parameter\n3. Reference to industry standard source\n\nThis ensures any future developer or AI agent can understand the derivation without reading the implementation.",
+      "id": "T-C4",
+      "summary": "Add flaky test detection with pytest-rerunfailures",
+      "description": "1. Add pytest-rerunfailures to requirements.txt\n2. Update pytest.ini to include --reruns 1 --reruns-delay 5\n3. Update ci-quality.yml unit test command to include --reruns flags\n4. Tests that fail with httpx.ConnectError (the most common CI flake) are automatically retried once",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-B5-01", "description": "noi() docstring contains 'NOI = monthly_income - monthly_expenses'", "test_type": "unit"},
-        {"id": "AC-B5-02", "description": "cap_rate() docstring contains 'Cap Rate = Annual NOI / Purchase Price'", "test_type": "unit"},
-        {"id": "AC-B5-03", "description": "cash_on_cash() docstring contains formula", "test_type": "unit"},
-        {"id": "AC-B5-04", "description": "dscr() docstring contains 'DSCR = Annual NOI / Annual Debt Service'", "test_type": "unit"},
-        {"id": "AC-B5-05", "description": "calculate_monthly_mortgage() docstring contains the amortization formula", "test_type": "unit"},
-        {"id": "AC-B5-06", "description": "one_percent_rule() docstring contains 'monthly_rent >= purchase_price * 0.01'", "test_type": "unit"},
-        {"id": "AC-B5-07", "description": "gross_rent_multiplier() docstring contains 'GRM = Purchase Price / Annual Rent'", "test_type": "unit"},
-        {"id": "AC-B5-08", "description": "annual_depreciation() docstring contains '27.5-year straight-line for residential'", "test_type": "unit"}
+        {"id": "AC-C4-01", "description": "pytest-rerunfailures added to requirements.txt", "test_type": "unit"},
+        {"id": "AC-C4-02", "description": "pytest.ini addopts includes --reruns 1 --reruns-delay 5", "test_type": "unit"},
+        {"id": "AC-C4-03", "description": "ci-quality.yml unit test command uses --reruns 1 --reruns-delay 5", "test_type": "unit"},
+        {"id": "AC-C4-04", "description": "pytest-rerunfailures installs and imports without error", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "T-C3",
+      "summary": "Create SLO report script and Makefile target",
+      "description": "Create scripts/slo-report.sh that computes: deployment frequency (last 30 days), change failure rate (failed deploys / total deploys), mean time to recovery. Uses gh CLI to query workflow run history. Add make test-slos target that runs the script.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-C3-01", "description": "scripts/slo-report.sh exists and is executable", "test_type": "unit"},
+        {"id": "AC-C3-02", "description": "Script outputs deploy frequency as a number", "test_type": "unit"},
+        {"id": "AC-C3-03", "description": "Script outputs change failure rate as a percentage", "test_type": "unit"},
+        {"id": "AC-C3-04", "description": "make test-slos runs the script", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "T-C1",
+      "summary": "Document canary deployment strategy",
+      "description": "Create docs/DEPLOYMENT_STRATEGY.md documenting the future canary architecture: traffic splitter → 95% stable / 5% canary → monitor 5 min → promote or rollback. Include prerequisites (K8s, ≥2 replicas, load balancer), step-by-step flow, and rollback triggers.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-C1-01", "description": "docs/DEPLOYMENT_STRATEGY.md exists with architecture diagram", "test_type": "unit"},
+        {"id": "AC-C1-02", "description": "Document lists prerequisites (K8s, replicas, LB)", "test_type": "unit"},
+        {"id": "AC-C1-03", "description": "Document describes promote/rollback decision criteria", "test_type": "unit"}
       ]
     }
   ]

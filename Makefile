@@ -186,6 +186,11 @@ test-finance-math:
 	@echo "── Financial Math Verification ──"
 	@python -m pytest tests/test_finance_math.py -v --tb=short
 
+# ── SLO report ─────────────────────────────────────────────────────────
+
+test-slos:
+	@./scripts/slo-report.sh
+
 # ── HTTP acceptance tests (against deployed app) ────────────────────────────
 
 test-acceptance:
