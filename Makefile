@@ -180,6 +180,12 @@ docker-dev: ensure-env build up
 	@echo "  make down     — stop containers"
 	@echo "  make clean    — remove images + volumes"
 
+# ── Financial math verification ────────────────────────────────────────
+
+test-finance-math:
+	@echo "── Financial Math Verification ──"
+	@python -m pytest tests/test_finance_math.py -v --tb=short
+
 # ── HTTP acceptance tests (against deployed app) ────────────────────────────
 
 test-acceptance:

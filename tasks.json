@@ -1,207 +1,76 @@
 {
   "meta": {
     "project": "prei",
-    "session": "phase-a-foundation-20260718",
+    "session": "phase-b-financial-math-20260718",
     "date": "2026-07-18",
-    "feature": "Top 0.1% — Phase A (Foundation)",
+    "feature": "Top 0.1% — Phase B (Financial Math)",
     "spec": "specification.md",
     "design": "design.md"
   },
   "tasks": [
     {
-      "id": "T-A1",
-      "summary": "Create CI self-test guard workflow (main-ci-guard.yml)",
-      "description": "Create .github/workflows/main-ci-guard.yml that runs on pull_request events and checks the latest Tier 2 Governance run on main. If the run is not 'success', the guard fails, blocking the PR merge. Use actions/github-script@v9 to query the GitHub API.",
+      "id": "T-B1",
+      "summary": "Create reference implementation for core KPI functions",
+      "description": "Create tests/finance_reference.py with independent reference implementations of:\n- ref_noi(income, expenses)\n- ref_cap_rate(noi, price)\n- ref_cash_on_cash(cash_flow, invested)\n- ref_dscr(noi, debt_service)\n- ref_monthly_mortgage(principal, annual_rate, years)\n- ref_one_percent_rule(rent, price)\n- ref_gross_rent_multiplier(price, annual_rent)\n- ref_annual_depreciation(purchase_price, land_value)\n\nEach function is a second implementation from the mathematical formula, not a copy of the production code. Uses pure Python Decimal math (no numpy, no Django).",
       "depends_on": [],
       "acceptance_criteria": [
-        {
-          "id": "AC-A1-01",
-          "description": "main-ci-guard.yml exists with on: pull_request trigger",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A1-02",
-          "description": "Workflow checks latest Tier 2 Governance run on main via GitHub API",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A1-03",
-          "description": "Guard fails when latest main CI run is not success",
-          "test_type": "integration"
-        },
-        {
-          "id": "AC-A1-04",
-          "description": "Workflow YAML is valid",
-          "test_type": "unit"
-        }
+        {"id": "AC-B1-01", "description": "tests/finance_reference.py exists with all 8 functions", "test_type": "unit"},
+        {"id": "AC-B1-02", "description": "ref_noi(1200, 400) == Decimal('800')", "test_type": "unit"},
+        {"id": "AC-B1-03", "description": "ref_cap_rate(Decimal('12000'), Decimal('200000')) == Decimal('0.06')", "test_type": "unit"},
+        {"id": "AC-B1-04", "description": "ref_one_percent_rule(Decimal('2000'), Decimal('200000')) is True", "test_type": "unit"},
+        {"id": "AC-B1-05", "description": "Reference values validated against hand-calculated examples", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-A2a",
-      "summary": "Create Pydantic response schemas for acceptance tests",
-      "description": "Create tests/acceptance/schemas.py with Pydantic models:\n- HealthResponse (status: str)\n- ListingsResponse (count: int, results: list, next: Optional[str], previous: Optional[str])\n- GrowthAreasResponse (areas: list, state: str, totalResults: int)\n- ForeclosuresResponse (resultsCount: int, dataSources: list, location: str)\n- LoginPageResponse (status_code: int, has_password_field: bool)\n- StaticAssetResponse (status_code: int, content_type: str, body_size: int)",
+      "id": "T-B2",
+      "summary": "Write parameterized test suite (50+ edge cases)",
+      "description": "Create tests/test_finance_math.py with @pytest.mark.parametrize tests covering:\n- NOI: 8 cases (zero income, zero expenses, negative, extreme, precision)\n- Cap rate: 8 cases (zero price, zero NOI, negative, 1/1000000)\n- Cash-on-cash: 8 cases (zero investment, negative cash flow)\n- DSCR: 8 cases (zero debt service, NOI < debt, ratio > 3)\n- Mortgage: 10 cases (zero P, zero r, 0-year, negative r, 30-year)\n- 1% rule: 6 cases (exact 1%, 0.99%, 1.01%, zero, currency)\n- GRM: 6 cases (zero rent, negative, extreme, precision)\n- Depreciation: 6 cases (zero land, land > purchase, 27.5 boundary)\n\nEach test compares production function to reference function with Decimal('0.01') tolerance.",
+      "depends_on": ["T-B1"],
+      "acceptance_criteria": [
+        {"id": "AC-B2-01", "description": "tests/test_finance_math.py exists with ≥50 parametrized cases", "test_type": "unit"},
+        {"id": "AC-B2-02", "description": "tests/test_finance_math.py imports from investor_app.finance.utils", "test_type": "unit"},
+        {"id": "AC-B2-03", "description": "tests/test_finance_math.py imports from tests.finance_reference", "test_type": "unit"},
+        {"id": "AC-B2-04", "description": "Every test case compares prod vs ref with abs(diff) < Decimal('0.01')", "test_type": "unit"},
+        {"id": "AC-B2-05", "description": "Edge cases cover zero, negative, extreme, precision, boundary, currency", "test_type": "unit"},
+        {"id": "AC-B2-06", "description": "All tests pass: python -m pytest tests/test_finance_math.py -v", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "T-B3",
+      "summary": "Add financial math gate to CI workflow",
+      "description": "Add a 'finance-math' job to ci-quality.yml that runs pytest tests/test_finance_math.py. Add it to the pr-gates-pass needs list and failure check.",
+      "depends_on": ["T-B2"],
+      "acceptance_criteria": [
+        {"id": "AC-B3-01", "description": "ci-quality.yml has a finance-math job", "test_type": "unit"},
+        {"id": "AC-B3-02", "description": "pr-gates-pass needs list includes finance-math", "test_type": "unit"},
+        {"id": "AC-B3-03", "description": "pr-gates-pass failure check includes finance-math", "test_type": "unit"},
+        {"id": "AC-B3-04", "description": "Workflow YAML is valid", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "T-B4",
+      "summary": "Add Makefile target for financial math verification",
+      "description": "Add 'test-finance-math' target to Makefile that runs the verification suite.",
+      "depends_on": ["T-B2"],
+      "acceptance_criteria": [
+        {"id": "AC-B4-01", "description": "make test-finance-math runs pytest tests/test_finance_math.py -v", "test_type": "unit"},
+        {"id": "AC-B4-02", "description": "Target passes when all tests pass, fails otherwise", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "T-B5",
+      "summary": "Document mathematical formulas in production KPI docstrings",
+      "description": "Update the docstrings of all 8 core KPI production functions to include:\n1. The mathematical formula in plain-text math notation\n2. Variable definitions for each parameter\n3. Reference to industry standard source\n\nThis ensures any future developer or AI agent can understand the derivation without reading the implementation.",
       "depends_on": [],
       "acceptance_criteria": [
-        {
-          "id": "AC-A2a-01",
-          "description": "schemas.py exists with all 6 Pydantic models",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2a-02",
-          "description": "HealthResponse.model_validate({\"status\": \"ok\"}) succeeds",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2a-03",
-          "description": "ListingsResponse.model_validate({\"count\": 0, \"results\": []}) succeeds",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2a-04",
-          "description": "Pydantic validation raises ValidationError for malformed input",
-          "test_type": "unit"
-        }
-      ]
-    },
-    {
-      "id": "T-A2b",
-      "summary": "Update existing acceptance tests to use Pydantic models",
-      "description": "Update tests/acceptance/test_api.py and test_pages.py to use Pydantic model_validate() instead of raw dict access and isinstance checks. Each test should validate the full response shape, not just individual keys.",
-      "depends_on": ["T-A2a"],
-      "acceptance_criteria": [
-        {
-          "id": "AC-A2b-01",
-          "description": "TestHealthEndpoints uses HealthResponse.model_validate()",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2b-02",
-          "description": "TestListingsAPI uses ListingsResponse.model_validate()",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2b-03",
-          "description": "TestGrowthAreasAPI uses GrowthAreasResponse.model_validate()",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2b-04",
-          "description": "TestForeclosuresAPI uses ForeclosuresResponse.model_validate()",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2b-05",
-          "description": "All 9 acceptance tests pass against local container",
-          "test_type": "live-system"
-        }
-      ]
-    },
-    {
-      "id": "T-A2c",
-      "summary": "Add HTTP acceptance tests for property pipeline and authentication",
-      "description": "Create two new test files:\n\n1. tests/acceptance/test_property_pipeline.py — tests the full property analysis workflow via HTTP:\n   - Login → create property → add rental income → compute KPIs → verify results\n   \n2. tests/acceptance/test_authentication.py — tests auth endpoints:\n   - Login with valid credentials returns 302 (redirect) and sets session cookie\n   - Login with invalid credentials returns 200 (login page with error)\n   - Logout clears session\n   - Protected endpoint returns 302 redirect when unauthenticated",
-      "depends_on": ["T-A2a"],
-      "acceptance_criteria": [
-        {
-          "id": "AC-A2c-01",
-          "description": "test_property_pipeline.py exists with ≥3 HTTP-level tests",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2c-02",
-          "description": "test_authentication.py exists with ≥3 HTTP-level tests",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A2c-03",
-          "description": "Login test validates session cookie is set on successful login",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-A2c-04",
-          "description": "Pipeline test validates KPI values in response (NOI, cap rate)",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-A2c-05",
-          "description": "All new tests pass against local container",
-          "test_type": "live-system"
-        }
-      ]
-    },
-    {
-      "id": "T-A3",
-      "summary": "Add acceptance test gate to ci-quality.yml PR workflow",
-      "description": "Update .github/workflows/ci-quality.yml to include a new 'acceptance' job that:\n1. Checkouts code\n2. Installs httpx, beautifulsoup4, pydantic\n3. Starts a Docker container via docker compose\n4. Waits for health\n5. Runs pytest tests/acceptance/\n6. Cleans up",
-      "depends_on": ["T-A2b", "T-A2c"],
-      "acceptance_criteria": [
-        {
-          "id": "AC-A3-01",
-          "description": "ci-quality.yml has an 'acceptance' job",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A3-02",
-          "description": "acceptance job runs pytest tests/acceptance/",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A3-03",
-          "description": "pr-gates-pass job includes acceptance in its needs list",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A3-04",
-          "description": "Workflow YAML is valid",
-          "test_type": "unit"
-        }
-      ]
-    },
-    {
-      "id": "T-A4",
-      "summary": "Add build-time monitoring to docker-publish.yml",
-      "description": "Update the build-image job to log build start time, end time, and elapsed seconds. Add a warning step that fires if the build took longer than 600 seconds (10 minutes). Use date +%s for epoch-based timing.",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {
-          "id": "AC-A4-01",
-          "description": "build-image job logs start timestamp at beginning",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A4-02",
-          "description": "build-image job logs end timestamp and elapsed seconds at end",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A4-03",
-          "description": "Warning is emitted if build time exceeds 600 seconds",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A4-04",
-          "description": "Workflow YAML is valid",
-          "test_type": "unit"
-        }
-      ]
-    },
-    {
-      "id": "T-A5",
-      "summary": "Update Makefile with CI-focused acceptance test target",
-      "description": "Update the Makefile test-acceptance target to work in CI (no xcode-select, no virtualenv dependency). Add a docker-compose based target that starts the stack, waits, runs tests, and cleans up.",
-      "depends_on": ["T-A2b", "T-A2c"],
-      "acceptance_criteria": [
-        {
-          "id": "AC-A5-01",
-          "description": "make test-acceptance works without xcode-select noise",
-          "test_type": "unit"
-        },
-        {
-          "id": "AC-A5-02",
-          "description": "make test-acceptance-ci starts docker compose, runs tests, cleans up",
-          "test_type": "unit"
-        }
+        {"id": "AC-B5-01", "description": "noi() docstring contains 'NOI = monthly_income - monthly_expenses'", "test_type": "unit"},
+        {"id": "AC-B5-02", "description": "cap_rate() docstring contains 'Cap Rate = Annual NOI / Purchase Price'", "test_type": "unit"},
+        {"id": "AC-B5-03", "description": "cash_on_cash() docstring contains formula", "test_type": "unit"},
+        {"id": "AC-B5-04", "description": "dscr() docstring contains 'DSCR = Annual NOI / Annual Debt Service'", "test_type": "unit"},
+        {"id": "AC-B5-05", "description": "calculate_monthly_mortgage() docstring contains the amortization formula", "test_type": "unit"},
+        {"id": "AC-B5-06", "description": "one_percent_rule() docstring contains 'monthly_rent >= purchase_price * 0.01'", "test_type": "unit"},
+        {"id": "AC-B5-07", "description": "gross_rent_multiplier() docstring contains 'GRM = Purchase Price / Annual Rent'", "test_type": "unit"},
+        {"id": "AC-B5-08", "description": "annual_depreciation() docstring contains '27.5-year straight-line for residential'", "test_type": "unit"}
       ]
     }
   ]
