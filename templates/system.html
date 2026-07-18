@@ -40,6 +40,26 @@
   </div>
 </div>
 
+<div class="card" style="margin-top:var(--sp-5)">
+  <h2 class="card-title">Growth Area Settings</h2>
+  <table class="table">
+    <tr><td><strong>API Key</strong></td><td><strong>Status</strong></td><td><strong>Required For</strong></td></tr>
+    <tr><td>FRED</td><td>{% if api_keys.FRED %}✅ Configured{% else %}❌ Missing{% endif %}</td><td>Employment growth data</td></tr>
+    <tr><td>HUD</td><td>{% if api_keys.HUD %}✅ Configured{% else %}❌ Missing{% endif %}</td><td>FMR rent estimates</td></tr>
+    <tr><td>ATTOM</td><td>{% if api_keys.ATTOM %}✅ Configured{% else %}❌ Missing{% endif %}</td><td>Property/foreclosure data</td></tr>
+  </table>
+  <table class="table" style="margin-top:var(--sp-3)">
+    <tr><td><strong>Data</strong></td><td><strong>Status</strong></td></tr>
+    <tr><td>Growth Areas</td><td>{{ ga_count }} areas in {{ ga_states }} states</td></tr>
+    <tr><td>Last Seeded</td><td>{{ ga_last.data_timestamp|date:"Y-m-d H:i"|default:"Never" }}</td></tr>
+    <tr><td>FIPS Coverage</td><td>{{ ga_fips_pct }}% with county FIPS</td></tr>
+  </table>
+  <p style="font-size:12px;color:var(--text-sub);margin-top:var(--sp-2)">
+    {% if not api_keys.FRED and not api_keys.HUD %}⚠ No API keys configured — growth areas will use census data only. Set FRED_API_KEY and HUD_API_KEY for employment and rent estimates.{% endif %}
+    {% if api_keys.FRED and api_keys.HUD and ga_count > 0 %}✅ All integrations configured and data pipeline active.{% endif %}
+  </p>
+</div>
+
 {% if top_areas %}
 <div class="card" style="margin-top:var(--sp-5)">
   <h2 class="card-title">Top Growth Areas</h2>

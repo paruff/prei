@@ -180,7 +180,17 @@ def system_status(request: HttpRequest) -> HttpResponse:
     county_count = CountyForeclosureNotice.objects.count()
     ga_count = GrowthArea.objects.count()
     ga_with_fips = GrowthArea.objects.exclude(county_fips="").count()
+    ga_last = GrowthArea.objects.order_by("-data_timestamp").first()
     pipeline_count = PipelineProperty.objects.count()
+
+    # API key status for integrations
+    from django.conf import settings as dj_settings
+
+    api_keys = {
+        "FRED": bool(getattr(dj_settings, "FRED_API_KEY", "")),
+        "HUD": bool(getattr(dj_settings, "HUD_API_KEY", "")),
+        "ATTOM": bool(getattr(dj_settings, "ATTOM_API_KEY", "")),
+    }
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -300,6 +310,8 @@ def system_status(request: HttpRequest) -> HttpResponse:
             .count(),
             "health": DataSourceHealth.objects.all(),
             "top_areas": GrowthArea.objects.order_by("-composite_score")[:10],
+            "ga_last": ga_last,
+            "api_keys": api_keys,
         },
     )
 
