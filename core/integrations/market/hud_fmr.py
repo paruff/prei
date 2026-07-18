@@ -46,7 +46,12 @@ class FMRClient:
         if resp.status_code == 401:
             raise FMRError("HUD API key is missing or invalid")
         if resp.status_code == 403:
-            raise FMRError("HUD API key not authorized for FMR dataset")
+            detail = resp.text[:500] if resp.text else ""
+            raise FMRError(
+                f"HUD API key not authorized for FMR dataset. "
+                f"Verify the key at https://www.huduser.gov/portal/dataset/fmr-api.html. "
+                f"Response: {detail}"
+            )
         if resp.status_code == 404:
             raise FMRError(f"No data found: {path}")
         resp.raise_for_status()
