@@ -8,16 +8,32 @@
 ## 1. What We Are Building
 
 prei is a **passive residential real estate investment analytics** platform for
-buy-and-hold investors. The core workflow: *"I found a rental property. Help me
-decide if I should buy it and at what price."*
+buy-and-hold investors. The core workflow spans the full investor lifecycle:
+
+**"I want to find a cash-flowing rental property in a growing market, analyze it
+against my investment criteria, manage the offer and closing process, track its
+performance in my portfolio, and eventually lease it out — all in one system."**
 
 ### Product boundaries (what is IN scope)
 
-- Underwriting math (NOI, cap rate, cash-on-cash, DSCR, IRR)
-- Market intelligence (census, BLS, HUD, ATTOM data integration)
-- Property discovery (VRM, foreclosure, MLS, county records)
-- Pipeline management (discovery → screening → underwriting → offer → close)
-- Portfolio tracking (owned properties, rental income, expenses)
+- **Growth area identification** — composite scoring (employment, population,
+  housing demand) to surface emerging markets before prices rise
+- **Property discovery** — VRM feed, foreclosure notices, sheriff sales, HUD REO,
+  USDA REO, county records across TX, FL, and other landlord-friendly states
+- **Screening** — 1% rule, GRM, cap rate, cash-on-cash filters to kill bad deals
+  early and cheaply before investing analyst time
+- **Underwriting** — full KPI analysis (NOI, cap rate, cash-on-cash, DSCR, IRR)
+  with market-aware cap rate comparison and deal scoring
+- **BRRRR analysis** — Buy/Rehab/Rent/Refinance/Repeat projection with ARV
+  estimation, rehab budgeting, refinance modeling, and hold-period returns
+- **Offer management** — MAO calculation, offer price optimization with
+  competition multiplier and equity constraints
+- **Acquisition pipeline** — CRM-like stage tracking (discovery → screening →
+  underwriting → offer → due diligence → closing → acquired)
+- **Portfolio tracking** — owned properties with rental income, operating expenses,
+  monthly actuals, investment analysis, and hold-period projections
+- **Leasing pipeline** — separate workflow for rent-ready properties: listing,
+  tenant screening, lease signing, rent collection tracking
 - BRRRR analysis (buy, rehab, rent, refinance, repeat projection)
 - Deal comparison and ranking
 
@@ -56,34 +72,41 @@ decide if I should buy it and at what price."*
 
 ## 3. Core User Journeys
 
-### Journey 1: Discovery → Decision
+### Journey 1: Full Investment Lifecycle (Primary)
 
 ```
-1. Browse/source properties (discovery page, VRM, foreclosure feeds)
-2. Screen against criteria (1% rule, cap rate, cash-on-cash)
-3. Deep-analyze top candidates (underwriting score, market data)
-4. Compute offer price (MAO, ARV, rehab estimate)
-5. Track through pipeline (offer → due diligence → closing)
-6. Add to portfolio (rental income, expenses, KPIs)
+1. IDENTIFY growth areas — select state, run GACS analysis, rank markets
+   by composite score (employment growth, population growth, housing demand)
+2. DISCOVER properties — browse growth area listings, VRM feed, foreclosure
+   notices, sheriff sales, HUD/USDA REO properties
+3. SCREEN for profitability — apply 1% rule, GRM, cap rate threshold;
+   kill 90% of properties here (cheaply, before analyst time)
+4. UNDERWRITE top candidates — full KPI analysis: NOI, cap rate,
+   cash-on-cash, DSCR; compare against market cap rates; score deals
+5. COMPUTE offer price — MAO (maximum allowable offer) with ARV estimate,
+   rehab budget, desired equity target, competition multiplier
+6. TRACK through acquisition pipeline — offer submitted → due diligence
+   → closing → acquired; manage documents and deadlines
+7. ADD to portfolio — record purchase price, rental income, operating
+   expenses; track monthly actuals against pro-forma
+8. RUN BRRRR analysis — identify equity-rich properties; project
+   refinance returns; plan next acquisition
+9. LEASE the property — move acquired property through leasing pipeline:
+   list → screen tenants → sign lease → track rent collection
 ```
 
-### Journey 2: Portfolio Analysis
+### Journey 2: Market Intelligence (Discover Where to Buy)
 
 ```
-1. View all owned properties with current KPIs
-2. Run BRRRR projection on equity-rich properties
-3. Compare refinance options
-4. Project hold-period returns (IRR, total return)
+1. Select target state/region
+2. Run growth area analysis against census + BLS + HUD data
+3. View ranked markets by composite score
+4. Drill into ZIP-level market snapshots (schools, crime, rents, comps)
+5. Identify emerging markets before prices rise
+6. Set saved searches and alerts for target areas
 ```
 
-### Journey 3: Market Intelligence
-
-```
-1. Select state/region
-2. View growth areas ranked by composite score (employment, population, housing)
-3. Compare ZIP-level market snapshots
-4. Identify emerging markets before prices rise
-```
+### Journey 3: Portfolio Analysis
 
 ---
 
