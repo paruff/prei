@@ -102,6 +102,8 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout source
+        uses: actions/checkout@v7
       - name: Start container
         env:
           IMAGE_DIGEST: ${{ needs.build-image.outputs.image-digest }}
