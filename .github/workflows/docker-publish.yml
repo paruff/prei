@@ -134,7 +134,9 @@ jobs:
           done
           if [ "$HEALTHY" != "1" ]; then
             echo "::error::Container never became healthy within 180s"
-            docker logs prei-live-test 2>/dev/null || true
+            echo "=== Container logs ==="
+            docker logs prei-live-test || true
+            echo "=== End container logs ==="
             docker stop prei-live-test 2>/dev/null || true
             exit 1
           fi
