@@ -26,6 +26,7 @@
 6. Use Bootstrap classes or inline `style=` attributes on layout elements.
 7. Hardcode hex colors in templates (exception: PDF export inline styles).
 8. Use `!important` in CSS — if a responsive rule is broken, fix the template.
+9. Use uppercase in PR title description — the first word after `type(scope):` must be lowercase (see `docs/PR_STANDARD.md`).
 
 ## Token Budget Protocol
 Agent Mode: read files, write files, 2-sentence plan.

@@ -1,140 +1,103 @@
-# Design: Top 0.1% — Phase A (Foundation)
-# Written: 2026-07-18 session with paruff
+# Design: Phase B — Financial Math Verification
+# Written: 2026-07-18
 # Status: Draft
 
 ---
 
-## 1. Architecture Overview
+## 1. Architecture
 
-### A-1: CI Self-Test Guard
+### 1.1 Reference Implementation (`tests/finance_reference.py`)
+
+A standalone Python module with zero dependencies (no Django, no numpy). Each function
+is implemented independently from the production code — a second implementation of the
+same formula, written from the mathematical derivation.
 
 ```
-PR opened → ci-quality.yml runs (as today)
-              └── new job: main-ci-guard
-                  ├── fetch latest main CI run for Tier 2 Governance
-                  ├── if conclusion != "success": block merge
-                  └── if conclusion == "success": pass
+tests/finance_reference.py
+  ├── ref_noi(income, expenses) → Decimal
+  ├── ref_cap_rate(noi, price) → Decimal
+  ├── ref_cash_on_cash(cash_flow, invested) → Decimal
+  ├── ref_dscr(noi, debt_service) → Decimal
+  ├── ref_monthly_mortgage(P, r, n) → Decimal
+  ├── ref_one_percent_rule(rent, price) → bool
+  ├── ref_gross_rent_multiplier(price, rent) → Decimal
+  └── ref_annual_depreciation(purchase, land) → Decimal
 ```
-CURRENT:
 
-A new workflow `main-ci-guard.yml` runs on `pull_request` events. It uses the GitHub API (via `gh` CLI or actions/github-script) to check the latest run of the `Tier 2 Governance — Build, Publish & Attest` workflow on the `main` branch. If that run is not `success`, the guard fails, preventing PR merge.
+### 1.2 Test Suite (`tests/test_finance_math.py`)
 
-**Design decision:** Use a separate workflow rather than adding to ci-quality.yml. This keeps the guard independent and allows it to run in parallel.
+Parameterized tests using `@pytest.mark.parametrize`. Each test:
+1. Computes result via production function
+2. Computes result via reference function
+3. Asserts `abs(prod - ref) < tolerance`
 
-### A-2: HTTP Acceptance Tests (expanded from tests/acceptance/)
+Edge case matrix:
 
-Add 3 new test files to `tests/acceptance/`:
-- `test_property_pipeline.py` — tests the property creation + analysis workflow via HTTP
-- `test_authentication.py` — tests login, session, protected endpoints
-- `schemas.py` — Pydantic models for response validation
+```
+                 zero    negative   extreme   precision
+noi               ✓        ✓          ✓          ✓
+cap_rate          ✓        ✓          ✓          ✓
+cash_on_cash      ✓        ✓          ✓          ✓
+dscr              ✓        ✓          ✓
+mortgage          ✓        ✓          ✓          ✓
+one_percent       ✓                               ✓
+grm               ✓        ✓          ✓
+depreciation      ✓        ✓
+```
 
-Existing `test_api.py` and `test_pages.py` remain unchanged.
+### 1.3 CI Gate
 
-### A-3: Acceptance Tests in PR Gates
-
-Add a job to `ci-quality.yml`:
+Add a new job to `ci-quality.yml`:
 
 ```yaml
-acceptance:
-  name: "🌐 Acceptance Tests"
+finance-math:
+  name: "💰 Financial Math"
   runs-on: ubuntu-latest
-  needs: [tests-e2e]  # run after e2e, just needs the codebase
   steps:
     - uses: actions/checkout@v7
     - uses: ./.github/actions/python-setup
     - name: Install deps
-      run: pip install httpx beautifulsoup4 pydantic
-    - name: Start Docker container
-      run: docker compose up -d && sleep 10
-    - name: Run acceptance tests
-      env:
-        BASE_URL: http://localhost:8000
-      run: python -m pytest tests/acceptance/ -q --tb=short
+      run: pip install -r requirements.txt
+    - name: Run financial math verification
+      run: python -m pytest tests/test_finance_math.py -v --tb=short
 ```
 
-**Design decision:** Run against a local docker compose instance. This tests the actual artifact (Docker image) rather than just the source code.
+Add to `pr-gates-pass` needs list.
 
-### A-4: Build-Time Monitoring
+### 1.4 Makefile Target
 
-Add timing to the `build-image` step in `docker-publish.yml`:
-
-```yaml
-- name: Build image (timed)
-  id: build
-  uses: docker/build-push-action@v7
-  ...
-
-- name: Check build time
-  if: always() && steps.build.outcome == 'success'
-  run: |
-    # Warnings are informational; will become hard failures in Phase D
-    echo "Build completed at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+```makefile
+test-finance-math:
+	python -m pytest tests/test_finance_math.py -v --tb=short
 ```
 
-Add a `job-start` / `job-finish` timestamp comparison step that logs elapsed time.
+### 1.5 Docstring Format
 
-### A-5: Pydantic Response Models
-
-```python
-# tests/acceptance/schemas.py
-
-from pydantic import BaseModel
-
-class HealthResponse(BaseModel):
-    status: str
-
-class ListingsResponse(BaseModel):
-    count: int
-    results: list
-    next: str | None = None
-    previous: str | None = None
-
-class GrowthArea(BaseModel):
-    name: str
-    city: str
-    state: str
-    composite_score: float
-    employment_growth: float | None = None
-    population_growth: float | None = None
-
-class GrowthAreasResponse(BaseModel):
-    areas: list[GrowthArea]
-    state: str
-    totalResults: int
-
-class ForeclosuresResponse(BaseModel):
-    resultsCount: int
-    dataSources: list
-    location: str
-```
-
-Tests use `HealthResponse.model_validate(resp.json())` instead of `resp.json()["status"] == "ok"`.
+Each function gets a docstring with:
+1. Mathematical formula in plain math notation
+2. Variable definitions
+3. Reference source (e.g., "per NAR Commercial Real Estate Standards")
 
 ---
 
-## 2. File Changes
+## 2. Edge Case Definitions
 
-| File | Change | Purpose |
+| Category | Definition | Examples |
 |---|---|---|
-| `.github/workflows/main-ci-guard.yml` | New | A-1: CI self-test |
-| `tests/acceptance/schemas.py` | New | A-5: Pydantic models |
-| `tests/acceptance/test_property_pipeline.py` | New | A-2: Pipeline HTTP tests |
-| `tests/acceptance/test_authentication.py` | New | A-2: Auth HTTP tests |
-| `tests/acceptance/test_api.py` | Modified | A-5: Use Pydantic models |
-| `tests/acceptance/test_pages.py` | Modified | A-5: Use Pydantic models |
-| `.github/workflows/ci-quality.yml` | Modified | A-3: Add acceptance gate |
-| `.github/workflows/docker-publish.yml` | Modified | A-4: Build-time monitoring |
-| `Makefile` | Modified | N/A: Add `make test-acceptance-hdrs` target for CI |
-| `requirements.txt` | Modified | N/A: Add pydantic (already exists) |
+| Zero | Parameter is Decimal("0") | price=0, rent=0, rate=0 |
+| Negative | Parameter is negative | NOI=-1000, cash_flow=-500 |
+| Extreme | Parameter is 10x or 100x normal | price=10000000, rate=0.20 |
+| Precision | Result requires 10+ decimal places | rate=0.0475/12, 30-year loan |
+| Boundary | Parameter at formula boundary | rent = price * 0.01 (exact 1%) |
+| Currency | Decimal precision with 2dp inputs | price=99999.99, land=5000.01 |
 
 ---
 
-## 3. Constraints & Risks
+## 3. Risk Mitigation
 
 | Risk | Mitigation |
 |---|---|
-| CI guard uses GitHub API rate limits | Cache the result per PR push |
-| docker compose up may be slow in CI | Use cached layers, limit to 120s timeout |
-| Acceptance tests need a running container | ci-quality.yml starts one via docker compose |
-| Pydantic models may not match actual API shape | Write tests for the models against real responses first |
-| Build-time monitoring adds noise | Start with warn-only, escalate to hard fail in Phase D |
+| Reference implementation replicates the same bug as production | Validate reference against at least one hand-calculated example per function |
+| Decimal precision differences | Use `Decimal("0.01")` tolerance, not `abs` floating point |
+| CI timeout (pip install) | Finance-math gate needs Django for tests, but tests shouldn't use the DB |
+| New functions added that aren't verified | `make test-finance-math` lists covered functions in output |

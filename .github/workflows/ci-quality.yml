@@ -208,6 +208,19 @@ jobs:
           }
           echo "All acceptance tests collected successfully."
 
+  # ── Financial math verification ────────────────────────────────────────────
+
+  finance-math:
+    name: "💰 Financial Math"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install deps
+        run: pip install -r requirements.txt -q
+      - name: Verify KPI calculations
+        run: python -m pytest tests/test_finance_math.py -v --tb=short
+
   # ── Coverage combine (gate: all test jobs must pass) ──────────────────────
 
   coverage:
@@ -240,7 +253,7 @@ jobs:
 
   pr-gates-pass:
     name: "All Gates Passed"
-    needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, acceptance-check, coverage]
+    needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, acceptance-check, finance-math, coverage]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -256,6 +269,7 @@ jobs:
           if [ "${{ needs.tests-e2e.result }}" != "success" ]; then FAILED="$FAILED tests-e2e"; fi
           if [ "${{ needs.typecheck.result }}" != "success" ]; then FAILED="$FAILED typecheck"; fi
           if [ "${{ needs.acceptance-check.result }}" != "success" ]; then FAILED="$FAILED acceptance"; fi
+          if [ "${{ needs.finance-math.result }}" != "success" ]; then FAILED="$FAILED finance-math"; fi
           if [ "${{ needs.coverage.result }}" != "success" ]; then FAILED="$FAILED coverage"; fi
           if [ -n "$FAILED" ]; then
             echo "❌ Failed gates:${FAILED}"
