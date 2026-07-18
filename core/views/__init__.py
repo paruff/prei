@@ -383,6 +383,10 @@ def dashboard(request):
         "avg_dscr": (
             sum(dscr_values) / len(dscr_values) if dscr_values else Decimal("0")
         ),
+        "total_equity": int(
+            sum(p["price"] for p in properties if p.get("price"))
+            / max(sum(1 for _ in properties), 1)
+        ),
     }
 
     return render(

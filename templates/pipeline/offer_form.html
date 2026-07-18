@@ -38,6 +38,20 @@
           </div>
         </div>
 
+        {% if property.purchase_price %}
+        <div class="mao-viz" style="margin-top:var(--sp-3);padding:var(--sp-2);background:var(--surface-2);border-radius:var(--radius-md)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:var(--sp-1)">
+            <span style="font-size:12px">$0</span>
+            <span style="font-size:12px;font-weight:600">MAO Range</span>
+            <span style="font-size:12px">${{ property.purchase_price|intcomma }}</span>
+          </div>
+          <div style="height:12px;background:var(--surface-3);border-radius:6px;overflow:hidden">
+            <div style="height:100%;width:85%;background:var(--gold-6);border-radius:6px" title="85% of purchase price — conservative MAO"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-sub);margin-top:var(--sp-1)">Target offer: ${{ property.purchase_price|floatformat:0|intcomma }} × 85% = conservative MAO</div>
+        </div>
+        {% endif %}
+
         <div class="form-field-group mt-3">
           <label class="field-label">Contingencies</label>
           <div class="form-checkbox-grid">
