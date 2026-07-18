@@ -10,10 +10,11 @@ services:
       HOME: /app/.runtime
       MPLCONFIGDIR: /app/.runtime/matplotlib
       ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
-      # Override .env DATABASE_URL to use SQLite (default for local dev)
-      # Absolute path ensures writable location regardless of bind mounts
-      # Use /app/.runtime/ — it's created and chowned to the app user in the Dockerfile
       DATABASE_URL: sqlite:////app/.runtime/db.sqlite3
+      # OTEL — sends traces to uFawkesObs collector
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
+      OTEL_SERVICE_NAME: prei
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
     ports: ["8000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import sys, urllib.request;\ntry: urllib.request.urlopen('http://localhost:8000/api/health/')\nexcept Exception as e: print(f'health check failed: {e}', file=sys.stderr); sys.exit(1)"]
@@ -22,3 +23,11 @@ services:
       retries: 5
       start_period: 90s
     restart: unless-stopped
+    networks:
+      - default
+      - observability-lab
+
+networks:
+  observability-lab:
+    external: true
+    name: observability-lab

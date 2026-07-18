@@ -239,6 +239,27 @@ if structlog is not None:
         cache_logger_on_first_use=True,
     )
 
+# ── OpenTelemetry (uFawkesObs integration) ────────────────────────────────
+
+otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+if otel_endpoint:
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+        from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+
+        resource = Resource(attributes={SERVICE_NAME: "prei"})
+        provider = TracerProvider(resource=resource)
+        exporter = OTLPSpanExporter(endpoint=otel_endpoint)
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+    except Exception:
+        pass  # OTEL optional — graceful degradation if collector unreachable
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
