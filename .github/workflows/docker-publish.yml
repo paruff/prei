@@ -85,7 +85,7 @@ jobs:
           echo "sha: ${{ github.sha }}"
 
   live-test:
-    name: "🧪 Tier 2 — Smoke Test"
+    name: "🧪 Tier 2 — Smoke + BDD"
     needs: build-image
     runs-on: ubuntu-latest
     permissions:
@@ -102,12 +102,12 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run container and acceptance tests
+      - name: Start container
         env:
-          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}
+          IMAGE_DIGEST: ${{ needs.build-image.outputs.image-digest }}
         run: |
-          set -e
-          echo "=== Starting container ==="
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$IMAGE_DIGEST"
+          echo "Starting container from: $IMAGE"
           docker run -d \
             --name prei-live-test \
             -p 8000:8000 \
@@ -120,7 +120,9 @@ jobs:
             -e SKIP_SEED=1 \
             -e SKIP_COLLECTSTATIC=1 \
             "$IMAGE"
-
+      - name: Wait for healthy
+        run: |
+          set -e
           echo "=== Checking container is running ==="
           sleep 3
           CID=$(docker ps -q -f name=prei-live-test)
@@ -130,7 +132,6 @@ jobs:
             docker rm prei-live-test 2>/dev/null || true
             exit 1
           fi
-
           echo "=== Waiting for healthy (up to 180s) ==="
           HEALTHY=0
           for i in $(seq 1 90); do
@@ -142,7 +143,6 @@ jobs:
             fi
             sleep 2
           done
-
           if [ "$HEALTHY" != "1" ]; then
             echo "::error::Container never became healthy within 180s"
             echo "=== Container logs ==="
@@ -150,53 +150,60 @@ jobs:
             echo "=== End container logs ==="
             exit 1
           fi
-
-          # Clean up on success
-          echo "=== Tests complete, stopping container ==="
-          docker stop prei-live-test 2>/dev/null || true
-          docker rm prei-live-test 2>/dev/null || true
-
-          echo ""
+      - name: Smoke tests
+        run: |
+          set -e
           echo "=== Smoke Tests ==="
-
           echo -n "1. Health check: "
           curl -sf http://localhost:8000/health/ | python3 -m json.tool | grep -q '"status": "ok"' && echo "PASS" || { echo "FAIL"; exit 1; }
-
           echo -n "2. Login page: "
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/accounts/login/)
           [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || { echo "FAIL ($STATUS)"; exit 1; }
-
           echo -n "3. Listings API: "
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/listings/)
           [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || echo "WARN ($STATUS)"
-
           echo -n "4. Growth areas API: "
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000/api/v1/real-estate/growth-areas")
           [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || echo "WARN ($STATUS)"
-
           echo -n "5. Foreclosures API: "
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/foreclosures)
           [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || echo "WARN ($STATUS)"
-
           echo -n "6. Discovery page: "
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/discovery/; echo ""
-
           echo -n "7. Pipeline screener: "
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/pipeline/screener/; echo ""
-
           echo -n "8. Health API: "
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/api/health/; echo ""
-
           echo -n "9. Static CSS: "
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/static/css/base.css; echo ""
-
           echo ""
           echo "=== All smoke tests passed ==="
-
-          docker stop prei-live-test 2>/dev/null || true
+      - name: Seed test data
+        run: |
+          echo "=== Seeding demo data ==="
+          docker exec prei-live-test python manage.py seed_data --noinput 2>&1
+      - name: BDD acceptance tests
+        run: |
+          echo "=== BDD Acceptance Tests ==="
+          # Copy tests into container (excluded from image by .dockerignore).
+          # Clean pyc caches first to avoid stale host-path references.
+          find tests_bdd -path '*/__pycache__/*' -delete
+          find tests_bdd -name '*.pyc' -delete
+          docker exec prei-live-test rm -rf /app/tests_bdd 2>/dev/null || true
+          docker cp tests_bdd prei-live-test:/app/tests_bdd
+          # Collect static files (skipped at startup via SKIP_COLLECTSTATIC=1)
+          docker exec prei-live-test python manage.py collectstatic --noinput 2>&1
+          docker exec \
+            -e DJANGO_SETTINGS_MODULE=investor_app.settings_test \
+            prei-live-test \
+            python -m pytest tests_bdd/ -q --tb=short 2>&1
+          echo "=== All BDD acceptance tests passed ==="
       - name: "job-finish"
         if: always()
         run: |
+          echo "=== Cleaning up ==="
+          docker stop prei-live-test 2>/dev/null || true
+          docker rm prei-live-test 2>/dev/null || true
           echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
 
