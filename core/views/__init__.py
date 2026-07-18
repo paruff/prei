@@ -297,6 +297,7 @@ def system_status(request: HttpRequest) -> HttpResponse:
             "pipeline_stages": PipelineProperty.objects.values("stage")
             .distinct()
             .count(),
+            "top_areas": GrowthArea.objects.order_by("-composite_score")[:10],
         },
     )
 

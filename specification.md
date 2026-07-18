@@ -11,7 +11,7 @@ button for growth areas on the system page.
 
 ---
 
-## 1. Problem Statement
+## 1. Scope
 
 | Gap | Current | Desired |
 |---|---|---|
