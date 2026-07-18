@@ -9,8 +9,8 @@
     <p class="page-sub">
       {% if growth_area %}
         {{ growth_area.city_name }}, {{ growth_area.state }}
-        &mdash; GACS: {{ growth_area.composite_score|floatformat:1 }}
-        &middot; Landlord: {{ growth_area.landlord_score|default:"—" }}/10
+        &middot; GACS {{ growth_area.composite_score|floatformat:1 }}
+        &middot; Landlord {{ growth_area.landlord_score|default:"—" }}/10
       {% else %}
         Choose a growth area below to find properties.
       {% endif %}
@@ -26,32 +26,14 @@
 {% if user_growth_areas %}
 <div class="table-wrap">
   <table class="data-table">
-    <thead>
-      <tr>
-        <th>City</th>
-        <th>State</th>
-        <th>GACS</th>
-        <th>Conf.</th>
-        <th></th>
-      </tr>
-    </thead>
+    <thead><tr><th>City</th><th>State</th><th>GACS</th><th>Conf.</th><th></th></tr></thead>
     <tbody>
       {% for ga in user_growth_areas %}
       <tr>
-        <td>{{ ga.city_name }}</td>
-        <td>{{ ga.state }}</td>
+        <td>{{ ga.city_name }}</td><td>{{ ga.state }}</td>
         <td class="col-right">{{ ga.composite_score|floatformat:1 }}</td>
-        <td>
-          {% with conf=ga.data_confidence %}
-          {% if conf >= 80 %}<span class="chip chip-success">{{ conf }}%</span>
-          {% elif conf >= 50 %}<span class="chip chip-warning">{{ conf }}%</span>
-          {% else %}<span class="chip chip-danger">{{ conf }}%</span>{% endif %}
-          {% endwith %}
-        </td>
-        <td>
-          <a href="{% url 'property_discovery' %}?growth_area_id={{ ga.pk }}"
-             class="btn btn-primary">Discover Properties →</a>
-        </td>
+        <td>{% with conf=ga.data_confidence %}{% if conf >= 80 %}<span class="chip chip-success">{{ conf }}%</span>{% elif conf >= 50 %}<span class="chip chip-warning">{{ conf }}%</span>{% else %}<span class="chip chip-danger">{{ conf }}%</span>{% endif %}{% endwith %}</td>
+        <td><a href="{% url 'property_discovery' %}?growth_area_id={{ ga.pk }}" class="btn btn-primary">Discover →</a></td>
       </tr>
       {% endfor %}
     </tbody>
@@ -60,22 +42,18 @@
 {% else %}
 <div class="empty-state">
   <div class="empty-state-title">No growth areas yet</div>
-  <p class="empty-state-body">
-    Run a growth analysis first to populate markets, then return here to discover properties.
-  </p>
+  <p class="empty-state-body">Run a growth analysis first to populate markets, then return here to discover properties.</p>
   <a href="{% url 'growth_explorer' %}" class="btn btn-primary">Analyze a State</a>
 </div>
 {% endif %}
 
 {% else %}
-{# Growth area selected — show source checkboxes and KPIs #}
+{# Growth area selected — show discovery form #}
 
 {% if already_discovered > 0 %}
 <div class="message message-success">
-  {{ already_discovered }} propert{{ already_discovered|pluralize:"y,ies" }}
-  already discovered in this market.
-  <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}"
-     class="btn btn-primary">View Screened Properties →</a>
+  {{ already_discovered }} propert{{ already_discovered|pluralize:"y,ies" }} already discovered.
+  <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}" class="btn">View Screened →</a>
 </div>
 {% endif %}
 
@@ -84,82 +62,57 @@
   <input type="hidden" name="growth_area_id" value="{{ growth_area.pk }}">
 
   <div class="card">
-    <h2 class="card-title">Select Sources to Search</h2>
-    <p class="page-sub">
-      All checked sources will be searched for active listings in
-      <strong>{{ growth_area.city_name }}, {{ growth_area.state }}</strong>.
-      Results are added to your pipeline and screened against your criteria.
-    </p>
-
+    <h2 class="card-title">Sources to Search</h2>
     <div class="form-grid-2">
       {% for source in source_status %}
       <label class="card card-selectable">
         <div class="card-selectable-inner">
-          <input type="checkbox"
-                 name="sources"
-                 value="{{ source.key }}"
-                 {% if source.is_active %}checked{% endif %}>
+          <input type="checkbox" name="sources" value="{{ source.key }}" {% if source.is_active %}checked{% endif %}>
           <div>
             <strong>{{ source.label }}</strong>
-            {% if source.count > 0 %}
-              <span class="chip chip-success">
-                {{ source.count }} available
-              </span>
-            {% else %}
-              <span class="chip chip-default">none indexed yet</span>
-            {% endif %}
+            {% if source.count > 0 %}<span class="chip chip-success">{{ source.count }} available</span>{% endif %}
             <p class="form-hint">{{ source.description }}</p>
           </div>
         </div>
       </label>
       {% endfor %}
     </div>
+    {% with has_data=source_status|length %}
+    {% if has_data %}
+    {% for s in source_status %}{% if s.count > 0 %}{{ s.count }} records indexed{% endif %}{% endfor %}
+    {% endif %}
+    {% endwith %}
   </div>
 
   <div class="kpi-grid">
     <div class="kpi-card">
       <div class="kpi-label">Employment Growth</div>
-      <div class="kpi-value">
-        {% if growth_area.employment_growth_rate %}
-          {{ growth_area.employment_growth_rate|mul:100|floatformat:2 }}%
-        {% else %}—{% endif %}
-      </div>
-      <div class="kpi-sub">
-        {% if growth_area.county_fips %}QCEW county{% else %}FRED state{% endif %}
-      </div>
+      <div class="kpi-value">{% if growth_area.employment_growth_rate %}{{ growth_area.employment_growth_rate|mul:100|floatformat:2 }}%{% else %}—{% endif %}</div>
+      <div class="kpi-sub">{% if growth_area.county_fips %}QCEW county{% else %}FRED state{% endif %}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Rent Growth (FMR)</div>
-      <div class="kpi-value">
-        {% if growth_area.rent_growth_rate %}
-          {{ growth_area.rent_growth_rate|mul:100|floatformat:2 }}%
-        {% else %}—{% endif %}
-      </div>
+      <div class="kpi-value">{% if growth_area.rent_growth_rate %}{{ growth_area.rent_growth_rate|mul:100|floatformat:2 }}%{% else %}—{% endif %}</div>
       <div class="kpi-sub">HUD FY{{ growth_area.fmr_year|default:"—" }}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">2BR Rent Floor</div>
-      <div class="kpi-value">
-        {% if growth_area.fmr_2br %}${{ growth_area.fmr_2br|floatformat:0 }}{% else %}—{% endif %}
-      </div>
-      <div class="kpi-sub">HUD FMR (40th pct floor)</div>
+      <div class="kpi-value">{% if growth_area.fmr_2br %}${{ growth_area.fmr_2br|floatformat:0 }}{% else %}—{% endif %}</div>
+      <div class="kpi-sub">HUD FMR (40th pct)</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Data Confidence</div>
       <div class="kpi-value">{{ growth_area.data_confidence }}%</div>
-      <div class="kpi-sub">GACS v2</div>
+      <div class="kpi-sub" title="Based on available data sources (Census, FRED, HUD FMR). Higher = more signals available.">GACS v2</div>
     </div>
   </div>
 
   <div class="form-actions">
-    <button type="submit" class="btn btn-primary">
-      Discover Properties in {{ growth_area.city_name }}
-    </button>
-    <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}"
-       class="btn">
-      View Screened Properties ({{ already_discovered }})
-    </a>
-    <a href="{% url 'growth_areas' %}" class="btn">Cancel</a>
+    <button type="submit" class="btn btn-primary">Discover Properties in {{ growth_area.city_name }}</button>
+    {% if already_discovered > 0 %}
+    <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}" class="btn">View Screened ({{ already_discovered }})</a>
+    {% endif %}
+    <a href="{% url 'growth_areas' %}" class="btn">← Back</a>
   </div>
 </form>
 
@@ -170,49 +123,18 @@
 <div class="card">
   <h2 class="card-title">Discovery Results</h2>
   <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">Discovered</div>
-      <div class="kpi-value num-good">{{ discovery_results.discovered }}</div>
-      <div class="kpi-sub">new properties</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Passed Screening</div>
-      <div class="kpi-value num-good">{{ discovery_results.screening_passed }}</div>
-      <div class="kpi-sub">passed criteria</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Failed Screening</div>
-      <div class="kpi-value num-bad">{{ discovery_results.screening_failed }}</div>
-      <div class="kpi-sub">didn't meet criteria</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Already Existed</div>
-      <div class="kpi-value">{{ discovery_results.already_existed }}</div>
-      <div class="kpi-sub">in your pipeline</div>
-    </div>
+    <div class="kpi-card"><div class="kpi-label">Discovered</div><div class="kpi-value num-good">{{ discovery_results.discovered }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Passed Screening</div><div class="kpi-value num-good">{{ discovery_results.screening_passed }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Failed</div><div class="kpi-value num-bad">{{ discovery_results.screening_failed }}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Already Existed</div><div class="kpi-value">{{ discovery_results.already_existed }}</div></div>
   </div>
-
   {% if discovery_results.discovered > 0 %}
-  <div class="message message-success" style="margin-top:var(--sp-3)">
-    {{ discovery_results.discovered }} new propert{{ discovery_results.discovered|pluralize:"y,ies" }} discovered!
-    {{ discovery_results.screening_passed }} passed screening.
-  </div>
+  <div class="message message-success" style="margin-top:var(--sp-3)">{{ discovery_results.discovered }} new. {{ discovery_results.screening_passed }} passed screening.</div>
   {% else %}
-  <div class="message message-warning" style="margin-top:var(--sp-3)">
-    No new properties found. {% if discovery_results.errors %}Errors: {{ discovery_results.errors|join:"; " }}{% endif %}
-    Data may need to be loaded first — check <a href="{% url 'system_status' %}">System Status</a>.
-  </div>
+  <div class="message message-warning" style="margin-top:var(--sp-3)">No new properties found.</div>
   {% endif %}
-
-  {% if discovery_results.sources_attempted %}
-  <p class="page-sub" style="margin-top:var(--sp-2)">
-    Sources queried: {{ discovery_results.sources_attempted|join:", " }}
-  </p>
-  {% endif %}
-
   <div class="form-actions" style="margin-top:var(--sp-4)">
-    <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}"
-       class="btn btn-primary">View in Screener →</a>
+    <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}" class="btn btn-primary">View in Screener →</a>
     <a href="?growth_area_id={{ growth_area.pk }}" class="btn">Discover More</a>
   </div>
 </div>
@@ -222,10 +144,7 @@
 <div id="discovery-loading" class="kanban-modal-overlay kanban-hidden">
   <div class="kanban-modal">
     <h2 style="text-align:center">Discovering Properties...</h2>
-    <p class="page-sub" style="text-align:center" id="discovery-status-msg">
-      Scraping data sources and creating pipeline entries.
-      This may take a minute for large states.
-    </p>
+    <p class="page-sub" style="text-align:center" id="discovery-status-msg">Scraping data sources and creating pipeline entries. This may take a minute.</p>
   </div>
 </div>
 
