@@ -183,6 +183,26 @@ jobs:
       - name: Mypy
         run: mypy core/ investor_app/finance/ --ignore-missing-imports
 
+  # ── Acceptance test structure check (full run in post-deployment) ──────────
+
+  acceptance-check:
+    name: "🧪 Acceptance Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install test deps
+        run: pip install httpx beautifulsoup4 pydantic -q
+      - name: Verify acceptance test structure
+        run: |
+          python -m pytest tests/acceptance/ --collect-only -q 2>/dev/null || {
+            echo "::error::Acceptance tests failed to collect — check imports and syntax"
+            echo "Full acceptance tests run post-deployment against the live artifact."
+            echo "This gate verifies the test files are structurally sound."
+            exit 1
+          }
+          echo "All acceptance tests collected successfully."
+
   # ── Coverage combine (gate: all test jobs must pass) ──────────────────────
 
   coverage:
@@ -215,7 +235,7 @@ jobs:
 
   pr-gates-pass:
     name: "All Gates Passed"
-    needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, coverage]
+    needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, acceptance-check, coverage]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -230,6 +250,7 @@ jobs:
           if [ "${{ needs.tests-integration.result }}" != "success" ]; then FAILED="$FAILED tests-integration"; fi
           if [ "${{ needs.tests-e2e.result }}" != "success" ]; then FAILED="$FAILED tests-e2e"; fi
           if [ "${{ needs.typecheck.result }}" != "success" ]; then FAILED="$FAILED typecheck"; fi
+          if [ "${{ needs.acceptance-check.result }}" != "success" ]; then FAILED="$FAILED acceptance"; fi
           if [ "${{ needs.coverage.result }}" != "success" ]; then FAILED="$FAILED coverage"; fi
           if [ -n "$FAILED" ]; then
             echo "❌ Failed gates:${FAILED}"

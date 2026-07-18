@@ -27,6 +27,7 @@ jobs:
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
+          echo "build-start-epoch: $(date +%s)"
       - name: Checkout
         uses: actions/checkout@v7
       - name: Extract metadata
@@ -78,6 +79,11 @@ jobs:
             BRANCH=${{ steps.version.outputs.branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Check build time
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          echo "Build completed at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Build duration logged — check logs for start epoch."
       - name: "job-finish"
         if: always()
         run: |

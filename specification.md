@@ -1,545 +1,76 @@
-# Specification: PREI Full Acquisition & Leasing Pipeline
-# Written: 2026-07-07 session with paruff
-# Companion to: discovery-brief-pipeline.md, design-pipeline.md, tasks-pipeline.json
-# Status: Ready for implementation via opencode / DeepSeek
+# Specification: Top 0.1% — Phase A (Foundation)
+# Written: 2026-07-18 session with paruff
+# Status: Draft for feature-flow implementation
 
 ---
 
-## 0. Corrections and Verified Facts From Codebase
+## 0. Executive Summary
 
-| Fact | Source | Confidence |
+Phase A addresses the 5 critical gaps identified in TOP_01_PLAN.md:
+1. CI self-test to prevent broken-main merges
+2. HTTP-level acceptance tests as the primary artifact verification layer
+3. Acceptance tests in PR quality gates
+4. Build-time monitoring with regression alerts
+5. Pydantic response models for schema-level test assertions
+
+---
+
+## 1. Problem Statement
+
+**Current state:**
+- CI on main was broken for 3 commits before detection. No guard prevents merging when CI is red on main.
+- BDD tests use Django's TestClient — they test source code, not the artifact.
+- Acceptance tests (tests/acceptance/) exist but aren't in PR quality gates.
+- No build-time visibility or regression detection.
+- Acceptance tests use loose dict-access assertions rather than typed schema validation.
+
+**Desired state:**
+- PR merges are blocked if CI on main is red.
+- All critical user journeys are covered by HTTP-level acceptance tests using httpx.
+- Acceptance tests run on every PR via the ci-quality.yml workflow.
+- Build times are logged in CI, and a build exceeding 10 minutes triggers a warning.
+- Acceptance test assertions use Pydantic models for full response shape validation.
+
+---
+
+## 2. Requirements
+
+### 2.1 Functional Requirements
+
+| ID | Description | Priority |
 |---|---|---|
-| ForeclosureProperty has data_source, property_id, foreclosure_status fields | core/models.py verified | High |
-| Listing has source field (choices: dummy, external) | core/models.py verified | High |
-| Property is post-acquisition owned property | core/models.py verified | High |
-| UserWatchlist links User → ForeclosureProperty | core/models.py verified | High |
-| InvestmentAnalysis is OneToOne with Property | core/models.py verified | High |
-| No pipeline stage tracking model exists | core/models.py verified | High |
-| No screening criteria model exists | core/models.py verified | High |
-| No offer, DD, closing, or renovation model exists | core/models.py verified | High |
-| AuctionAlert exists but pipeline linkage is backlog | paruff confirmed | High |
-
----
-
-## 1. Core Data Model: PipelineProperty
-
-### 1.1 Purpose
-
-PipelineProperty is the CRM record for a property moving through the
-acquisition pipeline. It:
-- Links to the source record (VrmProperty, ForeclosureProperty, Listing,
-  or future sources) via source_type + source_id
-- Tracks current pipeline stage and status
-- Records kill reasons when a property is eliminated
-- Links to InvestmentAnalysis when underwriting is triggered
-- Converts to a Property record at acquisition
-
-### 1.2 Pipeline Stages (acquisition)
-
-```
-DISCOVERED → SCREENING → UNDERWRITING → OFFER → DUE_DILIGENCE → CLOSING → ACQUIRED → RENOVATION → STABILIZED
-```
-
-Each stage has:
-- Entry criteria (what must be true to enter this stage)
-- Exit criteria (what must be true to advance to next stage)
-- Kill criteria (what eliminates a property at this stage)
-
-### 1.3 Pipeline Status
-
-```
-ACTIVE    — property is being actively worked
-KILLED    — eliminated (kill_reason required)
-ON_HOLD   — paused (hold_reason optional)
-ACQUIRED  — successfully purchased (links to Property record)
-```
-
-### 1.4 Source Type Pattern
-
-Rather than GenericForeignKey (which adds complexity and queryset friction),
-use source_type + source_id:
-
-```
-source_type: CharField choices = [
-    ('vrm', 'VRM Property'),
-    ('foreclosure', 'Foreclosure Property'),
-    ('listing', 'Listing'),
-    ('manual', 'Manually Added'),
-    ('hud', 'HUD Home'),        # future
-    ('usda', 'USDA Property'),  # future
-    ('fannie', 'Fannie Mae'),   # future
-    ('freddie', 'Freddie Mac'), # future
-    ('county', 'County Sale'),  # future
-    ('bank_reo', 'Bank REO'),   # future
-]
-source_id: CharField — stores the PK of the source record as string
-```
-
-This is extensible without schema changes when new sources are added.
-
-### 1.5 PipelineProperty Model Fields
-
-```python
-# Identity
-user                  ForeignKey(User, CASCADE)
-source_type           CharField(max_length=32, choices=SOURCE_TYPE_CHOICES)
-source_id             CharField(max_length=128)  # PK of source record
-address               CharField(max_length=255)  # denormalized for display
-city                  CharField(max_length=128)
-state                 CharField(max_length=2)
-zip_code              CharField(max_length=16)
-latitude              DecimalField(9,6, null=True)
-longitude             DecimalField(9,6, null=True)
-
-# Pipeline tracking
-stage                 CharField(max_length=32, choices=STAGE_CHOICES, default='DISCOVERED')
-status                CharField(max_length=16, choices=STATUS_CHOICES, default='ACTIVE')
-kill_reason           CharField(max_length=255, blank=True)
-kill_stage            CharField(max_length=32, blank=True)  # which stage killed it
-hold_reason           CharField(max_length=255, blank=True)
-notes                 TextField(blank=True)
-
-# Stage timestamps (null until that stage is reached)
-discovered_at         DateTimeField(auto_now_add=True)
-screened_at           DateTimeField(null=True, blank=True)
-underwriting_at       DateTimeField(null=True, blank=True)
-offer_at              DateTimeField(null=True, blank=True)
-due_diligence_at      DateTimeField(null=True, blank=True)
-closing_at            DateTimeField(null=True, blank=True)
-acquired_at           DateTimeField(null=True, blank=True)
-renovation_at         DateTimeField(null=True, blank=True)
-stabilized_at         DateTimeField(null=True, blank=True)
-
-# Links to downstream records
-investment_analysis   ForeignKey(InvestmentAnalysis, null=True, blank=True)
-property_record       ForeignKey(Property, null=True, blank=True)  # set at acquisition
-
-# Screening results (stored so user can review)
-screening_score       DecimalField(5,2, null=True, blank=True)
-screening_passed      BooleanField(null=True)  # null=not yet screened
-screening_notes       TextField(blank=True)
-
-# Metadata
-created_at            DateTimeField(auto_now_add=True)
-updated_at            DateTimeField(auto_now=True)
-```
-
-**Constraint:** UniqueConstraint on (user, source_type, source_id) —
-a user cannot add the same property to their pipeline twice.
-
----
-
-## 2. Screening Engine
-
-### 2.1 Purpose
-
-Eliminate 80–90% of properties before underwriting using fast, cheap
-criteria. Screening must be near-instant — no external API calls.
-All screening data must already exist on the source record.
-
-### 2.2 ScreeningCriteria Model
-
-User-configurable thresholds, one set per user (or use defaults).
-
-```python
-user                      OneToOneField(User, CASCADE)
-
-# Price filters
-max_price                 DecimalField(12,2, null=True)
-min_price                 DecimalField(12,2, null=True)
-
-# Yield filters
-min_gross_yield_pct       DecimalField(5,2, null=True)
-# gross yield = (annual rent / price) * 100
-# I am not certain of a research-validated minimum — 8% is a common
-# practitioner threshold. Verify before setting a default.
-
-max_price_to_rent_ratio   DecimalField(6,2, null=True)
-# price / monthly rent. Lower = better cashflow.
-# Common practitioner range: 100–150 for strong cashflow markets.
-# I do not have a verified research source for this range.
-
-# Property filters
-min_beds                  PositiveIntegerField(null=True)
-max_beds                  PositiveIntegerField(null=True)
-min_sqft                  PositiveIntegerField(null=True)
-max_year_built            PositiveIntegerField(null=True)
-# Note: older properties = higher capex risk. Common cutoff: 1980 or 1970.
-# I do not have a verified research source for this specific threshold.
-
-allowed_property_types    JSONField(default=list)
-# e.g. ['single-family', 'duplex', 'triplex', 'fourplex']
-
-allowed_states            JSONField(default=list)
-# filter to landlord-friendly states
-
-# Foreclosure stage filters
-allowed_foreclosure_statuses JSONField(default=list)
-# e.g. ['preforeclosure', 'reo', 'government']
-
-# GACS filter
-min_gacs_score            DecimalField(5,2, null=True)
-# Only screen properties in markets above this GACS threshold
-# Requires GrowthArea.gacs_score to be populated first
-
-created_at                DateTimeField(auto_now_add=True)
-updated_at                DateTimeField(auto_now=True)
-```
-
-### 2.3 Screening Logic
-
-Screening is computed in `core/services/screening.py` (new file).
-Not in the model. Not in the view.
-
-```
-screen_property(pipeline_property: PipelineProperty,
-                criteria: ScreeningCriteria) -> ScreeningResult
-```
-
-Returns: passed (bool), score (0–100), notes (list of what passed/failed).
-
-Scoring approach: each criterion that passes adds points; each hard
-failure (e.g. wrong state, wrong property type) returns failed immediately
-without computing further. This is the "fast kill" pattern.
-
-**Important constraint:** Screening uses only data already on the source
-record. No external API calls during screening (AGENTS.md rule 2).
-If a field needed for screening is null on the source record, that
-criterion is skipped and noted, not treated as a failure.
-
----
-
-## 3. Offer Strategy
-
-### 3.1 OfferRecord Model
-
-```python
-pipeline_property     ForeignKey(PipelineProperty, CASCADE)
-offer_price           DecimalField(12,2)
-offer_date            DateField()
-offer_expiry          DateField(null=True, blank=True)
-contingencies         JSONField(default=list)
-# e.g. ['inspection', 'financing', 'appraisal']
-status                CharField choices=[
-                          ('pending', 'Pending'),
-                          ('accepted', 'Accepted'),
-                          ('rejected', 'Rejected'),
-                          ('countered', 'Countered'),
-                          ('withdrawn', 'Withdrawn'),
-                      ]
-counter_price         DecimalField(12,2, null=True, blank=True)
-notes                 TextField(blank=True)
-created_at            DateTimeField(auto_now_add=True)
-```
-
-A PipelineProperty can have multiple OfferRecords (counter-offers).
-The most recent active one is the current offer.
-
----
-
-## 4. Due Diligence
-
-### 4.1 DueDiligenceChecklist Model
-
-```python
-pipeline_property     ForeignKey(PipelineProperty, CASCADE)
-
-# Inspection
-inspection_ordered    BooleanField(default=False)
-inspection_date       DateField(null=True, blank=True)
-inspection_passed     BooleanField(null=True)  # null=not yet completed
-inspection_notes      TextField(blank=True)
-inspection_cost       DecimalField(10,2, null=True, blank=True)
-
-# Title
-title_search_ordered  BooleanField(default=False)
-title_clear           BooleanField(null=True)
-title_notes           TextField(blank=True)
-
-# Appraisal
-appraisal_ordered     BooleanField(default=False)
-appraisal_value       DecimalField(12,2, null=True, blank=True)
-appraisal_date        DateField(null=True, blank=True)
-
-# Insurance
-insurance_quoted      BooleanField(default=False)
-insurance_annual_cost DecimalField(10,2, null=True, blank=True)
-
-# Contractor
-contractor_bid        DecimalField(12,2, null=True, blank=True)
-contractor_notes      TextField(blank=True)
-
-# Final decision
-go_no_go              CharField choices=[
-                          ('pending', 'Pending'),
-                          ('go', 'Go'),
-                          ('no_go', 'No-Go'),
-                      ] default='pending'
-no_go_reason          CharField(max_length=255, blank=True)
-
-created_at            DateTimeField(auto_now_add=True)
-updated_at            DateTimeField(auto_now=True)
-```
-
-OneToOne with PipelineProperty — one DD checklist per property.
-
----
-
-## 5. Acquisition / Closing
-
-### 5.1 ClosingRecord Model
-
-```python
-pipeline_property     ForeignKey(PipelineProperty, CASCADE, OneToOne)
-final_purchase_price  DecimalField(12,2)
-closing_date          DateField()
-closing_costs         DecimalField(10,2, default=0)
-loan_amount           DecimalField(12,2, null=True, blank=True)
-down_payment          DecimalField(12,2, null=True, blank=True)
-lender                CharField(max_length=128, blank=True)
-notes                 TextField(blank=True)
-created_at            DateTimeField(auto_now_add=True)
-```
-
-On save: trigger conversion of PipelineProperty → Property record.
-Set PipelineProperty.status = ACQUIRED, stage = ACQUIRED,
-PipelineProperty.property_record = newly created Property.
-
-**Note:** This trigger logic lives in a service function in
-`core/services/pipeline.py`, not in the model save() method.
-No business logic in model save() per architecture rules.
-
----
-
-## 6. Renovation / Turnover
-
-### 6.1 RenovationRecord Model
-
-```python
-pipeline_property     ForeignKey(PipelineProperty, CASCADE, OneToOne)
-# Also link to Property once acquired
-property_record       ForeignKey(Property, null=True, blank=True)
-
-estimated_budget      DecimalField(12,2, default=0)
-actual_cost           DecimalField(12,2, null=True, blank=True)
-start_date            DateField(null=True, blank=True)
-completion_date       DateField(null=True, blank=True)
-contractor            CharField(max_length=128, blank=True)
-scope_of_work         TextField(blank=True)
-status                CharField choices=[
-                          ('not_started', 'Not Started'),
-                          ('in_progress', 'In Progress'),
-                          ('complete', 'Complete'),
-                      ] default='not_started'
-notes                 TextField(blank=True)
-created_at            DateTimeField(auto_now_add=True)
-updated_at            DateTimeField(auto_now=True)
-```
-
----
-
-## 7. Leasing Pipeline
-
-### 7.1 LeasingPipelineProperty Model
-
-Separate from acquisition pipeline. Triggered when RenovationRecord.status
-= complete (or manually by user).
-
-```python
-property_record       ForeignKey(Property, CASCADE)
-user                  ForeignKey(User, CASCADE)
-
-stage                 CharField choices=[
-                          ('LISTING', 'Listed / Marketing'),
-                          ('SHOWING', 'Showings Scheduled'),
-                          ('APPLICATION', 'Application Received'),
-                          ('SCREENING', 'Applicant Screening'),
-                          ('APPROVED', 'Applicant Approved'),
-                          ('LEASE_SIGNED', 'Lease Signed'),
-                          ('MOVE_IN', 'Move-In Complete'),
-                          ('STABILIZED', 'Stabilized'),
-                      ] default='LISTING'
-status                CharField choices=[
-                          ('ACTIVE', 'Active'),
-                          ('FILLED', 'Unit Filled'),
-                          ('ON_HOLD', 'On Hold'),
-                      ] default='ACTIVE'
-
-# Listing details
-asking_rent           DecimalField(10,2, null=True, blank=True)
-listed_date           DateField(null=True, blank=True)
-listing_source        CharField(max_length=128, blank=True)
-# e.g. Zillow, Craigslist, word of mouth, property manager
-
-# Applicant tracking (basic — not a full tenant management system)
-applicant_name        CharField(max_length=128, blank=True)
-application_date      DateField(null=True, blank=True)
-screening_passed      BooleanField(null=True)
-screening_notes       TextField(blank=True)
-
-# Lease
-lease_start_date      DateField(null=True, blank=True)
-lease_end_date        DateField(null=True, blank=True)
-signed_rent           DecimalField(10,2, null=True, blank=True)
-
-# Timestamps
-listed_at             DateTimeField(null=True, blank=True)
-lease_signed_at       DateTimeField(null=True, blank=True)
-stabilized_at         DateTimeField(null=True, blank=True)
-
-created_at            DateTimeField(auto_now_add=True)
-updated_at            DateTimeField(auto_now=True)
-```
-
-**Scope note:** This is basic leasing pipeline tracking — not a full
-property management / tenant management system. Full tenant management
-(maintenance requests, rent collection, lease renewals) is Phase 3
-per the existing spec. This model supports the leasing pipeline nav
-section without pre-building Phase 3.
-
----
-
-## 8. Navigation Structure
-
-### Confirmed top-level nav (paruff 2026-07-07, revised 2026-07-12):
-
-```
-Growth Areas | Purchase Pipeline | Portfolio | Leasing Pipeline
-```
-
-### Submenus:
-
-**Growth Areas**
-- Market Explorer (/growth-explorer/)
-- Target Markets (/growth/) [ranked list]
-
-**Purchase Pipeline**
-- 🔍 Discover   (/discovery/) — market picker → source checkboxes → screener
-- ✅ Screen     (/pipeline/screener/) — screening pass/fail results
-- 📊 Underwrite (/pipeline/review/) — properties ready for decision
-- 📋 Kanban     (/pipeline/kanban/) — drag-and-drop pipeline board
-- 📋 Pipeline   (/pipeline/list/) — list view (all stages)
-- ⚙️ Criteria   (/pipeline/screening/settings/) — sliders + thresholds
-
-**Portfolio**
-- Dashboard (/portfolio/) [existing]
-- Add Property (/portfolio/add/) [existing]
-- BRRRR Calculator (/brrrr/) [existing]
-
-**Leasing Pipeline**
-- Active Listings (/leasing/)
-- Leasing Kanban (/leasing/kanban/) — drag-and-drop leasing board
-- Add Listing (/leasing/add/)
-
-### Previous nav (to be replaced):
-Buy / Maintain / Sell → replaced by the four sections above.
-
----
-
-## 9. Service Layer (new files)
-
-Per AGENTS.md rule 1 (finance math stays in services):
-
-```
-core/services/pipeline.py      — stage advancement, kill logic,
-                                  Property conversion on acquisition
-core/services/screening.py     — screening criteria evaluation
-```
-
-No business logic in models, views, or management commands.
-
----
-
-## 10. Acceptance Criteria — Phase 1 (pipeline foundation)
-
-- AC1: A user can add a VrmProperty to their pipeline from the VRM list view in one click
-- AC2: A user can see all their pipeline properties grouped by stage
-- AC3: A user can advance a property to the next stage or kill it with a reason
-- AC4: Screening runs automatically when a property enters the pipeline and flags pass/fail
-- AC5: A user can configure their own screening criteria
-- AC6: A user can create an offer record against a pipeline property
-- AC7: A user can create a DD checklist and mark items complete
-- AC8: Closing a deal creates a Property record automatically
-- AC9: A completed renovation can be converted to a leasing pipeline entry
-- AC10: Nav reflects the four top-level sections with correct submenus
-- AC11: All new models use Decimal for currency (never float)
-- AC12: All migrations reviewed and approved by paruff before running
-- AC-PK1: Pipeline Kanban loads with all 7 stage columns, drag-and-drop functional
-- AC-PK2: Discovery modal opens from Kanban's "+ Discover" button, shows growth area picker
-- AC-PK3: Sliders render and show live value updates on drag
-- AC-PK4: Screening criteria save updates and re-screens properties
-- AC-LK1: Leasing Kanban board renders with leasing stage columns
-- AC-LK2: Leasing Pipeline cards show asking rent, days-on-market badge
-
----
-
-## 12. Kanban CRM Board (2026-07-12)
-
-### 12.1 Purpose
-
-A visual drag-and-drop board replacing the list view as the primary
-pipeline interaction surface. PipelineProperty cards move through
-acquisition stages as columns.
-
-### 12.2 Columns
-
-```
-DISCOVERED → SCREENING → UNDERWRITING → OFFER → DUE_DILIGENCE → CLOSING
-```
-
-The DISCOVERED column has a "+ Discover" button that opens a modal
-to source new properties from a growth area.
-
-### 12.3 Card Display
-
-Each card shows: address (truncated, links to detail), source badge,
-price, screening pass/fail chip.
-
-### 12.4 Drag-and-Drop
-
-HTML5 drag-and-drop. Dropping on a later column calls the
-`pipeline_kanban` POST endpoint. Only forward advancement allowed.
-API failure reverts card to original column.
-
----
-
-## 13. Screening Sliders (2026-07-12)
-
-Range sliders replace number inputs for visual threshold adjustment:
-
-| Slider | Range | Default |
+| F-01 | PR merge gate checks if latest main CI run is green; blocks merge if red | P0 |
+| F-02 | HTTP-level acceptance test suite covers: health, login, discovery, listings API, growth areas, foreclosures, property analysis pipeline | P0 |
+| F-03 | Acceptance tests use httpx (already installed) and assert on JSON structure + HTML content | P0 |
+| F-04 | Acceptance tests run in ci-quality.yml as a parallel PR gate | P1 |
+| F-05 | Build-time is logged in docker-publish.yml with a 10-minute warning threshold | P1 |
+| F-06 | Response assertions use Pydantic models instead of dict-access | P1 |
+
+### 2.2 Non-Functional Requirements
+
+| ID | Description |
+|---|---|
+| N-01 | Acceptance test suite must complete within 120 seconds |
+| N-02 | Build-time check must not add meaningful overhead |
+| N-03 | CI guard must not create false positives (should check specific job, not entire workflow) |
+
+### 2.3 Acceptance Criteria
+
+| ID | Criterion | test_type |
 |---|---|---|
-| Min price | $0–$2,000,000 | $0 |
-| Max price | $0–$2,000,000 | $0 |
-| Min gross yield | 0–20% | 7% |
-| Max PTR | 0–50 | 15 |
-| Min bedrooms | 1–10 | 1 |
-| Min GACS | 0–100 | 0 |
-
-Each slider shows current value in a label that updates live on drag.
-
----
-
-## 14. Leasing Pipeline Kanban
-
-### 14.1 Purpose
-
-Same drag-and-drop applied to leasing: LISTING → SHOWING →
-APPLICATION → SCREENING → APPROVED → LEASE_SIGNED → MOVE_IN → STABILIZED
-
-### 14.2 Card Display
-
-Each card shows property address, asking rent, days-on-market badge,
-applicant info (at APPLICATION+ stages).
+| AC-01 | `main-ci-guard` workflow runs on PR events and fails if the latest `Tier 2 Governance` run on main is not green | unit |
+| AC-02 | `tests/acceptance/` directory contains ≥12 HTTP-level tests using httpx | unit |
+| AC-03 | All acceptance tests pass against a local container with `BASE_URL=http://localhost:8000` | live-system |
+| AC-04 | `ci-quality.yml` includes a job that runs `pytest tests/acceptance/` | unit |
+| AC-05 | `docker-publish.yml` build-image step logs start + end timestamps and warns if elapsed >600s | unit |
+| AC-06 | Pydantic models exist for: HealthResponse, ListingsResponse, GrowthAreasResponse, ForeclosuresResponse | unit |
+| AC-07 | Acceptance tests use Pydantic model_validate() instead of dict access | unit |
 
 ---
 
-## 11 (revised). What Is Explicitly NOT In This Spec
+## 4. Out of Scope
 
-- Automated property discovery or scraping
-- MLS / IDX integration
-- Full tenant management (maintenance, rent collection) — Phase 3
-- AuctionAlert wiring to pipeline — backlog
-- Multi-user pipeline sharing — post-alpha
-- Email/SMS notifications for pipeline events — post-alpha
-- Celery / background jobs — alpha constraint
+- BDD fixture rewrite (existing tests remain as-is; new httpx tests are additive)
+- Canary deployments (Phase C)
+- SLO dashboards (Phase D)
+- Financial math verification (Phase B)
