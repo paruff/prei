@@ -28,58 +28,25 @@
 8. Use `!important` in CSS — if a responsive rule is broken, fix the template.
 9. Use uppercase in PR title description — the first word after `type(scope):` must be lowercase (see `docs/PR_STANDARD.md`).
 
-## Token Budget Protocol
-Agent Mode: read files, write files, 2-sentence plan.
-If scope >5 files or high risk, ask.
-
-## On-Demand Skills
-| Skill | Use |
-|---|---|
-| `architecture` | boundaries |
-| `data-collection` | scrapers, freshness, failures |
-| `evaluation` | agent accuracy scoring |
-| `finance-review` | financial math review |
-| `metrics` | DORA + credits |
-| `migration-safety` | schema/data migration review |
-| `model-routing` | mode routing |
-| `pr-contract` | PR gates |
+## GitOps Principles
+1. **Git is the source of truth.** Config, workflows, deployment state — all in git. Never modify running infrastructure directly.
+2. **Immutable artifacts.** The Docker image is the deployable unit. Test the artifact, not the source. Never rebuild for deployment.
+3. **PR gates are deploy gates.** Every merge to `main` is a deploy candidate. Broken `main` blocks all PRs — fix main CI before merging anything else.
+4. **Declarative pipelines.** Workflows describe DESIRED STATE: what artifacts, what gates, what triggers. Not imperative scripts.
+5. **Artifact verification.** Every PR that touches workflows or deployment config must be verified against the live container via `post-deployment.yml`.
+6. **Rollback is `git revert`.** Rollback to a previous commit on the GitOps manifest repo. The rollback job in `post-deployment.yml` is a safety net, not the primary mechanism.
+7. **Observability built-in.** Every workflow step logs `job-start` / `job-finish` timestamps. Build times, test results, deploy status are traceable.
+8. **Progressive delivery.** Canary → staging → production (see `docs/DEPLOYMENT_STRATEGY.md`). Never ship to 100% in one step.
+9. **Naming is infrastructure.** PR titles follow Conventional Commits. Commit messages describe intent. Tags trigger deployments.
 
 ## Context Files
 | File | Why |
 |---|---|
-| `core/models/` | model rules (package at core/models/) |
+| `core/models/` | model rules |
 | `docs/ARCHITECTURE.md` | layer rules |
 | `docs/CHANGE_IMPACT_MAP.md` | co-change map |
-| `docs/KNOWN_LIMITATIONS.md` | active known issues — read before touching a listed area |
-
-## Agent Roles
-Roles live in `.agents/roles/`. Load on demand.
-| Role | Use |
-|---|---|
-| `planner` | Task decomposition |
-| `coder` | Implementation |
-| `reviewer` | Pre-merge gates |
-| `security` | Security audit |
-| `test-writer` | Test coverage |
-
-<!--
-KNOWN GAP (unresolved, flagging rather than guessing): opencode.json only loads
-skills/roles from .agents/skills and .agents/roles. A "docs" role was previously
-listed here pointing at .agents/agents/docs-agent.md, but that folder is not on
-opencode.json's load path and nothing else in the repo references it — so that
-role was likely never actually reachable by opencode. Two options, your call:
-  (a) move .agents/agents/docs-agent.md -> .agents/roles/docs.md and add it
-      back to the table above and to opencode.json's agent list, or
-  (b) delete .agents/agents/ entirely (also covers security-agent.md,
-      review-agent.md, test-agent.md, which duplicate .agents/roles/*.md
-      under different names and are equally unreferenced).
-Not resolved in this edit — I didn't want to silently delete or move files
-without you confirming which agent definitions are the ones you're actually
-using day to day.
--->
-
-## See Also
-- `.agents/README.md`
-- `docs/COPILOT_COST_GUIDE.md`
-- `docs/MODEL_ROUTING_GUIDE.md`
-- `docs/GOLDEN_PATH.md`
+| `docs/KNOWN_LIMITATIONS.md` | active known issues |
+| `docs/PR_STANDARD.md` | PR naming rules |
+| `docs/DEPLOYMENT_STRATEGY.md` | canary + progressive delivery plan |
+| `docs/TEST_PYRAMID_PLAN.md` | testing gates and phases |
+| `docs/TOP_01_PLAN.md` | top 0.1% quality roadmap |
