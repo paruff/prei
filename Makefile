@@ -180,6 +180,12 @@ docker-dev: ensure-env build up
 	@echo "  make down     — stop containers"
 	@echo "  make clean    — remove images + volumes"
 
+# ── HTTP acceptance tests (against deployed app) ────────────────────────────
+
+test-acceptance:
+	@echo "── HTTP Acceptance Tests: $${BASE_URL:-http://localhost:8000} ──"
+	@BASE_URL=$${BASE_URL:-http://localhost:8000} python3 -m pytest tests/acceptance/ -q --tb=short 2>/dev/null || python -m pytest tests/acceptance/ -q --tb=short
+
 # ── Live acceptance testing ───────────────────────────────────────────
 
 test-live: up

@@ -187,7 +187,7 @@ jobs:
       - name: Seed test data
         run: |
           echo "=== Seeding demo data ==="
-          docker exec prei-live-test python manage.py seed_data --noinput 2>&1
+          docker exec prei-live-test python manage.py seed_data 2>&1
       - name: BDD acceptance tests
         run: |
           echo "=== BDD Acceptance Tests ==="

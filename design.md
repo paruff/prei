@@ -15,6 +15,7 @@ PR opened → ci-quality.yml runs (as today)
                   ├── if conclusion != "success": block merge
                   └── if conclusion == "success": pass
 ```
+CURRENT:
 
 A new workflow `main-ci-guard.yml` runs on `pull_request` events. It uses the GitHub API (via `gh` CLI or actions/github-script) to check the latest run of the `Tier 2 Governance — Build, Publish & Attest` workflow on the `main` branch. If that run is not `success`, the guard fails, preventing PR merge.
 
