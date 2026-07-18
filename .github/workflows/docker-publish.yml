@@ -264,6 +264,7 @@ jobs:
     name: "📤 Tier 2 — Publish"
     needs: [build-image, scan-image]
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
       packages: write

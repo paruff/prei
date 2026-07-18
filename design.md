@@ -1,4 +1,4 @@
-# Design: GitOps Phase 2 — uFawkesObs Integration
+# Design: GitOps Phase 3 — Hardening
 # Written: 2026-07-18
 # Status: Draft
 
@@ -6,54 +6,57 @@
 
 ## 1. Architecture
 
-```
-prei repo (this repo)
-  ├── docker-publish.yml → build + publish + deploy
-  ├── post-deployment.yml → smoke + acceptance + security + rollback
-  │   └── NEW: deploy-notify step → POST to uFawkesObs webhook
-  ├── scripts/dora-metrics.sh → output DORA metrics as JSON
-  └── docs/UFAWKES_OBS_SETUP.md → integration guide
+### 1.1 GitHub Environment
 
-uFawkesObs (separate service)
-  ├── monitors prei repo via webhook events
-  ├── collects DORA metrics from GH API + webhook data
-  └── exposes dashboard at ufawkes.dev
+```
+Settings → Environments → "production"
+  ├── Required reviewers: paruff
+  ├── Wait timer: 0 minutes
+  └── Deployment branches: main
 ```
 
-## 2. Webhook Integration
+The `docker-publish.yml` publish job references this environment, enforcing
+approval before image publishing.
 
-Add a `deploy-notify` step to `post-deployment.yml`:
+### 1.2 Image Signature Verification
+
+The `docker-publish.yml` already uses `actions/attest-build-provenance@v4`
+for Cosign keyless signing. Phase 3 adds verification in `post-deployment.yml`:
 
 ```yaml
-- name: Notify uFawkesObs
-  if: vars.UFAWKES_WEBHOOK_URL != ''
+- name: Verify image signature
   run: |
-    curl -sf -X POST "$UFAWKES_WEBHOOK_URL" \
-      -H "Content-Type: application/json" \
-      -d "{
-        \"event\": \"deploy-complete\",
-        \"repo\": \"${{ github.repository }}\",
-        \"sha\": \"${{ github.sha }}\",
-        \"status\": \"${{ job.status }}\",
-        \"url\": \"${{ needs.smoke.outputs.target }}\"
-      }"
+    gh attestation verify \
+      "oci://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ github.event.client_payload.image }}" \
+      --repo ${{ github.repository }}
 ```
 
-## 3. DORA Metrics Script
+### 1.3 Drift Detection
 
-`scripts/dora-metrics.sh` queries GitHub API for:
-- Deploy frequency: count of successful `docker-publish.yml` runs in last 30 days
-- Lead time: time from first commit to deploy (approximated from PR merge → deploy)
-- Change failure rate: failed deploys / total deploys
-- MTTR: mean time from failure to next successful deploy
+`scripts/drift-check.sh` compares the deployed health endpoint with the
+expected state from git manifests:
 
-Outputs JSON consumable by uFawkesObs dashboard.
+```bash
+# Query deployed health
+DEPLOYED=$(curl -sf "$DEPLOY_URL/health/" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
 
-## 4. File Changes
+# Expected state: "ok"
+if [ "$DEPLOYED" != "ok" ]; then
+  echo "::error::Drift detected: deployed health is '$DEPLOYED', expected 'ok'"
+  exit 1
+fi
+```
+
+For a more complete drift check (when K8s is available), compare the deployed
+image digest with the gitops manifest.
+
+---
+
+## 2. File Changes
 
 | File | Change | Purpose |
 |---|---|---|
-| `docs/UFAWKES_OBS_SETUP.md` | New | Integration guide |
-| `scripts/dora-metrics.sh` | New | DORA metrics JSON export |
-| `.github/workflows/post-deployment.yml` | Modified | Add deploy-notify step |
-| `Makefile` | Modified | Add `make dora-metrics` target |
+| `.github/workflows/docker-publish.yml` | Add `environment: production` to publish job | F-01, F-02 |
+| `.github/workflows/post-deployment.yml` | Add image signature verification step | F-04 |
+| `scripts/drift-check.sh` | New: drift detection script | F-05 |
+| `docs/GITOPS_COMPLIANCE_AUDIT.md` | Update to mark Phase 3 complete | Documentation |
