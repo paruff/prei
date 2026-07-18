@@ -1,42 +1,10 @@
 {
-  "meta": {
-    "project": "prei",
-    "session": "p1-screening-leasing-20260719",
-    "date": "2026-07-19",
-    "feature": "P1 — Screening UX + Leasing Kanban",
-    "spec": "specification.md",
-    "design": "design.md"
-  },
+  "meta": {"project": "prei", "session": "acceptance-tests-20260719", "date": "2026-07-19", "feature": "Missing Acceptance Tests"},
   "tasks": [
-    {
-      "id": "T-S1",
-      "summary": "Add batch filter bar to screener template + view",
-      "description": "Add filter inputs (price_min, price_max, rent_min, cap_rate_min) above the screening results table. Update the screener view to accept and apply these query params to the queryset.",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {"id": "AC-S1-01", "description": "Screener page renders filter bar with price/rent/cap rate inputs", "test_type": "live-system"},
-        {"id": "AC-S1-02", "description": "Filter by price_max returns only properties under that price", "test_type": "unit"}
-      ]
-    },
-    {
-      "id": "T-S2",
-      "summary": "Add sortable column headers to screener results table",
-      "description": "Add clickable column headers (price, cap rate, GRM, score) that toggle sort direction. Update view to accept sort/order query params and apply order_by to the queryset.",
-      "depends_on": ["T-S1"],
-      "acceptance_criteria": [
-        {"id": "AC-S2-01", "description": "Clicking price header sorts by price", "test_type": "live-system"},
-        {"id": "AC-S2-02", "description": "Second click toggles sort direction", "test_type": "live-system"}
-      ]
-    },
-    {
-      "id": "T-L1",
-      "summary": "Verify leasing kanban JS parameter names match backend",
-      "description": "Read the leasing kanban template JS to verify the fetch POST uses property_id and new_stage parameters that match the backend view. Fix if mismatched (same issue as pipeline kanban).",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {"id": "AC-L1-01", "description": "Leasing kanban view returns HTML with 8 stage columns", "test_type": "live-system"},
-        {"id": "AC-L1-02", "description": "JS fetch uses property_id and new_stage parameter names", "test_type": "unit"}
-      ]
-    }
+    {"id": "T-AT1", "summary": "Add growth areas acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT1-01", "description": "test_growth.py has ≥3 tests", "test_type": "unit"}]},
+    {"id": "T-AT2", "summary": "Add pipeline acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT2-01", "description": "test_pipeline.py has ≥3 tests", "test_type": "unit"}]},
+    {"id": "T-AT3", "summary": "Add dashboard acceptance test", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT3-01", "description": "test_dashboard.py exists", "test_type": "unit"}]},
+    {"id": "T-AT4", "summary": "Add BRRRR acceptance test", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT4-01", "description": "test_brrrr.py exists", "test_type": "unit"}]},
+    {"id": "T-AT5", "summary": "Add leasing acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT5-01", "description": "test_leasing.py has ≥2 tests", "test_type": "unit"}]}
   ]
 }
