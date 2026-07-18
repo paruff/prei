@@ -81,7 +81,7 @@ def _fetch_via_playwright(url: str) -> str | None:
                 if page.query_selector('a[href*="signin"]'):
                     logger.info("TX county: login wall detected")
                     return None
-                return page.content()
+                return page.content()  # type: ignore[no-any-return]
     except Exception as exc:
         logger.debug("TX county: Playwright error: %s", exc)
         return None

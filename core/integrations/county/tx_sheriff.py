@@ -16,7 +16,7 @@ from core.integrations.county.tx_base import scrape_county_nts
 
 logger = logging.getLogger("prei.scraper.sheriff")
 
-SHERIFF_COUNTIES = [
+SHERIFF_COUNTIES: list[dict[str, Any]] = [
     {
         "county_name": "Harris",
         "endpoint": "https://www.harriscountyso.org/Public/RealAuctions",
