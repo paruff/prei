@@ -7,10 +7,12 @@ PR Merge Gate (ci-quality.yml)
 ├── Typecheck + Lint
 ├── Unit tests (1308)
 ├── Integration tests
-├── Container smoke test (9 curl assertions) ← misnamed "live acceptance"
-├── BDD tests (standalone, not against container)
-├── E2E Playwright tests (standalone, not against container)
-└── Coverage ≥ 70%
+├── Coverage ≥ 70%
+
+Tier 2 Build & Publish (docker-publish.yml)
+├── Container smoke test (9 curls)             ← renamed from "live acceptance"
+├── BDD acceptance tests (19 scenarios)        ← runs INSIDE container via docker exec
+├── E2E Playwright tests (standalone)          ← still separate, not yet against container
 
 Post-Deployment (post-deployment.yml)
 └── 3 curl smoke tests against DEPLOY_URL
@@ -19,76 +21,91 @@ Production
 └── Nothing automated
 ```
 
-**Gap:** No test exercises the actual Docker image through real user workflows before merge.
+**Gap:** BDD tests run inside the container (testing the image's Python environment) but still use Django's test client (not HTTP). True HTTP-level E2E is the next step.
 
 ---
 
-## Phase 1: Rename & Clarify (immediate)
+## Phase 1: Rename & Clarify ✅
 
 | What | From | To |
 |---|---|---|
-| Job name | `🧪 Tier 2 — Live Acceptance Test` | `🧪 Tier 2 — Smoke Test` |
+| Job name | `🧪 Tier 2 — Live Acceptance Test` | `🧪 Tier 2 — Smoke + BDD` |
 | Section header | `=== Live Acceptance Tests ===` | `=== Smoke Tests ===` |
 | Success message | `All live acceptance tests passed` | `All smoke tests passed` |
 
-The 9 curl assertions are **smoke tests** — they prove the container boots and serves HTTP, nothing more. Renaming sets accurate expectations for what comes next.
+The 9 curl assertions are **smoke tests** — they prove the container boots and serves HTTP, nothing more.
 
 ---
 
-## Phase 2: PR Gate — Run BDD + E2E Against the Container
+## Phase 2: PR Gate — Run BDD Against the Container ✅
 
-**Goal:** Before merge, validate that the actual Docker image passes real user workflows.
+**Status:** Implemented. 19 BDD scenarios run inside the container via `docker exec` after smoke tests pass.
 
-### Changes to `docker-publish.yml` (live-test job)
+### How It Works (docker-publish.yml live-test job)
 
-After the health check passes and before cleanup:
+```
+Start container (fast boot: skip_seed, skip_collectstatic)
+  → Wait for healthy (up to 180s)
+  → 9 smoke curls
+  → Seed demo data (docker exec)
+  → Collect static files (docker exec)
+  → Copy tests_bdd/ into container
+  → Run pytest tests_bdd/ (docker exec, 19 scenarios)
+  → Cleanup (always)
+```
 
-```yaml
-- name: Seed test data
-  run: |
-    docker exec prei-live-test python manage.py seed_data
+### How to Run Locally
 
-- name: Run BDD acceptance tests against container
-  env:
-    BASE_URL: http://localhost:8000
-  run: |
-    docker exec -e DJANGO_SETTINGS_MODULE=investor_app.settings_test \
-      prei-live-test pytest tests_bdd/ \
-      --base-url=$BASE_URL \
-      -q --tb=short
+```bash
+# 1. Build the image
+docker build -t prei-test:local .
 
-- name: Run Playwright E2E tests against container
-  env:
-    BASE_URL: http://localhost:8000
-  run: |
-    # Playwright needs a browser — install on the runner, point at container
-    npx playwright install chromium
-    pytest tests/e2e/ \
-      --base-url=$BASE_URL \
-      --headed=false \
-      -q --tb=short
+# 2. Start the container
+docker run -d \
+  --name prei-live-test \
+  -p 8000:8000 \
+  -e SECRET_KEY=local-dev-key \
+  -e DJANGO_ENV=development \
+  -e DEBUG=True \
+  -e ALLOWED_HOSTS=localhost,127.0.0.1 \
+  -e DATABASE_URL=sqlite:////tmp/live_test.db \
+  -e RUN_MIGRATIONS=1 \
+  -e SKIP_SEED=1 \
+  -e SKIP_COLLECTSTATIC=1 \
+  prei-test:local
+
+# 3. Wait for healthy
+sleep 10
+curl http://localhost:8000/health/
+
+# 4. Run smoke tests
+echo -n "Health: "; curl -sf http://localhost:8000/health/ | python3 -m json.tool | grep -q '"status": "ok"' && echo "PASS" || echo "FAIL"
+echo -n "Login: "; curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/accounts/login/; echo ""
+
+# 5. Seed data + collect static
+docker exec prei-live-test python manage.py seed_data
+docker exec prei-live-test python manage.py collectstatic --noinput
+
+# 6. Copy tests and run BDD
+find tests_bdd -path '*/__pycache__/*' -delete 2>/dev/null; find tests_bdd -name '*.pyc' -delete 2>/dev/null
+docker exec prei-live-test rm -rf /app/tests_bdd 2>/dev/null || true
+docker cp tests_bdd prei-live-test:/app/tests_bdd
+docker exec \
+  -e DJANGO_SETTINGS_MODULE=investor_app.settings_test \
+  prei-live-test \
+  python -m pytest tests_bdd/ -q --tb=short
+
+# 7. Clean up
+docker stop prei-live-test
+docker rm prei-live-test
 ```
 
 ### Requirements
 
-1. **`docker exec` needs the container running** — already guaranteed by the health check wait loop.
-2. **Playwright browser install** — adds ~30s to the job. Can be cached.
-3. **Test data** — `seed_data` must run to create demo properties. Currently skipped with `SKIP_SEED=1`. Need to remove that flag for this step (or run seed separately via `docker exec`).
-4. **Database** — Must persist across the smoke test + BDD/E2E run. Currently `--rm` was removed in the previous fix, so the container stays alive. Good.
-
-### CI Dependency Change
-
-```
-build-image
-  ├── scan-image
-  ├── live-test (smoke → smoke + bdd + e2e)
-  │     └── needs no additional permissions
-  └── publish
-        └── needs: [build-image, scan-image]
-              ↑ no longer needs live-test — publish can happen in parallel
-```
-
-Currently `publish` does NOT depend on `live-test`, so the container tests are non-blocking for publishing. That's fine — keep it that way for speed. But `gitops-deploy` depends on `[publish, live-test, scan-image]` so deploy still waits for all tests.
+1. **Docker** installed and running
+2. **`prei-test:local`** image built (or pull from GHCR)
+3. **No other process on port 8000** (or change the port mapping)
+4. **`make smoke`** target also works for quick curl checks (does not run BDD tests)
 
 ---
 

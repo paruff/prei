@@ -12,7 +12,7 @@ core/models/           → Django ORM models only. Field definitions, __str__, M
                         No business logic. No external calls.
 
 core/services/        → Business logic services.
-                        (scoring.py = underwriting score v2,
+                        (scoring.py = score_listing_v2 underwriting + score_listing PPSF,
                          brrrr.py = BRRRR analysis,
                          projections.py = hold-period projections,
                          market_scoring.py = ZIP market intelligence)
