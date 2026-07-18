@@ -105,7 +105,7 @@ jobs:
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
           coverage run --parallel-mode -m pytest tests/ core/tests/ tests_bdd/ prei/pipeline/tests/ \
             -q --tb=short \
-            -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not export and not unreachable_url"
+            -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not acceptance and not export and not unreachable_url"
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
@@ -195,7 +195,7 @@ jobs:
         run: pip install httpx beautifulsoup4 pydantic -q
       - name: Verify acceptance test structure
         run: |
-          python -m pytest tests/acceptance/ --collect-only -q 2>/dev/null || {
+          python -m pytest tests/acceptance/ --collect-only -q 2>&1 || {
             echo "::error::Acceptance tests failed to collect — check imports and syntax"
             echo "Full acceptance tests run post-deployment against the live artifact."
             echo "This gate verifies the test files are structurally sound."
