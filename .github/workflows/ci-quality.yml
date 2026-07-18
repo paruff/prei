@@ -107,7 +107,7 @@ jobs:
             -q --tb=short \
             -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not export and not unreachable_url"
       - name: Upload coverage data
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-unit
           path: .coverage.*
@@ -135,7 +135,7 @@ jobs:
             -q --tb=short \
             -k "integration"
       - name: Upload coverage data
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-integration
           path: .coverage.*
@@ -163,7 +163,7 @@ jobs:
             -q --tb=short \
             -k "e2e or docker or container or startup or add_to_pipeline or export"
       - name: Upload coverage data
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-e2e
           path: .coverage.*
