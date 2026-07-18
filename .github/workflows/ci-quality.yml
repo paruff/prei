@@ -195,7 +195,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
       - name: Install test deps
-        run: pip install httpx beautifulsoup4 pydantic -q
+        run: pip install httpx beautifulsoup4 pydantic pytest pytest-django -q
       - name: Verify acceptance test structure
         run: |
           python -m pytest tests/acceptance/ --collect-only -q 2>&1 || {
