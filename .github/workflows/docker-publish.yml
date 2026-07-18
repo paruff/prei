@@ -67,7 +67,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
