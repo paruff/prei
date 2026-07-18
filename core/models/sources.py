@@ -29,21 +29,21 @@ class VrmProperty(models.Model):
         ONLINE_AUCTION = "online_auction", "Online Auction"
         IN_PERSON_AUCTION = "in_person_auction", "In-person Auction"
 
-    vrm_property_id = models.IntegerField(unique=True)
-    vrm_listing_url = models.URLField()
-    address = models.CharField(max_length=255)
-    city = models.CharField(max_length=128)
-    state = models.CharField(max_length=2)
-    zip_code = models.CharField(max_length=16)
-    county = models.CharField(max_length=128, null=True, blank=True)
-    list_price = models.DecimalField(
+    vrm_property_id: int = models.IntegerField(unique=True)  # type: ignore[assignment]
+    vrm_listing_url: str = models.URLField()  # type: ignore[assignment]
+    address: str = models.CharField(max_length=255)  # type: ignore[assignment]
+    city: str = models.CharField(max_length=128)  # type: ignore[assignment]
+    state: str = models.CharField(max_length=2)  # type: ignore[assignment]
+    zip_code: str = models.CharField(max_length=16)  # type: ignore[assignment]
+    county: str | None = models.CharField(max_length=128, null=True, blank=True)  # type: ignore[assignment]
+    list_price: Decimal | None = models.DecimalField(  # type: ignore[assignment]
         max_digits=12,
         decimal_places=2,
         null=True,
         blank=True,
         validators=[MinValueValidator(Decimal("0"))],
     )
-    projected_monthly_rent = models.DecimalField(
+    projected_monthly_rent: Decimal | None = models.DecimalField(  # type: ignore[assignment]
         max_digits=12,
         decimal_places=2,
         null=True,
