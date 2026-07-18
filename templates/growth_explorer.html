@@ -40,6 +40,14 @@
   </div>
 </form>
 
+{% if error %}
+<div class="card" style="margin-top: var(--sp-4); border-left: 4px solid var(--color-danger, #dc2626);">
+  <div class="card-body">
+    <p style="color: var(--color-danger, #dc2626); margin: 0;">{{ error|safe }}</p>
+  </div>
+</div>
+{% endif %}
+
 <div id="results-section"{% if results is None %} hidden{% endif %}>
 {% if results %}
   <div class="card" style="margin-top: var(--sp-5);">

@@ -66,9 +66,11 @@ class TestGrowthExplorerPost:
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
-    @patch.dict("os.environ", {"CENSUS_API_KEY": "test-census-key"})
+    @patch("core.integrations.market.fmr_adapter.fetch_fmr_data")
+    @pytest.mark.django_db
     def test_multiple_places_sorted_by_score(
         self,
+        mock_fmr: Mock,
         mock_housing: Mock,
         mock_metrics: Mock,
         mock_emp: Mock,
@@ -112,6 +114,7 @@ class TestGrowthExplorerPost:
 
         mock_metrics.side_effect = mock_metrics_side_effect
         mock_housing.return_value = 70
+        mock_fmr.return_value = {"fmr_2br": 1200, "fmr_year": 2026, "rent_growth_rate": Decimal("0.05")}
 
         client.force_login(user)
         response = client.post(reverse("growth_explorer"), {"state": "TX"})
