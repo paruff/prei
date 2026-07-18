@@ -1,219 +1,140 @@
-# Design: Post-Deployment Acceptance Pipeline
+# Design: Top 0.1% — Phase A (Foundation)
 # Written: 2026-07-18 session with paruff
-# Status: Draft for feature-flow implementation
+# Status: Draft
 
 ---
 
 ## 1. Architecture Overview
 
-### 1.1 Current vs Target
+### A-1: CI Self-Test Guard
 
+```
+PR opened → ci-quality.yml runs (as today)
+              └── new job: main-ci-guard
+                  ├── fetch latest main CI run for Tier 2 Governance
+                  ├── if conclusion != "success": block merge
+                  └── if conclusion == "success": pass
 ```
 CURRENT:
 
-push to main → docker-publish.yml (build + smoke + BDD) → deploy
-                                                           ↓
-                                           post-deployment.yml
-                                           └─ 3 curl HTTP 200 checks
-                                           └─ rollback (unused)
+A new workflow `main-ci-guard.yml` runs on `pull_request` events. It uses the GitHub API (via `gh` CLI or actions/github-script) to check the latest run of the `Tier 2 Governance — Build, Publish & Attest` workflow on the `main` branch. If that run is not `success`, the guard fails, preventing PR merge.
 
-TARGET:
+**Design decision:** Use a separate workflow rather than adding to ci-quality.yml. This keeps the guard independent and allows it to run in parallel.
 
-push to main → docker-publish.yml (build + smoke + BDD) → deploy
-                                                           ↓
-                                           post-deployment.yml
-                                           ├─ smoke (3 curl checks, fast)
-                                           ├─ acceptance (HTTP content tests)
-                                           ├─ performance (Lighthouse budgets)
-                                           ├─ security (OWASP ZAP baseline)
-                                           └─ rollback (auto on any failure)
-```
+### A-2: HTTP Acceptance Tests (expanded from tests/acceptance/)
 
-### 1.2 Job Dependency Graph
+Add 3 new test files to `tests/acceptance/`:
+- `test_property_pipeline.py` — tests the property creation + analysis workflow via HTTP
+- `test_authentication.py` — tests login, session, protected endpoints
+- `schemas.py` — Pydantic models for response validation
 
-```
-smoke
-  ├── acceptance (needs: smoke)
-  ├── performance (needs: smoke)
-  └── security (needs: smoke)
-        │
-        └── rollback (needs: [smoke, acceptance, performance, security], if: failure())
-```
+Existing `test_api.py` and `test_pages.py` remain unchanged.
 
----
+### A-3: Acceptance Tests in PR Gates
 
-## 2. Component Design
-
-### 2.1 Acceptance Tests (`tests/acceptance/`)
-
-**Location:** `tests/acceptance/test_deployment.py`
-
-**Tech stack:** `httpx` for HTTP requests, `pytest` for runner, `pydantic` for response validation
-
-**Test structure:**
-
-```
-tests/acceptance/
-├── __init__.py
-├── conftest.py           ← base_url fixture, client fixture
-├── test_health.py        ← AC-01, AC-08
-├── test_pages.py         ← AC-02, AC-06, AC-07
-├── test_api.py           ← AC-03, AC-04, AC-05
-└── Makefile target: test-acceptance
-```
-
-**Key design decisions:**
-- Use `httpx` (already in requirements.txt) for HTTP client
-- Tests run from CI runner against deployment URL (NOT inside container)
-- `BASE_URL` configured via environment variable
-- Assert on JSON shape using Python dict access, not string matching
-- Assert on HTML content using `lxml.html` or `beautifulsoup4` (already installed)
-
-### 2.2 Performance Tests
-
-**Tool:** `treosh/lighthouse-ci-action@v12`
-
-**Config:** `lighthouserc.json` at repo root
-
-```json
-{
-  "ci": {
-    "assert": {
-      "assertions": {
-        "first-contentful-paint": ["error", {"maxNumericValue": 3000}],
-        "largest-contentful-paint": ["error", {"maxNumericValue": 4000}],
-        "cumulative-layout-shift": ["error", {"maxNumericValue": 0.1}],
-        "interactive": ["error", {"maxNumericValue": 5000}],
-        "server-response-time": ["error", {"maxNumericValue": 1000}]
-      }
-    },
-    "upload": {
-      "target": "temporary-public-storage"
-    }
-  }
-}
-```
-
-**URLs to test:**
-- `{DEPLOY_URL}/health/` — lightweight endpoint
-- `{DEPLOY_URL}/discovery/` — typical page load
-
-### 2.3 Security Tests
-
-**Tool:** `zaproxy/action-baseline@v1` (OWASP ZAP baseline scan)
-
-**Config:** Scans the deployment URL for common web vulnerabilities.
-
-**Scope:**
-- Passive scanning only (no active attacks against production)
-- Alerts classified as HIGH or CRITICAL cause failure
-- MEDIUM and LOW are logged but don't fail
-
-### 2.4 Smoke Tests (keep existing)
-
-The existing 3 curl checks are kept as fast pre-flight. They run first and fail fast if the deployment isn't responding at all.
-
----
-
-## 3. Workflow Changes (`post-deployment.yml`)
-
-### 3.1 Job: `smoke` (existing, minor updates)
-
-Keep the existing 3 curl checks. Output the deployment URL for downstream jobs.
-
-### 3.2 Job: `acceptance` (new)
+Add a job to `ci-quality.yml`:
 
 ```yaml
 acceptance:
-  name: "🧪 Acceptance Tests"
-  needs: smoke
+  name: "🌐 Acceptance Tests"
   runs-on: ubuntu-latest
+  needs: [tests-e2e]  # run after e2e, just needs the codebase
   steps:
     - uses: actions/checkout@v7
     - uses: ./.github/actions/python-setup
-    - name: Install dependencies
-      run: pip install -r requirements.txt httpx
+    - name: Install deps
+      run: pip install httpx beautifulsoup4 pydantic
+    - name: Start Docker container
+      run: docker compose up -d && sleep 10
     - name: Run acceptance tests
       env:
-        BASE_URL: ${{ needs.smoke.outputs.target }}
-      run: |
-        python -m pytest tests/acceptance/ -q --tb=short -v
+        BASE_URL: http://localhost:8000
+      run: python -m pytest tests/acceptance/ -q --tb=short
 ```
 
-### 3.3 Job: `performance` (new)
+**Design decision:** Run against a local docker compose instance. This tests the actual artifact (Docker image) rather than just the source code.
+
+### A-4: Build-Time Monitoring
+
+Add timing to the `build-image` step in `docker-publish.yml`:
 
 ```yaml
-performance:
-  name: "📈 Performance"
-  needs: smoke
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v7
-    - name: Lighthouse CI
-      uses: treosh/lighthouse-ci-action@v12
-      with:
-        urls: |
-          ${{ needs.smoke.outputs.target }}/health/
-          ${{ needs.smoke.outputs.target }}/discovery/
-        configPath: ./lighthouserc.json
-        uploadArtifacts: true
-        temporaryPublicStorage: true
+- name: Build image (timed)
+  id: build
+  uses: docker/build-push-action@v7
+  ...
+
+- name: Check build time
+  if: always() && steps.build.outcome == 'success'
+  run: |
+    # Warnings are informational; will become hard failures in Phase D
+    echo "Build completed at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ```
 
-### 3.4 Job: `security` (new)
+Add a `job-start` / `job-finish` timestamp comparison step that logs elapsed time.
 
-```yaml
-security:
-  name: "🛡️ Security Scan"
-  needs: smoke
-  runs-on: ubuntu-latest
-  steps:
-    - name: OWASP ZAP Baseline
-      uses: zaproxy/action-baseline@v1
-      with:
-        target: ${{ needs.smoke.outputs.target }}
-        allow_issue_writing: false
-        fail_action: true
-        cmd_options: "-I"  # passive scan only
+### A-5: Pydantic Response Models
+
+```python
+# tests/acceptance/schemas.py
+
+from pydantic import BaseModel
+
+class HealthResponse(BaseModel):
+    status: str
+
+class ListingsResponse(BaseModel):
+    count: int
+    results: list
+    next: str | None = None
+    previous: str | None = None
+
+class GrowthArea(BaseModel):
+    name: str
+    city: str
+    state: str
+    composite_score: float
+    employment_growth: float | None = None
+    population_growth: float | None = None
+
+class GrowthAreasResponse(BaseModel):
+    areas: list[GrowthArea]
+    state: str
+    totalResults: int
+
+class ForeclosuresResponse(BaseModel):
+    resultsCount: int
+    dataSources: list
+    location: str
 ```
 
-### 3.5 Job: `rollback` (existing, updated trigger)
-
-Update the `if` condition to check all upstream jobs, not just `smoke`.
+Tests use `HealthResponse.model_validate(resp.json())` instead of `resp.json()["status"] == "ok"`.
 
 ---
 
-## 4. Local Development
+## 2. File Changes
 
-### 4.1 Running Acceptance Tests Locally
-
-```bash
-# Start container (see TEST_PYRAMID_PLAN.md for full instructions)
-docker run -d --name prei-local-test -p 8000:8000 ... prei-test:local
-
-# Run acceptance tests against local container
-BASE_URL=http://localhost:8000 python -m pytest tests/acceptance/ -v
-
-# Clean up
-docker stop prei-local-test && docker rm prei-local-test
-```
-
-### 4.2 Makefile Target
-
-```makefile
-test-acceptance:
-	@echo "Running acceptance tests against \$${BASE_URL:-http://localhost:8000}"
-	BASE_URL=$${BASE_URL:-http://localhost:8000} python -m pytest tests/acceptance/ -q --tb=short
-```
+| File | Change | Purpose |
+|---|---|---|
+| `.github/workflows/main-ci-guard.yml` | New | A-1: CI self-test |
+| `tests/acceptance/schemas.py` | New | A-5: Pydantic models |
+| `tests/acceptance/test_property_pipeline.py` | New | A-2: Pipeline HTTP tests |
+| `tests/acceptance/test_authentication.py` | New | A-2: Auth HTTP tests |
+| `tests/acceptance/test_api.py` | Modified | A-5: Use Pydantic models |
+| `tests/acceptance/test_pages.py` | Modified | A-5: Use Pydantic models |
+| `.github/workflows/ci-quality.yml` | Modified | A-3: Add acceptance gate |
+| `.github/workflows/docker-publish.yml` | Modified | A-4: Build-time monitoring |
+| `Makefile` | Modified | N/A: Add `make test-acceptance-hdrs` target for CI |
+| `requirements.txt` | Modified | N/A: Add pydantic (already exists) |
 
 ---
 
-## 5. Constraints & Risks
+## 3. Constraints & Risks
 
 | Risk | Mitigation |
 |---|---|
-| OWASP ZAP baseline may generate false positives | Use `fail_action: true` only for HIGH/CRITICAL; review weekly |
-| Lighthouse CI requires Node.js | Runner has Node.js pre-installed |
-| Tests depend on deployed URL being reachable | Smoke job runs first as gate |
-| httpx not in production requirements | Already in requirements.txt (line 40) |
-| Security scan may timeout on slow pages | ZAP baseline has internal timeout; scan single URL |
+| CI guard uses GitHub API rate limits | Cache the result per PR push |
+| docker compose up may be slow in CI | Use cached layers, limit to 120s timeout |
+| Acceptance tests need a running container | ci-quality.yml starts one via docker compose |
+| Pydantic models may not match actual API shape | Write tests for the models against real responses first |
+| Build-time monitoring adds noise | Start with warn-only, escalate to hard fail in Phase D |

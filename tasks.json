@@ -1,173 +1,205 @@
 {
   "meta": {
     "project": "prei",
-    "session": "phase-3-post-deploy-acceptance-20260718",
+    "session": "phase-a-foundation-20260718",
     "date": "2026-07-18",
-    "feature": "Post-Deployment Acceptance Pipeline",
+    "feature": "Top 0.1% — Phase A (Foundation)",
     "spec": "specification.md",
-    "design": "design.md",
-    "architecture_constraints": [
-      "No external API calls from views — acceptance tests may call deployment URL",
-      "Tests must be idempotent",
-      "Finance math stays in services/ or utils/",
-      "Migrations require paruff review — do NOT run in this PR"
-    ]
+    "design": "design.md"
   },
   "tasks": [
     {
-      "id": "T-01",
-      "summary": "Create acceptance test directory and conftest with httpx client",
-      "description": "Create tests/acceptance/ with __init__.py and conftest.py that provides:\n- base_url fixture (from BASE_URL env var, default http://localhost:8000)\n- client fixture (httpx.Client with base_url and timeout=30)",
+      "id": "T-A1",
+      "summary": "Create CI self-test guard workflow (main-ci-guard.yml)",
+      "description": "Create .github/workflows/main-ci-guard.yml that runs on pull_request events and checks the latest Tier 2 Governance run on main. If the run is not 'success', the guard fails, blocking the PR merge. Use actions/github-script@v9 to query the GitHub API.",
       "depends_on": [],
       "acceptance_criteria": [
         {
-          "id": "AC-T01-01",
-          "description": "tests/acceptance/ directory exists with __init__.py",
+          "id": "AC-A1-01",
+          "description": "main-ci-guard.yml exists with on: pull_request trigger",
           "test_type": "unit"
         },
         {
-          "id": "AC-T01-02",
-          "description": "conftest.py provides base_url fixture reading BASE_URL env var",
+          "id": "AC-A1-02",
+          "description": "Workflow checks latest Tier 2 Governance run on main via GitHub API",
           "test_type": "unit"
         },
         {
-          "id": "AC-T01-03",
-          "description": "conftest.py provides client fixture using httpx.Client",
+          "id": "AC-A1-03",
+          "description": "Guard fails when latest main CI run is not success",
+          "test_type": "integration"
+        },
+        {
+          "id": "AC-A1-04",
+          "description": "Workflow YAML is valid",
           "test_type": "unit"
         }
       ]
     },
     {
-      "id": "T-02",
-      "summary": "Write HTTP acceptance tests for health and API endpoints",
-      "description": "Create tests/acceptance/test_api.py with content-asserting HTTP tests:\n- test_health_returns_ok: GET /health/ → 200, JSON {\"status\": \"ok\"}\n- test_health_api: GET /api/health/ → 200, JSON with \"status\" key\n- test_listings_api: GET /api/listings/ → 200, JSON with \"count\" (int) and \"results\" (list)\n- test_growth_areas_api: GET /api/v1/real-estate/growth-areas → JSON with \"results\"\n- test_foreclosures_api: GET /api/v1/foreclosures → JSON with \"results\"\n\nEach test must assert on JSON STRUCTURE, not just status code.",
-      "depends_on": ["T-01"],
-      "acceptance_criteria": [
-        {
-          "id": "AC-T02-01",
-          "description": "test_health_returns_ok asserts on {\"status\": \"ok\"}",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-T02-02",
-          "description": "test_listings_api asserts count is int, results is list",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-T02-03",
-          "description": "test_growth_areas_api asserts results key exists",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-T02-04",
-          "description": "test_foreclosures_api asserts results key exists",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-T02-05",
-          "description": "test_health_api asserts status key exists",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-T02-06",
-          "description": "All tests pass against local container with BASE_URL=http://localhost:8000",
-          "test_type": "live-system"
-        }
-      ]
-    },
-    {
-      "id": "T-03",
-      "summary": "Write HTTP acceptance tests for HTML pages and static assets",
-      "description": "Create tests/acceptance/test_pages.py:\n- test_login_page: GET /accounts/login/ → 200, HTML body contains 'password' input\n- test_discovery_page: GET /discovery/ → 200, HTML body\n- test_static_css: GET /static/css/base.css → 200, Content-Type contains 'text/css'\n- test_discovery_page_content: GET /discovery/ → body contains expected heading\n\nUse beautifulsoup4 (already installed) for HTML parsing.",
-      "depends_on": ["T-01"],
-      "acceptance_criteria": [
-        {
-          "id": "AC-T03-01",
-          "description": "test_login_page asserts HTML contains password input",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-T03-02",
-          "description": "test_static_css asserts Content-Type header is text/css",
-          "test_type": "live-system"
-        },
-        {
-          "id": "AC-T03-03",
-          "description": "All tests pass against local container",
-          "test_type": "live-system"
-        }
-      ]
-    },
-    {
-      "id": "T-04",
-      "summary": "Create lighthouserc.json with performance budgets",
-      "description": "Create lighthouserc.json at repo root with budget assertions:\n- FCP < 3000ms\n- LCP < 4000ms\n- CLS < 0.1\n- TTI < 5000ms\n- Server response time < 1000ms\n\nThese are initial budgets — can be tightened as the app optimizes.",
+      "id": "T-A2a",
+      "summary": "Create Pydantic response schemas for acceptance tests",
+      "description": "Create tests/acceptance/schemas.py with Pydantic models:\n- HealthResponse (status: str)\n- ListingsResponse (count: int, results: list, next: Optional[str], previous: Optional[str])\n- GrowthAreasResponse (areas: list, state: str, totalResults: int)\n- ForeclosuresResponse (resultsCount: int, dataSources: list, location: str)\n- LoginPageResponse (status_code: int, has_password_field: bool)\n- StaticAssetResponse (status_code: int, content_type: str, body_size: int)",
       "depends_on": [],
       "acceptance_criteria": [
         {
-          "id": "AC-T04-01",
-          "description": "lighthouserc.json exists at repo root with valid JSON",
+          "id": "AC-A2a-01",
+          "description": "schemas.py exists with all 6 Pydantic models",
           "test_type": "unit"
         },
         {
-          "id": "AC-T04-02",
-          "description": "File contains all 5 budget assertions (FCP, LCP, CLS, TTI, server-response-time)",
+          "id": "AC-A2a-02",
+          "description": "HealthResponse.model_validate({\"status\": \"ok\"}) succeeds",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A2a-03",
+          "description": "ListingsResponse.model_validate({\"count\": 0, \"results\": []}) succeeds",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A2a-04",
+          "description": "Pydantic validation raises ValidationError for malformed input",
           "test_type": "unit"
         }
       ]
     },
     {
-      "id": "T-05",
-      "summary": "Update post-deployment.yml with acceptance, performance, security, and rollback jobs",
-      "description": "Restructure post-deployment.yml:\n1. smoke job: keep 3 curls, add target URL output\n2. acceptance job: checkout, setup-python, pip install, run pytest tests/acceptance/\n3. performance job: checkout, run Lighthouse CI with lighthouserc.json\n4. security job: run OWASP ZAP baseline scan\n5. rollback job: update if condition to check all upstream jobs\n\nAll new jobs depend on smoke. Rollback runs if ANY upstream fails.",
-      "depends_on": ["T-02", "T-03", "T-04"],
+      "id": "T-A2b",
+      "summary": "Update existing acceptance tests to use Pydantic models",
+      "description": "Update tests/acceptance/test_api.py and test_pages.py to use Pydantic model_validate() instead of raw dict access and isinstance checks. Each test should validate the full response shape, not just individual keys.",
+      "depends_on": ["T-A2a"],
       "acceptance_criteria": [
         {
-          "id": "AC-T05-01",
-          "description": "post-deployment.yml has smoke, acceptance, performance, security, rollback jobs",
+          "id": "AC-A2b-01",
+          "description": "TestHealthEndpoints uses HealthResponse.model_validate()",
           "test_type": "unit"
         },
         {
-          "id": "AC-T05-02",
-          "description": "acceptance job runs pytest tests/acceptance/ against smoke outputs.target",
+          "id": "AC-A2b-02",
+          "description": "TestListingsAPI uses ListingsResponse.model_validate()",
           "test_type": "unit"
         },
         {
-          "id": "AC-T05-03",
-          "description": "performance job uses treosh/lighthouse-ci-action with configPath",
+          "id": "AC-A2b-03",
+          "description": "TestGrowthAreasAPI uses GrowthAreasResponse.model_validate()",
           "test_type": "unit"
         },
         {
-          "id": "AC-T05-04",
-          "description": "security job uses zaproxy/action-baseline",
+          "id": "AC-A2b-04",
+          "description": "TestForeclosuresAPI uses ForeclosuresResponse.model_validate()",
           "test_type": "unit"
         },
         {
-          "id": "AC-T05-05",
-          "description": "rollback triggers on failure of smoke, acceptance, performance, or security",
+          "id": "AC-A2b-05",
+          "description": "All 9 acceptance tests pass against local container",
+          "test_type": "live-system"
+        }
+      ]
+    },
+    {
+      "id": "T-A2c",
+      "summary": "Add HTTP acceptance tests for property pipeline and authentication",
+      "description": "Create two new test files:\n\n1. tests/acceptance/test_property_pipeline.py — tests the full property analysis workflow via HTTP:\n   - Login → create property → add rental income → compute KPIs → verify results\n   \n2. tests/acceptance/test_authentication.py — tests auth endpoints:\n   - Login with valid credentials returns 302 (redirect) and sets session cookie\n   - Login with invalid credentials returns 200 (login page with error)\n   - Logout clears session\n   - Protected endpoint returns 302 redirect when unauthenticated",
+      "depends_on": ["T-A2a"],
+      "acceptance_criteria": [
+        {
+          "id": "AC-A2c-01",
+          "description": "test_property_pipeline.py exists with ≥3 HTTP-level tests",
           "test_type": "unit"
         },
         {
-          "id": "AC-T05-06",
-          "description": "Workflow YAML is valid (parses without error)",
+          "id": "AC-A2c-02",
+          "description": "test_authentication.py exists with ≥3 HTTP-level tests",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A2c-03",
+          "description": "Login test validates session cookie is set on successful login",
+          "test_type": "live-system"
+        },
+        {
+          "id": "AC-A2c-04",
+          "description": "Pipeline test validates KPI values in response (NOI, cap rate)",
+          "test_type": "live-system"
+        },
+        {
+          "id": "AC-A2c-05",
+          "description": "All new tests pass against local container",
+          "test_type": "live-system"
+        }
+      ]
+    },
+    {
+      "id": "T-A3",
+      "summary": "Add acceptance test gate to ci-quality.yml PR workflow",
+      "description": "Update .github/workflows/ci-quality.yml to include a new 'acceptance' job that:\n1. Checkouts code\n2. Installs httpx, beautifulsoup4, pydantic\n3. Starts a Docker container via docker compose\n4. Waits for health\n5. Runs pytest tests/acceptance/\n6. Cleans up",
+      "depends_on": ["T-A2b", "T-A2c"],
+      "acceptance_criteria": [
+        {
+          "id": "AC-A3-01",
+          "description": "ci-quality.yml has an 'acceptance' job",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A3-02",
+          "description": "acceptance job runs pytest tests/acceptance/",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A3-03",
+          "description": "pr-gates-pass job includes acceptance in its needs list",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A3-04",
+          "description": "Workflow YAML is valid",
           "test_type": "unit"
         }
       ]
     },
     {
-      "id": "T-06",
-      "summary": "Add Makefile target for local acceptance tests",
-      "description": "Add test-acceptance target to Makefile that runs pytest tests/acceptance/ with BASE_URL defaulting to http://localhost:8000.",
-      "depends_on": ["T-02", "T-03"],
+      "id": "T-A4",
+      "summary": "Add build-time monitoring to docker-publish.yml",
+      "description": "Update the build-image job to log build start time, end time, and elapsed seconds. Add a warning step that fires if the build took longer than 600 seconds (10 minutes). Use date +%s for epoch-based timing.",
+      "depends_on": [],
       "acceptance_criteria": [
         {
-          "id": "AC-T06-01",
-          "description": "make test-acceptance runs pytest tests/acceptance/ with default BASE_URL",
+          "id": "AC-A4-01",
+          "description": "build-image job logs start timestamp at beginning",
           "test_type": "unit"
         },
         {
-          "id": "AC-T06-02",
-          "description": "make test-acceptance respects BASE_URL env var override",
+          "id": "AC-A4-02",
+          "description": "build-image job logs end timestamp and elapsed seconds at end",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A4-03",
+          "description": "Warning is emitted if build time exceeds 600 seconds",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A4-04",
+          "description": "Workflow YAML is valid",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "T-A5",
+      "summary": "Update Makefile with CI-focused acceptance test target",
+      "description": "Update the Makefile test-acceptance target to work in CI (no xcode-select, no virtualenv dependency). Add a docker-compose based target that starts the stack, waits, runs tests, and cleans up.",
+      "depends_on": ["T-A2b", "T-A2c"],
+      "acceptance_criteria": [
+        {
+          "id": "AC-A5-01",
+          "description": "make test-acceptance works without xcode-select noise",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-A5-02",
+          "description": "make test-acceptance-ci starts docker compose, runs tests, cleans up",
           "test_type": "unit"
         }
       ]

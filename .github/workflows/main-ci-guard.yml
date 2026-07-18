@@ -1,0 +1,45 @@
+name: Main CI Guard
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-main-ci:
+    name: "🛡️ Main CI Health"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check latest Tier 2 Governance run on main
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "docker-publish.yml",
+              branch: "main",
+              status: "completed",
+              per_page: 1
+            });
+
+            if (runs.workflow_runs.length === 0) {
+              core.setFailed("No completed Tier 2 Governance runs found on main");
+              return;
+            }
+
+            const latest = runs.workflow_runs[0];
+            core.info(`Latest main CI run: ${latest.html_url}`);
+            core.info(`Conclusion: ${latest.conclusion}`);
+
+            if (latest.conclusion !== "success") {
+              core.setFailed(
+                `Tier 2 Governance on main is ${latest.conclusion}. ` +
+                `Fix main CI before merging PRs. ${latest.html_url}`
+              );
+            }
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "── Main CI Guard complete ──"

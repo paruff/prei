@@ -1,4 +1,4 @@
-# Specification: Post-Deployment Acceptance Pipeline
+# Specification: Top 0.1% — Phase A (Foundation)
 # Written: 2026-07-18 session with paruff
 # Status: Draft for feature-flow implementation
 
@@ -6,25 +6,30 @@
 
 ## 0. Executive Summary
 
-The current `post-deployment.yml` runs 3 curl-based HTTP 200 checks against a deployment URL. This does not test content correctness, performance, or security. Phase 3 replaces this with a proper post-deployment acceptance pipeline: HTTP-level content assertions, Lighthouse performance budgets, DAST security scanning, and automated rollback on any failure.
+Phase A addresses the 5 critical gaps identified in TOP_01_PLAN.md:
+1. CI self-test to prevent broken-main merges
+2. HTTP-level acceptance tests as the primary artifact verification layer
+3. Acceptance tests in PR quality gates
+4. Build-time monitoring with regression alerts
+5. Pydantic response models for schema-level test assertions
 
 ---
 
 ## 1. Problem Statement
 
 **Current state:**
-- `post-deployment.yml` checks 3 endpoints for HTTP 200 only
-- No content validation (a 200 with error HTML passes)
-- No performance measurement
-- No security scanning against the live system
-- Rollback exists as fallback but has no trigger criteria beyond "smoke failed"
+- CI on main was broken for 3 commits before detection. No guard prevents merging when CI is red on main.
+- BDD tests use Django's TestClient — they test source code, not the artifact.
+- Acceptance tests (tests/acceptance/) exist but aren't in PR quality gates.
+- No build-time visibility or regression detection.
+- Acceptance tests use loose dict-access assertions rather than typed schema validation.
 
 **Desired state:**
-- HTTP acceptance tests that validate JSON structure, field values, and error responses
-- Lighthouse performance budgets with pass/fail gates
-- OWASP ZAP DAST scanning for common web vulnerabilities
-- Automated rollback on any gate failure
-- Results visible as PR checks and deployment logs
+- PR merges are blocked if CI on main is red.
+- All critical user journeys are covered by HTTP-level acceptance tests using httpx.
+- Acceptance tests run on every PR via the ci-quality.yml workflow.
+- Build times are logged in CI, and a build exceeding 10 minutes triggers a warning.
+- Acceptance test assertions use Pydantic models for full response shape validation.
 
 ---
 
@@ -34,60 +39,38 @@ The current `post-deployment.yml` runs 3 curl-based HTTP 200 checks against a de
 
 | ID | Description | Priority |
 |---|---|---|
-| F-01 | Acceptance tests must make real HTTP requests to the deployed URL | P0 |
-| F-02 | Tests must assert on JSON response structure and content, not just status codes | P0 |
-| F-03 | Tests must cover: health endpoint, login page, listings API, growth areas API, foreclosures API | P0 |
-| F-04 | Performance tests must measure TTFB, LCP, CLS with pass/fail thresholds | P1 |
-| F-05 | Security scanning must detect common web vulnerabilities (XSS, CSRF, injection) | P1 |
-| F-06 | Rollback must trigger automatically if any gate fails | P0 |
-| F-07 | Results must be logged to the workflow run for debugging | P1 |
+| F-01 | PR merge gate checks if latest main CI run is green; blocks merge if red | P0 |
+| F-02 | HTTP-level acceptance test suite covers: health, login, discovery, listings API, growth areas, foreclosures, property analysis pipeline | P0 |
+| F-03 | Acceptance tests use httpx (already installed) and assert on JSON structure + HTML content | P0 |
+| F-04 | Acceptance tests run in ci-quality.yml as a parallel PR gate | P1 |
+| F-05 | Build-time is logged in docker-publish.yml with a 10-minute warning threshold | P1 |
+| F-06 | Response assertions use Pydantic models instead of dict-access | P1 |
 
 ### 2.2 Non-Functional Requirements
 
 | ID | Description |
 |---|---|
 | N-01 | Acceptance test suite must complete within 120 seconds |
-| N-02 | Lighthouse run must complete within 60 seconds per URL |
-| N-03 | Security scan must complete within 180 seconds |
-| N-04 | Tests must be idempotent (safe to run multiple times against the same URL) |
-| N-05 | Tests must not modify production data |
+| N-02 | Build-time check must not add meaningful overhead |
+| N-03 | CI guard must not create false positives (should check specific job, not entire workflow) |
 
 ### 2.3 Acceptance Criteria
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-01 | Health endpoint returns `{"status": "ok"}` with HTTP 200 | live-system |
-| AC-02 | Login page returns HTML with a form element containing password field | live-system |
-| AC-03 | Listings API returns JSON with `count` (int) and `results` (list) keys | live-system |
-| AC-04 | Growth areas API returns JSON array or object with `results` key | live-system |
-| AC-05 | Foreclosures API returns JSON array or object with `results` key | live-system |
-| AC-06 | Discovery page returns HTML with HTTP 200 | live-system |
-| AC-07 | Static CSS is served with correct Content-Type header | live-system |
-| AC-08 | Health API returns JSON with `status` key | live-system |
-| AC-09 | Lighthouse TTFB is under 1000ms for the health endpoint | live-system |
-| AC-10 | Lighthouse performance score is above 50 (informational) | live-system |
-| AC-11 | OWASP ZAP scan completes with no HIGH or CRITICAL alerts | live-system |
-| AC-12 | Rollback runs `git revert` on GitOps repo when any gate fails | live-system |
-
----
-
-## 3. Success Criteria
-
-This feature is complete when:
-
-1. `post-deployment.yml` has 4 jobs: `smoke`, `acceptance`, `performance`, `security`
-2. `acceptance` runs HTTP-level tests with content assertions (not just 200)
-3. `performance` runs Lighthouse CI with budgets
-4. `security` runs OWASP ZAP baseline scan
-5. `rollback` triggers automatically on any failure
-6. All existing PR gates still pass
-7. Running `make test-acceptance` locally works against a running container
+| AC-01 | `main-ci-guard` workflow runs on PR events and fails if the latest `Tier 2 Governance` run on main is not green | unit |
+| AC-02 | `tests/acceptance/` directory contains ≥12 HTTP-level tests using httpx | unit |
+| AC-03 | All acceptance tests pass against a local container with `BASE_URL=http://localhost:8000` | live-system |
+| AC-04 | `ci-quality.yml` includes a job that runs `pytest tests/acceptance/` | unit |
+| AC-05 | `docker-publish.yml` build-image step logs start + end timestamps and warns if elapsed >600s | unit |
+| AC-06 | Pydantic models exist for: HealthResponse, ListingsResponse, GrowthAreasResponse, ForeclosuresResponse | unit |
+| AC-07 | Acceptance tests use Pydantic model_validate() instead of dict access | unit |
 
 ---
 
 ## 4. Out of Scope
 
-- Canary deployments (Phase 4)
-- Synthetic monitoring (Phase 4)
-- Playwright E2E tests against the container (Phase 2 scope, separate work)
-- Full financial KPI correctness tests (requires dedicated spec)
+- BDD fixture rewrite (existing tests remain as-is; new httpx tests are additive)
+- Canary deployments (Phase C)
+- SLO dashboards (Phase D)
+- Financial math verification (Phase B)
