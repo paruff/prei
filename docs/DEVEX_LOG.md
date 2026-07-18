@@ -1,76 +1,145 @@
-# Developer Experience Log — [PROJECT NAME]
+# Developer Experience — prei
 
-> DORA 2025 (DEVEX-01): “The platform capability most correlated with positive developer
-> experience is giving clear feedback on the outcome of tasks.”
-> Monthly self-assessment. 5 minutes. Last Friday of each month.
-> See `docs/RUNBOOKS.md` → Monthly DevEx Review for instructions.
+> Notes on local development environment, tooling, and workflow.
 
------
+---
 
-## Scoring Guide
+## Local Dev Environment Setup
 
-**1** — Strongly disagree / very poor
-**2** — Disagree / poor
-**3** — Neutral / acceptable
-**4** — Agree / good
-**5** — Strongly agree / excellent
+### Recommended: VS Code with Dev Containers
 
------
+This is what teams building production Django apps use. It gives you:
 
-## Monthly Log
+```
+┌─────────────────────────────────────────────────────────┐
+│ VS Code Window                                          │
+│ ┌──────────┬────────────────────────┬────────────────┐  │
+│ │ Explorer │                        │  Browser       │  │
+│ │ (source) │   Code Editor          │  Preview       │  │
+│ │          │   (active file)        │  (app running) │  │
+│ │          │                        │                │  │
+│ ├──────────┤                        │                │  │
+│ │ GitLens  │                        │                │  │
+│ │ (history)│                        │                │  │
+│ │          │                        │                │  │
+│ │          │                        │                │  │
+│ └──────────┴────────────────────────┴────────────────┘  │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ Terminal: agent chat + make commands                │ │
+│ │ $ make test-acceptance                              │ │
+│ │ $ python manage.py runserver                        │ │
+│ └──────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+```
 
-|Month        |Flow|Feedback Speed|Cognitive Load*|AI Trust|Tooling Friction*|Notes      |
-|-------------|----|--------------|---------------|--------|-----------------|-----------|
-|[PLACEHOLDER]|    |              |               |        |                 |First entry|
+### VS Code Extensions
 
-*Lower is better for Cognitive Load and Tooling Friction. Target ≤ 3.
+| Extension | Purpose |
+|---|---|
+| **Dev Containers** (`ms-vscode-remote.remote-containers`) | Reproducible environment for everyone |
+| **Python** (`ms-python.python`) | Linting, debugging, test runner |
+| **Django** (`batisteo.vscode-django`) | Template syntax, HTML support |
+| **GitLens** (`eamodio.gitlens`) | Blame, history, diff |
+| **Live Preview** (`ms-vscode.live-preview`) | Browser preview inside VS Code |
+| **GitHub Actions** (`github.vscode-github-actions`) | Workflow editing |
+| **Even Better TOML** (`tamasfe.even-better-toml`) | pyproject.toml support |
+| **Ruff** (`charliermarsh.ruff`) | Format on save |
 
------
+### Dev Container Setup (recommended)
 
-## Trigger Table
+```json
+// .devcontainer/devcontainer.json
+{
+  "name": "prei",
+  "image": "mcr.microsoft.com/devcontainers/python:3.14",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "pip install -r requirements.txt",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "batisteo.vscode-django",
+        "eamodio.gitlens",
+        "github.vscode-github-actions",
+        "charliermarsh.ruff"
+      ]
+    }
+  },
+  "forwardPorts": [8000]
+}
+```
 
-|Condition                                     |Action                                                               |
-|----------------------------------------------|---------------------------------------------------------------------|
-|Any dimension < 3 for 1 month                 |Note and monitor                                                     |
-|Any dimension < 3 for **2 consecutive months**|**File an improvement issue immediately**                            |
-|Cognitive Load ≥ 4 for 1 month                |Run Value Stream Mapping — codebase may have accumulated complexity  |
-|AI Trust < 3 for 1 month                      |Review `AGENTS.md` and `docs/PROMPT_LIBRARY.md` — update instructions|
-|Tooling Friction ≥ 4 for 1 month              |File a developer platform improvement issue                          |
-|Flow < 3 for 2 months                         |Review sprint batch size — tasks may be too large or poorly scoped   |
+### Running the App Locally
 
------
+```bash
+# Start the Django dev server (hot reload enabled)
+make dev
 
-## Dimension Definitions
+# Or manually:
+python manage.py runserver 8000
 
-**Flow** — How often do development sessions produce a state of sustained focus and momentum?
+# Open browser: http://localhost:8000
+```
 
-- Score 5: Almost every session
-- Score 1: Constant interruptions; rarely finish a task without switching context
+### Running Tests
 
-**Feedback Speed** — How quickly does the system (CI, tests, Copilot, linter) tell me when something is wrong?
+```bash
+# All unit tests (fast, no Docker needed)
+make test
 
-- Score 5: Errors surface within seconds–minutes
-- Score 1: I only learn something is wrong when it reaches production
+# Acceptance tests (needs Docker container running)
+make test-acceptance
 
-**Cognitive Load** — How much mental effort does navigating the codebase and tooling require?
+# Financial math verification (58 edge cases)
+make test-finance-math
 
-- Score 1 (target): The codebase is clear; architecture is predictable; tooling is transparent
-- Score 5 (problem): I have to hold too many things in my head; the code is hard to navigate
+# Live BDD tests (needs Docker)
+make test-live
+```
 
-**AI Trust** — How often do I accept Copilot output with confidence vs. needing to substantially rewrite?
+---
 
-- Score 5: Output is almost always correct and architecturally sound
-- Score 1: I spend more time correcting AI output than I save
+## Current State: What We're Using
 
-**Tooling Friction** — How often does a tool, script, CI step, or process block or slow my work?
+| Tool | Status |
+|---|---|
+| VS Code | ✅ Primary IDE |
+| Dev Containers | ⬜ Not yet configured |
+| Live Preview | ⬜ Not installed — use external browser |
+| Terminal | ✅ Built-in VS Code terminal |
+| GitLens | ⬜ Not installed |
+| Ruff extension | ⬜ Not installed |
 
-- Score 1 (target): Tools work; CI is fast; scripts are reliable
-- Score 5 (problem): Frequent tool failures, slow CI, scripts that need babysitting
+### Quick Start (today, no devcontainer)
 
------
+```
+Terminal panel (bottom):
+  $ python manage.py runserver 8000
+  # App running at http://localhost:8000
 
-## Improvement Issues Filed
+Browser (right side or separate window):
+  Open http://localhost:8000
 
-|Month        |Dimension Triggered|Issue Filed|Outcome|
-|-------------|-------------------|-----------|-------|
-|[PLACEHOLDER]|                   |           |       |
+Source (left side):
+  VS Code file explorer
+```
+
+---
+
+## Expert Recommendation (25-year veteran)
+
+> "The best setup is the one that minimizes context switches. Your brain
+> should never leave the problem domain. Every time you alt-tab from
+> editor to browser to terminal, you lose 15 seconds of context. Multiply
+> by 200 switches per day = 50 minutes of lost flow state."
+>
+> **Setup priority:**
+> 1. Dev container first — ensures everyone has identical environment
+> 2. Browser preview INSIDE VS Code — no alt-tab to Chrome
+> 3. Terminal as editor panel — not floating, not separate window
+> 4. Test runner in editor — green/red dots next to function names
+> 5. Format on save — never think about whitespace again
+>
+> "Don't optimize for the tool. Optimize for staying in the problem domain."
