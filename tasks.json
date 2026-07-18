@@ -1,35 +1,10 @@
 {
-  "meta": {"project": "prei", "session": "ux-maturity-gaps-20260719", "date": "2026-07-19", "feature": "UX Maturity Gaps"},
+  "meta": {"project": "prei", "session": "acceptance-tests-20260719", "date": "2026-07-19", "feature": "Missing Acceptance Tests"},
   "tasks": [
-    {
-      "id": "T-U1",
-      "summary": "Add growth areas table to system status page",
-      "description": "Update system_status view to query GrowthArea.objects.all().order_by(-composite_score)[:10] and pass to context. Add a table to system.html showing city, state, composite score, landlord score.",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {"id": "AC-U1-01", "description": "System page shows growth areas table", "test_type": "live-system"},
-        {"id": "AC-U1-02", "description": "Table shows composite score and landlord score", "test_type": "live-system"}
-      ]
-    },
-    {
-      "id": "T-U2",
-      "summary": "Create property comparison view",
-      "description": "Add /property/compare/?a=<id>&b=<id> view + template. Shows side-by-side KPI cards: NOI, cap rate, cash-on-cash, DSCR, price, rent for both properties. Uses existing KPI computation functions.",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {"id": "AC-U2-01", "description": "Comparison view renders side-by-side KPIs", "test_type": "live-system"},
-        {"id": "AC-U2-02", "description": "View returns 404 for IDs not owned by user", "test_type": "unit"}
-      ]
-    },
-    {
-      "id": "T-U3",
-      "summary": "Add CSS timeline to BRRRR calculator",
-      "description": "Add a simple CSS-based timeline below the BRRRR calculator results showing rehab, rent-up, and hold phases with duration bars.",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {"id": "AC-U3-01", "description": "BRRRR page shows visual timeline with phase bars", "test_type": "live-system"},
-        {"id": "AC-U3-02", "description": "Timeline shows at least 3 phases", "test_type": "live-system"}
-      ]
-    }
+    {"id": "T-AT1", "summary": "Add growth areas acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT1-01", "description": "test_growth.py has ≥3 tests", "test_type": "unit"}]},
+    {"id": "T-AT2", "summary": "Add pipeline acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT2-01", "description": "test_pipeline.py has ≥3 tests", "test_type": "unit"}]},
+    {"id": "T-AT3", "summary": "Add dashboard acceptance test", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT3-01", "description": "test_dashboard.py exists", "test_type": "unit"}]},
+    {"id": "T-AT4", "summary": "Add BRRRR acceptance test", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT4-01", "description": "test_brrrr.py exists", "test_type": "unit"}]},
+    {"id": "T-AT5", "summary": "Add leasing acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT5-01", "description": "test_leasing.py has ≥2 tests", "test_type": "unit"}]}
   ]
 }
