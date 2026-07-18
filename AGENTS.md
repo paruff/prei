@@ -51,3 +51,17 @@
 | `docs/DEPLOYMENT_STRATEGY.md` | canary + progressive delivery plan |
 | `docs/TEST_PYRAMID_PLAN.md` | testing gates and phases |
 | `docs/TOP_01_PLAN.md` | top 0.1% quality roadmap |
+| `docs/DOCS_AUDIT.md` | documentation audit and alignment |
+
+## Project File Structure
+
+```
+specification.md      ← ACTIVE feature spec (ephemeral, overwritten per feature)
+design.md             ← ACTIVE feature design
+tasks.json            ← ACTIVE feature tasks
+features/<slug>/      ← ARCHIVED feature specs (permanent record after merge)
+docs/                 ← LASTING documentation (architecture, API, standards)
+docs/assessments/     ← one-off audit/assessment reports
+docs/planning/        ← roadmap, strategy, policy documents
+tests/                ← test suites
+```
