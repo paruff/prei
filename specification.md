@@ -1,4 +1,4 @@
-# Specification: GitOps Phase 2 — uFawkesObs Integration
+# Specification: GitOps Phase 3 — Hardening
 # Written: 2026-07-18
 # Status: Draft for feature-flow implementation
 
@@ -6,26 +6,24 @@
 
 ## 0. Executive Summary
 
-Phase 2 documents the uFawkesObs integration and adds the webhook/configuration
-needed for uFawkesObs to monitor this project's GitOps pipeline. When uFawkesObs
-is deployed, it will collect DORA metrics: deploy frequency, lead time, change
-failure rate, and mean time to recovery.
+Phase 3 adds the final GitOps hardening controls: GitHub deployment environments
+with approval gates, image signature verification via Cosign, and drift detection
+between the git state and the deployed runtime.
 
 ---
 
 ## 1. Problem Statement
 
 **Current state:**
-- No uFawkesObs integration documentation or configuration
-- No webhook registered with uFawkesObs
-- No DORA metrics collection pipeline
-- `post-deployment.yml` doesn't notify uFawkesObs on deploy events
+- No deployment environments defined — every push to main triggers a deploy
+- No image signature verification — tampered images could reach production
+- No drift detection — no automated check that deployed state matches git
 
 **Desired state:**
-- `docs/UFAWKES_OBS_SETUP.md` — complete integration guide
-- `post-deployment.yml` sends webhook to uFawkesObs on deploy success/failure
-- DORA metrics collection script that uFawkesObs can consume
-- Configuration variables documented for `GITOPS_REPO`, webhook URL, etc.
+- Production deployment requires approval via GitHub Environment
+- Images published to GHCR are signed with Cosign keyless signing
+- `post-deployment.yml` verifies image signature before smoke tests
+- `scripts/drift-check.sh` detects and reports configuration drift
 
 ---
 
@@ -33,10 +31,11 @@ failure rate, and mean time to recovery.
 
 | ID | Description | Priority |
 |---|---|---|
-| F-01 | UFAWKES_OBS_SETUP.md documents the complete integration flow | P0 |
-| F-02 | post-deployment.yml posts deploy events to uFawkesObs webhook | P1 |
-| F-03 | DORA metrics script outputs JSON that uFawkesObs can consume | P1 |
-| F-04 | GitHub variables documented (UFAWKES_WEBHOOK_URL, GITOPS_REPO, etc.) | P0 |
+| F-01 | GitHub Environment "production" created with required reviewers | P0 |
+| F-02 | docker-publish.yml references the production environment | P1 |
+| F-03 | Image attestation uses Cosign keyless signing (already present) | P0 |
+| F-04 | post-deployment.yml verifies image signature before tests | P1 |
+| F-05 | scripts/drift-check.sh compares deployed health against git manifests | P2 |
 
 ---
 
@@ -44,7 +43,7 @@ failure rate, and mean time to recovery.
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-01 | docs/UFAWKES_OBS_SETUP.md exists with integration steps | unit |
-| AC-02 | Document includes webhook registration instructions | unit |
-| AC-03 | post-deployment.yml has a deploy-notify step that POSTs to uFawkesObs | unit |
-| AC-04 | scripts/dora-metrics.sh outputs JSON with deploy_frequency, lead_time, change_failure_rate, mttr | unit |
+| AC-01 | docker-publish.yml publish job references `environment: production` | unit |
+| AC-02 | post-deployment.yml verifies image attestation via `gh attestation` | unit |
+| AC-03 | scripts/drift-check.sh exists and compares git vs deployed state | unit |
+| AC-04 | Workflow YAML is valid | unit |

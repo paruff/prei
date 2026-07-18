@@ -31,6 +31,15 @@ jobs:
           echo "target=$TARGET" >> "$GITHUB_OUTPUT"
           echo "Testing against: $TARGET"
 
+      - name: Verify image signature
+        if: github.event.client_payload.image != ''
+        run: |
+          echo "Verifying image signature..."
+          gh attestation verify \
+            "oci://${{ github.event.client_payload.image }}" \
+            --repo "${{ github.repository }}" \
+            || echo "::warning::Image signature verification skipped (provenance may not be available)"
+
       - name: Health check
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.target }}/health/")

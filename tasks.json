@@ -1,45 +1,52 @@
 {
   "meta": {
     "project": "prei",
-    "session": "gitops-phase2-ufawkes-20260718",
+    "session": "gitops-phase3-hardening-20260718",
     "date": "2026-07-18",
-    "feature": "GitOps Phase 2 — uFawkesObs Integration",
+    "feature": "GitOps Phase 3 — Hardening",
     "spec": "specification.md",
     "design": "design.md"
   },
   "tasks": [
     {
-      "id": "T-U1",
-      "summary": "Create uFawkesObs integration setup guide",
-      "description": "Create docs/UFAWKES_OBS_SETUP.md with step-by-step instructions for connecting prei to uFawkesObs: prerequisites (GITOPS_REPO, webhook URL), webhook registration, DORA metrics validation, and dashboard access.",
+      "id": "T-H1",
+      "summary": "Add GitHub Environment reference to docker-publish.yml",
+      "description": "Add environment: production to the publish job in docker-publish.yml. This requires manual creation of the 'production' environment in GitHub Settings with required reviewers.",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-U1-01", "description": "docs/UFAWKES_OBS_SETUP.md exists with integration steps", "test_type": "unit"},
-        {"id": "AC-U1-02", "description": "Document lists required GitHub variables", "test_type": "unit"},
-        {"id": "AC-U1-03", "description": "Document describes webhook registration", "test_type": "unit"}
+        {"id": "AC-H1-01", "description": "publish job has environment: production", "test_type": "unit"},
+        {"id": "AC-H1-02", "description": "Workflow YAML valid", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-U2",
-      "summary": "Add uFawkesObs webhook to post-deployment.yml",
-      "description": "Add a deploy-notify step to the post-deployment.yml workflow that posts deploy events to the uFawkesObs webhook URL (UFAWKES_WEBHOOK_URL variable). Step runs conditionally (only when the variable is set).",
-      "depends_on": ["T-U1"],
+      "id": "T-H2",
+      "summary": "Add image signature verification to post-deployment.yml",
+      "description": "Add a verify-signature step to the post-deployment smoke job (before curl tests) that uses gh attestation verify to check the deployed image matches the attested build provenance.",
+      "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-U2-01", "description": "post-deployment.yml has deploy-notify step", "test_type": "unit"},
-        {"id": "AC-U2-02", "description": "Step POSTs deploy status to UFAWKES_WEBHOOK_URL", "test_type": "unit"},
-        {"id": "AC-U2-03", "description": "Step is conditional on vars.UFAWKES_WEBHOOK_URL != ''", "test_type": "unit"}
+        {"id": "AC-H2-01", "description": "post-deployment smoke job has verify-signature step", "test_type": "unit"},
+        {"id": "AC-H2-02", "description": "Step uses gh attestation verify with the deploy image digest", "test_type": "unit"},
+        {"id": "AC-H2-03", "description": "Step is conditional on image digest being present", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-U3",
-      "summary": "Create DORA metrics export script",
-      "description": "Create scripts/dora-metrics.sh that outputs deploy_frequency, lead_time, change_failure_rate, and mttr as JSON. Uses gh CLI to query workflow run history. Add make dora-metrics target.",
+      "id": "T-H3",
+      "summary": "Create drift detection script",
+      "description": "Create scripts/drift-check.sh that compares deployed state (health endpoint, image tag) against git manifests. Runs as part of post-deployment validation. Add make drift-check target.",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-U3-01", "description": "scripts/dora-metrics.sh exists and is executable", "test_type": "unit"},
-        {"id": "AC-U3-02", "description": "Script outputs valid JSON", "test_type": "unit"},
-        {"id": "AC-U3-03", "description": "JSON includes deploy_frequency, lead_time, change_failure_rate, mttr", "test_type": "unit"},
-        {"id": "AC-U3-04", "description": "make dora-metrics runs the script", "test_type": "unit"}
+        {"id": "AC-H3-01", "description": "scripts/drift-check.sh exists and executable", "test_type": "unit"},
+        {"id": "AC-H3-02", "description": "make drift-check runs the script", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "T-H4",
+      "summary": "Update GitOps compliance audit to mark Phase 3 complete",
+      "description": "Update docs/GITOPS_COMPLIANCE_AUDIT.md Phase 3 section to mark tasks as complete. Update the score from 7/9 to 9/9 compliant.",
+      "depends_on": ["T-H1", "T-H2", "T-H3"],
+      "acceptance_criteria": [
+        {"id": "AC-H4-01", "description": "Audit shows Phase 3 as complete", "test_type": "unit"},
+        {"id": "AC-H4-02", "description": "Score updated to reflect hardening completion", "test_type": "unit"}
       ]
     }
   ]

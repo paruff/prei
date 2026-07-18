@@ -206,6 +206,11 @@ test-api-surface:
 dora-metrics:
 	@./scripts/dora-metrics.sh
 
+# ── Drift detection ─────────────────────────────────────────────────────
+
+drift-check:
+	@./scripts/drift-check.sh $${DEPLOY_URL:-http://localhost:8000}
+
 # ── HTTP acceptance tests (against deployed app) ────────────────────────────
 
 test-acceptance:

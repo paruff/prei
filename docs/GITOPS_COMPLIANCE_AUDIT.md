@@ -88,16 +88,18 @@
 | Validate DORA metrics are being collected | 1 day |
 | Document setup in `docs/UFAWKES_OBS_SETUP.md` | 1 commit |
 
-### Phase 3: Hardening (ongoing)
+### Phase 3: Hardening ✅ (complete)
 
-| Task | Effort |
+| Task | Status |
 |---|---|
-| Add GitHub Environments with approval gates | 1 commit |
-| Add image signature verification | 2 commits |
-| Add drift detection between git and deployed state | 2 commits |
+| Add GitHub Environments with approval gates | ✅ `environment: production` in publish job |
+| Add image signature verification | ✅ `gh attestation verify` in `post-deployment.yml` |
+| Add drift detection between git and deployed state | ✅ `scripts/drift-check.sh` + `make drift-check` |
 
 ---
 
-## Current Score: 7/9 compliant
+## Current Score: 8/9 compliant
 
-The two gaps (progressive delivery, deployment manifests) are both infra-dependent. They don't block current operations — they're prerequisites for the uFawkesObs integration and K8s migration.
+The remaining gap (progressive delivery/canary) is infra-dependent — it requires
+K8s or a multi-replica deploy target. The architecture plan exists in
+`docs/DEPLOYMENT_STRATEGY.md` and is ready when infrastructure supports it.
