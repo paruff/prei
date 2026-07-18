@@ -159,7 +159,6 @@
       var formData = new FormData();
       formData.append('property_id', draggedCard.dataset.id);
       formData.append('new_stage', newStage);
-      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
       fetch(window.location.pathname, {
         method: 'POST',

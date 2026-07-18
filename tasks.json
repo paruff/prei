@@ -1,10 +1,57 @@
 {
-  "meta": {"project": "prei", "session": "acceptance-tests-20260719", "date": "2026-07-19", "feature": "Missing Acceptance Tests"},
+  "meta": {
+    "project": "prei",
+    "session": "p0-kanban-data-health-20260719",
+    "date": "2026-07-19",
+    "feature": "P0 — CRM Kanban + Data Health Dashboard",
+    "spec": "specification.md",
+    "design": "design.md"
+  },
   "tasks": [
-    {"id": "T-AT1", "summary": "Add growth areas acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT1-01", "description": "test_growth.py has ≥3 tests", "test_type": "unit"}]},
-    {"id": "T-AT2", "summary": "Add pipeline acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT2-01", "description": "test_pipeline.py has ≥3 tests", "test_type": "unit"}]},
-    {"id": "T-AT3", "summary": "Add dashboard acceptance test", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT3-01", "description": "test_dashboard.py exists", "test_type": "unit"}]},
-    {"id": "T-AT4", "summary": "Add BRRRR acceptance test", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT4-01", "description": "test_brrrr.py exists", "test_type": "unit"}]},
-    {"id": "T-AT5", "summary": "Add leasing acceptance tests", "depends_on": [], "acceptance_criteria": [{"id": "AC-AT5-01", "description": "test_leasing.py has ≥2 tests", "test_type": "unit"}]}
+    {
+      "id": "T-K1",
+      "summary": "Add kanban view + stage transition API endpoint",
+      "description": "Add two new views: kanban_view (GET /pipeline/kanban/) renders the board with all PipelineProperty records grouped by stage. transition_stage (POST /pipeline/<id>/transition/) receives stage param, validates forward-only rule, updates stage, returns JSON.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-K1-01", "description": "GET /pipeline/kanban/ returns HTML with 6 stage columns", "test_type": "live-system"},
+        {"id": "AC-K1-02", "description": "POST /pipeline/<id>/transition/ with valid stage returns 200 and updates DB", "test_type": "unit"},
+        {"id": "AC-K1-03", "description": "POST with invalid stage (backward/skip) returns 400 with error", "test_type": "unit"},
+        {"id": "AC-K1-04", "description": "python manage.py check passes", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "T-K2",
+      "summary": "Wire up kanban template with SortableJS drag-and-drop",
+      "description": "Update templates/pipeline/kanban.html to: render cards grouped by stage, include SortableJS CDN script, add static/js/kanban.js with drag-and-drop + fetch POST to transition API.",
+      "depends_on": ["T-K1"],
+      "acceptance_criteria": [
+        {"id": "AC-K2-01", "description": "Kanban page shows cards grouped in stage columns", "test_type": "live-system"},
+        {"id": "AC-K2-02", "description": "Drag-and-drop triggers fetch POST to transition API", "test_type": "live-system"},
+        {"id": "AC-K2-03", "description": "Page loads without JavaScript errors", "test_type": "live-system"}
+      ]
+    },
+    {
+      "id": "T-D1",
+      "summary": "Create DataSourceHealth model + migration",
+      "description": "Add DataSourceHealth model to core/models/pipeline.py with fields: source_name, last_run, record_count, status (ok/error/unknown), error_message. Generate migration.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-D1-01", "description": "DataSourceHealth model exists with required fields", "test_type": "unit"},
+        {"id": "AC-D1-02", "description": "python manage.py makemigrations --check --dry-run returns 0", "test_type": "unit"},
+        {"id": "AC-D1-03", "description": "python manage.py check passes", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "T-D2",
+      "summary": "Update system status page with data source health table",
+      "description": "Update system_status view to query DataSourceHealth and pass to template context. Update the system status template to render a health table with source name, last run, record count, and status badge.",
+      "depends_on": ["T-D1"],
+      "acceptance_criteria": [
+        {"id": "AC-D2-01", "description": "System page shows data source health table", "test_type": "live-system"},
+        {"id": "AC-D2-02", "description": "Table shows source name, last_run, record_count, status", "test_type": "live-system"},
+        {"id": "AC-D2-03", "description": "Status badge shows green for ok, red for error", "test_type": "live-system"}
+      ]
+    }
   ]
 }

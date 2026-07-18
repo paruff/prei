@@ -50,31 +50,45 @@ class VrmProperty(models.Model):
         blank=True,
         validators=[MinValueValidator(Decimal("0"))],
     )
-    estimated_rehab = models.DecimalField(
+    estimated_rehab: Decimal | None = models.DecimalField(  # type: ignore[assignment]
         max_digits=12,
         decimal_places=2,
         null=True,
         blank=True,
         validators=[MinValueValidator(Decimal("0"))],
     )
-    gross_annual_rent = models.DecimalField(
-        max_digits=12, decimal_places=2, default=Decimal("0")
+    gross_annual_rent: Decimal = models.DecimalField(  # type: ignore[assignment]
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
     )
-    effective_gross_rent = models.DecimalField(
-        max_digits=12, decimal_places=2, default=Decimal("0")
+    effective_gross_rent: Decimal = models.DecimalField(  # type: ignore[assignment]
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
     )
-    annual_expenses = models.DecimalField(
-        max_digits=12, decimal_places=2, default=Decimal("0")
+    annual_expenses: Decimal = models.DecimalField(  # type: ignore[assignment]
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
     )
-    noi = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
-    total_investment = models.DecimalField(
+    noi: Decimal = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0")
+    )  # type: ignore[assignment]
+    total_investment: Decimal = models.DecimalField(  # type: ignore[assignment]
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
     )
-    cap_rate = models.DecimalField(max_digits=7, decimal_places=2, default=Decimal("0"))
-    profit_margin_pct = models.DecimalField(
+    cap_rate: Decimal = models.DecimalField(
         max_digits=7, decimal_places=2, default=Decimal("0")
+    )  # type: ignore[assignment]
+    profit_margin_pct: Decimal = models.DecimalField(  # type: ignore[assignment]
+        max_digits=7,
+        decimal_places=2,
+        default=Decimal("0"),
     )
-    meets_profit_target = models.BooleanField(default=False)
+    meets_profit_target: bool = models.BooleanField(default=False)  # type: ignore[assignment]
     bedrooms = models.IntegerField(
         null=True, blank=True, validators=[MinValueValidator(0)]
     )

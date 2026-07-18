@@ -1,5 +1,6 @@
 # Specification: Remaining UX Issues
 # Written: 2026-07-19
+# Status: Draft for feature-flow implementation
 
 ---
 
