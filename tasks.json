@@ -1,54 +1,45 @@
 {
   "meta": {
     "project": "prei",
-    "session": "gitops-phase1-manifests-20260718",
+    "session": "gitops-phase2-ufawkes-20260718",
     "date": "2026-07-18",
-    "feature": "GitOps Phase 1 — Deployment Manifests",
+    "feature": "GitOps Phase 2 — uFawkesObs Integration",
     "spec": "specification.md",
     "design": "design.md"
   },
   "tasks": [
     {
-      "id": "T-G1",
-      "summary": "Create deploy/base/docker-compose.yml",
-      "description": "Create the base docker-compose manifest with the service definition: image placeholder, port 8000, environment variables (SECRET_KEY, DATABASE_URL, ALLOWED_HOSTS, DJANGO_ENV, DEBUG, RUN_MIGRATIONS), healthcheck, restart policy.",
+      "id": "T-U1",
+      "summary": "Create uFawkesObs integration setup guide",
+      "description": "Create docs/UFAWKES_OBS_SETUP.md with step-by-step instructions for connecting prei to uFawkesObs: prerequisites (GITOPS_REPO, webhook URL), webhook registration, DORA metrics validation, and dashboard access.",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-G1-01", "description": "deploy/base/docker-compose.yml exists", "test_type": "unit"},
-        {"id": "AC-G1-02", "description": "Manifest includes healthcheck with curl to /health/", "test_type": "unit"},
-        {"id": "AC-G1-03", "description": "Manifest is valid docker-compose YAML (parses without error)", "test_type": "unit"}
+        {"id": "AC-U1-01", "description": "docs/UFAWKES_OBS_SETUP.md exists with integration steps", "test_type": "unit"},
+        {"id": "AC-U1-02", "description": "Document lists required GitHub variables", "test_type": "unit"},
+        {"id": "AC-U1-03", "description": "Document describes webhook registration", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-G2",
-      "summary": "Create deploy/overlays/production/docker-compose.override.yml",
-      "description": "Create the production overlay that overrides the image tag with a sha256 placeholder (replaced by CI) and sets restart: always.",
-      "depends_on": ["T-G1"],
+      "id": "T-U2",
+      "summary": "Add uFawkesObs webhook to post-deployment.yml",
+      "description": "Add a deploy-notify step to the post-deployment.yml workflow that posts deploy events to the uFawkesObs webhook URL (UFAWKES_WEBHOOK_URL variable). Step runs conditionally (only when the variable is set).",
+      "depends_on": ["T-U1"],
       "acceptance_criteria": [
-        {"id": "AC-G2-01", "description": "deploy/overlays/production/docker-compose.override.yml exists", "test_type": "unit"},
-        {"id": "AC-G2-02", "description": "Overlay contains image with sha256:PLACEHOLDER", "test_type": "unit"},
-        {"id": "AC-G2-03", "description": "Overlay is valid docker-compose YAML", "test_type": "unit"}
+        {"id": "AC-U2-01", "description": "post-deployment.yml has deploy-notify step", "test_type": "unit"},
+        {"id": "AC-U2-02", "description": "Step POSTs deploy status to UFAWKES_WEBHOOK_URL", "test_type": "unit"},
+        {"id": "AC-U2-03", "description": "Step is conditional on vars.UFAWKES_WEBHOOK_URL != ''", "test_type": "unit"}
       ]
     },
     {
-      "id": "T-G3",
-      "summary": "Update docker-publish.yml default GITOPS_MANIFEST_PATH",
-      "description": "Change the default GITOPS_MANIFEST_PATH from 'overlays/production/kustomization.yaml' to 'deploy/overlays/production/docker-compose.override.yml' in the gitops-deploy job env block.",
-      "depends_on": ["T-G2"],
+      "id": "T-U3",
+      "summary": "Create DORA metrics export script",
+      "description": "Create scripts/dora-metrics.sh that outputs deploy_frequency, lead_time, change_failure_rate, and mttr as JSON. Uses gh CLI to query workflow run history. Add make dora-metrics target.",
+      "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-G3-01", "description": "GITOPS_MANIFEST_PATH default is deploy/overlays/production/docker-compose.override.yml", "test_type": "unit"},
-        {"id": "AC-G3-02", "description": "sed command in Update image manifest step still works with docker-compose format", "test_type": "unit"},
-        {"id": "AC-G3-03", "description": "Workflow YAML is valid", "test_type": "unit"}
-      ]
-    },
-    {
-      "id": "T-G4",
-      "summary": "Update scripts/gitops-validate.sh to include deploy/ manifests",
-      "description": "Add deploy/**/*.yml to the list of files/directories that gitops-validate.sh checks. This ensures pre-commit and CI validate manifest YAML validity.",
-      "depends_on": ["T-G1", "T-G2"],
-      "acceptance_criteria": [
-        {"id": "AC-G4-01", "description": "gitops-validate.sh validates deploy/ manifests", "test_type": "unit"},
-        {"id": "AC-G4-02", "description": "scripts/gitops-validate.sh exits 0 on valid manifests", "test_type": "unit"}
+        {"id": "AC-U3-01", "description": "scripts/dora-metrics.sh exists and is executable", "test_type": "unit"},
+        {"id": "AC-U3-02", "description": "Script outputs valid JSON", "test_type": "unit"},
+        {"id": "AC-U3-03", "description": "JSON includes deploy_frequency, lead_time, change_failure_rate, mttr", "test_type": "unit"},
+        {"id": "AC-U3-04", "description": "make dora-metrics runs the script", "test_type": "unit"}
       ]
     }
   ]

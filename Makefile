@@ -201,6 +201,11 @@ test-alerts:
 test-api-surface:
 	@./scripts/validate-api-surface.sh
 
+# ── DORA metrics export ─────────────────────────────────────────────────
+
+dora-metrics:
+	@./scripts/dora-metrics.sh
+
 # ── HTTP acceptance tests (against deployed app) ────────────────────────────
 
 test-acceptance:

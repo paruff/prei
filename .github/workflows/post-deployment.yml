@@ -153,3 +153,24 @@ jobs:
         run: |
           echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "Rollback complete"
+
+  # ── Notify uFawkesObs ──────────────────────────────────────────────────────
+
+  notify:
+    name: "📡 Deploy Notify"
+    needs: [smoke, acceptance, performance, security]
+    if: always() && vars.UFAWKES_WEBHOOK_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to uFawkesObs
+        run: |
+          STATUS="success"
+          if [ "${{ needs.smoke.result }}" != "success" ] || \
+             [ "${{ needs.acceptance.result }}" != "success" ] || \
+             [ "${{ needs.security.result }}" != "success" ]; then
+            STATUS="failure"
+          fi
+          curl -sf -X POST "${{ vars.UFAWKES_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"event\":\"deploy-complete\",\"repo\":\"${{ github.repository }}\",\"sha\":\"${{ github.sha }}\",\"status\":\"${STATUS}\",\"url\":\"${{ needs.smoke.outputs.target }}\"}" \
+            || echo "::warning::uFawkesObs webhook failed (non-fatal)"
