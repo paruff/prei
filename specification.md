@@ -1,36 +1,26 @@
-# Specification: P1 — Screening UX + Leasing Kanban
+# Specification: UX Maturity Gaps
 # Written: 2026-07-19
-# Status: Draft for feature-flow implementation
 
 ---
 
 ## 0. Executive Summary
 
-P1 addresses two gaps: screening needs batch filter/sort controls so users can
-quickly kill 90% of deals, and the leasing kanban needs JS wiring verification
-(it has backend code but the drag-drop fetch may have the same parameter mismatch
-we fixed in the pipeline kanban).
+Three UX gaps from the July 2026 Product Maturity matrix: growth area dashboard
+on the system page, property comparison view for underwriting, and BRRRR
+projection timeline.
 
 ---
 
 ## 1. Problem Statement
 
-### P1-S: Screening Batch UX
+**Gap 1 — Growth Areas Dashboard:** System page shows counts but no per-area
+details (scores, cities, states). Users can't see which areas are high-scoring.
 
-**Current:** Screener page shows a list of properties with KPI summary. No inline
-filtering, sorting, or batch actions. Users must scroll through all properties.
+**Gap 2 — Underwriting Comparison:** No side-by-side view to compare two
+properties' KPIs. Users manually switch tabs to compare.
 
-**Desired:** Filter bar with price range, rent range, cap rate min, location search.
-Sortable columns by price, cap rate, GRM, score. Results update without page reload.
-
-### P1-L: Leasing Kanban Wiring
-
-**Current:** Full backend (views, models, stage validation) and template
-(drag-drop, columns, styling). Likely the JS fetch uses the same `new_stage` /
-`property_id` parameters that work.
-
-**Desired:** Verify kanban drag-drop works end-to-end. Fix parameter names if
-needed (match with `property_id` + `new_stage` similar to pipeline kanban fix).
+**Gap 3 — BRRRR Timeline:** Calculator gives numbers but no visual timeline
+showing when refinance happens and equity builds over time.
 
 ---
 
@@ -38,10 +28,9 @@ needed (match with `property_id` + `new_stage` similar to pipeline kanban fix).
 
 | ID | Description | Priority |
 |---|---|---|
-| F-01 | Screener page has filter bar: price min/max, rent min, cap rate min | P0 |
-| F-02 | Results sortable by price, cap rate, GRM, score (header click) | P0 |
-| F-03 | Leasing kanban drag-drop posts to correct endpoint with correct params | P0 |
-| F-04 | Leasing stage transitions validated (forward-only, no skipping) | P0 |
+| F-01 | System page shows growth areas table: city, state, composite score, landlord score | P0 |
+| F-02 | Property comparison view: select two properties, side-by-side KPI display | P1 |
+| F-03 | BRRRR calculator shows simple visual timeline (cash flow bars) | P1 |
 
 ---
 
@@ -49,8 +38,6 @@ needed (match with `property_id` + `new_stage` similar to pipeline kanban fix).
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-01 | Screener page has filter inputs for price, rent, cap rate | live-system |
-| AC-02 | Clicking column header sorts results ascending/descending | live-system |
-| AC-03 | Leasing kanban loads with 8 stage columns | live-system |
-| AC-04 | Dragging card to next stage persists via POST | live-system |
-| AC-05 | Backward/forward drag validation returns error | unit |
+| AC-01 | System page renders growth areas table with ≥5 rows when populated | live-system |
+| AC-02 | Comparison page shows NOI, cap rate, cash-on-cash, DSCR for both properties | live-system |
+| AC-03 | BRRRR page shows visual timeline with at least 3 phases | live-system |

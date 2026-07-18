@@ -1,46 +1,52 @@
-# Design: P1 — Screening UX + Leasing Kanban
+# Design: UX Maturity Gaps
 # Written: 2026-07-19
 
 ---
 
-## 1. Screening Filter Bar
+## 1. Growth Areas Dashboard
 
-Add a filter bar above the screener results table:
+Add a table to `system.html` showing all growth areas with key metrics:
 
-```html
-<div class="screener-filters">
-  <input type="number" name="price_min" placeholder="Min Price">
-  <input type="number" name="price_max" placeholder="Max Price">
-  <input type="number" name="rent_min" placeholder="Min Rent">
-  <input type="number" name="cap_rate_min" placeholder="Min Cap Rate %">
-  <button type="submit">Filter</button>
-</div>
+```
+| City, State | Composite Score | Landlord Score | Emp Growth | Pop Growth |
+| Austin, TX  | 0.8523          | 8.5/10         | 3.2%       | 2.1%       |
 ```
 
-Modify the view to accept query params: `price_min`, `price_max`, `rent_min`,
-`cap_rate_min`, `sort`, `order`. Filter the queryset before rendering.
+Query `GrowthArea.objects.all().order_by("-composite_score")[:10]` in the view.
 
-## 2. Sortable Columns
+## 2. Underwriting Comparison
 
-Add clickable column headers with sort direction indicators:
+New URL: `/property/compare/?a=<id>&b=<id>`
 
-```html
-<th><a href="?sort=price&order=asc">Price ↑↓</a></th>
-<th><a href="?sort=cap_rate&order=desc">Cap Rate ↑↓</a></th>
+Render a side-by-side card layout:
+
+```
+┌──────────────┐ ┌──────────────┐
+│ Property A   │ │ Property B   │
+│ NOI: $12,000 │ │ NOI: $8,400  │
+│ Cap: 6.0%    │ │ Cap: 4.2%    │
+│ CoC: 12.0%   │ │ CoC: 8.4%    │
+│ DSCR: 1.25   │ │ DSCR: 0.90   │
+└──────────────┘ └──────────────┘
 ```
 
-Server-side sorting via queryset `.order_by()`.
+## 3. BRRRR Timeline
 
-## 3. Leasing Kanban
+Add a CSS-only visual timeline below the calculator results. Colored bars showing:
 
-The leasing kanban view (`leasing_kanban`) already handles POST with
-`property_id` + `new_stage` parameters. The template already has drag-drop JS.
-Verify the JS sends the correct parameters and the endpoint is correct.
+```
+│████████████████████████████████│  Rehab (3 mo)
+│████████████│  Rent-up (1 mo)
+│████████████████████████████████████████████████████████│  Hold (24 mo → refinance)
+│████████████████████████████████│  Post-refi cash flow
+```
 
 ## 4. File Changes
 
-| File | Change | Purpose |
-|---|---|---|
-| `templates/pipeline/screener.html` | Modified | Add filter bar + sortable headers |
-| `core/views/__init__.py` | Modified | Add query param filtering to screener view |
-| `templates/leasing/leasing_kanban.html` | Modified | Verify JS params match backend |
+| File | Change |
+|---|---|
+| `core/views/__init__.py` | Add comparison view, update system_status |
+| `core/urls.py` | Add /property/compare/ URL |
+| `templates/system.html` | Add growth areas table |
+| `templates/property_compare.html` | New comparison template |
+| `templates/brrrr_calculator.html` | Add CSS timeline |
