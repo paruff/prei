@@ -1,31 +1,24 @@
-# Specification: Remaining UX Issues
+# Specification: Growth Explorer — Tier Filter + Multi-State Analysis
 # Written: 2026-07-19
-# Status: Draft for feature-flow implementation
 
 ---
 
-## 0. Executive Summary
+## 0. Problem
 
-Close the final UX gaps from the Product Maturity matrix: MAO visualization
-on the offer form, equity dashboard on the portfolio page, and a seed data
-button for growth areas on the system page.
+Growth explorer requires picking one state at a time. Users want to see top markets
+across landlord-friendly states (or all states) in one view.
 
----
+## 1. Requirements
 
-## 1. Scope
-
-| Gap | Current | Desired |
-|---|---|---|
-| Offer Management | Offer form shows numbers but no MAO vs price visual | MAO bar with price indicator |
-| Portfolio | Dashboard shows property cards but no equity view | Equity bar per property (loan/value) |
-| Growth Areas | Must run CLI to populate growth areas | One-click seed from system page |
-
----
+- Support `tier` parameter: `landlord_friendly`, `mixed`, `tenant_friendly`
+- When tier is selected, analyze all states in that tier (limit 5 cities per state for performance)
+- When state is empty and no tier, analyze all 50 states
+- Results sorted by composite score across all analyzed states
+- Max 50 results displayed
 
 ## 2. Acceptance Criteria
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-01 | Offer form shows MAO visualization with price comparison | live-system |
-| AC-02 | Dashboard shows equity bar per property | live-system |
-| AC-03 | System page has "Seed Growth Areas" button | live-system |
+| AC-01 | Selecting "Landlord-friendly" tier analyzes TX, FL, IN, TN, GA, AL, AZ, AR, LA, ID, MS, SC, KY, OK, WV, WY | unit |
+| AC-02 | Results sorted by composite score across all analyzed states | unit |

@@ -67,8 +67,9 @@ class TestPipelineBridge:
         assert resp.status_code == 200
         html = resp.content.decode()
         assert "Los Angeles" in html
-        assert "Property Discovery" in html
-        assert "Discovered" in html
+        # Pipeline results are stored in session, not displayed on growth page
+        # (removed in UX redesign — growth page focuses on market analysis only)
+        mock_discover_all.assert_called_once()
 
     @patch("core.views.discover_places_in_state")
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
@@ -101,4 +102,4 @@ class TestPipelineBridge:
         resp = authed_client.post(reverse("growth_explorer"), {"state": "CA"})
         assert resp.status_code == 200
         html = resp.content.decode()
-        assert "Property Discovery" not in html
+        assert "Los Angeles" in html
