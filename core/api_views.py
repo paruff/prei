@@ -2180,6 +2180,7 @@ def compare_investment_strategies(request):
 
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
+@throttle_classes([])
 def health_check(request: Any) -> Response:
     """
     Health check endpoint for deployment platforms.
