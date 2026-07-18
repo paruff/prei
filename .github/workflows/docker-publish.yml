@@ -85,7 +85,7 @@ jobs:
           echo "sha: ${{ github.sha }}"
 
   live-test:
-    name: "🧪 Tier 2 — Live Acceptance Test"
+    name: "🧪 Tier 2 — Smoke Test"
     needs: build-image
     runs-on: ubuntu-latest
     permissions:
@@ -157,7 +157,7 @@ jobs:
           docker rm prei-live-test 2>/dev/null || true
 
           echo ""
-          echo "=== Live Acceptance Tests ==="
+          echo "=== Smoke Tests ==="
 
           echo -n "1. Health check: "
           curl -sf http://localhost:8000/health/ | python3 -m json.tool | grep -q '"status": "ok"' && echo "PASS" || { echo "FAIL"; exit 1; }
@@ -191,7 +191,7 @@ jobs:
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/static/css/base.css; echo ""
 
           echo ""
-          echo "=== All live acceptance tests passed ==="
+          echo "=== All smoke tests passed ==="
 
           docker stop prei-live-test 2>/dev/null || true
       - name: "job-finish"
