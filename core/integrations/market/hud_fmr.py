@@ -59,7 +59,10 @@ class FMRClient:
         if resp.status_code == 404:
             raise FMRError(f"No data found: {path}")
         resp.raise_for_status()
-        return cast(dict[str, Any], resp.json())
+        data = resp.json()
+        if isinstance(data, list):
+            return {"data": data}  # API returned list, wrap in dict
+        return cast(dict[str, Any], data)
 
     def list_states(self) -> list[dict[str, str]]:
         """List all states with FMR data."""

@@ -3638,8 +3638,18 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         if hud_count == 0:
             try:
                 from core.services.ingestion import ingest_hud_reo
+                import time
+                from django.db import OperationalError
 
-                result = ingest_hud_reo()
+                for attempt in range(3):
+                    try:
+                        result = ingest_hud_reo()
+                        break
+                    except OperationalError as e:
+                        if "locked" in str(e) and attempt < 2:
+                            time.sleep(0.5 * (attempt + 1))
+                            continue
+                        raise
                 messages.info(
                     request,
                     f"HUD data loaded: {result['created']} properties indexed nationwide. "
@@ -3654,8 +3664,18 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         if usda_count == 0:
             try:
                 from core.services.ingestion import ingest_usda_reo
+                import time as _t
+                from django.db import OperationalError as _oe
 
-                result = ingest_usda_reo()
+                for _a in range(3):
+                    try:
+                        result = ingest_usda_reo()
+                        break
+                    except _oe as e:
+                        if "locked" in str(e) and _a < 2:
+                            _t.sleep(0.5 * (_a + 1))
+                            continue
+                        raise
                 if result.get("created", 0) > 0:
                     messages.info(
                         request, f"USDA data loaded: {result['created']} properties."
