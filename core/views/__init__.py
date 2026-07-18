@@ -299,6 +299,7 @@ def system_status(request: HttpRequest) -> HttpResponse:
             .distinct()
             .count(),
             "health": DataSourceHealth.objects.all(),
+            "top_areas": GrowthArea.objects.order_by("-composite_score")[:10],
         },
     )
 
@@ -1941,6 +1942,34 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(screening_passed=True)
     elif passed_filter == "0":
         qs = qs.filter(screening_passed=False)
+
+    # --- Price / rent / cap rate filters ---
+    price_min = request.GET.get("price_min", "")
+    price_max = request.GET.get("price_max", "")
+    rent_min = request.GET.get("rent_min", "")
+    cap_rate_min = request.GET.get("cap_rate_min", "")
+
+    if price_min:
+        qs = qs.filter(purchase_price__gte=price_min)
+    if price_max:
+        qs = qs.filter(purchase_price__lte=price_max)
+    if rent_min:
+        qs = qs.filter(monthly_rent__gte=rent_min)
+    if cap_rate_min:
+        qs = qs.filter(investment_analysis__cap_rate__gte=Decimal(cap_rate_min) / 100)
+
+    # --- Sort ---
+    sort = request.GET.get("sort", "")
+    order = request.GET.get("order", "asc")
+    SORT_MAP = {
+        "price": "purchase_price",
+        "rent": "monthly_rent",
+        "cap_rate": "investment_analysis__cap_rate",
+        "score": "screening_passed",
+    }
+    if sort in SORT_MAP:
+        dir_prefix = "-" if order == "desc" else ""
+        qs = qs.order_by(dir_prefix + SORT_MAP[sort])
 
     # --- Get or create screening criteria ---
     try:

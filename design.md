@@ -1,7 +1,8 @@
 # Design: P0 — CRM Kanban + Data Health
 # Written: 2026-07-19
 
----
+All tests in `tests/acceptance/` using the existing `conftest.py` fixtures
+(`base_url`, `client` — httpx.Client). Run against deployed app via `BASE_URL`.
 
 ## 1. Kanban Board
 

@@ -112,13 +112,23 @@
 
 <!-- Property table -->
 {% if properties %}
+
+<!-- Filter bar -->
+<form method="get" class="screener-filters" style="display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-4);align-items:end">
+  <div><label>Min Price</label><input type="number" name="price_min" value="{{ request.GET.price_min }}" placeholder="$" class="form-input" style="width:100px"></div>
+  <div><label>Max Price</label><input type="number" name="price_max" value="{{ request.GET.price_max }}" placeholder="$" class="form-input" style="width:100px"></div>
+  <div><label>Min Rent</label><input type="number" name="rent_min" value="{{ request.GET.rent_min }}" placeholder="$" class="form-input" style="width:100px"></div>
+  <div><label>Min Cap Rate %</label><input type="number" name="cap_rate_min" value="{{ request.GET.cap_rate_min }}" placeholder="%" class="form-input" style="width:100px" step="0.1"></div>
+  <div style="padding-top:var(--sp-4)"><button type="submit" class="btn">Filter</button></div>
+</form>
+
 <div class="table-wrap">
   <table class="data-table">
     <thead>
       <tr>
         <th>Address</th>
         <th>Source</th>
-        <th>Price</th>
+        <th><a href="?sort=price&order={% if request.GET.sort == 'price' and request.GET.order == 'asc' %}desc{% else %}asc{% endif %}{% if request.GET.price_min %}&price_min={{ request.GET.price_min }}{% endif %}{% if request.GET.price_max %}&price_max={{ request.GET.price_max }}{% endif %}">Price {% if request.GET.sort == 'price' %}{% if request.GET.order == 'desc' %}↓{% else %}↑{% endif %}{% endif %}</a></th>
         <th>Beds</th>
         <th>Sqft</th>
         <th>Est. Rent</th>

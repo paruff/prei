@@ -40,6 +40,25 @@
   </div>
 </div>
 
+{% if top_areas %}
+<div class="card" style="margin-top:var(--sp-5)">
+  <h2 class="card-title">Top Growth Areas</h2>
+  <table class="table">
+    <thead><tr><th>City</th><th>State</th><th>Score</th><th>Landlord</th></tr></thead>
+    <tbody>
+      {% for ga in top_areas %}
+      <tr>
+        <td>{{ ga.city_name }}</td>
+        <td>{{ ga.state }}</td>
+        <td>{{ ga.composite_score|floatformat:4 }}</td>
+        <td>{{ ga.landlord_score|default:"—" }}/10</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div class="card" style="margin-top:var(--sp-5)">
   <h2 class="card-title">Data Source Health</h2>
   <table class="table">

@@ -12,7 +12,7 @@ property scrapers are working.
 
 ---
 
-## 1. Problem Statement
+## 1. Scope
 
 ### P0-A: Pipeline Kanban
 
@@ -46,7 +46,7 @@ last run time, record count, success/error status, and a refresh button.
 
 ---
 
-## 3. Acceptance Criteria
+## 2. Acceptance Criteria
 
 | ID | Criterion | test_type |
 |---|---|---|
