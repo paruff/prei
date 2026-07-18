@@ -1,25 +1,48 @@
-# Specification: Missing Acceptance Tests
+# Specification: P0 — CRM Kanban + Data Health
 # Written: 2026-07-19
+# Status: Draft for feature-flow implementation
 
 ---
 
 ## 0. Executive Summary
 
-Every component in the Product Maturity matrix is missing automated acceptance
-tests. Add httpx-based HTTP tests for all components with live-system endpoints.
+Two P0 items from the DEVEX_PLAN: a drag-and-drop CRM kanban board for the
+acquisition pipeline, and a data source health dashboard so users know which
+property scrapers are working.
 
 ---
 
 ## 1. Scope
 
-| Component | Tests | Priority |
+### P0-A: Pipeline Kanban
+
+**Current:** List page with status filter and stage counts in a funnel header.
+No visual board, no drag-and-drop, no stage transition validation.
+
+**Desired:** Drag-and-drop kanban board with columns per stage, deal cards with
+key info (address, price, days in stage), drag to transition stages, backend
+validation of stage rules.
+
+### P0-B: Data Source Health
+
+**Current:** System page shows record counts. No per-source health: last run
+timestamp, success/failure state, error messages.
+
+**Desired:** System page shows a health table per data source with: source name,
+last run time, record count, success/error status, and a refresh button.
+
+---
+
+## 2. Requirements
+
+| ID | Description | Priority |
 |---|---|---|
-| Growth Areas | API response structure + system page | P0 |
-| Pipeline | List, kanban, screener views | P0 |
-| Portfolio | Dashboard view | P1 |
-| BRRRR | Calculator page | P1 |
-| Leasing | List, kanban views | P1 |
-| Underwriting | Property report view | P1 |
+| F-01 | Kanban board with columns: Discovered, Screening, Underwriting, Offer, Due Diligence, Closing | P0 |
+| F-02 | Deal cards show: address, price, days in current stage | P0 |
+| F-03 | Drag-and-drop with backend API for stage transition | P0 |
+| F-04 | Stage transition validation: forward-only, no skipping | P0 |
+| F-05 | Data source health table on system page | P0 |
+| F-06 | Per-source: last run timestamp, record count, status (ok/error) | P0 |
 
 ---
 
@@ -27,11 +50,9 @@ tests. Add httpx-based HTTP tests for all components with live-system endpoints.
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-01 | Growth areas API returns valid JSON structure | live-system |
-| AC-02 | Pipeline list renders with stage counts | live-system |
-| AC-03 | Pipeline kanban renders with stage columns | live-system |
-| AC-04 | Screener page renders with filter bar | live-system |
-| AC-05 | Dashboard renders with property cards | live-system |
-| AC-06 | BRRRR calculator page loads | live-system |
-| AC-07 | Leasing list renders | live-system |
-| AC-08 | Leasing kanban renders with columns | live-system |
+| AC-01 | Kanban board renders at /pipeline/kanban/ with 6 stage columns | live-system |
+| AC-02 | Dragging a card to a new column posts to stage transition API | live-system |
+| AC-03 | Forward-only rule enforced (can't drag backward or skip stages) | unit |
+| AC-04 | System status page shows data source health table | live-system |
+| AC-05 | Each source shows last_run, record_count, and status | unit |
+| AC-06 | Refresh button triggers data source reload | live-system |

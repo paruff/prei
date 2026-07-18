@@ -60,6 +60,35 @@
 {% endif %}
 
 <div class="card" style="margin-top:var(--sp-5)">
+  <h2 class="card-title">Data Source Health</h2>
+  <table class="table">
+    <thead>
+      <tr><th>Source</th><th>Last Run</th><th>Records</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for h in health %}
+      <tr>
+        <td>{{ h.source_name }}</td>
+        <td>{{ h.last_run|date:"Y-m-d H:i"|default:"Never" }}</td>
+        <td>{{ h.record_count }}</td>
+        <td>
+          {% if h.status == "ok" %}
+            <span class="chip chip-success">✓ OK</span>
+          {% elif h.status == "error" %}
+            <span class="chip chip-danger">✗ Error</span>
+          {% else %}
+            <span class="chip chip-default">Unknown</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4">No data source health records yet. Run a data ingestion to populate.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:var(--sp-5)">
   <h2 class="card-title">Data Operations</h2>
   <div class="form-actions" style="flex-wrap:wrap;gap:var(--sp-3)">
     <form method="post" class="form-inline">

@@ -955,3 +955,25 @@ class DiscoveryRequest(models.Model):
 
     def __str__(self) -> str:
         return f"{self.source.name} @ {self.location} [{self.status}]"
+
+
+class DataSourceHealth(models.Model):
+    """Health status of a data ingestion source (HUD, USDA, VRM, etc.)."""
+
+    source_name = models.CharField(max_length=64, unique=True)
+    last_run = models.DateTimeField(null=True, blank=True)
+    record_count = models.IntegerField(default=0)
+    status = models.CharField(
+        max_length=16,
+        default="unknown",
+        choices=[("ok", "OK"), ("error", "Error"), ("unknown", "Unknown")],
+    )
+    error_message = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["source_name"]
+        verbose_name = "Data Source Health"
+        verbose_name_plural = "Data Source Health"
+
+    def __str__(self) -> str:
+        return f"{self.source_name} ({self.status})"
