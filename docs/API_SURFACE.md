@@ -162,14 +162,14 @@ trend = portfolio_trend_summary(request.user)
 
 ### `recommendations.recommend_listings(user, limit=10)`
 
-**Purpose:** Build personalized listing recommendations from a user's saved searches, deduplicate listing matches across searches, rank results (or fallback to `score_listing_v1`), and return the top `limit` entries with explanations.
+**Purpose:** Build personalized listing recommendations from a user's saved searches, deduplicate listing matches across searches, rank results (or fallback to `core.services.scoring.score_listing`), and return the top `limit` entries with explanations.
 **Parameters:**
 - `user` — Django `User` instance.
 - `limit: int` — Maximum recommendations to return (default `10`).
 
 **Returns:** `list[dict]` where each dict includes `obj` (`Listing`), `score` (`Decimal`), and `explanation` (`str`).
 **Side effects:** Reads `SavedSearch` and `Listing` rows for the authenticated user.
-**Error cases:** Returns `[]` when user is anonymous, has no saved searches, or `limit <= 0`. Falls back to `score_listing_v1` ranking when `rank_listings` is unavailable.
+**Error cases:** Returns `[]` when user is anonymous, has no saved searches, or `limit <= 0`. Falls back to `core.services.scoring.score_listing` ranking when `rank_listings` is unavailable.
 **Example:**
 
 ```python

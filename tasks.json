@@ -1,577 +1,176 @@
 {
   "meta": {
     "project": "prei",
-    "date": "2026-07-09",
-    "agent": "opencode / DeepSeek v4 flash",
-    "source_files_read": [
-      "core/models.py",
-      "core/views.py",
-      "templates/base.html",
-      "core/integrations/market/census.py",
-      "core/services/market_scoring.py",
-      "static/css/base.css",
-      "core/management/commands/ (directory listing)"
-    ],
+    "session": "phase-3-post-deploy-acceptance-20260718",
+    "date": "2026-07-18",
+    "feature": "Post-Deployment Acceptance Pipeline",
+    "spec": "specification.md",
+    "design": "design.md",
     "architecture_constraints": [
-      "Finance math stays in services/ or utils/ — never in views or models",
-      "No external API calls from views",
-      "No float for currency — always Decimal",
-      "No Bootstrap classes, no inline style= on layout elements",
-      "No hardcoded hex colors in templates",
-      "No !important in CSS",
-      "No Celery — all ingestion via management commands",
-      "composite_score on GrowthArea must NEVER be renamed or removed — serializer depends on it",
-      "Migrations require paruff review before running — generate and attach, do NOT run"
-    ],
-    "confirmed_css_classes": [
-      "card", "card-title", "kpi-grid", "kpi-card", "kpi-label", "kpi-value", "kpi-sub",
-      "btn", "btn-primary", "btn-danger",
-      "verdict-badge", "verdict-a", "verdict-b", "verdict-c",
-      "chip", "chip-group", "chip.is-active", "chip-success", "chip-warning", "chip-danger", "chip-default", "chip-info",
-      "empty-state", "empty-state-title", "empty-state-body",
-      "data-table", "table-wrap",
-      "filter-bar", "filter-search",
-      "message", "message-success", "message-error", "message-warning",
-      "page-header", "page-title", "page-sub",
-      "tab-bar", "tab-btn", "tab-btn.is-active",
-      "layout-2col", "layout-sidebar-main",
-      "form-group", "form-label", "form-input", "form-hint", "form-error", "form-actions",
-      "form-grid-2", "form-grid-3",
-      "pagination"
-    ],
-    "confirmed_models": {
-      "GrowthArea": {
-        "key_fields": "state, city_name, metro_area, population_growth_rate, employment_growth_rate, median_income_growth, housing_demand_index, supply_constraint_index, composite_score, landlord_score, data_timestamp, population, created_at, updated_at",
-        "composite_score_computed_on_save": true,
-        "composite_score_formula_in": "_compute_composite_score()",
-        "supply_constraint_index": "IntegerField, default=50, null=True — already used in formula with weight 0.15"
-      },
-      "PipelineProperty": {
-        "stage_choices": "DISCOVERED, SCREENING, UNDERWRITING, OFFER, DUE_DILIGENCE, CLOSING, ACQUIRED, RENOVATION, STABILIZED",
-        "status_choices": "ACTIVE, KILLED, ON_HOLD, ACQUIRED",
-        "source_type_choices": "vrm, foreclosure, listing, manual, hud, usda, fannie, freddie, county, bank_reo",
-        "kill_reason": "TextField, blank=True, default='' — ALREADY EXISTS, no migration needed",
-        "screening_passed": "BooleanField, null=True, blank=True",
-        "key_fields": "user, source_type, source_id, address, address_hash, stage, status, screening_passed, kill_reason, discovered_at, screening_at, price, estimated_rent, beds, baths, sqft, year_built, investment_analysis (FK), gacs_score, mao, property_record (FK), created_at, updated_at"
-      },
-      "PipelineAsset": {
-        "note": "Separate model used by pipeline_dashboard view. Stage choices differ from PipelineProperty. pipeline_dashboard uses this, pipeline_list uses PipelineProperty.",
-        "stage_choices": "GACS, DISCOVERY, SCREENING, UNDERWRITING, OFFER, DUE_DILIGENCE, CLOSING, TURNOVER, LEASING, PORTFOLIO, KILLED",
-        "fields": "asset_id, address, address_hash, source_name, current_stage, kill_reason, price, estimated_rent, noi, cap_rate, mao, beds, baths, sqft, created_at, updated_at"
-      },
-      "ScreeningCriteria": {
-        "fields": "user (OneToOne), max_price, min_price, min_gross_yield_pct (default 7.00), max_price_to_rent_ratio (default 15.00), min_beds (default 1), max_beds, min_sqft, max_year_built, allowed_property_types, allowed_states, allowed_foreclosure_statuses, min_gacs_score"
-      },
-      "HudProperty": {
-        "unique_key": "hud_case_number",
-        "status_choices": "active, pending, sold, contingent, removed"
-      },
-      "UsdaProperty": {
-        "unique_key": "usda_case_number",
-        "status_choices": "active, pending, sold, removed"
-      }
-    },
-    "confirmed_views": {
-      "pipeline_dashboard": "Uses PipelineAsset model. Shows stage_counts, flow groups, killed/advanced lists.",
-      "pipeline_list": "Uses PipelineProperty. GET params: status (default ACTIVE), stage. Has stage_items funnel already built.",
-      "pipeline_detail": "Uses PipelineProperty. Shows source_record, stage_history, days_in_pipeline, kill_reasons list.",
-      "growth_areas": "Uses GrowthArea. Falls back to MarketSnapshot if GrowthArea empty. Paginated 25/page.",
-      "growth_explorer": "POST runs discover_places_in_state + FRED + parallel Census fetches, upserts GrowthArea rows.",
-      "pipeline_screening_settings": "GET/POST for ScreeningCriteria. POST re-screens all ACTIVE DISCOVERED/SCREENING properties.",
-      "hud_property_list": "Uses HudProperty. State filter. Template: hud_properties/list.html",
-      "usda_property_list": "Uses UsdaProperty. State filter. Template: usda_properties/list.html"
-    },
-    "confirmed_management_commands": [
-      "populate_growth_areas.py — EXISTS (13,005 bytes, Jul 7)",
-      "ingest_hud_reo.py — EXISTS (10,071 bytes, Jul 8)",
-      "ingest_usda_reo.py — EXISTS (10,982 bytes, Jul 8)",
-      "scrape_dallas_county_nts.py — EXISTS (5,013 bytes, Jul 8)",
-      "fetch_attom_preforeclosure.py — EXISTS (4,755 bytes, Jul 8)"
-    ],
-    "confirmed_census_adapter": {
-      "ACS_VINTAGE": "Module-level constant set to _ACS_VINTAGE_FALLBACK = '2024' — already updated",
-      "auto_detection": "get_acs_vintages() auto-detects from Census /data.json API; caches result. Fallback is '2024'.",
-      "note": "GA-FIX-1 (change ACS vintage) is ALREADY DONE — fallback is 2024, auto-detection finds latest. No code change needed."
-    },
-    "confirmed_nav_issues": {
-      "duplicate_link": "Two items link to pipeline_list: 'My Pipeline' and 'Rehab & Lease' both use {% url 'pipeline_list' %}",
-      "structure": "Growth Areas (growth_explorer) | Purchase Pipeline dropdown [Discover, Foreclosures, Screen, Underwriting, My Pipeline, Rehab&Lease] | Leasing Pipeline | Portfolio | Sell"
-    }
+      "No external API calls from views — acceptance tests may call deployment URL",
+      "Tests must be idempotent",
+      "Finance math stays in services/ or utils/",
+      "Migrations require paruff review — do NOT run in this PR"
+    ]
   },
-
-  "tracks": {
-
-    "GA": {
-      "name": "Growth Areas — data and UX gaps",
-      "issues": [
-
+  "tasks": [
+    {
+      "id": "T-01",
+      "summary": "Create acceptance test directory and conftest with httpx client",
+      "description": "Create tests/acceptance/ with __init__.py and conftest.py that provides:\n- base_url fixture (from BASE_URL env var, default http://localhost:8000)\n- client fixture (httpx.Client with base_url and timeout=30)",
+      "depends_on": [],
+      "acceptance_criteria": [
         {
-          "id": "GA-DATA-1",
-          "title": "Run populate_growth_areas for target states and verify row count",
-          "priority": "P0",
-          "depends_on": [],
-          "is_human_task": true,
-          "files_to_read_first": ["core/management/commands/populate_growth_areas.py"],
-          "context": "GrowthArea has 0 rows. The populate_growth_areas command exists (13,005 bytes, updated Jul 7). The growth_areas view falls back to MarketSnapshot when GrowthArea is empty — the user never sees real composite scores. ACS vintage auto-detection is already implemented and defaults to 2024. No code change needed before running.",
-          "human_action": [
-            "1. Confirm CENSUS_API_KEY is set in .env",
-            "2. Read populate_growth_areas.py to find exact flag names",
-            "3. Run: python manage.py populate_growth_areas --states TX FL GA NC AZ (adjust flags to match actual signature)",
-            "4. Verify: python manage.py shell -c \"from core.models import GrowthArea; print(GrowthArea.objects.count())\"",
-            "5. Report count to agent before agent writes any GA UX code"
-          ],
-          "acceptance_tests": [
-            "GrowthArea.objects.count() > 0",
-            "GrowthArea.objects.filter(state__in=['TX','FL','GA','NC','AZ']).count() > 0",
-            "GrowthArea.objects.filter(composite_score__isnull=False).count() == GrowthArea.objects.count()"
-          ]
+          "id": "AC-T01-01",
+          "description": "tests/acceptance/ directory exists with __init__.py",
+          "test_type": "unit"
         },
-
         {
-          "id": "GA-DATA-2",
-          "title": "Document supply_constraint_index data source and add UI note",
-          "priority": "P1",
-          "depends_on": ["GA-DATA-1"],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "core/models.py (GrowthArea._compute_composite_score — lines ~440-480)",
-            "core/management/commands/populate_growth_areas.py",
-            "templates/growth_areas.html (or growth_explorer.html — find the growth area detail template)"
-          ],
-          "context": "supply_constraint_index is an IntegerField(default=50) with weight 0.15 in the GACS formula. The compute_supply_constraint_index() function exists in census.py and uses population_growth_rate vs housing_units_growth_rate from ACS B25001. Whether populate_growth_areas actually calls this needs verification. If it does: no change needed, but add UI note. If it defaults to 50: add UI note explaining the placeholder.",
-          "implementation": [
-            "Read populate_growth_areas.py — grep for supply_constraint_index to see if it is computed or defaulted",
-            "If defaulted to 50: in the growth area detail template, add a span near the supply constraint row: <span class='chip chip-warning' title='Estimated from housing-to-population ratio when available, otherwise defaulted to 50'>Supply est.</span>",
-            "If computed from ACS: no change to logic; add a span: <span class='chip chip-info'>ACS-derived</span>",
-            "No new CSS classes — chip and chip-warning and chip-info already exist in base.css"
-          ],
-          "acceptance_tests": [
-            "Template renders supply constraint row with a badge",
-            "Badge uses only existing chip CSS classes",
-            "No inline style= attributes",
-            "pytest tests/ -k 'growth_area' — all pass"
-          ]
+          "id": "AC-T01-02",
+          "description": "conftest.py provides base_url fixture reading BASE_URL env var",
+          "test_type": "unit"
         },
-
         {
-          "id": "GA-UX-1",
-          "title": "Growth areas list: add experimental score disclaimer banner",
-          "priority": "P1",
-          "depends_on": ["GA-DATA-1"],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "templates/growth_areas.html",
-            "templates/growth_explorer.html"
-          ],
-          "context": "GACS weights are hypothesis-based. The formula is live and computes on every GrowthArea.save(). The UI must flag this before anyone acts on a score. The growth_areas view renders growth_areas.html (list); the growth_explorer view renders growth_explorer.html (run analysis). Both need the disclaimer.",
-          "implementation": [
-            "In templates/growth_areas.html, add immediately below the page heading (before the table/list):",
-            "  <div class='message message-warning'>Growth area scores use an experimental weighting model. Weights are a hypothesis — not research-validated. Verify markets independently before investing.</div>",
-            "In templates/growth_explorer.html, add the same banner near the results section heading",
-            "No new CSS — message and message-warning already exist in base.css"
-          ],
-          "acceptance_tests": [
-            "Browser: GET /growth_areas/ shows warning banner above the list",
-            "Browser: GET /growth_explorer/ results section shows warning banner",
-            "No inline style=",
-            "No hardcoded hex colors"
-          ]
-        },
-
-        {
-          "id": "GA-UX-2",
-          "title": "Growth area list: add composite score breakdown on detail/card",
-          "priority": "P1",
-          "depends_on": ["GA-DATA-1", "GA-UX-1"],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "templates/growth_areas.html",
-            "templates/growth_explorer.html",
-            "core/models.py (GrowthArea._compute_composite_score weights)"
-          ],
-          "context": "GrowthArea._compute_composite_score() uses: pop_growth*0.20 + emp_growth*0.35 + income_growth*0.20 + housing_idx*0.10 + supply_idx*0.15. The result is stored as composite_score. Users currently see only the total score. Showing sub-components lets them evaluate the data rather than trust a black box.",
-          "implementation": [
-            "In the growth area detail section (or expandable row in the list template), add a score breakdown table using existing data-table CSS:",
-            "<table class='data-table'>",
-            "  <thead><tr><th>Component</th><th>Value</th><th>Weight</th></tr></thead>",
-            "  <tbody>",
-            "    <tr><td>Employment growth</td><td>{{ ga.employment_growth_rate|default:'-' }}</td><td>35%</td></tr>",
-            "    <tr><td>Population growth</td><td>{{ ga.population_growth_rate|default:'-' }}</td><td>20%</td></tr>",
-            "    <tr><td>Income growth</td><td>{{ ga.median_income_growth|default:'-' }}</td><td>20%</td></tr>",
-            "    <tr><td>Supply constraint</td><td>{{ ga.supply_constraint_index|default:'-' }}</td><td>15%</td></tr>",
-            "    <tr><td>Housing demand</td><td>{{ ga.housing_demand_index|default:'-' }}</td><td>10%</td></tr>",
-            "  </tbody>",
-            "</table>",
-            "Add below the table: <p class='page-sub'>ACS vintage: auto-detected (2024 or latest available) · Data timestamp: {{ ga.data_timestamp|date:'Y-m-d' }}</p>",
-            "Use existing data-table and page-sub CSS — no new classes"
-          ],
-          "acceptance_tests": [
-            "Browser: growth area detail shows all 5 sub-components",
-            "Browser: data timestamp is visible",
-            "No new CSS classes",
-            "No inline style="
-          ]
-        },
-
-        {
-          "id": "GA-FIX-1",
-          "title": "FRED_API_KEY: add to .env.example and settings.py",
-          "priority": "P0",
-          "depends_on": [],
-          "is_human_task": false,
-          "files_to_read_first": [".env.example", "prei/settings.py"],
-          "context": "FRED_API_KEY is used by core/integrations/sources/fred_adapter.py (imported in growth_explorer view as FREDAdapter). The key is in some .env files but not .env.example. Missing from settings.py means no standard settings.FRED_API_KEY access.",
-          "implementation": [
-            "Add to .env.example: FRED_API_KEY=your_fred_api_key_here  # Free at https://fred.stlouisfed.org/docs/api/api_key.html",
-            "Add to prei/settings.py (in the API keys block if it exists, otherwise with other env vars): FRED_API_KEY = os.environ.get('FRED_API_KEY', '')",
-            "Do not commit any .env file with a real key"
-          ],
-          "acceptance_tests": [
-            "grep FRED_API_KEY .env.example — returns a match",
-            "python manage.py shell -c \"from django.conf import settings; assert hasattr(settings, 'FRED_API_KEY')\" exits 0"
-          ]
+          "id": "AC-T01-03",
+          "description": "conftest.py provides client fixture using httpx.Client",
+          "test_type": "unit"
         }
       ]
     },
-
-    "PIPE": {
-      "name": "Pipeline UX — triage-first redesign",
-      "issues": [
-
+    {
+      "id": "T-02",
+      "summary": "Write HTTP acceptance tests for health and API endpoints",
+      "description": "Create tests/acceptance/test_api.py with content-asserting HTTP tests:\n- test_health_returns_ok: GET /health/ → 200, JSON {\"status\": \"ok\"}\n- test_health_api: GET /api/health/ → 200, JSON with \"status\" key\n- test_listings_api: GET /api/listings/ → 200, JSON with \"count\" (int) and \"results\" (list)\n- test_growth_areas_api: GET /api/v1/real-estate/growth-areas → JSON with \"results\"\n- test_foreclosures_api: GET /api/v1/foreclosures → JSON with \"results\"\n\nEach test must assert on JSON STRUCTURE, not just status code.",
+      "depends_on": ["T-01"],
+      "acceptance_criteria": [
         {
-          "id": "PIPE-NAV-1",
-          "title": "Fix nav: remove duplicate pipeline_list links, fix Rehab & Lease item",
-          "priority": "P0",
-          "depends_on": [],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "templates/base.html",
-            "core/urls.py"
-          ],
-          "context": "In base.html, the Purchase Pipeline dropdown has 6 items. Two of them link to pipeline_list: 'My Pipeline' and 'Rehab & Lease'. 'Rehab & Lease' should link to leasing_list (which exists and is confirmed in urls.py — the view leasing_list is in views.py). This is a one-line fix.",
-          "implementation": [
-            "In templates/base.html, find the 'Rehab & Lease' nav-dropdown-item",
-            "Change href from {% url 'pipeline_list' %} to {% url 'leasing_list' %}",
-            "Change the active class condition from request.resolver_match.url_name == 'pipeline_list' to request.resolver_match.url_name == 'leasing_list'",
-            "Do not change any other nav items",
-            "Do not change any CSS or JavaScript"
-          ],
-          "acceptance_tests": [
-            "Browser: 'Rehab & Lease' nav item links to /leasing/ (or wherever leasing_list resolves)",
-            "Browser: No two dropdown items link to the same URL",
-            "Browser: 'Rehab & Lease' shows active state when on the leasing list page",
-            "pytest tests/ -k 'nav or base' — all pass if nav tests exist"
-          ]
+          "id": "AC-T02-01",
+          "description": "test_health_returns_ok asserts on {\"status\": \"ok\"}",
+          "test_type": "live-system"
         },
-
         {
-          "id": "PIPE-UX-1",
-          "title": "Pipeline review queue: new view showing SCREENING-passed properties for triage",
-          "priority": "P0",
-          "depends_on": ["PIPE-NAV-1"],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "core/models.py (PipelineProperty fields confirmed above)",
-            "core/views.py (pipeline_list view — use as structural pattern)",
-            "core/urls.py (add new URL)",
-            "templates/pipeline/pipeline_list.html (use as template pattern)",
-            "static/css/base.css (confirmed classes above)"
-          ],
-          "context": "pipeline_list already exists and filters by status/stage. The triage queue is a focused view: only PipelineProperty records at SCREENING stage with screening_passed=True, sorted by gacs_score (desc), then by created_at. The investor sees one card per property with exactly 5 fields and 3 action buttons. This is the most important screen in the app — it replaces ad-hoc browsing of all pipeline properties.",
-          "implementation": [
-            "Add URL to core/urls.py: path('pipeline/review/', views.pipeline_review_queue, name='pipeline_review_queue')",
-            "Add view to core/views.py:",
-            "  @login_required",
-            "  def pipeline_review_queue(request):",
-            "    qs = PipelineProperty.objects.filter(",
-            "      user=request.user,",
-            "      status=PipelineProperty.Status.ACTIVE,",
-            "      stage=PipelineProperty.Stage.SCREENING,",
-            "      screening_passed=True,",
-            "    ).select_related('investment_analysis').order_by(",
-            "      models.F('gacs_score').desc(nulls_last=True), 'created_at'",
-            "    )",
-            "    # Count badges",
-            "    count_pass = qs.count()",
-            "    count_marginal = PipelineProperty.objects.filter(",
-            "      user=request.user,",
-            "      status=PipelineProperty.Status.ACTIVE,",
-            "      stage=PipelineProperty.Stage.SCREENING,",
-            "      screening_passed=False,",
-            "    ).count()",
-            "    # Paginate",
-            "    from django.core.paginator import Paginator",
-            "    paginator = Paginator(qs, 20)",
-            "    page_num = request.GET.get('page', 1)",
-            "    page_obj = paginator.get_page(page_num)",
-            "    # Last visit badge (session-based)",
-            "    last_visit = request.session.get('pipeline_review_last_visit')",
-            "    request.session['pipeline_review_last_visit'] = timezone.now().isoformat()",
-            "    return render(request, 'pipeline/review_queue.html', {",
-            "      'page_obj': page_obj,",
-            "      'count_pass': count_pass,",
-            "      'count_marginal': count_marginal,",
-            "      'last_visit': last_visit,",
-            "    })",
-            "Create templates/pipeline/review_queue.html — structure (use existing pipeline_list.html as pattern):",
-            "  Page heading: 'Review queue' + badge showing count_pass",
-            "  If count_pass == 0: render empty-state div with class='empty-state'",
-            "  Otherwise: for each prop in page_obj, render a card.card div containing:",
-            "    Line 1: prop.address (truncated to 60 chars with |truncatechars:60)",
-            "    Line 2: price formatted as ${{ prop.price|floatformat:0|intcomma }} or '—' if None",
-            "    Line 3: estimated_rent — show as est. rent $X/mo or 'Yield not calculated' in muted color (use page-sub class)",
-            "    Line 4: source chip: <span class='chip chip-default'>{{ prop.get_source_type_display }}</span>",
-            "    Line 5: discovered badge — if last_visit and prop.created_at > last_visit: <span class='chip chip-info'>New</span>",
-            "    Actions row: three buttons using btn class:",
-            "      <a href=\"{% url 'pipeline_detail' prop.pk %}\" class='btn btn-primary'>Underwrite →</a>",
-            "      <form method='post' action='{% url 'pipeline_advance_stage' prop.pk %}' style='display:inline'>{% csrf_token %}<input type='hidden' name='action' value='hold'><button type='submit' class='btn'>Hold</button></form>",
-            "      [Kill button — see PIPE-UX-2 for implementation]",
-            "  Pagination using existing pagination CSS class",
-            "Add link to review queue in nav: in base.html dropdown, add item above 'My Pipeline': <a href=\"{% url 'pipeline_review_queue' %}\" class='nav-dropdown-item'>Review queue<span class='sub-label'>Properties ready for your decision</span></a>"
-          ],
-          "acceptance_tests": [
-            "GET /pipeline/review/ returns 200 when user has no pipeline properties",
-            "GET /pipeline/review/ shows empty-state when no SCREENING/screening_passed=True properties exist",
-            "GET /pipeline/review/ shows cards for SCREENING+screening_passed=True properties only",
-            "Each card has exactly 3 action buttons: Underwrite, Hold, Kill",
-            "Page shows pagination when more than 20 results",
-            "pytest tests/test_views.py -k 'review_queue' — all pass",
-            "No new CSS classes beyond existing confirmed classes",
-            "No inline style= attributes"
-          ],
-          "bdd_scenarios": [
-            "Feature: Pipeline review queue",
-            "Scenario: Queue shows only screening-passed properties",
-            "  Given 5 PipelineProperty records with stage=SCREENING screening_passed=True",
-            "  And 3 PipelineProperty records with stage=SCREENING screening_passed=False",
-            "  And 2 PipelineProperty records with stage=DISCOVERED",
-            "  When I visit /pipeline/review/",
-            "  Then I see 5 property cards",
-            "  And I do not see DISCOVERED or non-passed properties",
-            "",
-            "Scenario: Empty queue shows empty state",
-            "  Given no PipelineProperty records with stage=SCREENING screening_passed=True",
-            "  When I visit /pipeline/review/",
-            "  Then I see the empty-state component"
-          ]
+          "id": "AC-T02-02",
+          "description": "test_listings_api asserts count is int, results is list",
+          "test_type": "live-system"
         },
-
         {
-          "id": "PIPE-UX-2",
-          "title": "Kill reason: enforce constrained choice in pipeline kill action",
-          "priority": "P0",
-          "depends_on": ["PIPE-UX-1"],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "core/models.py (PipelineProperty.kill_reason is TextField — CONFIRMED EXISTS)",
-            "core/services/pipeline.py (find kill_property function)",
-            "core/views.py (find pipeline_detail view — has kill_reasons list already)",
-            "templates/pipeline/pipeline_detail.html"
-          ],
-          "context": "kill_reason already exists as a TextField on PipelineProperty. kill_reasons list is already passed to pipeline_detail template. No migration needed. The gap is: kill is currently free-text or blank. The review queue Kill button needs to enforce a selection from a constrained list before the POST goes through. Vanilla JS only — no position:fixed, no modal libraries.",
-          "implementation": [
-            "Identify where pipeline kill POST is handled in views.py or pipeline service",
-            "Add KILL_REASON_CHOICES to core/models.py as a class variable on PipelineProperty (no migration — field stays TextField):",
-            "  KILL_REASON_CHOICES = [",
-            "    ('price', 'Price out of range'),",
-            "    ('condition', 'Condition / repair risk'),",
-            "    ('location', 'Location not target'),",
-            "    ('timing', 'Timing not right'),",
-            "    ('data', 'Insufficient data to evaluate'),",
-            "    ('other', 'Other'),",
-            "  ]",
-            "In core/services/pipeline.py, update kill_property() to validate kill_reason is non-empty and in [c[0] for c in PipelineProperty.KILL_REASON_CHOICES]. Raise ValueError if not.",
-            "In the kill endpoint/view: return HttpResponse(status=400) if kill_reason is blank or invalid",
-            "In templates/pipeline/review_queue.html, the Kill button expands an inline div (not modal) with a <select> of kill reasons:",
-            "  <div class='kill-inline' id='kill-{{ prop.pk }}' style='display:none'>",
-            "    <form method='post' action='{% url \"pipeline_kill\" prop.pk %}'>",
-            "      {% csrf_token %}",
-            "      <select name='kill_reason' class='form-input' required>",
-            "        <option value=''>Select reason...</option>",
-            "        {% for val, label in kill_reason_choices %}",
-            "        <option value='{{ val }}'>{{ label }}</option>",
-            "        {% endfor %}",
-            "      </select>",
-            "      <button type='submit' class='btn btn-danger'>Confirm kill</button>",
-            "      <button type='button' class='btn' onclick=\"document.getElementById('kill-{{ prop.pk }}').style.display='none'\">Cancel</button>",
-            "    </form>",
-            "  </div>",
-            "  <button class='btn btn-danger' onclick=\"document.getElementById('kill-{{ prop.pk }}').style.display='block'\">Kill ✕</button>",
-            "Add kill_reason_choices = PipelineProperty.KILL_REASON_CHOICES to the pipeline_review_queue view context"
-          ],
-          "acceptance_tests": [
-            "POST to kill endpoint without kill_reason returns HTTP 400",
-            "POST with invalid kill_reason value returns HTTP 400",
-            "POST with valid kill_reason sets PipelineProperty.kill_reason and status=KILLED",
-            "Kill button in review queue shows inline reason selector on click (manual browser test)",
-            "Cancel button hides the selector without submitting",
-            "pytest tests/ -k 'kill' — all pass",
-            "No position:fixed anywhere in the template",
-            "No modal libraries"
-          ]
+          "id": "AC-T02-03",
+          "description": "test_growth_areas_api asserts results key exists",
+          "test_type": "live-system"
         },
-
         {
-          "id": "PIPE-UX-3",
-          "title": "Pipeline funnel: surface stage counts on pipeline_dashboard (PipelineAsset) and pipeline_list (PipelineProperty)",
-          "priority": "P1",
-          "depends_on": [],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "core/views.py (pipeline_dashboard — uses PipelineAsset; pipeline_list — uses PipelineProperty, stage_items already computed)",
-            "templates/pipeline_dashboard.html",
-            "templates/pipeline/pipeline_list.html"
-          ],
-          "context": "IMPORTANT: There are TWO pipeline models and TWO pipeline views. pipeline_dashboard uses PipelineAsset (stages: GACS, DISCOVERY, SCREENING, UNDERWRITING, OFFER, DUE_DILIGENCE, CLOSING, TURNOVER, LEASING, PORTFOLIO, KILLED). pipeline_list uses PipelineProperty (stages: DISCOVERED, SCREENING, UNDERWRITING, OFFER, DUE_DILIGENCE, CLOSING, ACQUIRED, RENOVATION, STABILIZED). pipeline_list already computes stage_items (list of (stage, count) tuples) and passes it to the template. The funnel display may already exist in the template — read the template before writing code.",
-          "implementation": [
-            "Read templates/pipeline/pipeline_list.html — check if stage_items funnel is already rendered",
-            "If not rendered: add a horizontal funnel row above the property list using chip CSS class:",
-            "  <div class='chip-group' style-note='no inline style — use chip-group class which exists'>",
-            "    {% for stage, count in stage_items %}",
-            "    <a href='?status={{ current_status }}&stage={{ stage }}' class='chip {% if current_stage == stage %}is-active{% endif %}'>{{ stage }} ({{ count }})</a>",
-            "    {% endfor %}",
-            "  </div>",
-            "For pipeline_dashboard.html: read the template first. The view already passes stage_counts, flow (grouped counts), killed_assets, advanced_assets. Check if a visual funnel is rendered. If not: add a kpi-grid showing the flow groups (acquisition, deal_making, operations, portfolio counts) using existing kpi-card, kpi-label, kpi-value CSS classes.",
-            "Add 'This month' filter to pipeline_list view: add month_filter GET param, filter qs by created_at__month=current_month if param is 'month', otherwise no date filter"
-          ],
-          "acceptance_tests": [
-            "GET /pipeline/ shows stage funnel row with count per stage",
-            "GET /pipeline/?stage=SCREENING shows only SCREENING properties and highlights that chip",
-            "GET /pipeline_dashboard/ shows flow group KPIs (acquisition, deal_making, etc.)",
-            "No new CSS classes beyond chip, chip-group, chip.is-active, kpi-grid, kpi-card, kpi-label, kpi-value",
-            "pytest tests/test_views.py -k 'pipeline' — all pass"
-          ]
+          "id": "AC-T02-04",
+          "description": "test_foreclosures_api asserts results key exists",
+          "test_type": "live-system"
         },
-
         {
-          "id": "PIPE-UX-4",
-          "title": "Underwriting scorecard: move verdict and KPIs above inputs, add live JS recalculation",
-          "priority": "P1",
-          "depends_on": [],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "templates/properties/detail.html (property_detail view passes: property, analysis, score, targets, projection, exit)",
-            "core/services/scoring.py (score_listing_v2 — find what fields score object has)",
-            "static/css/base.css (confirmed: verdict-badge, verdict-a/b/c, kpi-grid, kpi-card, kpi-value)"
-          ],
-          "context": "property_detail view computes score=score_listing_v2(prop, targets) which returns a score object with: total_score, verdict, cash_on_cash, cap_rate, dscr, grm, passes_one_pct_rule. The detail template likely shows these somewhere. The UX fix is: the verdict badge and the 4 KPIs must be visible above the fold — no scrolling required. Then vanilla JS updates the 4 displayed KPIs when inputs change, for display only (server is authoritative on save).",
-          "implementation": [
-            "Read templates/properties/detail.html carefully — find where .verdict-badge is currently placed",
-            "Move the verdict section and top-4 KPI grid to be the FIRST content block in the main page body, before any form inputs or tabs",
-            "Verdict section HTML (using existing CSS only):",
-            "  <div class='kpi-grid'>",
-            "    <div class='kpi-card' id='kpi-coc'><div class='kpi-label'>Cash-on-cash</div><div class='kpi-value num' id='val-coc'>{{ score.cash_on_cash|floatformat:1 }}%</div></div>",
-            "    <div class='kpi-card' id='kpi-cap'><div class='kpi-label'>Cap rate</div><div class='kpi-value num' id='val-cap'>{{ score.cap_rate|floatformat:1 }}%</div></div>",
-            "    <div class='kpi-card' id='kpi-dscr'><div class='kpi-label'>DSCR</div><div class='kpi-value num' id='val-dscr'>{{ score.dscr|floatformat:2 }}</div></div>",
-            "    <div class='kpi-card' id='kpi-grm'><div class='kpi-label'>GRM</div><div class='kpi-value num' id='val-grm'>{{ score.grm|floatformat:1 }}</div></div>",
-            "  </div>",
-            "  <span class='verdict-badge verdict-{{ score.verdict|lower }}'>{{ score.verdict }}</span>",
-            "Add vanilla JS in {% block extra_js %} at bottom of detail.html:",
-            "  <script>",
-            "  // Display only — authoritative values computed server-side on save",
-            "  (function() {",
-            "    var rentInput = document.getElementById('id_monthly_rent_gross');",
-            "    var priceInput = document.getElementById('id_purchase_price');",
-            "    if (!rentInput || !priceInput) return;",
-            "    function recalc() {",
-            "      var rent = parseFloat(rentInput.value) || 0;",
-            "      var price = parseFloat(priceInput.value) || 0;",
-            "      if (price > 0 && rent > 0) {",
-            "        // GRM: price / (rent * 12)",
-            "        var grm = price / (rent * 12);",
-            "        var grmEl = document.getElementById('val-grm');",
-            "        if (grmEl) grmEl.textContent = grm.toFixed(1);",
-            "        // Gross yield (display only — not CoC but useful signal)",
-            "        var annualRent = rent * 12;",
-            "        var grossYield = (annualRent / price) * 100;",
-            "        // CoC and DSCR require financing inputs — skip if not available",
-            "      }",
-            "    }",
-            "    rentInput.addEventListener('input', recalc);",
-            "    priceInput.addEventListener('input', recalc);",
-            "  })();",
-            "  </script>",
-            "NOTE: Only GRM and gross yield can be reliably computed client-side from price+rent. CoC and DSCR require loan terms — add recalculation for those only if the form fields id_interest_rate, id_down_payment_pct, id_loan_term_years are present on the page"
-          ],
-          "acceptance_tests": [
-            "Browser: verdict badge and 4 KPI cards are visible without scrolling on a 1280x800 viewport",
-            "Browser: changing id_monthly_rent_gross updates val-grm within 200ms, no page reload",
-            "Server-side values in InvestmentAnalysis record are unchanged after JS-only interaction",
-            "pytest tests/ -k 'property_detail or underwriting' — all pass",
-            "No new CSS classes"
-          ]
+          "id": "AC-T02-05",
+          "description": "test_health_api asserts status key exists",
+          "test_type": "live-system"
         },
-
         {
-          "id": "PIPE-UX-5",
-          "title": "Pipeline list: add source_type filter chips",
-          "priority": "P2",
-          "depends_on": ["PIPE-UX-1"],
-          "is_human_task": false,
-          "files_to_read_first": [
-            "core/views.py (pipeline_list — current GET params: status, stage)",
-            "templates/pipeline/pipeline_list.html"
-          ],
-          "context": "pipeline_list already filters by status and stage. Adding source_type as a GET filter requires one line in the view and one chip-group row in the template. No JS needed — GET param approach.",
-          "implementation": [
-            "In pipeline_list view, after existing status/stage filters add:",
-            "  source_filter = request.GET.get('source', '')",
-            "  if source_filter:",
-            "    qs = qs.filter(source_type=source_filter)",
-            "  # Pass to template",
-            "  context['current_source'] = source_filter",
-            "  context['source_choices'] = [(c.value, c.label) for c in PipelineProperty.SourceType]",
-            "In template, add source chip-group above the table (after the existing stage chips if PIPE-UX-3 is done):",
-            "  <div class='chip-group'>",
-            "    <a href='?status={{ current_status }}' class='chip {% if not current_source %}is-active{% endif %}'>All</a>",
-            "    {% for val, label in source_choices %}",
-            "    <a href='?status={{ current_status }}&source={{ val }}' class='chip {% if current_source == val %}is-active{% endif %}'>{{ label }}</a>",
-            "    {% endfor %}",
-            "  </div>"
-          ],
-          "acceptance_tests": [
-            "GET /pipeline/?source=vrm returns only VRM-sourced properties",
-            "GET /pipeline/?source=hud returns only HUD properties",
-            "GET /pipeline/ (no source param) returns all",
-            "Active source chip is highlighted with is-active class",
-            "pytest tests/test_views.py -k 'pipeline_list' — all pass"
-          ]
+          "id": "AC-T02-06",
+          "description": "All tests pass against local container with BASE_URL=http://localhost:8000",
+          "test_type": "live-system"
+        }
+      ]
+    },
+    {
+      "id": "T-03",
+      "summary": "Write HTTP acceptance tests for HTML pages and static assets",
+      "description": "Create tests/acceptance/test_pages.py:\n- test_login_page: GET /accounts/login/ → 200, HTML body contains 'password' input\n- test_discovery_page: GET /discovery/ → 200, HTML body\n- test_static_css: GET /static/css/base.css → 200, Content-Type contains 'text/css'\n- test_discovery_page_content: GET /discovery/ → body contains expected heading\n\nUse beautifulsoup4 (already installed) for HTML parsing.",
+      "depends_on": ["T-01"],
+      "acceptance_criteria": [
+        {
+          "id": "AC-T03-01",
+          "description": "test_login_page asserts HTML contains password input",
+          "test_type": "live-system"
+        },
+        {
+          "id": "AC-T03-02",
+          "description": "test_static_css asserts Content-Type header is text/css",
+          "test_type": "live-system"
+        },
+        {
+          "id": "AC-T03-03",
+          "description": "All tests pass against local container",
+          "test_type": "live-system"
+        }
+      ]
+    },
+    {
+      "id": "T-04",
+      "summary": "Create lighthouserc.json with performance budgets",
+      "description": "Create lighthouserc.json at repo root with budget assertions:\n- FCP < 3000ms\n- LCP < 4000ms\n- CLS < 0.1\n- TTI < 5000ms\n- Server response time < 1000ms\n\nThese are initial budgets — can be tightened as the app optimizes.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {
+          "id": "AC-T04-01",
+          "description": "lighthouserc.json exists at repo root with valid JSON",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-T04-02",
+          "description": "File contains all 5 budget assertions (FCP, LCP, CLS, TTI, server-response-time)",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "T-05",
+      "summary": "Update post-deployment.yml with acceptance, performance, security, and rollback jobs",
+      "description": "Restructure post-deployment.yml:\n1. smoke job: keep 3 curls, add target URL output\n2. acceptance job: checkout, setup-python, pip install, run pytest tests/acceptance/\n3. performance job: checkout, run Lighthouse CI with lighthouserc.json\n4. security job: run OWASP ZAP baseline scan\n5. rollback job: update if condition to check all upstream jobs\n\nAll new jobs depend on smoke. Rollback runs if ANY upstream fails.",
+      "depends_on": ["T-02", "T-03", "T-04"],
+      "acceptance_criteria": [
+        {
+          "id": "AC-T05-01",
+          "description": "post-deployment.yml has smoke, acceptance, performance, security, rollback jobs",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-T05-02",
+          "description": "acceptance job runs pytest tests/acceptance/ against smoke outputs.target",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-T05-03",
+          "description": "performance job uses treosh/lighthouse-ci-action with configPath",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-T05-04",
+          "description": "security job uses zaproxy/action-baseline",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-T05-05",
+          "description": "rollback triggers on failure of smoke, acceptance, performance, or security",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-T05-06",
+          "description": "Workflow YAML is valid (parses without error)",
+          "test_type": "unit"
+        }
+      ]
+    },
+    {
+      "id": "T-06",
+      "summary": "Add Makefile target for local acceptance tests",
+      "description": "Add test-acceptance target to Makefile that runs pytest tests/acceptance/ with BASE_URL defaulting to http://localhost:8000.",
+      "depends_on": ["T-02", "T-03"],
+      "acceptance_criteria": [
+        {
+          "id": "AC-T06-01",
+          "description": "make test-acceptance runs pytest tests/acceptance/ with default BASE_URL",
+          "test_type": "unit"
+        },
+        {
+          "id": "AC-T06-02",
+          "description": "make test-acceptance respects BASE_URL env var override",
+          "test_type": "unit"
         }
       ]
     }
-  },
-
-  "sequencing": {
-    "week_1": {
-      "goal": "Data in Growth Areas, nav fixed, FRED key documented",
-      "issues": ["GA-DATA-1 (human)", "GA-FIX-1", "PIPE-NAV-1"],
-      "parallel_pairs": [["GA-FIX-1", "PIPE-NAV-1"]],
-      "blockers": ["GA-DATA-1 must complete (human runs populate command) before GA-UX-1 or GA-UX-2"]
-    },
-    "week_2": {
-      "goal": "Triage queue live, kill reason enforced, GA disclaimers",
-      "issues": ["PIPE-UX-1", "PIPE-UX-2", "GA-UX-1", "GA-DATA-2"],
-      "parallel_pairs": [["GA-UX-1", "PIPE-UX-1"]],
-      "note": "PIPE-UX-2 depends on PIPE-UX-1 (adds kill button to review queue template)"
-    },
-    "week_3": {
-      "goal": "UX polish: funnel, scorecard verdict-first, GA sub-scores",
-      "issues": ["PIPE-UX-3", "PIPE-UX-4", "GA-UX-2"],
-      "parallel_pairs": [["PIPE-UX-3", "GA-UX-2"]]
-    },
-    "week_4": {
-      "goal": "Source filters",
-      "issues": ["PIPE-UX-5"],
-      "parallel_pairs": []
-    }
-  },
-
-  "known_limitations_entries": [
-    "GACS weights are hypothesis-based (emp 0.35, pop 0.20, income 0.20, supply 0.15, housing 0.10) — not research-validated",
-    "supply_constraint_index: computed from ACS B25001 housing-unit growth vs population growth when available; defaults to 50 if ACS data unavailable",
-    "ACS vintage: auto-detected from Census /data.json API each process start; fallback default is 2024",
-    "GrowthArea: 0 rows until GA-DATA-1 is run by paruff",
-    "kill_reason: TextField (free text in existing records); constrained to KILL_REASON_CHOICES as of PIPE-UX-2",
-    "Pipeline triage queue (/pipeline/review/): new as of PIPE-UX-1; shows only SCREENING + screening_passed=True"
   ]
 }
