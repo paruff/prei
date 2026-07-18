@@ -38,6 +38,7 @@
 7. **Observability built-in.** Every workflow step logs `job-start` / `job-finish` timestamps. Build times, test results, deploy status are traceable.
 8. **Progressive delivery.** Canary → staging → production (see `docs/DEPLOYMENT_STRATEGY.md`). Never ship to 100% in one step.
 9. **Naming is infrastructure.** PR titles follow Conventional Commits. Commit messages describe intent. Tags trigger deployments.
+10. **Branch discipline.** All work happens on feature branches off `main` (trunk-based development, short-lived). Never commit directly to `main`. Branch naming: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`, `docs/<slug>`. Every branch opens a PR through CI gates before merge.
 
 ## Context Files
 | File | Why |
