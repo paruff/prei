@@ -36,7 +36,7 @@ svglib==2.0.2
 matplotlib==3.11.0
 pillow==12.3.0
 pydantic==2.13.4
-fastapi==0.139.0
+fastapi==0.139.2
 uvicorn[standard]==0.51.0
 httpx==0.28.1
 django-structlog==9.0.0  # structured JSON logging (Phase D)
