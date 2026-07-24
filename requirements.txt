@@ -23,7 +23,7 @@ types-psycopg2==2.9.21.20260712
 types-reportlab==4.5.1.20260712
 # Pre-commit tooling — must match .pre-commit-config.yaml rev:
 bandit==1.8.0          # rev: 1.8.0
-commitizen==4.16.4     # rev: v4.16.4
+commitizen==4.16.5     # rev: v4.16.4
 djlint==1.42.1         # rev: v1.40.3
 requests==2.34.2
 aiohttp==3.14.1
