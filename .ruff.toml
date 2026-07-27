@@ -12,6 +12,7 @@ line-length = 88
 # broken on Python 3.14 (PyCQA/bandit#1219) and was silently scanning almost
 # nothing. The ignored S-codes below mirror .bandit's long-standing skip list
 # (B101/B110/B112/B310/B311/B324) for the same reasons documented there.
+# Exit condition for reinstating bandit: docs/issues/tech-debt-bandit-python314.md
 select = ["E4", "E7", "E9", "F", "S"]
 ignore = ["S101", "S110", "S112", "S310", "S311", "S324"]
 

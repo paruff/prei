@@ -177,25 +177,11 @@ Plus `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` are set unconditionall
 
 ---
 
-#### 🟠 HIGH — GAP-06: Redis has no authentication in `docker-compose.yml`
+#### 🟢 LOW — [CLOSED, non-finding] GAP-06: Redis has no authentication in `docker-compose.yml`
 
-**Location:** `docker-compose.yml` — no Redis service with password; `REDIS_URL` defaults to `redis://redis:6379/0` (no auth).
+**Status:** CLOSED — re-verified 2026-07: no Redis service, `REDIS_URL`, `CELERY_BROKER_URL`, or `CELERY_RESULT_BACKEND` exists anywhere in the repo (`docker-compose.yml`, `.devcontainer/docker-compose.yml`, `deploy/`, `investor_app/settings.py`, `requirements.txt` all confirmed clean). The app does not use Redis or Celery today. Standing up an unused, password-protected Redis service purely to close this gap would be building infrastructure for a hypothetical requirement — contrary to this repo's own scoping convention (see GAP-07/GAP-08 below, and `docs/assessments/REPO_AUDIT_2026-07.md`).
 
-**Risk:** If the Redis port is accidentally exposed (e.g., misconfigured cloud security group), an attacker can read all cached financial data, session data, and Celery task queues without credentials.
-
-**Required fix:**
-
-1. Add a Redis password to `docker-compose.yml`:
-   ```yaml
-   redis:
-     image: redis:7-alpine
-     command: redis-server --requirepass ${REDIS_PASSWORD}
-   ```
-2. Add `REDIS_PASSWORD` to `.env.example`.
-3. Update `REDIS_URL`, `CELERY_BROKER_URL`, and `CELERY_RESULT_BACKEND` to include the password:
-   ```
-   REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-   ```
+**Reopen when:** Redis/Celery is actually introduced. At that point, follow the pattern already used elsewhere: `command: redis-server --requirepass ${REDIS_PASSWORD}`, a `REDIS_PASSWORD` entry in `.env.example`, and `REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0`.
 
 ---
 
@@ -215,23 +201,21 @@ Plus `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` are set unconditionall
 
 ---
 
-#### 🟡 MEDIUM — GAP-09: `PostgreSQL` container has no explicit password in `docker-compose.yml`
+#### 🟢 LOW — [RESOLVED] GAP-09: `PostgreSQL` container has no explicit password
 
-**Location:** `docker-compose.yml` uses a minimal `postgres:16-alpine` image without specifying a password environment variable. The default PostgreSQL image uses `POSTGRES_PASSWORD=postgres` (from `.env.example`).
+**Location:** `.devcontainer/docker-compose.yml` (root `docker-compose.yml` has no Postgres service at all — Postgres only exists in the devcontainer environment; production uses Render's externally-managed Postgres via `DATABASE_URL`).
 
-**Risk:** Trivially guessable database password if the Postgres port is exposed.
-
-**Required fix:** Use a strong, randomly-generated password. Rotate `.env.example` to document `POSTGRES_PASSWORD=<strong-random-password>` and enforce it in `docker-compose.yml` via `environment: POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}`.
+**Status:** RESOLVED — the devcontainer's hardcoded `POSTGRES_PASSWORD: prei` has been replaced with a stronger generated password, following the same "DEVCONTAINER ONLY" comment-annotation pattern already used for `SECRET_KEY` in that file. This is a local-only devcontainer credential, not reachable outside the container network.
 
 ---
 
-#### 🟡 MEDIUM — GAP-10: Anonymous throttle rate (100/hour) may be too permissive for financial endpoints
+#### 🟢 LOW — [RESOLVED] GAP-10: Anonymous throttle rate may be too permissive for financial endpoints
 
-**Location:** `investor_app/settings.py` `DEFAULT_THROTTLE_RATES.anon: "100/hour"`.
+**Location:** `investor_app/settings.py` `DEFAULT_THROTTLE_RATES.anon` (currently `"100/day"` — re-verified 2026-07; not `"100/hour"` as originally audited).
 
-**Risk:** The `/api/carrying-costs/` and `/api/strategy-comparison/` endpoints perform CPU-bound financial calculations. At 100 unauthenticated requests per hour, a modest botnet can cause meaningful compute load.
+**Risk:** The `/api/v1/real-estate/carrying-costs/` and `/api/v1/real-estate/carrying-costs/compare-strategies` endpoints perform CPU-bound financial calculations. A blanket anon rate shared across all endpoints doesn't scope down specifically for the CPU-expensive ones.
 
-**Required fix:** Apply a stricter throttle to write/calculation endpoints. Create a `CalculationRateThrottle` class (e.g., `20/hour` for anon) and apply it specifically to `calculate_carrying_costs` and `compare_strategies`.
+**Status:** RESOLVED — added a `CalculationRateThrottle` (anon: `20/hour`) applied specifically to `calculate_carrying_costs` and `compare_investment_strategies` in `core/api_views.py`, on top of the existing blanket `UserRateThrottle`/`AnonRateThrottle`.
 
 ---
 

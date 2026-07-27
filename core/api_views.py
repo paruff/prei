@@ -84,6 +84,12 @@ logger = logging.getLogger(__name__)
 DEFAULT_LISTING_SCORE = Decimal("0")
 
 
+class CalculationRateThrottle(AnonRateThrottle):
+    """Stricter anon rate for CPU-bound financial calculation endpoints."""
+
+    scope = "calculation"
+
+
 class ListingPagination(PageNumberPagination):
     """Pagination for listing API responses."""
 
@@ -712,7 +718,7 @@ def get_property_type_defaults(
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
-@throttle_classes([UserRateThrottle, AnonRateThrottle])
+@throttle_classes([UserRateThrottle, CalculationRateThrottle])
 def calculate_carrying_costs(request):
     """
     Calculate carrying costs and investment metrics for a property.
@@ -1924,7 +1930,7 @@ def export_property_deal_pack(request, property_id: int):
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
-@throttle_classes([UserRateThrottle, AnonRateThrottle])
+@throttle_classes([UserRateThrottle, CalculationRateThrottle])
 def compare_investment_strategies(request):
     """
     Compare different investment strategies for a property.

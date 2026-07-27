@@ -9,6 +9,7 @@
 # for this reason. Ruff's S rule family (.ruff.toml) is the active
 # security-lint gate and mirrors the skip list below. Reconsider
 # reintroducing bandit once upstream ships confirmed 3.14 support.
+# Tracked in docs/issues/tech-debt-bandit-python314.md.
 
 # Skip rules that flag safe patterns used intentionally in this project:
 #   B101: assert_used — pytest uses assert in tests; not production code

@@ -827,7 +827,7 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 .brrrr-timeline {
   margin-top: var(--sp-4);
   padding: var(--sp-3);
-  background: var(--surface-2);
+  background: var(--surface-secondary);
   border-radius: var(--radius-md);
 }
 .brrrr-timeline-title { margin-bottom: var(--sp-3); }
@@ -846,17 +846,17 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
   font-size: 11px;
   font-weight: 600;
 }
-.brrrr-timeline-segment--rehab  { flex: 2; background: var(--gold-6); }
-.brrrr-timeline-segment--rentup { flex: 1; background: var(--blue-6); }
-.brrrr-timeline-segment--hold   { flex: 5; background: var(--green-6); }
-.brrrr-timeline-segment--cashflow { flex: 2; background: var(--accent-6); }
-.brrrr-timeline-caption { font-size: 12px; color: var(--text-sub); }
+.brrrr-timeline-segment--rehab  { flex: 2; background: var(--color-caution-400); }
+.brrrr-timeline-segment--rentup { flex: 1; background: var(--color-info-400); }
+.brrrr-timeline-segment--hold   { flex: 5; background: var(--color-grow-400); }
+.brrrr-timeline-segment--cashflow { flex: 2; background: var(--color-accent-400); }
+.brrrr-timeline-caption { font-size: 12px; color: var(--color-neutral-500); }
 
 /* ── MAO (max allowable offer) visualization ──────────────────── */
 .mao-viz {
   margin-top: var(--sp-3);
   padding: var(--sp-2);
-  background: var(--surface-2);
+  background: var(--surface-secondary);
   border-radius: var(--radius-md);
 }
 .mao-viz-row {
@@ -868,18 +868,18 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 .mao-viz-label--bold { font-size: 12px; font-weight: 600; }
 .mao-viz-bar {
   height: 12px;
-  background: var(--surface-3);
+  background: var(--color-neutral-100);
   border-radius: 6px;
   overflow: hidden;
 }
 .mao-viz-fill {
   height: 100%;
   width: 85%;
-  background: var(--gold-6);
+  background: var(--color-caution-400);
   border-radius: 6px;
 }
 .mao-viz-caption {
   font-size: 11px;
-  color: var(--text-sub);
+  color: var(--color-neutral-500);
   margin-top: var(--sp-1);
 }
