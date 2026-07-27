@@ -99,7 +99,7 @@ These rules are enforced in code review and by `@security-agent`. Every PR that 
 | Django `SecurityMiddleware` | ✅ Active | Included in `MIDDLEWARE` |
 | CSRF protection | ✅ Active | `CsrfViewMiddleware` in `MIDDLEWARE` |
 | Clickjacking protection | ✅ Active | `XFrameOptionsMiddleware` (default: `SAMEORIGIN`) |
-| Rate throttling | ✅ Active | `UserRateThrottle` + `AnonRateThrottle` at 100/hour each |
+| Rate throttling | ✅ Active | `UserRateThrottle` (1000/day) + `AnonRateThrottle` (100/day) globally; `CalculationRateThrottle` (anon 20/hour) additionally on `calculate_carrying_costs` and `compare_investment_strategies` — see GAP-10 |
 | Input validation — serializers | ✅ Active | `min_value`, `max_value`, `max_length` on numeric fields |
 | Input validation — query params | ✅ Active | `core/validators.py` functions used in all views |
 | Error message sanitisation | ✅ Active | Generic error strings returned; raw DB errors logged only |
@@ -108,7 +108,7 @@ These rules are enforced in code review and by `@security-agent`. Every PR that 
 | Secrets via env vars | ✅ Active | `django-environ` used throughout `settings.py` |
 | Division-by-zero guards | ✅ Active | All finance utils guard denominators |
 | `numpy-financial` safe fallback | ✅ Active | `irr()` wraps in `try/except`, returns `Decimal("0")` |
-| Security static analysis | ✅ Active | Ruff `S` rules (flake8-bandit), see `.ruff.toml`. Bandit itself is disabled — broken on Python 3.14, see `.bandit` |
+| Security static analysis | ✅ Active | Ruff `S` rules (flake8-bandit) are the system of record, see `.ruff.toml`. Bandit itself is disabled — broken on Python 3.14 (`PyCQA/bandit#1219`, still open as of 2026-07); exit condition tracked in `docs/issues/tech-debt-bandit-python314.md` |
 
 ### 4.2 Known Gaps — Remediation Required
 
@@ -191,6 +191,8 @@ Plus `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` are set unconditionall
 
 **Required fix:** Add `django-csp` to `requirements.txt` (requires PM approval) and configure a restrictive policy for templates that render user data. Alternatively, add a CSP header in the reverse proxy configuration (Nginx/Caddy).
 
+**Re-assessed 2026-07:** Still correctly deferred — no reverse-proxy hardening work has started.
+
 ---
 
 #### 🟡 MEDIUM — GAP-08: No CORS configuration
@@ -198,6 +200,8 @@ Plus `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` are set unconditionall
 **Risk:** If a browser-based frontend SPA is added (likely given the DRF API surface), without `django-cors-headers`, cross-origin requests from the frontend will fail. Conversely, a wildcard CORS policy (common workaround) would allow any origin to make credentialed requests.
 
 **Required fix:** When a frontend is added, install `django-cors-headers` and set `CORS_ALLOWED_ORIGINS` to an explicit list. Never use `CORS_ALLOW_ALL_ORIGINS = True` in production.
+
+**Re-assessed 2026-07:** Still correctly deferred — no SPA frontend has started; the app remains server-rendered Django templates plus a same-origin DRF API.
 
 ---
 
@@ -304,6 +308,6 @@ This document is reviewed:
 - After any security incident
 - When a new integration or authentication mechanism is added
 
-**Last reviewed:** 2026-05-06
-**Next scheduled review:** 2026-08-06
+**Last reviewed:** 2026-07-27 (Phase 2 of `docs/assessments/REPO_AUDIT_2026-07.md`, performed ahead of the originally-scheduled 2026-08-06 date at the requester's direction)
+**Next scheduled review:** 2026-10-27
 **Owner:** PM / Tech Lead (see `docs/AI_POLICY.md` for accountability structure)

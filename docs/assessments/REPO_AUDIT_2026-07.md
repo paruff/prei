@@ -278,24 +278,24 @@ duplicate it).
 | 0-5 | Update `SECURITY.md` §4.1 to stop listing Bandit as providing active coverage until Finding 1 is resolved | 1 | 10 min |
 | 0-6 | `git rm --cached test_check.db`; add to `.gitignore` | 5 | 5 min |
 
-### Phase 1 — This week (before 2026-08-06 security review)
+### Phase 1 — This week (before 2026-08-06 security review) — ✅ DONE 2026-07-27
 
-| # | Task | Finding | Effort |
+| # | Task | Finding | Effort | Status |
+|---|---|---|---|---|
+| 1-1 | Add Redis password to `docker-compose.yml` + `.env.example` (GAP-06) | 3 | ~2-3 hrs | ✅ Closed as non-finding — no Redis/Celery exists anywhere in the repo; see `SECURITY.md` GAP-06 |
+| 1-2 | Add explicit strong Postgres password to `docker-compose.yml` + `.env.example` (GAP-09) | 3 | ~1 hr (bundle with 1-1) | ✅ Real target was `.devcontainer/docker-compose.yml`, not root `docker-compose.yml`; fixed there |
+| 1-3 | Add `CalculationRateThrottle` (stricter anon rate) for `calculate_carrying_costs` and `compare_strategies` (GAP-10) | 3 | ~1-2 hrs | ✅ Added, anon 20/hour, applied to both endpoints |
+| 1-4 | Add `pytest.ini` `addopts` (or equivalent) so bare `pytest` matches `make test-unit`'s safe default scope | 4 | ~30 min | ✅ Also fixed `make test-unit`'s own `-k` filter — it was missing `not acceptance`/`not unreachable_url`, so it wasn't actually safe to run without a live server either |
+| 1-5 | File a tracking issue (or backlog entry) linking upstream `PyCQA/bandit#1219`, so Phase 0's Ruff stopgap has a defined exit condition | 1 | 15 min | ✅ `docs/issues/tech-debt-bandit-python314.md` |
+
+### Phase 2 — At the 2026-08-06 quarterly security review — ✅ DONE 2026-07-27 (performed ~10 days early, at requester's direction)
+
+| # | Task | Finding | Status |
 |---|---|---|---|
-| 1-1 | Add Redis password to `docker-compose.yml` + `.env.example` (GAP-06) | 3 | ~2-3 hrs |
-| 1-2 | Add explicit strong Postgres password to `docker-compose.yml` + `.env.example` (GAP-09) | 3 | ~1 hr (bundle with 1-1) |
-| 1-3 | Add `CalculationRateThrottle` (stricter anon rate) for `calculate_carrying_costs` and `compare_strategies` (GAP-10) | 3 | ~1-2 hrs |
-| 1-4 | Add `pytest.ini` `addopts` (or equivalent) so bare `pytest` matches `make test-unit`'s safe default scope | 4 | ~30 min |
-| 1-5 | File a tracking issue (or backlog entry) linking upstream `PyCQA/bandit#1219`, so Phase 0's Ruff stopgap has a defined exit condition | 1 | 15 min |
-
-### Phase 2 — At the 2026-08-06 quarterly security review
-
-| # | Task | Finding |
-|---|---|---|
-| 2-1 | Confirm Finding 1 (bandit) status: either upstream fixed and re-pinned, or Ruff `S` rules remain the system of record — update `SECURITY.md` §4.1 accordingly | 1 |
-| 2-2 | Re-verify GAP-06/09/10 closure; move to "Resolved Limitations" | 3 |
-| 2-3 | Re-assess GAP-07 (CSP) / GAP-08 (CORS) trigger conditions — still correctly deferred if no reverse-proxy hardening work or SPA frontend has started | 3 |
-| 2-4 | Bump `SECURITY.md` "Last reviewed" / "Next scheduled review" dates | — |
+| 2-1 | Confirm Finding 1 (bandit) status: either upstream fixed and re-pinned, or Ruff `S` rules remain the system of record — update `SECURITY.md` §4.1 accordingly | 1 | ✅ Still unfixed upstream; Ruff `S` confirmed as system of record in `SECURITY.md` §4.1 |
+| 2-2 | Re-verify GAP-06/09/10 closure; move to "Resolved Limitations" | 3 | ✅ Marked CLOSED/RESOLVED inline in `SECURITY.md` §4.2, matching the existing GAP-01–05/GAP-11 convention (no separate section exists in this doc) |
+| 2-3 | Re-assess GAP-07 (CSP) / GAP-08 (CORS) trigger conditions — still correctly deferred if no reverse-proxy hardening work or SPA frontend has started | 3 | ✅ Still correctly deferred — re-assessment note added to both in `SECURITY.md` |
+| 2-4 | Bump `SECURITY.md` "Last reviewed" / "Next scheduled review" dates | — | ✅ Last reviewed 2026-07-27, next scheduled 2026-10-27 |
 
 ### Explicitly out of scope for this plan
 
@@ -311,9 +311,9 @@ duplicate it).
 
 ## Verification Checklist (for whoever picks up Phase 0/1)
 
-- [ ] `mypy .` runs without config/collection errors (Finding 2)
-- [ ] `ruff check .` still passes after enabling `S` rules, or all suppressions are reviewed and justified (Finding 1)
-- [ ] Bandit (or its guard) fails the build if any file is skipped due to a scan exception (Finding 1)
-- [ ] `docker compose up -d` still works end-to-end after Redis/Postgres password changes (Finding 3)
-- [ ] Bare `pytest` at repo root exits 0 on a clean checkout with no live server/Docker/API creds (Finding 4)
-- [ ] `git ls-files | grep test_check.db` returns nothing (Finding 5)
+- [x] `mypy .` runs without config/collection errors (Finding 2)
+- [x] `ruff check .` still passes after enabling `S` rules, or all suppressions are reviewed and justified (Finding 1)
+- [x] Bandit is removed from CI + pre-commit (not merely guarded) — Ruff `S` rules are the system of record; see `docs/issues/tech-debt-bandit-python314.md` for the re-adoption exit condition (Finding 1)
+- [x] `docker compose up -d` still works end-to-end after Redis/Postgres password changes (Finding 3) — no Redis exists in this repo (GAP-06 closed as non-finding); verified `docker compose -f .devcontainer/docker-compose.yml up -d db` against a live local Docker server: healthcheck passes and both local-socket and TCP auth with the new `POSTGRES_PASSWORD` succeed
+- [x] Bare `pytest` at repo root exits 0 on a clean checkout with no live server/Docker/API creds (Finding 4)
+- [x] `git ls-files | grep test_check.db` returns nothing (Finding 5)
