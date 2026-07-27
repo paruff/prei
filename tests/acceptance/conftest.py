@@ -9,6 +9,7 @@ for the test session. No Django test client either way.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import httpx
 import pytest
@@ -32,11 +33,20 @@ def pytest_collection_modifyitems(
     main thread are visible to the live_server's background-thread
     connection). Skipped when ``BASE_URL`` is set — deployed-artifact runs
     never touch Django's DB fixtures.
+
+    ``pytest_collection_modifyitems`` is a session-wide hook: once this
+    conftest.py loads (e.g. because a CI job collects ``tests/`` as a
+    whole, which includes this subdirectory), it receives every collected
+    item, not just this directory's. Must filter to this package's own
+    tests, or it mutates fixture markers on unrelated suites too — breaking
+    their normal per-test rollback isolation.
     """
     if os.environ.get("BASE_URL"):
         return
+    this_dir = Path(__file__).resolve().parent
     for item in items:
-        item.add_marker(pytest.mark.django_db(transaction=True))
+        if this_dir in item.path.resolve().parents:
+            item.add_marker(pytest.mark.django_db(transaction=True))
 
 
 @pytest.fixture(scope="session")
