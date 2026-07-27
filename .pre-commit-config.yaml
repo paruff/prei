@@ -34,6 +34,7 @@ repos:
           - psycopg2-binary
           - types-psycopg2
           - types-reportlab
+          - types-defusedxml
           - django-environ
           - pydantic
           - fastapi
@@ -71,15 +72,6 @@ repos:
     hooks:
       - id: commitizen
         stages: [commit-msg]
-
-  # --- Python security lint (bandit) ---
-  - repo: https://github.com/pycqa/bandit
-    rev: 1.8.0
-    hooks:
-      - id: bandit
-        args: [-x, ".venv,migrations", -f, txt]
-        exclude: ^migrations/
-        pass_filenames: true
 
   # --- General-purpose file checks ---
   - repo: https://github.com/pre-commit/pre-commit-hooks

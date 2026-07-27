@@ -108,6 +108,7 @@ These rules are enforced in code review and by `@security-agent`. Every PR that 
 | Secrets via env vars | ✅ Active | `django-environ` used throughout `settings.py` |
 | Division-by-zero guards | ✅ Active | All finance utils guard denominators |
 | `numpy-financial` safe fallback | ✅ Active | `irr()` wraps in `try/except`, returns `Decimal("0")` |
+| Security static analysis | ✅ Active | Ruff `S` rules (flake8-bandit), see `.ruff.toml`. Bandit itself is disabled — broken on Python 3.14, see `.bandit` |
 
 ### 4.2 Known Gaps — Remediation Required
 

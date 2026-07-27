@@ -227,7 +227,7 @@ class TexasCountyForeclosureSource(DiscoverySource):
             if resp.status_code != 200:
                 return []
             listings: list[dict[str, Any]] = []
-            import xml.etree.ElementTree as ET
+            import defusedxml.ElementTree as ET
 
             root = ET.fromstring(resp.text)
             for item in root.iter("item"):

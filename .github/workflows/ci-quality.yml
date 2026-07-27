@@ -39,13 +39,11 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
       - name: Install dependencies
-        run: pip install ruff==0.15.20 bandit==1.8.0
+        run: pip install ruff==0.15.20
       - name: Ruff
         run: ruff check .
       - name: Ruff format
         run: ruff format --check .
-      - name: Bandit (security lint)
-        run: bandit -r core/ investor_app/ -x ".venv,migrations" -c .bandit -f txt
 
   secrets:
     name: "🔑 Secrets"

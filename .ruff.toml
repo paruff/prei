@@ -6,9 +6,19 @@ target-version = "py314"
 # Preferred line length
 line-length = 88
 
-# You can explicitly select/ignore rules here if needed.
-# Example:
-# select = ["E", "F", "W", "C", "Q"]
-# ignore = ["E203"]
+[lint]
+# S = flake8-bandit security rules, ported into ruff. This is the project's
+# security-lint gate: bandit itself is disabled (see .bandit) because it is
+# broken on Python 3.14 (PyCQA/bandit#1219) and was silently scanning almost
+# nothing. The ignored S-codes below mirror .bandit's long-standing skip list
+# (B101/B110/B112/B310/B311/B324) for the same reasons documented there.
+select = ["E4", "E7", "E9", "F", "S"]
+ignore = ["S101", "S110", "S112", "S310", "S311", "S324"]
 
-# Per-file ignores and other fine-grained settings can be added as needed later.
+[lint.per-file-ignores]
+# Hardcoded-password false positives in test fixtures (not real secrets),
+# plus subprocess/partial-path findings from Docker/process test scaffolding.
+"**/conftest.py" = ["S106"]
+"**/tests/**" = ["S106", "S603", "S607"]
+"**/tests_bdd/**" = ["S106"]
+"**/test_*.py" = ["S106", "S603", "S607"]
