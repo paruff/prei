@@ -14,6 +14,31 @@ import httpx
 import pytest
 
 
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Mark every acceptance test as needing DB access, live_server-fallback only.
+
+    pytest-django decides which database aliases to migrate by statically
+    scanning each collected test's declared fixture names / ``django_db``
+    marker (see ``_get_databases_for_test`` in pytest-django) — a scan that
+    happens before any fixture body runs. Our ``client``/``base_url``
+    fixtures only reach ``db``/``live_server`` dynamically, via
+    ``request.getfixturevalue()`` inside the fixture body, which that static
+    scan can't see. Without this marker pytest-django concludes no test
+    needs a database, skips ``migrate`` entirely, and every request 500s
+    with "no such table". ``transaction=True`` matches ``live_server``'s
+    own dependency on ``transactional_db`` (required so writes made on the
+    main thread are visible to the live_server's background-thread
+    connection). Skipped when ``BASE_URL`` is set — deployed-artifact runs
+    never touch Django's DB fixtures.
+    """
+    if os.environ.get("BASE_URL"):
+        return
+    for item in items:
+        item.add_marker(pytest.mark.django_db(transaction=True))
+
+
 @pytest.fixture(scope="session")
 def base_url(request: pytest.FixtureRequest) -> str:
     """Base URL to run acceptance tests against.
@@ -32,19 +57,6 @@ def base_url(request: pytest.FixtureRequest) -> str:
     request.getfixturevalue("django_db_setup")
     live_server = request.getfixturevalue("live_server")
     return live_server.url
-
-
-@pytest.fixture(autouse=True)
-def _enable_db_for_live_server(request: pytest.FixtureRequest, base_url: str) -> None:
-    """Unblock DB access when running against the live_server fallback.
-
-    pytest-django blocks DB access per test function unless that test
-    requested it; the live server handles requests on a background
-    thread that inherits the block. Only needed when ``BASE_URL`` isn't
-    set — deployed-artifact runs never touch Django's DB fixtures.
-    """
-    if not os.environ.get("BASE_URL"):
-        request.getfixturevalue("db")
 
 
 @pytest.fixture(scope="session")
