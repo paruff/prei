@@ -2,6 +2,8 @@
 
 import httpx
 
+from .schemas import GrowthAreasResponse, LoginGateAssertion, NoCrashAssertion
+
 
 class TestGrowthAreasAPI:
     """Growth areas REST API must return structured data."""
@@ -9,10 +11,8 @@ class TestGrowthAreasAPI:
     def test_returns_areas_for_state(self, client: httpx.Client) -> None:
         resp = client.get("/api/v1/real-estate/growth-areas", params={"state": "TX"})
         assert resp.status_code < 500
-        data = resp.json()
-        assert isinstance(data, dict)
-        assert "areas" in data
-        assert "totalResults" in data
+        areas = GrowthAreasResponse.model_validate(resp.json())
+        assert areas.state == "TX"
 
     def test_rejects_invalid_state(self, client: httpx.Client) -> None:
         resp = client.get("/api/v1/real-estate/growth-areas", params={"state": "XX"})
@@ -24,6 +24,8 @@ class TestGrowthAreasAPI:
                 "/api/v1/real-estate/growth-areas", params={"state": state}
             )
             assert resp.status_code < 500
+            areas = GrowthAreasResponse.model_validate(resp.json())
+            assert areas.state == state
 
 
 class TestSystemPage:
@@ -31,9 +33,9 @@ class TestSystemPage:
 
     def test_system_page_requires_login(self, client: httpx.Client) -> None:
         resp = client.get("/system/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
     def test_system_page_no_crash(self, client: httpx.Client) -> None:
         """System page should not 500 even when unauthenticated."""
         resp = client.get("/system/", follow_redirects=True)
-        assert resp.status_code < 500
+        NoCrashAssertion.model_validate({"status_code": resp.status_code})
