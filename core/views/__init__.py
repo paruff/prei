@@ -1403,6 +1403,7 @@ def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
 def pipeline_list(request: HttpRequest) -> HttpResponse:
     """Pipeline property list with stage funnel and filtering.
 

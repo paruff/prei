@@ -7,6 +7,16 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": str(BASE_DIR / "test_db.sqlite3"),
+        # SQLite defaults the pytest-django test database to :memory: unless
+        # TEST["NAME"] is set explicitly. In-memory SQLite connections are
+        # private per-connection, so the live_server fixture's background
+        # thread (a separate connection) sees an empty, unmigrated schema
+        # while the main test thread sees the real one. A file-based test
+        # database is required for live_server to work with SQLite — see
+        # https://pytest-django.readthedocs.io/en/latest/database.html#live-server
+        "TEST": {
+            "NAME": str(BASE_DIR / "test_db.sqlite3"),
+        },
     }
 }
 

@@ -8,6 +8,8 @@ schema level rather than in individual assertions.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -67,3 +69,15 @@ class StaticAssetAssertion(BaseModel):
     status_code: int = Field(ge=200, lt=400)
     content_type: str
     body_not_empty: bool
+
+
+class LoginGateAssertion(BaseModel):
+    """A login-gated page either renders (200) or redirects to login (302)."""
+
+    status_code: Literal[200, 302]
+
+
+class NoCrashAssertion(BaseModel):
+    """A page must respond without a server error, regardless of auth state."""
+
+    status_code: int = Field(ge=200, lt=500)

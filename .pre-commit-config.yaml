@@ -43,7 +43,7 @@ repos:
           - opentelemetry-sdk
           - opentelemetry-exporter-otlp
         args: [--show-error-codes, --no-incremental]
-        exclude: ^migrations/|^tests_bdd/
+        exclude: ^migrations/|^tests_bdd/|^tests/acceptance/
         verbose: true
 
   # --- GitOps validation (Dockerfile, docker-compose, K8s, Kustomize) ---

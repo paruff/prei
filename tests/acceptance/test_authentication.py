@@ -10,6 +10,8 @@ import re
 
 import httpx
 
+from .schemas import LoginGateAssertion, LoginPageAssertion
+
 
 def _csrf_token(client: httpx.Client) -> str:
     """Extract CSRF token from the login page HTML."""
@@ -28,8 +30,16 @@ class TestLoginFlow:
     def test_login_form_accessible(self, client: httpx.Client) -> None:
         """GET /accounts/login/ returns HTML with a login form."""
         resp = client.get("/accounts/login/")
-        assert resp.status_code == 200
-        assert "text/html" in resp.headers.get("content-type", "")
+        content_type = resp.headers.get("content-type", "")
+        page = LoginPageAssertion.model_validate(
+            {
+                "status_code": resp.status_code,
+                "has_password_input": 'type="password"' in resp.text,
+                "content_is_html": "text/html" in content_type,
+            }
+        )
+        assert page.content_is_html
+        assert page.has_password_input
         assert "csrfmiddlewaretoken" in resp.text
 
     def test_invalid_credentials_returns_login_page(self, client: httpx.Client) -> None:
@@ -61,7 +71,7 @@ class TestLoginFlow:
     ) -> None:
         """GET /discovery/ redirects to login when unauthenticated."""
         resp = client.get("/discovery/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
 
 class TestSessionHandling:
@@ -80,9 +90,7 @@ class TestSessionHandling:
             follow_redirects=False,
         )
         # 302 = success (redirect to dashboard), 200 = failed (seeded? or not)
-        assert resp.status_code in (200, 302), (
-            f"Login response unexpected: {resp.status_code}"
-        )
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
     def test_csrf_token_present_on_login_page(self, client: httpx.Client) -> None:
         """Login page always includes a CSRF token."""
