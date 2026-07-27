@@ -14,7 +14,7 @@
   {% csrf_token %}
   <div class="card">
     <h2 class="card-title">Select States to Analyze</h2>
-    <div class="form-row" style="gap: var(--sp-3); align-items: end;">
+    <div class="form-row form-row--align-end">
       <div class="form-group">
         <label>Tier</label>
         <select name="tier" id="tier-select" class="form-input">
@@ -33,7 +33,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="form-group" style="align-self: flex-end;">
+      <div class="form-group self-end">
         <button type="submit" class="btn btn-primary" id="analyze-btn">Analyze Markets</button>
       </div>
     </div>
@@ -41,16 +41,16 @@
 </form>
 
 {% if error %}
-<div class="card" style="margin-top: var(--sp-4); border-left: 4px solid var(--color-danger, #dc2626);">
+<div class="card card-danger">
   <div class="card-body">
-    <p style="color: var(--color-danger, #dc2626); margin: 0;">{{ error|safe }}</p>
+    <p class="card-danger-text">{{ error|safe }}</p>
   </div>
 </div>
 {% endif %}
 
 <div id="results-section"{% if results is None %} hidden{% endif %}>
 {% if results %}
-  <div class="card" style="margin-top: var(--sp-5);">
+  <div class="card mt-5">
     <h2 class="card-title">Top Markets</h2>
     <div class="table-wrap">
       <table class="data-table">
@@ -90,7 +90,7 @@
               {% endwith %}
             </td>
             <td>
-              <div style="font-size: 12px; line-height: 1.5;">
+              <div class="text-detail">
                 Emp: {{ r.growth_area.employment_growth_rate|mul:100|floatformat:1 }}% &middot;
                 Pop: {{ r.growth_area.population_growth_rate|mul:100|floatformat:1 }}% &middot;
                 Demand: {{ r.growth_area.housing_demand_index }}
@@ -110,7 +110,7 @@
 
 <div id="loading-overlay" class="loading-overlay" hidden>
   <div class="loading-card card">
-    <div class="card-body" style="text-align:center;">
+    <div class="card-body text-center">
       <div class="loading-spinner"></div>
       <p>Analyzing growth markets...</p>
       <div class="progress-bar-wrap"><div id="analysis-progress" class="progress-bar" role="progressbar"></div></div>

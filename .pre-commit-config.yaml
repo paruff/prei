@@ -34,21 +34,15 @@ repos:
           - psycopg2-binary
           - types-psycopg2
           - types-reportlab
+          - types-defusedxml
           - django-environ
           - pydantic
           - fastapi
           - click
-        args:
-          - --show-error-codes
-          - --no-incremental
-          - --ignore-missing-imports
-          - --disable-error-code=var-annotated
-          - --disable-error-code=attr-defined
-          - --disable-error-code=operator
-          - --disable-error-code=misc
-          - --disable-error-code=has-type
-          - --disable-error-code=arg-type
-          - --disable-error-code=assignment
+          - opentelemetry-api
+          - opentelemetry-sdk
+          - opentelemetry-exporter-otlp
+        args: [--show-error-codes, --no-incremental]
         exclude: ^migrations/|^tests_bdd/|^tests/acceptance/
         verbose: true
 
@@ -82,15 +76,6 @@ repos:
       - id: commitizen
         stages: [commit-msg]
 
-  # --- Python security lint (bandit) ---
-  - repo: https://github.com/pycqa/bandit
-    rev: 1.8.0
-    hooks:
-      - id: bandit
-        args: [-x, ".venv,migrations", -f, txt]
-        exclude: ^migrations/
-        pass_filenames: true
-
   # --- General-purpose file checks ---
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -109,7 +94,7 @@ repos:
         args: [--fix=lf]
       - id: name-tests-test               # enforce test_ prefix on test files
         args: [--django]
-        exclude: ^tests/acceptance/schemas\.py$
+        exclude: ^tests/finance_reference\.py$|^tests/acceptance/schemas\.py$
       - id: check-yaml
         exclude: ^mkdocs\.yml$
 

@@ -11,7 +11,8 @@ services:
       - ..:/workspaces/prei:cached
     environment:
       DJANGO_SETTINGS_MODULE: investor_app.settings
-      DATABASE_URL: postgres://prei:prei@db:5432/prei
+      # DEVCONTAINER ONLY — matches db.POSTGRES_PASSWORD below; do not reuse outside local development
+      DATABASE_URL: postgres://prei:devcontainer-only-postgres-password-change-me@db:5432/prei
       # DEVCONTAINER ONLY — do not reuse this key outside local development
       SECRET_KEY: dev-secret-key-change-me
       DEBUG: "True"
@@ -27,7 +28,8 @@ services:
     environment:
       POSTGRES_DB: prei
       POSTGRES_USER: prei
-      POSTGRES_PASSWORD: prei
+      # DEVCONTAINER ONLY — do not reuse this password outside local development
+      POSTGRES_PASSWORD: devcontainer-only-postgres-password-change-me
     volumes:
       - devcontainer-postgres-data:/var/lib/postgresql/data
     healthcheck:

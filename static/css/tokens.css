@@ -23,6 +23,9 @@
   --color-neutral-700: #444441;
   --color-neutral-900: #2C2C2A;
 
+  --color-info-400:   #3B7EC4;
+  --color-accent-400: #8B5CF0;
+
   /* ── Semantic aliases ───────────────────────── */
   --color-primary:      var(--color-grow-400);
   --color-primary-bg:   var(--color-grow-50);

@@ -41,7 +41,7 @@
 </div>
 
 {% if top_areas %}
-<div class="card" style="margin-top:var(--sp-5)">
+<div class="card mt-5">
   <h2 class="card-title">Top Growth Areas</h2>
   <table class="table">
     <thead><tr><th>City</th><th>State</th><th>Score</th><th>Landlord</th></tr></thead>
@@ -59,7 +59,7 @@
 </div>
 {% endif %}
 
-<div class="card" style="margin-top:var(--sp-5)">
+<div class="card mt-5">
   <h2 class="card-title">Data Source Health</h2>
   <table class="table">
     <thead>
@@ -88,9 +88,9 @@
   </table>
 </div>
 
-<div class="card" style="margin-top:var(--sp-5)">
+<div class="card mt-5">
   <h2 class="card-title">Data Operations</h2>
-  <div class="form-actions" style="flex-wrap:wrap;gap:var(--sp-3)">
+  <div class="form-actions form-actions--wrap">
     <form method="post" class="form-inline">
       {% csrf_token %}
       <input type="hidden" name="action" value="ingest_hud">
@@ -131,7 +131,7 @@
 </div>
 
 {% if messages %}
-<div class="message-list" style="margin-top:var(--sp-4)">
+<div class="message-list mt-4">
   {% for m in messages %}
   <div class="message message-{{ m.tags }}">{{ m }}</div>
   {% endfor %}

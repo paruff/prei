@@ -23,6 +23,14 @@ of the GitHub issue body (before `## Phase X`):
 
 ---
 
+## Tech Debt (Cross-cutting — no phase)
+
+| File | Title | Priority |
+|---|---|---|
+| `tech-debt-bandit-python314.md` | Reinstate Bandit once Python 3.14 support lands | 🟢 Low — no active coverage gap |
+
+---
+
 ## New Issues to Create (Phase 1 — Critical Gaps)
 
 | File | Title | Priority |

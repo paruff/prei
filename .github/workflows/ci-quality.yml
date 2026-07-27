@@ -39,13 +39,11 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
       - name: Install dependencies
-        run: pip install ruff==0.15.20 bandit==1.8.0
+        run: pip install ruff==0.15.20
       - name: Ruff
         run: ruff check .
       - name: Ruff format
         run: ruff format --check .
-      - name: Bandit (security lint)
-        run: bandit -r core/ investor_app/ -x ".venv,migrations" -c .bandit -f txt
 
   secrets:
     name: "🔑 Secrets"
@@ -205,7 +203,10 @@ jobs:
       - name: Collect static files
         run: python manage.py collectstatic --noinput --verbosity 0
       - name: Run acceptance tests against live_server
-        run: python -m pytest tests/acceptance/ -q --tb=short
+        # -k "" overrides pytest.ini's addopts default (which excludes
+        # "acceptance" so a bare `pytest` stays safe-by-default); the
+        # last -k on the command line wins over the one baked into addopts.
+        run: python -m pytest tests/acceptance/ -q --tb=short -k ""
 
   # ── Financial math verification ────────────────────────────────────────────
 

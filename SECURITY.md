@@ -99,7 +99,7 @@ These rules are enforced in code review and by `@security-agent`. Every PR that 
 | Django `SecurityMiddleware` | ✅ Active | Included in `MIDDLEWARE` |
 | CSRF protection | ✅ Active | `CsrfViewMiddleware` in `MIDDLEWARE` |
 | Clickjacking protection | ✅ Active | `XFrameOptionsMiddleware` (default: `SAMEORIGIN`) |
-| Rate throttling | ✅ Active | `UserRateThrottle` + `AnonRateThrottle` at 100/hour each |
+| Rate throttling | ✅ Active | `UserRateThrottle` (1000/day) + `AnonRateThrottle` (100/day) globally; `CalculationRateThrottle` (anon 20/hour) additionally on `calculate_carrying_costs` and `compare_investment_strategies` — see GAP-10 |
 | Input validation — serializers | ✅ Active | `min_value`, `max_value`, `max_length` on numeric fields |
 | Input validation — query params | ✅ Active | `core/validators.py` functions used in all views |
 | Error message sanitisation | ✅ Active | Generic error strings returned; raw DB errors logged only |
@@ -108,6 +108,7 @@ These rules are enforced in code review and by `@security-agent`. Every PR that 
 | Secrets via env vars | ✅ Active | `django-environ` used throughout `settings.py` |
 | Division-by-zero guards | ✅ Active | All finance utils guard denominators |
 | `numpy-financial` safe fallback | ✅ Active | `irr()` wraps in `try/except`, returns `Decimal("0")` |
+| Security static analysis | ✅ Active | Ruff `S` rules (flake8-bandit) are the system of record, see `.ruff.toml`. Bandit itself is disabled — broken on Python 3.14 (`PyCQA/bandit#1219`, still open as of 2026-07); exit condition tracked in `docs/issues/tech-debt-bandit-python314.md` |
 
 ### 4.2 Known Gaps — Remediation Required
 
@@ -176,25 +177,11 @@ Plus `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` are set unconditionall
 
 ---
 
-#### 🟠 HIGH — GAP-06: Redis has no authentication in `docker-compose.yml`
+#### 🟢 LOW — [CLOSED, non-finding] GAP-06: Redis has no authentication in `docker-compose.yml`
 
-**Location:** `docker-compose.yml` — no Redis service with password; `REDIS_URL` defaults to `redis://redis:6379/0` (no auth).
+**Status:** CLOSED — re-verified 2026-07: no Redis service, `REDIS_URL`, `CELERY_BROKER_URL`, or `CELERY_RESULT_BACKEND` exists anywhere in the repo (`docker-compose.yml`, `.devcontainer/docker-compose.yml`, `deploy/`, `investor_app/settings.py`, `requirements.txt` all confirmed clean). The app does not use Redis or Celery today. Standing up an unused, password-protected Redis service purely to close this gap would be building infrastructure for a hypothetical requirement — contrary to this repo's own scoping convention (see GAP-07/GAP-08 below, and `docs/assessments/REPO_AUDIT_2026-07.md`).
 
-**Risk:** If the Redis port is accidentally exposed (e.g., misconfigured cloud security group), an attacker can read all cached financial data, session data, and Celery task queues without credentials.
-
-**Required fix:**
-
-1. Add a Redis password to `docker-compose.yml`:
-   ```yaml
-   redis:
-     image: redis:7-alpine
-     command: redis-server --requirepass ${REDIS_PASSWORD}
-   ```
-2. Add `REDIS_PASSWORD` to `.env.example`.
-3. Update `REDIS_URL`, `CELERY_BROKER_URL`, and `CELERY_RESULT_BACKEND` to include the password:
-   ```
-   REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-   ```
+**Reopen when:** Redis/Celery is actually introduced. At that point, follow the pattern already used elsewhere: `command: redis-server --requirepass ${REDIS_PASSWORD}`, a `REDIS_PASSWORD` entry in `.env.example`, and `REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0`.
 
 ---
 
@@ -204,6 +191,8 @@ Plus `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` are set unconditionall
 
 **Required fix:** Add `django-csp` to `requirements.txt` (requires PM approval) and configure a restrictive policy for templates that render user data. Alternatively, add a CSP header in the reverse proxy configuration (Nginx/Caddy).
 
+**Re-assessed 2026-07:** Still correctly deferred — no reverse-proxy hardening work has started.
+
 ---
 
 #### 🟡 MEDIUM — GAP-08: No CORS configuration
@@ -212,25 +201,25 @@ Plus `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` are set unconditionall
 
 **Required fix:** When a frontend is added, install `django-cors-headers` and set `CORS_ALLOWED_ORIGINS` to an explicit list. Never use `CORS_ALLOW_ALL_ORIGINS = True` in production.
 
----
-
-#### 🟡 MEDIUM — GAP-09: `PostgreSQL` container has no explicit password in `docker-compose.yml`
-
-**Location:** `docker-compose.yml` uses a minimal `postgres:16-alpine` image without specifying a password environment variable. The default PostgreSQL image uses `POSTGRES_PASSWORD=postgres` (from `.env.example`).
-
-**Risk:** Trivially guessable database password if the Postgres port is exposed.
-
-**Required fix:** Use a strong, randomly-generated password. Rotate `.env.example` to document `POSTGRES_PASSWORD=<strong-random-password>` and enforce it in `docker-compose.yml` via `environment: POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}`.
+**Re-assessed 2026-07:** Still correctly deferred — no SPA frontend has started; the app remains server-rendered Django templates plus a same-origin DRF API.
 
 ---
 
-#### 🟡 MEDIUM — GAP-10: Anonymous throttle rate (100/hour) may be too permissive for financial endpoints
+#### 🟢 LOW — [RESOLVED] GAP-09: `PostgreSQL` container has no explicit password
 
-**Location:** `investor_app/settings.py` `DEFAULT_THROTTLE_RATES.anon: "100/hour"`.
+**Location:** `.devcontainer/docker-compose.yml` (root `docker-compose.yml` has no Postgres service at all — Postgres only exists in the devcontainer environment; production uses Render's externally-managed Postgres via `DATABASE_URL`).
 
-**Risk:** The `/api/carrying-costs/` and `/api/strategy-comparison/` endpoints perform CPU-bound financial calculations. At 100 unauthenticated requests per hour, a modest botnet can cause meaningful compute load.
+**Status:** RESOLVED — the devcontainer's hardcoded `POSTGRES_PASSWORD: prei` has been replaced with a stronger generated password, following the same "DEVCONTAINER ONLY" comment-annotation pattern already used for `SECRET_KEY` in that file. This is a local-only devcontainer credential, not reachable outside the container network.
 
-**Required fix:** Apply a stricter throttle to write/calculation endpoints. Create a `CalculationRateThrottle` class (e.g., `20/hour` for anon) and apply it specifically to `calculate_carrying_costs` and `compare_strategies`.
+---
+
+#### 🟢 LOW — [RESOLVED] GAP-10: Anonymous throttle rate may be too permissive for financial endpoints
+
+**Location:** `investor_app/settings.py` `DEFAULT_THROTTLE_RATES.anon` (currently `"100/day"` — re-verified 2026-07; not `"100/hour"` as originally audited).
+
+**Risk:** The `/api/v1/real-estate/carrying-costs/` and `/api/v1/real-estate/carrying-costs/compare-strategies` endpoints perform CPU-bound financial calculations. A blanket anon rate shared across all endpoints doesn't scope down specifically for the CPU-expensive ones.
+
+**Status:** RESOLVED — added a `CalculationRateThrottle` (anon: `20/hour`) applied specifically to `calculate_carrying_costs` and `compare_investment_strategies` in `core/api_views.py`, on top of the existing blanket `UserRateThrottle`/`AnonRateThrottle`.
 
 ---
 
@@ -319,6 +308,6 @@ This document is reviewed:
 - After any security incident
 - When a new integration or authentication mechanism is added
 
-**Last reviewed:** 2026-05-06
-**Next scheduled review:** 2026-08-06
+**Last reviewed:** 2026-07-27 (Phase 2 of `docs/assessments/REPO_AUDIT_2026-07.md`, performed ahead of the originally-scheduled 2026-08-06 date at the requester's direction)
+**Next scheduled review:** 2026-10-27
 **Owner:** PM / Tech Lead (see `docs/AI_POLICY.md` for accountability structure)

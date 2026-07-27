@@ -1,5 +1,15 @@
 # Bandit configuration for prei
 # See https://bandit.readthedocs.io/en/latest/config.html
+#
+# NOT CURRENTLY USED: bandit 1.8.0 is broken on Python 3.14 — it throws
+# AttributeError on ast.Constant.s/.n (removed compat aliases) and silently
+# skips almost every file, reporting a false "No issues identified"
+# (see PyCQA/bandit#1219, still open). Bandit was removed from CI
+# (.github/workflows/ci-quality.yml) and pre-commit (.pre-commit-config.yaml)
+# for this reason. Ruff's S rule family (.ruff.toml) is the active
+# security-lint gate and mirrors the skip list below. Reconsider
+# reintroducing bandit once upstream ships confirmed 3.14 support.
+# Tracked in docs/issues/tech-debt-bandit-python314.md.
 
 # Skip rules that flag safe patterns used intentionally in this project:
 #   B101: assert_used — pytest uses assert in tests; not production code
