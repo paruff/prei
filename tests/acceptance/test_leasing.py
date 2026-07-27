@@ -2,17 +2,19 @@
 
 import httpx
 
+from .schemas import LoginGateAssertion, NoCrashAssertion
+
 
 class TestLeasingList:
     """Leasing list page must render."""
 
     def test_requires_login(self, client: httpx.Client) -> None:
-        resp = client.get("/leasing/list/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        resp = client.get("/leasing/", follow_redirects=False)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
     def test_no_crash(self, client: httpx.Client) -> None:
-        resp = client.get("/leasing/list/", follow_redirects=True)
-        assert resp.status_code < 500
+        resp = client.get("/leasing/", follow_redirects=True)
+        NoCrashAssertion.model_validate({"status_code": resp.status_code})
 
 
 class TestLeasingKanban:
@@ -20,8 +22,8 @@ class TestLeasingKanban:
 
     def test_requires_login(self, client: httpx.Client) -> None:
         resp = client.get("/leasing/kanban/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
     def test_no_crash(self, client: httpx.Client) -> None:
         resp = client.get("/leasing/kanban/", follow_redirects=True)
-        assert resp.status_code < 500
+        NoCrashAssertion.model_validate({"status_code": resp.status_code})

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import httpx
 
+from .schemas import DiscoveryPageAssertion, LoginGateAssertion, NoCrashAssertion
+
 
 class TestDashboard:
     """Dashboard must be accessible and render correctly."""
@@ -17,7 +19,7 @@ class TestDashboard:
     ) -> None:
         """GET /dashboard/ redirects to login for unauthenticated users."""
         resp = client.get("/dashboard/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
 
 class TestDiscoveryPage:
@@ -26,8 +28,16 @@ class TestDiscoveryPage:
     def test_discovery_page_has_state_selector(self, client: httpx.Client) -> None:
         """Discovery page HTML contains a state selector or form."""
         resp = client.get("/discovery/", follow_redirects=True)
-        assert resp.status_code == 200
-        # Discovery page should have a form or interactive elements
+        content_type = resp.headers.get("content-type", "")
+
+        page = DiscoveryPageAssertion.model_validate(
+            {
+                "status_code": resp.status_code,
+                "min_body_size": len(resp.text),
+                "content_is_html": "text/html" in content_type,
+            }
+        )
+        assert page.status_code == 200
         content = resp.text.lower()
         assert any(
             keyword in content
@@ -41,7 +51,7 @@ class TestSystemStatus:
     def test_system_page_requires_login(self, client: httpx.Client) -> None:
         """GET /system/ redirects to login for unauthenticated users."""
         resp = client.get("/system/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
 
 class TestErrorHandling:
@@ -59,14 +69,9 @@ class TestErrorHandling:
     ) -> None:
         """Growth areas API handles invalid state codes gracefully."""
         resp = client.get("/api/v1/real-estate/growth-areas", params={"state": "XX"})
-        # Should return a client error (400), not a server crash (500)
-        assert resp.status_code < 500, (
-            f"Server crashed on invalid state code: {resp.status_code}"
-        )
+        NoCrashAssertion.model_validate({"status_code": resp.status_code})
 
     def test_malformed_url_does_not_crash(self, client: httpx.Client) -> None:
         """Random URL returns a graceful error, not a 500 traceback."""
         resp = client.get("/nonexistent-page-xyz/")
-        assert resp.status_code < 500, (
-            f"Server crashed on nonexistent URL: {resp.status_code}"
-        )
+        NoCrashAssertion.model_validate({"status_code": resp.status_code})

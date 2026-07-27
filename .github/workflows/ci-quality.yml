@@ -183,7 +183,10 @@ jobs:
       - name: Mypy
         run: mypy core/ investor_app/finance/ --ignore-missing-imports --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code operator --disable-error-code misc --disable-error-code has-type --disable-error-code arg-type --disable-error-code assignment
 
-  # ── Acceptance test structure check (full run in post-deployment) ──────────
+  # ── Acceptance tests (real HTTP, via pytest-django live_server) ────────────
+  # BASE_URL is intentionally unset here: tests/acceptance/conftest.py falls
+  # back to a live_server for this run. Full acceptance tests also run
+  # post-deployment against the actual deployed artifact (BASE_URL set there).
 
   acceptance-check:
     name: "🧪 Acceptance Tests"
@@ -191,6 +194,7 @@ jobs:
     env:
       SECRET_KEY: ci-acceptance-check-key
       DATABASE_URL: sqlite:////tmp/acceptance_check.sqlite3
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
@@ -198,15 +202,10 @@ jobs:
         run: |
           pip install -r requirements.txt -q
           pip install httpx pydantic pytest-django -q
-      - name: Verify acceptance test structure
-        run: |
-          python -m pytest tests/acceptance/ --collect-only -q 2>&1 || {
-            echo "::error::Acceptance tests failed to collect — check imports and syntax"
-            echo "Full acceptance tests run post-deployment against the live artifact."
-            echo "This gate verifies the test files are structurally sound."
-            exit 1
-          }
-          echo "All acceptance tests collected successfully."
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --verbosity 0
+      - name: Run acceptance tests against live_server
+        run: python -m pytest tests/acceptance/ -q --tb=short
 
   # ── Financial math verification ────────────────────────────────────────────
 

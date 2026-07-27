@@ -1,25 +1,72 @@
 """Shared fixtures for HTTP acceptance tests.
 
-Tests make real HTTP requests to a deployed application (local Docker
-container, staging URL, or production URL).  No Django test client.
+Tests make real HTTP requests — either to a deployed application (local
+Docker container, staging URL, or production URL via ``BASE_URL``), or,
+when ``BASE_URL`` isn't set, to a pytest-django ``live_server`` started
+for the test session. No Django test client either way.
 """
 
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import httpx
 import pytest
 
 
-@pytest.fixture(scope="session")
-def base_url() -> str:
-    """Base URL of the deployed application.
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Mark every acceptance test as needing DB access, live_server-fallback only.
 
-    Set via ``BASE_URL`` environment variable.  Defaults to local development
-    Docker container.
+    pytest-django decides which database aliases to migrate by statically
+    scanning each collected test's declared fixture names / ``django_db``
+    marker (see ``_get_databases_for_test`` in pytest-django) — a scan that
+    happens before any fixture body runs. Our ``client``/``base_url``
+    fixtures only reach ``db``/``live_server`` dynamically, via
+    ``request.getfixturevalue()`` inside the fixture body, which that static
+    scan can't see. Without this marker pytest-django concludes no test
+    needs a database, skips ``migrate`` entirely, and every request 500s
+    with "no such table". ``transaction=True`` matches ``live_server``'s
+    own dependency on ``transactional_db`` (required so writes made on the
+    main thread are visible to the live_server's background-thread
+    connection). Skipped when ``BASE_URL`` is set — deployed-artifact runs
+    never touch Django's DB fixtures.
+
+    ``pytest_collection_modifyitems`` is a session-wide hook: once this
+    conftest.py loads (e.g. because a CI job collects ``tests/`` as a
+    whole, which includes this subdirectory), it receives every collected
+    item, not just this directory's. Must filter to this package's own
+    tests, or it mutates fixture markers on unrelated suites too — breaking
+    their normal per-test rollback isolation.
     """
-    return os.environ.get("BASE_URL", "http://localhost:8000")
+    if os.environ.get("BASE_URL"):
+        return
+    this_dir = Path(__file__).resolve().parent
+    for item in items:
+        if this_dir in item.path.resolve().parents:
+            item.add_marker(pytest.mark.django_db(transaction=True))
+
+
+@pytest.fixture(scope="session")
+def base_url(request: pytest.FixtureRequest) -> str:
+    """Base URL to run acceptance tests against.
+
+    Set via ``BASE_URL`` environment variable to target a deployed
+    artifact (local Docker container, staging, production — the
+    ``post-deployment.yml``/``make test-acceptance`` path). When unset
+    (the PR-gate path), falls back to a ``live_server`` spun up for
+    this test session against a freshly-migrated database — lazily
+    requested so runs that already have ``BASE_URL`` never touch
+    Django's DB fixtures at all.
+    """
+    env_url = os.environ.get("BASE_URL")
+    if env_url:
+        return env_url
+    request.getfixturevalue("django_db_setup")
+    live_server = request.getfixturevalue("live_server")
+    return live_server.url
 
 
 @pytest.fixture(scope="session")

@@ -2,17 +2,19 @@
 
 import httpx
 
+from .schemas import LoginGateAssertion, NoCrashAssertion
+
 
 class TestPipelineList:
     """Pipeline list page must render with stage counts."""
 
     def test_requires_login(self, client: httpx.Client) -> None:
         resp = client.get("/pipeline/list/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
     def test_no_crash(self, client: httpx.Client) -> None:
         resp = client.get("/pipeline/list/", follow_redirects=True)
-        assert resp.status_code < 500
+        NoCrashAssertion.model_validate({"status_code": resp.status_code})
 
 
 class TestPipelineKanban:
@@ -20,11 +22,11 @@ class TestPipelineKanban:
 
     def test_requires_login(self, client: httpx.Client) -> None:
         resp = client.get("/pipeline/kanban/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
     def test_no_crash(self, client: httpx.Client) -> None:
         resp = client.get("/pipeline/kanban/", follow_redirects=True)
-        assert resp.status_code < 500
+        NoCrashAssertion.model_validate({"status_code": resp.status_code})
 
 
 class TestPipelineScreener:
@@ -32,8 +34,8 @@ class TestPipelineScreener:
 
     def test_requires_login(self, client: httpx.Client) -> None:
         resp = client.get("/pipeline/screener/", follow_redirects=False)
-        assert resp.status_code in (200, 302)
+        LoginGateAssertion.model_validate({"status_code": resp.status_code})
 
     def test_no_crash(self, client: httpx.Client) -> None:
         resp = client.get("/pipeline/screener/", follow_redirects=True)
-        assert resp.status_code < 500
+        NoCrashAssertion.model_validate({"status_code": resp.status_code})

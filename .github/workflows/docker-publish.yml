@@ -17,6 +17,7 @@ jobs:
   build-image:
     name: "🏗️ Tier 2 — Build Image"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: write
@@ -28,6 +29,7 @@ jobs:
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
           echo "build-start-epoch: $(date +%s)"
+          echo "build-start-epoch=$(date +%s)" >> "$GITHUB_ENV"
       - name: Checkout
         uses: actions/checkout@v7
       - name: Extract metadata
@@ -82,8 +84,16 @@ jobs:
       - name: Check build time
         if: always() && steps.build.outcome == 'success'
         run: |
+          BUILD_END_EPOCH=$(date +%s)
+          DURATION=$((BUILD_END_EPOCH - build_start_epoch))
           echo "Build completed at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "Build duration logged — check logs for start epoch."
+          echo "Build duration: ${DURATION}s"
+          if [ "$DURATION" -gt 600 ]; then
+            echo "::error::Build exceeded 10-minute budget (${DURATION}s > 600s)"
+            exit 1
+          fi
+        env:
+          build_start_epoch: ${{ env.build-start-epoch }}
       - name: "job-finish"
         if: always()
         run: |
