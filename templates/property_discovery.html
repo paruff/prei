@@ -129,11 +129,11 @@
     <div class="kpi-card"><div class="kpi-label">Already Existed</div><div class="kpi-value">{{ discovery_results.already_existed }}</div></div>
   </div>
   {% if discovery_results.discovered > 0 %}
-  <div class="message message-success" style="margin-top:var(--sp-3)">{{ discovery_results.discovered }} new. {{ discovery_results.screening_passed }} passed screening.</div>
+  <div class="message message-success mt-3">{{ discovery_results.discovered }} new. {{ discovery_results.screening_passed }} passed screening.</div>
   {% else %}
-  <div class="message message-warning" style="margin-top:var(--sp-3)">No new properties found.</div>
+  <div class="message message-warning mt-3">No new properties found.</div>
   {% endif %}
-  <div class="form-actions" style="margin-top:var(--sp-4)">
+  <div class="form-actions mt-4">
     <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}" class="btn btn-primary">View in Screener →</a>
     <a href="?growth_area_id={{ growth_area.pk }}" class="btn">Discover More</a>
   </div>
@@ -143,8 +143,8 @@
 {# Loading overlay shown during discovery POST #}
 <div id="discovery-loading" class="kanban-modal-overlay kanban-hidden">
   <div class="kanban-modal">
-    <h2 style="text-align:center">Discovering Properties...</h2>
-    <p class="page-sub" style="text-align:center" id="discovery-status-msg">Scraping data sources and creating pipeline entries. This may take a minute.</p>
+    <h2 class="text-center">Discovering Properties...</h2>
+    <p class="page-sub text-center" id="discovery-status-msg">Scraping data sources and creating pipeline entries. This may take a minute.</p>
   </div>
 </div>
 

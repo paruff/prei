@@ -244,6 +244,11 @@ body {
   margin-bottom: var(--sp-4);
   border-bottom: var(--border-subtle);
 }
+.card-danger {
+  margin-top: var(--sp-4);
+  border-left: 4px solid var(--color-risk-400);
+}
+.card-danger-text { color: var(--color-risk-700); margin: 0; }
 
 /* ── KPI grid ───────────────────────────────────────────────── */
 .kpi-grid {
@@ -554,8 +559,26 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 .mb-form { margin-bottom: var(--sp-4); }
 .mb-4 { margin-bottom: var(--sp-4); }
 .mt-3 { margin-top: var(--sp-3); }
+.mt-4 { margin-top: var(--sp-4); }
+.mt-5 { margin-top: var(--sp-5); }
+.pt-4 { padding-top: var(--sp-4); }
 .mt-section { margin-top: var(--sp-8); }
 .ml-link { margin-left: var(--sp-2); }
+
+/* ── Utility layout / text (replaces inline styles) ───────────── */
+.text-center { text-align: center; }
+.self-end { align-self: flex-end; }
+.form-row {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.form-row--align-end { align-items: flex-end; }
+.form-actions--wrap { flex-wrap: wrap; }
+.form-input-sm { width: 100px; }
+.form-input-w200 { max-width: 200px; }
+.form-input-w300 { max-width: 300px; }
+.text-detail { font-size: 12px; line-height: 1.5; }
 
 /* ── Score number ──────────────────────────────────────────── */
 .score-num {
@@ -789,4 +812,74 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 }
 .discovery-request-date {
   font-size: var(--text-sm);
+}
+
+/* ── Screener filters ───────────────────────────────────────── */
+.screener-filters {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+  align-items: end;
+}
+
+/* ── BRRRR project timeline ────────────────────────────────── */
+.brrrr-timeline {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+.brrrr-timeline-title { margin-bottom: var(--sp-3); }
+.brrrr-timeline-track {
+  display: flex;
+  gap: var(--sp-1);
+  height: 32px;
+  margin-bottom: var(--sp-2);
+}
+.brrrr-timeline-segment {
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+}
+.brrrr-timeline-segment--rehab  { flex: 2; background: var(--gold-6); }
+.brrrr-timeline-segment--rentup { flex: 1; background: var(--blue-6); }
+.brrrr-timeline-segment--hold   { flex: 5; background: var(--green-6); }
+.brrrr-timeline-segment--cashflow { flex: 2; background: var(--accent-6); }
+.brrrr-timeline-caption { font-size: 12px; color: var(--text-sub); }
+
+/* ── MAO (max allowable offer) visualization ──────────────────── */
+.mao-viz {
+  margin-top: var(--sp-3);
+  padding: var(--sp-2);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+.mao-viz-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--sp-1);
+}
+.mao-viz-label { font-size: 12px; }
+.mao-viz-label--bold { font-size: 12px; font-weight: 600; }
+.mao-viz-bar {
+  height: 12px;
+  background: var(--surface-3);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mao-viz-fill {
+  height: 100%;
+  width: 85%;
+  background: var(--gold-6);
+  border-radius: 6px;
+}
+.mao-viz-caption {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-top: var(--sp-1);
 }

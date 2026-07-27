@@ -114,12 +114,12 @@
 {% if properties %}
 
 <!-- Filter bar -->
-<form method="get" class="screener-filters" style="display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-4);align-items:end">
-  <div><label>Min Price</label><input type="number" name="price_min" value="{{ request.GET.price_min }}" placeholder="$" class="form-input" style="width:100px"></div>
-  <div><label>Max Price</label><input type="number" name="price_max" value="{{ request.GET.price_max }}" placeholder="$" class="form-input" style="width:100px"></div>
-  <div><label>Min Rent</label><input type="number" name="rent_min" value="{{ request.GET.rent_min }}" placeholder="$" class="form-input" style="width:100px"></div>
-  <div><label>Min Cap Rate %</label><input type="number" name="cap_rate_min" value="{{ request.GET.cap_rate_min }}" placeholder="%" class="form-input" style="width:100px" step="0.1"></div>
-  <div style="padding-top:var(--sp-4)"><button type="submit" class="btn">Filter</button></div>
+<form method="get" class="screener-filters">
+  <div><label>Min Price</label><input type="number" name="price_min" value="{{ request.GET.price_min }}" placeholder="$" class="form-input form-input-sm"></div>
+  <div><label>Max Price</label><input type="number" name="price_max" value="{{ request.GET.price_max }}" placeholder="$" class="form-input form-input-sm"></div>
+  <div><label>Min Rent</label><input type="number" name="rent_min" value="{{ request.GET.rent_min }}" placeholder="$" class="form-input form-input-sm"></div>
+  <div><label>Min Cap Rate %</label><input type="number" name="cap_rate_min" value="{{ request.GET.cap_rate_min }}" placeholder="%" class="form-input form-input-sm" step="0.1"></div>
+  <div class="pt-4"><button type="submit" class="btn">Filter</button></div>
 </form>
 
 <div class="table-wrap">
