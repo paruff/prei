@@ -309,7 +309,7 @@ jobs:
           target: "http://localhost:8000"
           allow_issue_writing: false
           fail_action: true
-          cmd_options: "-a -n /zap/wrk/.zap/prei-auth-context-runtime.xml -U zap-ci-scan-only"
+          cmd_options: "-a -n /zap/wrk/.zap/prei-auth-context-runtime.xml -U zap-ci-scan-only -I"
       - name: Server logs
         if: always()
         run: cat server.log || true

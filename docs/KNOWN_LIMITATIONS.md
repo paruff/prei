@@ -248,6 +248,18 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
+### [LIMIT-23] 🟡 HIGH — Authenticated ZAP scan's first real run surfaced 10 unresolved WARN-level findings, currently non-blocking
+
+**Location:** `.github/workflows/ci-quality.yml` — `zap-authenticated-scan` job (`cmd_options` includes `-I`); application code (headers/cookies/templates, not yet touched)
+
+**Impact:** Once authentication started working (LIMIT-22), the scan reached pages behind `/accounts/login/` for the first time (`/dashboard`, `/growth-explorer`, `/leasing`, `/pipeline/<id>/`, etc.) and found 10 categories of WARN-level alerts that had never been scanned before: Cookie No HttpOnly Flag [10010], X-Content-Type-Options Header Missing [10021], Server Leaks Version Information [10036], CSP Header Not Set [10038], Permissions Policy Header Not Set [10063], HTTP Only Site [10106], Session ID Transmitted Insecurely [40013], Sub Resource Integrity Attribute Missing [90003], Cross-Origin-Resource-Policy Header Missing or Invalid [90004], Insecure HTTP Method - PUT [90028]. Zero FAIL-level alerts. `zap-full-scan.py` exits non-zero on any WARN by default, which would have blocked every future PR on pre-existing gaps unrelated to their changes.
+
+**Workaround:** `-I` (`--ignore-warn`) added to the scan's `cmd_options` so the job only fails on FAIL-level alerts; WARN findings still appear in the job's ZAP log/report for visibility, they just don't block merges.
+
+**Fix tracked in:** Not yet filed. Recommended as a dedicated hardening PR: Django `SECURE_*` settings + `django-csp`/`django-permissions-policy` middleware for the header findings, `SESSION_COOKIE_HTTPONLY`/`SESSION_COOKIE_SECURE` for the cookie/session findings, `integrity` attributes on external `<script>`/`<link>` tags for SRI, and removing/gating the PUT method where unintended.
+
+---
+
 ## Resolved Limitations
 
 ### [LIMIT-R01] Docker container permissions — `app` user could not write `db.sqlite3`
