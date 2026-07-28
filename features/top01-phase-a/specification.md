@@ -1,5 +1,6 @@
 # Specification: Phase A — CI/Test Quality Gaps (docs/TOP_01_PLAN.md)
 # Written: 2026-07-27
+# Status: MERGED (PR #323)
 
 ---
 

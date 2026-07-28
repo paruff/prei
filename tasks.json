@@ -1,69 +1,71 @@
 {
   "meta": {
     "project": "prei",
-    "session": "top01-phase-b-20260727",
-    "date": "2026-07-27",
-    "feature": "Phase B — Financial Math (docs/TOP_01_PLAN.md)",
+    "session": "top01-phase-c-20260728",
+    "date": "2026-07-28",
+    "feature": "Phase C (partial) — Deployment Reliability (docs/TOP_01_PLAN.md), C-2 + C-4 only",
     "spec": "specification.md",
-    "design": "design.md"
+    "design": "design.md",
+    "deferred": ["C-1 (canary deployment)", "C-3 (SLO dashboard)"]
   },
   "tasks": [
     {
-      "id": "B-1",
-      "summary": "Add ref_irr to tests/finance_reference.py",
-      "description": "Independent, numpy_financial-free bisection-based IRR reference implementation, mirroring production's NaN/Inf -> Decimal(0) fallback for no-real-root cases.",
+      "id": "C-2a",
+      "summary": "Idempotent ZAP scan-user seed command",
+      "description": "Add core/management/commands/seed_zap_scan_user.py: reads ZAP_AUTH_USERNAME/ZAP_AUTH_PASSWORD from env, get_or_create's a non-staff, non-superuser user and sets/updates the password idempotently.",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-B1-01", "description": "ref_irr exists in tests/finance_reference.py, no numpy dependency", "test_type": "unit"}
+        {"id": "AC-C2-01", "description": "seed_zap_scan_user idempotently creates/updates a non-staff, non-superuser scan account from env vars", "test_type": "unit"}
       ]
     },
     {
-      "id": "B-2",
-      "summary": "Expand edge-case coverage to 50+ per function",
-      "description": "Expand NOI/cap_rate/CoC/DSCR/one_percent_rule/GRM case lists to 50+ rows each and add a new IRR_CASES block; fix ref_one_percent_rule/ref_gross_rent_multiplier to raise ValueError matching production's contract.",
-      "depends_on": ["B-1"],
+      "id": "C-2b",
+      "summary": "ZAP auth context file + authenticated scan CI job",
+      "description": "Add .zap/prei-auth-context.xml (form-based auth against /accounts/login/, logged-in/out indicator regexes). Add zap-authenticated-scan job to ci-quality.yml: migrate, seed the scan user, boot an ephemeral runserver, wait for healthy, run zap-full-scan.py with the auth context. Wire into pr-gates-pass as a required check.",
+      "depends_on": ["C-2a"],
       "acceptance_criteria": [
-        {"id": "AC-B2-01", "description": "pytest tests/test_finance_math.py passes with 50+ cases per function", "test_type": "unit"},
-        {"id": "AC-B2-02", "description": "one_percent_rule/gross_rent_multiplier reference functions raise ValueError matching production's contract", "test_type": "unit"}
+        {"id": "AC-C2-02", "description": ".zap/prei-auth-context.xml defines form-based auth with logged-in/out indicators", "test_type": "manual"},
+        {"id": "AC-C2-03", "description": "zap-authenticated-scan job seeds the account and scans an ephemeral instance", "test_type": "ci"},
+        {"id": "AC-C2-04", "description": "zap-authenticated-scan is a required check in pr-gates-pass", "test_type": "ci"}
       ]
     },
     {
-      "id": "B-3",
-      "summary": "CI gate coverage for IRR (no workflow change needed)",
-      "description": "ci-quality.yml's finance-math job already runs the whole of tests/test_finance_math.py; B-1/B-2 automatically extend its coverage. Verified, no edit made.",
-      "depends_on": ["B-1", "B-2"],
+      "id": "C-2c",
+      "summary": "Document the ephemeral-instance scope decision",
+      "description": "Add docs/KNOWN_LIMITATIONS.md LIMIT-22: authenticated ZAP scanning runs against an ephemeral CI-seeded instance, not the live deployment, and why.",
+      "depends_on": ["C-2b"],
       "acceptance_criteria": [
-        {"id": "AC-B3-01", "description": "ci-quality.yml's finance-math job runs tests/test_finance_math.py (already true)", "test_type": "ci"}
+        {"id": "AC-C2-05", "description": "docs/KNOWN_LIMITATIONS.md documents the ephemeral-CI-instance scope decision", "test_type": "manual"}
       ]
     },
     {
-      "id": "B-4",
-      "summary": "Add mathematical derivation docstrings to utils.py core functions",
-      "description": "Add formula + Derivation: docstrings to noi, cap_rate, cash_on_cash, dscr, irr in investor_app/finance/utils.py; add a one-line derivation note to one_percent_rule/gross_rent_multiplier's existing docstrings.",
+      "id": "C-4a",
+      "summary": "Report-log flag + flaky detection/ledger script",
+      "description": "Add --report-log=.pytest-report.jsonl to pytest.ini's addopts (requires the pytest-reportlog dependency, added to requirements.txt). Add .github/scripts/flaky_report.py with --mode report (summary only) and --mode write (updates docs/quality/flaky_tests.json and tests/.flaky_quarantine.txt once a nodeid's count reaches the threshold).",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-B4-01", "description": "noi/cap_rate/cash_on_cash/dscr/irr each have a Derivation: docstring paragraph", "test_type": "unit"}
+        {"id": "AC-C4-01", "description": "pytest.ini's addopts includes --report-log=.pytest-report.jsonl", "test_type": "unit"},
+        {"id": "AC-C4-02", "description": "flaky_report.py --mode report detects rerun-then-pass nodeids without touching the ledger", "test_type": "unit"},
+        {"id": "AC-C4-03", "description": "flaky_report.py --mode write increments the ledger and quarantines at the threshold", "test_type": "unit"}
       ]
     },
     {
-      "id": "UW-1",
-      "summary": "Fix underwriting.py float->Decimal + dedup cap_rate/cash_on_cash",
-      "description": "Convert UnderwritingInput/UnderwritingMetrics to Decimal; delete the local cap_rate() duplicate and import the canonical investor_app.finance.utils.cap_rate/cash_on_cash/to_decimal; convert composition helpers to Decimal arithmetic; fix orchestrator.py's price*0.012/price*0.004 boundary; fix downstream test-file Decimal/float interop breakage (test_underwriting.py, test_underwriting_integration.py, test_offer_integration.py, pipeline_steps.py).",
-      "depends_on": [],
+      "id": "C-4b",
+      "summary": "conftest.py quarantine hook",
+      "description": "Add pytest_collection_modifyitems hook to root conftest.py: nodeids listed in tests/.flaky_quarantine.txt get marked xfail(strict=False) at collection time.",
+      "depends_on": ["C-4a"],
       "acceptance_criteria": [
-        {"id": "AC-UW-01", "description": "UnderwritingInput/UnderwritingMetrics fields are Decimal, not float", "test_type": "unit"},
-        {"id": "AC-UW-02", "description": "underwriting.py imports cap_rate/cash_on_cash from investor_app.finance.utils, no local duplicate", "test_type": "unit"},
-        {"id": "AC-UW-03", "description": "pytest prei/pipeline/tests/test_underwriting.py tests/test_underwriting_integration.py tests/test_offer_integration.py passes", "test_type": "unit"},
-        {"id": "AC-UW-04", "description": "orchestrator.py's price * 0.012/price * 0.004 boundary uses Decimal arithmetic", "test_type": "unit"}
+        {"id": "AC-C4-04", "description": "conftest.py marks quarantined nodeids xfail(strict=False) so they can't fail the build", "test_type": "unit"}
       ]
     },
     {
-      "id": "DOC-1",
-      "summary": "Document deliberately out-of-scope findings in KNOWN_LIMITATIONS.md",
-      "description": "Add LIMIT-20 (bare-function vs. calculate_* contract divergence + duplicate score_listing_v2) and LIMIT-21 (offer.py remains float-based currency).",
-      "depends_on": ["UW-1"],
+      "id": "C-4c",
+      "summary": "Wire flaky_report.py into CI jobs",
+      "description": "ci-quality.yml's tests-unit/tests-integration/tests-e2e jobs run flaky_report.py --mode report after pytest and upload the report log as an artifact. docker-publish.yml's live-test job (push-to-main only) extracts the report log from the container, runs flaky_report.py --mode write, and bot-commits any ledger/quarantine change to main as github-actions[bot] with [skip ci] (needs contents: write).",
+      "depends_on": ["C-4a", "C-4b"],
       "acceptance_criteria": [
-        {"id": "AC-DOC-01", "description": "docs/KNOWN_LIMITATIONS.md has LIMIT-20 and LIMIT-21 entries in the file's existing format", "test_type": "manual"}
+        {"id": "AC-C4-05", "description": "PR test jobs run flaky_report.py --mode report and upload the report log artifact", "test_type": "ci"},
+        {"id": "AC-C4-06", "description": "live-test bot-commits ledger/quarantine changes to main via flaky_report.py --mode write", "test_type": "ci"}
       ]
     }
   ]

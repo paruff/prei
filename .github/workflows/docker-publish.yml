@@ -105,7 +105,7 @@ jobs:
     needs: build-image
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: read
     steps:
       - name: "job-start"
@@ -216,6 +216,29 @@ jobs:
             prei-live-test \
             python -m pytest tests_bdd/ -q --tb=short 2>&1
           echo "=== All BDD acceptance tests passed ==="
+      - name: Extract test report log
+        if: always()
+        run: docker cp prei-live-test:/app/.pytest-report.jsonl .pytest-report.jsonl 2>/dev/null || true
+      - name: Update flaky test ledger
+        if: always()
+        run: |
+          if [ -f .pytest-report.jsonl ]; then
+            python3 .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode write
+          else
+            echo "No report log found, skipping flaky ledger update"
+          fi
+      - name: Commit flaky test ledger
+        if: always()
+        run: |
+          if git diff --quiet -- docs/quality/flaky_tests.json tests/.flaky_quarantine.txt; then
+            echo "No ledger changes"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add docs/quality/flaky_tests.json tests/.flaky_quarantine.txt
+            git commit -m "chore(ci): update flaky test ledger [skip ci]"
+            git push origin HEAD:main
+          fi
       - name: "job-finish"
         if: always()
         run: |

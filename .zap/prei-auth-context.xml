@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  ZAP context for the Phase C (C-2) authenticated full scan.
+
+  Targets the ephemeral CI instance started by the zap-authenticated-scan
+  job in .github/workflows/ci-quality.yml (localhost:8000, freshly migrated
+  SQLite DB, seeded via `manage.py seed_zap_scan_user`). Never used against
+  the live deployment - post-deployment.yml's unauthenticated full scan is
+  unchanged and still runs against the real deployed artifact.
+
+  The __ZAP_AUTH_CREDS_B64__ placeholder is substituted at job runtime (the
+  "Render ZAP auth context" step in ci-quality.yml) with a base64
+  username=...&password=... blob for a randomly-generated, CI-only password
+  scoped to a throwaway database that is destroyed at job end. No credential
+  value is ever committed to the repository (see .gitignore for the rendered
+  prei-auth-context-runtime.xml output). See docs/KNOWN_LIMITATIONS.md
+  LIMIT-22.
+-->
+<configuration>
+  <context>
+    <name>prei-ci</name>
+    <id>1</id>
+    <desc>prei ephemeral CI instance - authenticated scan</desc>
+    <inscope>true</inscope>
+    <incregexes>http://localhost:8000.*</incregexes>
+    <excregexes>http://localhost:8000/accounts/logout.*</excregexes>
+    <urlparser>
+      <class>org.zaproxy.zap.model.StandardParameterParser</class>
+      <config>{&quot;kvps&quot;:&quot;&amp;&quot;,&quot;kvs&quot;:&quot;=&quot;,&quot;struct&quot;:[]}</config>
+    </urlparser>
+    <postparser>
+      <class>org.zaproxy.zap.model.StandardParameterParser</class>
+      <config>{&quot;kvps&quot;:&quot;&amp;&quot;,&quot;kvs&quot;:&quot;=&quot;,&quot;struct&quot;:[]}</config>
+    </postparser>
+    <authentication>
+      <type>2</type>
+      <strategy>EACH_RESP</strategy>
+      <pollurl/>
+      <polldata/>
+      <pollheaders/>
+      <pollfreq>60</pollfreq>
+      <pollunits>REQUESTS</pollunits>
+      <form>
+        <loginpageurl>http://localhost:8000/accounts/login/</loginpageurl>
+        <loginurl>http://localhost:8000/accounts/login/</loginurl>
+        <loginbody>csrfmiddlewaretoken=&amp;username={%username%}&amp;password={%password%}</loginbody>
+      </form>
+    </authentication>
+    <session>
+      <type>0</type>
+    </session>
+    <authorization>
+      <type>0</type>
+      <basic>
+        <header/>
+        <body/>
+        <logic>AND</logic>
+        <code>-1</code>
+      </basic>
+    </authorization>
+    <!-- User line format: id;enabled;base64(name);authTypeId;credentials
+         (ZAP's User.encode()/decode() base64-encodes the name field - a
+         plaintext name here decodes to garbage and -U lookup silently
+         fails to match). emFwLWNpLXNjYW4tb25seQ== = "zap-ci-scan-only". -->
+    <users>
+      <user>1;true;emFwLWNpLXNjYW4tb25seQ==;2;__ZAP_AUTH_CREDS_B64__</user>
+    </users>
+    <forceduser>1</forceduser>
+    <verification>
+      <method>RESPONSE</method>
+      <loggedInRegex>\Q/accounts/logout/\E</loggedInRegex>
+      <loggedOutRegex>\Qname="password"\E</loggedOutRegex>
+      <pollFrequency>60</pollFrequency>
+      <pollUnits>REQUESTS</pollUnits>
+    </verification>
+  </context>
+</configuration>

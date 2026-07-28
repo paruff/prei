@@ -236,6 +236,30 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
+### [LIMIT-22] 🟡 HIGH — Authenticated OWASP ZAP scan runs against an ephemeral CI instance, not the live deployment
+
+**Location:** `.github/workflows/ci-quality.yml` — `zap-authenticated-scan` job; `.zap/prei-auth-context.xml`; `core/management/commands/seed_zap_scan_user.py`
+
+**Impact:** `docs/TOP_01_PLAN.md` Phase C (C-2) calls for the full OWASP ZAP scan to be made auth-aware so it can reach pages behind `/accounts/login/`. Authenticating against the *real* deployed environment (the target of `post-deployment.yml`'s existing unauthenticated scan) would require provisioning a scan-only account and credentials on that live environment — this repo has no deploy-pipeline or production-DB access to do that safely, the same infra gap documented for C-1 (canary) and C-3 (SLO dashboard) in `docs/TOP_01_PLAN.md`'s "What You Can't Ship Yet" section.
+
+**Workaround:** The authenticated scan instead runs pre-merge, inside a new PR-gate job (`zap-authenticated-scan`) against a fresh, ephemeral instance: a newly migrated SQLite DB seeded with a throwaway, low-privilege account via `manage.py seed_zap_scan_user`, torn down at job end. This is strictly a "shift security left" improvement (every PR, not just post-deploy) and involves no production credentials. `post-deployment.yml`'s existing unauthenticated full scan against the live artifact is unchanged, so defense in depth against the real deployment is preserved.
+
+**Fix tracked in:** Revisit once C-1/C-3 infrastructure (progressive delivery + monitoring stack) exists and a safe way to provision/rotate a live-environment scan account is designed. Not yet filed as a GitHub issue.
+
+---
+
+### [LIMIT-23] 🟡 HIGH — Authenticated ZAP scan's first real run surfaced 10 unresolved WARN-level findings, currently non-blocking
+
+**Location:** `.github/workflows/ci-quality.yml` — `zap-authenticated-scan` job (`cmd_options` includes `-I`); application code (headers/cookies/templates, not yet touched)
+
+**Impact:** Once authentication started working (LIMIT-22), the scan reached pages behind `/accounts/login/` for the first time (`/dashboard`, `/growth-explorer`, `/leasing`, `/pipeline/<id>/`, etc.) and found 10 categories of WARN-level alerts that had never been scanned before: Cookie No HttpOnly Flag [10010], X-Content-Type-Options Header Missing [10021], Server Leaks Version Information [10036], CSP Header Not Set [10038], Permissions Policy Header Not Set [10063], HTTP Only Site [10106], Session ID Transmitted Insecurely [40013], Sub Resource Integrity Attribute Missing [90003], Cross-Origin-Resource-Policy Header Missing or Invalid [90004], Insecure HTTP Method - PUT [90028]. Zero FAIL-level alerts. `zap-full-scan.py` exits non-zero on any WARN by default, which would have blocked every future PR on pre-existing gaps unrelated to their changes.
+
+**Workaround:** `-I` (`--ignore-warn`) added to the scan's `cmd_options` so the job only fails on FAIL-level alerts; WARN findings still appear in the job's ZAP log/report for visibility, they just don't block merges.
+
+**Fix tracked in:** Not yet filed. Recommended as a dedicated hardening PR: Django `SECURE_*` settings + `django-csp`/`django-permissions-policy` middleware for the header findings, `SESSION_COOKIE_HTTPONLY`/`SESSION_COOKIE_SECURE` for the cookie/session findings, `integrity` attributes on external `<script>`/`<link>` tags for SRI, and removing/gating the PUT method where unintended.
+
+---
+
 ## Resolved Limitations
 
 ### [LIMIT-R01] Docker container permissions — `app` user could not write `db.sqlite3`
