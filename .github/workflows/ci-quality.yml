@@ -104,12 +104,22 @@ jobs:
           coverage run --parallel-mode -m pytest tests/ core/tests/ tests_bdd/ prei/pipeline/tests/ \
             -q --tb=short \
             -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not acceptance and not export and not unreachable_url"
+      - name: Flaky test report
+        if: always()
+        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
           name: coverage-unit
           path: .coverage.*
           include-hidden-files: true
+          retention-days: 1
+      - name: Upload test report log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-log-unit
+          path: .pytest-report.jsonl
           retention-days: 1
 
   tests-integration:
@@ -132,12 +142,22 @@ jobs:
           coverage run --parallel-mode -m pytest tests/ core/tests/ \
             -q --tb=short \
             -k "integration"
+      - name: Flaky test report
+        if: always()
+        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
           name: coverage-integration
           path: .coverage.*
           include-hidden-files: true
+          retention-days: 1
+      - name: Upload test report log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-log-integration
+          path: .pytest-report.jsonl
           retention-days: 1
 
   tests-e2e:
@@ -160,12 +180,22 @@ jobs:
           coverage run --parallel-mode -m pytest tests/ \
             -q --tb=short \
             -k "e2e or docker or container or startup or add_to_pipeline or export"
+      - name: Flaky test report
+        if: always()
+        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
           name: coverage-e2e
           path: .coverage.*
           include-hidden-files: true
+          retention-days: 1
+      - name: Upload test report log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-log-e2e
+          path: .pytest-report.jsonl
           retention-days: 1
 
   typecheck:
