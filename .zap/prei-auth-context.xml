@@ -8,10 +8,13 @@
   the live deployment - post-deployment.yml's unauthenticated full scan is
   unchanged and still runs against the real deployed artifact.
 
-  The embedded credential is a fixed, CI-only, non-production literal
-  (matches ZAP_AUTH_USERNAME/ZAP_AUTH_PASSWORD in ci-quality.yml) scoped to
-  a throwaway database that is destroyed at job end - not a secret.
-  See docs/KNOWN_LIMITATIONS.md LIMIT-22.
+  The __ZAP_AUTH_CREDS_B64__ placeholder is substituted at job runtime (the
+  "Render ZAP auth context" step in ci-quality.yml) with a base64
+  username=...&password=... blob for a randomly-generated, CI-only password
+  scoped to a throwaway database that is destroyed at job end. No credential
+  value is ever committed to the repository (see .gitignore for the rendered
+  prei-auth-context-runtime.xml output). See docs/KNOWN_LIMITATIONS.md
+  LIMIT-22.
 -->
 <configuration>
   <context>
@@ -50,7 +53,7 @@
       <type>0</type>
     </authorization>
     <users>
-      <user>1;true;zap-ci-scan-only;1;dXNlcm5hbWU9emFwLWNpLXNjYW4tb25seSZwYXNzd29yZD1aYXBDaU9ubHlQdzIwMjY=</user>
+      <user>1;true;zap-ci-scan-only;1;__ZAP_AUTH_CREDS_B64__</user>
     </users>
     <forceduser>1</forceduser>
     <verification>

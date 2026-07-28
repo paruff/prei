@@ -265,10 +265,12 @@ jobs:
       SECRET_KEY: ci-zap-scan-key
       DATABASE_URL: "sqlite:////tmp/zap_scan.sqlite3"
       ZAP_AUTH_USERNAME: zap-ci-scan-only
-      ZAP_AUTH_PASSWORD: ZapCiOnlyPw2026
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
+      - name: Generate throwaway scan credential
+        run: |
+          echo "ZAP_AUTH_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')" >> "$GITHUB_ENV"
       - name: Install dependencies
         run: pip install -r requirements.txt -q
       - name: Migrate
@@ -277,6 +279,10 @@ jobs:
         run: python manage.py collectstatic --noinput --verbosity 0
       - name: Seed ZAP scan user
         run: python manage.py seed_zap_scan_user
+      - name: Render ZAP auth context
+        run: |
+          CREDS_B64=$(printf 'username=%s&password=%s' "$ZAP_AUTH_USERNAME" "$ZAP_AUTH_PASSWORD" | base64 -w0)
+          sed "s/__ZAP_AUTH_CREDS_B64__/$CREDS_B64/" .zap/prei-auth-context.xml > .zap/prei-auth-context-runtime.xml
       - name: Start server
         run: nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
       - name: Wait for healthy
@@ -298,12 +304,12 @@ jobs:
             exit 1
           fi
       - name: OWASP ZAP Authenticated Full Scan
-        uses: zaproxy/action-full-scan@v1
+        uses: zaproxy/action-full-scan@v0.13.0
         with:
           target: "http://localhost:8000"
           allow_issue_writing: false
           fail_action: true
-          cmd_options: "-a -n /zap/wrk/.zap/prei-auth-context.xml -U zap-ci-scan-only"
+          cmd_options: "-a -n /zap/wrk/.zap/prei-auth-context-runtime.xml -U zap-ci-scan-only"
       - name: Server logs
         if: always()
         run: cat server.log || true

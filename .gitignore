@@ -83,4 +83,5 @@ verification-output.md
 verification-report.md
 .coverage
 .pytest-report.jsonl
+.zap/prei-auth-context-runtime.xml
 drafts/

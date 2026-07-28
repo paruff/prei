@@ -10,22 +10,31 @@ the authenticated scan against an ephemeral instance spun up inside the job
 itself: fresh migrated SQLite DB, `runserver` bound to `0.0.0.0:8000`, scan
 account seeded via a new idempotent management command
 (`core/management/commands/seed_zap_scan_user.py`, mirroring the
-`get_or_create`/`update_or_create` pattern in `seed_markets.py`). Credentials
-(`ZAP_AUTH_USERNAME`/`ZAP_AUTH_PASSWORD`) are fixed CI-only literals defined
-inline in the workflow — not a GitHub secret, since the DB is a throwaway
-SQLite file destroyed at job end.
+`get_or_create`/`update_or_create` pattern in `seed_markets.py`).
+`ZAP_AUTH_USERNAME` is a fixed, non-secret literal in the workflow;
+`ZAP_AUTH_PASSWORD` is generated fresh each run (`secrets.token_urlsafe(24)`
+in a "Generate throwaway scan credential" step, exported via `$GITHUB_ENV`) —
+not a GitHub secret, since the DB is a throwaway SQLite file destroyed at job
+end and the value never needs to be reused across runs.
 
 `.zap/prei-auth-context.xml` defines form-based auth against
 `/accounts/login/`, with logged-in/out indicator regexes (presence/absence of
-`/accounts/logout/` and the password field) and a `<users>` entry. The
-credential is embedded as a base64 `username=...&password=...` blob directly
-in the committed XML, rather than injected via a `-P username=... -P
-password=...` CLI flag as originally sketched — `zap-full-scan.py` doesn't
-expose a documented flag for that. This is acceptable because the credential
-is non-secret: CI-only, throwaway-DB-scoped, with no access to anything real.
+`/accounts/logout/` and the password field) and a `<users>` entry containing
+a `__ZAP_AUTH_CREDS_B64__` placeholder in place of a literal credential. A
+"Render ZAP auth context" step substitutes the placeholder with a base64
+`username=...&password=...` blob built from that run's generated password,
+writing the result to `.zap/prei-auth-context-runtime.xml` (gitignored,
+never committed) — rather than injecting via a `-P username=... -P
+password=...` CLI flag as originally sketched, since `zap-full-scan.py`
+doesn't expose a documented flag for that. This avoids ever committing a
+credential-shaped value to git history; an earlier version of this file did
+embed a static credential blob directly, which GitGuardian correctly flagged
+as a hardcoded secret during PR review, prompting this runtime-templating
+fix.
 
-The job runs `zap-full-scan.py -a -n /zap/wrk/.zap/prei-auth-context.xml -U
-zap-ci-scan-only` and is a required check in `pr-gates-pass`, so it runs
+The job runs `zap-full-scan.py -a -n
+/zap/wrk/.zap/prei-auth-context-runtime.xml -U zap-ci-scan-only` and is a
+required check in `pr-gates-pass`, so it runs
 pre-merge on every PR — a stronger "shift security left" posture than the
 existing unauthenticated scan, which only runs post-deployment.
 `post-deployment.yml`'s scan is left unchanged (defense in depth: one
