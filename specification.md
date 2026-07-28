@@ -1,39 +1,65 @@
-# Specification: Phase A — CI/Test Quality Gaps (docs/TOP_01_PLAN.md)
+# Specification: Phase B — Financial Math (docs/TOP_01_PLAN.md)
 # Written: 2026-07-27
 
 ---
 
 ## 0. Problem
 
-`docs/TOP_01_PLAN.md` Phase A identifies 5 gaps between this repo's CI pipeline
-and a genuinely trustworthy one: acceptance/BDD suites that don't exercise real
-HTTP, a PR-gate acceptance job that only `--collect-only`s instead of running,
-an unbounded Docker build step, and acceptance tests that only check status
-codes instead of response shape.
+`docs/TOP_01_PLAN.md` Phase B requires the core financial-math functions in
+`investor_app/finance/utils.py` to have independent reference implementations,
+broad edge-case coverage gated in CI, and mathematical derivation docstrings.
+Investigation found Phase B partially done already (commit `30fd355`): B-1 was
+missing IRR's reference implementation, B-2 had only 5-9 cases per function
+(well short of "50+"), B-3 was already wired, and B-4 had zero derivation
+docstrings anywhere. The audit also surfaced a live `AGENTS.md` "Never Do"
+violation adjacent to this work: `prei/pipeline/handlers/underwriting.py` was
+a second, fully float-based implementation of NOI/cap-rate/cash-on-cash living
+outside `services/utils` (Never-Do #1 and #3) — approved for fixing in this
+same PR.
 
 ## 1. Requirements
 
-- A-1: `main-ci-guard.yml` blocks PR merges on Tier-2 (post-merge) failure.
-- A-2: `tests_bdd/`'s pipeline acceptance suite drives real HTTP requests
-  (via pytest-django's `live_server`) instead of `django.test.Client`.
-- A-3: `tests/acceptance/*.py` actually executes in the PR-gate tier
-  (`ci-quality.yml`), not just `--collect-only`, via a `live_server` fallback
-  when `BASE_URL` is unset.
-- A-4: `docker-publish.yml`'s `build-image` job enforces a real 10-minute
-  build-time budget (soft check + hard `timeout-minutes` backstop).
-- A-5: All `tests/acceptance/*.py` files validate response shape via
-  `schemas.py` Pydantic models, not just raw status codes.
+- B-1: `tests/finance_reference.py` has an independent, `numpy_financial`-free
+  reference implementation of every core KPI, including IRR.
+- B-2: `tests/test_finance_math.py` covers 50+ parameterized edge cases per
+  function (normal, zero, negative, extreme magnitude, sub-cent precision,
+  boundary, int/Decimal coercion).
+- B-3: `ci-quality.yml`'s `finance-math` job gates on the full expanded suite
+  (already wired; automatically covers new IRR cases once added).
+- B-4: `noi`, `cap_rate`, `cash_on_cash`, `dscr`, `irr` in
+  `investor_app/finance/utils.py` have full derivation docstrings; `one_percent_rule`/
+  `gross_rent_multiplier` get a derivation note added to their existing docstrings.
+- UW-1: `prei/pipeline/handlers/underwriting.py` converts from `float` to
+  `Decimal` and stops duplicating `cap_rate`/`cash_on_cash` — it imports the
+  canonical implementations from `investor_app.finance.utils` instead.
 
 ## 2. Acceptance Criteria
 
 | ID | Criterion | test_type |
 |---|---|---|
-| AC-A1-01 | `main-ci-guard.yml` fails the PR check when Tier 2 fails | ci |
-| AC-A2-01 | `pytest tests_bdd/` passes using `live_server` + `httpx.Client` | unit |
-| AC-A2-02 | POST-based BDD steps include a real CSRF token | unit |
-| AC-A3-01 | `pytest tests/acceptance/` passes with no `BASE_URL` set (live_server fallback) | unit |
-| AC-A3-02 | `ci-quality.yml`'s `acceptance-check` job runs tests for real, not `--collect-only` | ci |
-| AC-A3-03 | `BASE_URL`-driven runs (`make test-acceptance`, `post-deployment.yml`) are unaffected | unit |
-| AC-A4-01 | `build-image` job has `timeout-minutes: 10` | ci |
-| AC-A4-02 | "Check build time" step fails the job if duration exceeds 600s | ci |
-| AC-A5-01 | All 9 files in `tests/acceptance/` import and use `schemas.py` models | unit |
+| AC-B1-01 | `ref_irr` exists in `tests/finance_reference.py`, no numpy dependency | unit |
+| AC-B2-01 | `pytest tests/test_finance_math.py` passes with 50+ cases per function | unit |
+| AC-B2-02 | `one_percent_rule`/`gross_rent_multiplier` reference functions raise `ValueError` matching production's contract | unit |
+| AC-B3-01 | `ci-quality.yml`'s `finance-math` job runs `tests/test_finance_math.py` (already true) | ci |
+| AC-B4-01 | `noi`/`cap_rate`/`cash_on_cash`/`dscr`/`irr` each have a "Derivation:" docstring paragraph | unit |
+| AC-UW-01 | `UnderwritingInput`/`UnderwritingMetrics` fields are `Decimal`, not `float` | unit |
+| AC-UW-02 | `underwriting.py` imports `cap_rate`/`cash_on_cash` from `investor_app.finance.utils`, no local duplicate | unit |
+| AC-UW-03 | `pytest prei/pipeline/tests/test_underwriting.py tests/test_underwriting_integration.py tests/test_offer_integration.py` passes | unit |
+| AC-UW-04 | `orchestrator.py`'s `price * 0.012`/`price * 0.004` boundary uses `Decimal` arithmetic | unit |
+
+## 3. Out of Scope
+
+- `prei/pipeline/handlers/offer.py`'s remaining float-based currency — tracked
+  as `docs/KNOWN_LIMITATIONS.md` LIMIT-21, not fixed here.
+- Reconciling the bare-function vs. `calculate_*` contract divergence and the
+  duplicate `score_listing_v2` functions in `investor_app/finance/utils.py` —
+  tracked as LIMIT-20, requires an API-contract decision out of scope for this PR.
+
+## 4. Verification
+
+- `pytest tests/test_finance_math.py -v --tb=short`
+- `pytest prei/pipeline/tests/test_underwriting.py tests/test_underwriting_integration.py tests/test_offer_integration.py prei/pipeline/tests/test_orchestrator.py -q -o addopts=""`
+- `pytest tests_bdd/ core/tests/ prei/pipeline/tests/ -q`
+- `mypy core/ investor_app/finance/` (existing CI command)
+- Push branch, open PR, watch `ci-quality.yml` go green. PR stays open for
+  human review/merge — never merge or push to `main` directly.

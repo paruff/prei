@@ -1,46 +1,74 @@
-# Design: Phase A — CI/Test Quality Gaps
+# Design: Phase B — Financial Math
 
-### A-2: BDD pipeline suite over real HTTP
-`tests_bdd/steps/pipeline_acceptance_steps.py` swaps `django.test.Client` for
-an `httpx.Client` bound to pytest-django's `live_server.url`. `Given` steps
-keep building fixtures via the ORM; `tests_bdd/conftest.py`'s `_reset_ctx`
-fixture depends on `transactional_db` (not `db`) so rows committed by the test
-process are visible to the live server's background-thread request handling.
-POST steps fetch a CSRF token from the target form page first (`_csrf_token()`
-helper) since httpx doesn't auto-handle Django CSRF the way the test client
-does.
+### B-1: IRR reference implementation
+`ref_irr(cashflows: list[Decimal]) -> Decimal` in `tests/finance_reference.py`
+is independent of `numpy_financial` (unlike production's `irr()`, which wraps
+it). It brackets a sign change in `NPV(r) = Σ cashflows[t] / (1+r)^t` over a
+coarse grid (`r ∈ (-0.9999, 10)`, step `0.01`), then bisects within the
+bracket to a `1e-7` tolerance. Returns `Decimal("0")` when no sign change is
+found (no real root), mirroring production's existing NaN/Inf fallback.
 
-### A-3: Acceptance suite runs pre-merge
-`tests/acceptance/conftest.py`'s `base_url` fixture falls back to a
-session-scoped `live_server` when `BASE_URL` is unset, lazily requested via
-`request.getfixturevalue(...)` so `BASE_URL`-driven runs never touch Django's
-DB fixtures. A separate autouse `_enable_db_for_live_server` fixture calls
-`request.getfixturevalue("db")` per test function, since pytest-django blocks
-DB access per-test regardless of a session-scoped fixture's own DB setup.
-`ci-quality.yml`'s `acceptance-check` job drops `--collect-only` and runs the
-suite for real, with `BASE_URL` intentionally unset.
+### B-2: Expanded edge-case coverage
+`tests/test_finance_math.py`'s case lists (`NOI_CASES`, `CAP_RATE_CASES`,
+`COC_CASES`, `DSCR_CASES`, `ONE_PCT_CASES`, `GRM_CASES`, new `IRR_CASES`) were
+expanded to 50+ rows each, organized by category: normal/typical, zero in
+each param position, negative in each param position, extreme magnitude,
+currency sub-cent precision, boundary/threshold, and int-vs-Decimal coercion.
+`ref_one_percent_rule`/`ref_gross_rent_multiplier` were updated to raise
+`ValueError` under the same zero/negative conditions as production, so
+zero/negative edge cases can't silently diverge between "production raises"
+and "reference returns a value."
 
-### A-4: Real build-time budget
-`build-image`'s `job-start` step persists its epoch to `$GITHUB_ENV`. The
-"Check build time" step computes the elapsed duration against that epoch and
-fails (`::error::` + `exit 1`) past 600s. `timeout-minutes: 10` on the job
-itself is a hard backstop independent of the soft check.
+### B-3: No workflow change
+`ci-quality.yml`'s `finance-math` job already runs the whole of
+`tests/test_finance_math.py`; B-1/B-2 adding IRR cases to that same file
+extends the existing gate automatically.
 
-### A-5: Response-shape validation
-`schemas.py` gained two generic models — `LoginGateAssertion`
-(`Literal[200, 302]`, for pages that redirect anonymous users to login) and
-`NoCrashAssertion` (`status_code < 500`, for pages that must not error
-regardless of auth state) — reused across the status-only files
-(`test_brrrr.py`, `test_dashboard.py`, `test_pipeline.py`, `test_leasing.py`,
-parts of `test_growth.py`/`test_property_pipeline.py`). Files with existing
-purpose-built models (`LoginPageAssertion`, `DiscoveryPageAssertion`,
-`StaticAssetAssertion` in `test_pages.py`; `GrowthAreasResponse` in
-`test_growth.py`) now actually import and validate against them instead of
-duplicating loose dict/status assertions.
+### B-4: Derivation docstrings
+`noi`, `cap_rate`, `cash_on_cash`, `dscr`, `irr` in
+`investor_app/finance/utils.py` gained full docstrings (formula + "Derivation:"
+paragraph + Args/Returns), following the Args/Returns/Raises style already
+used by `one_percent_rule`/`gross_rent_multiplier`. Those two also gained a
+one-line derivation note for completeness. No function bodies changed —
+docstrings only, verified via `ast.parse` + full test rerun.
 
-### Bugs surfaced by A-3 (fixed, not scope creep — this is what the new gate is for)
-- `pipeline_list` view was missing `@login_required`, unlike sibling
-  `leasing_list`, causing a 500 instead of a redirect for anonymous access.
-- `tests/acceptance/test_leasing.py` hardcoded a stale route (`/leasing/list/`
-  instead of `/leasing/`) that had never actually executed under
-  `--collect-only`.
+### Underwriting.py: float → Decimal, dedup
+`UnderwritingInput`/`UnderwritingMetrics` (`prei/pipeline/handlers/underwriting.py`)
+became `Decimal`-typed pydantic models — pydantic v2 coerces int/float/str into
+`Decimal` fields natively, so existing bare-numeric call sites keep working
+unchanged. The local duplicate `cap_rate()` was deleted; the module now
+imports `cap_rate`/`cash_on_cash`/`to_decimal` from `investor_app.finance.utils`
+directly. `cash_on_cash_yield()` keeps its distinct name and semantics
+(all-cash acquisition yield: NOI over price+rehab, no debt service netted
+out) but delegates its division through the canonical `cash_on_cash()` instead
+of reimplementing `/` locally. The remaining composition helpers
+(`gross_potential_rent`, `effective_gross_income`, `total_operating_expenses`,
+`net_operating_income`, `max_allowable_offer`) converted their arithmetic to
+`Decimal` via the reused `to_decimal()` helper; `solve_underwriting()` uses
+`.quantize()` instead of `round()` for the final output.
+
+`orchestrator.py`'s `UnderwritingInput` construction boundary (`price * 0.012`/
+`price * 0.004` tax/insurance defaults) was wrapped in `Decimal("0.012")`/
+`Decimal("0.004")` arithmetic against a `to_decimal(canonical.price or 0.0)`-
+coerced price, reusing `to_decimal()` rather than reinventing coercion.
+
+**Two non-obvious risks found during implementation:**
+- `pytest.approx(<float literal>)` compared against a `Decimal` actual is
+  fragile, not uniformly broken — it silently short-circuits via exact
+  equality for representable values but raises `TypeError` on near-matches
+  (`abs(expected - actual)` can't mix `float` and `Decimal`). Every affected
+  assertion site was fixed by wrapping the Decimal actual in `float(...)`
+  rather than relying on which literals happen to match exactly.
+- `Decimal * float` arithmetic (not just comparison) raises `TypeError`
+  unconditionally. Test-file call sites that computed derived values inline
+  (e.g. `uw.mao * 1.15`, `low.mao * 0.07 / 0.10`) needed `float(...)`-wrapping
+  of the Decimal operand before the float arithmetic.
+`prei/pipeline/handlers/offer.py`'s `OfferInput.mao: float` field is untouched
+by this — pydantic coerces a `Decimal` input to `float` automatically since no
+arithmetic happens before construction at the remaining safe call sites.
+
+### Documentation-only additions
+Two new `docs/KNOWN_LIMITATIONS.md` entries (LIMIT-20, LIMIT-21) record the
+issues found but deliberately not fixed in this PR: the bare-function vs.
+`calculate_*` contract divergence plus the duplicate `score_listing_v2`
+functions, and `offer.py`'s remaining float-currency issue.
