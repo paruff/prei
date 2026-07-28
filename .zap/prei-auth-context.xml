@@ -26,11 +26,11 @@
     <excregexes>http://localhost:8000/accounts/logout.*</excregexes>
     <urlparser>
       <class>org.zaproxy.zap.model.StandardParameterParser</class>
-      <config>&amp;=</config>
+      <config>{&quot;kvps&quot;:&quot;&amp;&quot;,&quot;kvs&quot;:&quot;=&quot;,&quot;struct&quot;:[]}</config>
     </urlparser>
     <postparser>
       <class>org.zaproxy.zap.model.StandardParameterParser</class>
-      <config>&amp;=</config>
+      <config>{&quot;kvps&quot;:&quot;&amp;&quot;,&quot;kvs&quot;:&quot;=&quot;,&quot;struct&quot;:[]}</config>
     </postparser>
     <authentication>
       <type>2</type>
@@ -53,7 +53,7 @@
       <type>0</type>
     </authorization>
     <users>
-      <user>1;true;zap-ci-scan-only;1;__ZAP_AUTH_CREDS_B64__</user>
+      <user>1;true;zap-ci-scan-only;2;__ZAP_AUTH_CREDS_B64__</user>
     </users>
     <forceduser>1</forceduser>
     <verification>
