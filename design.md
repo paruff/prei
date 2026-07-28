@@ -1,46 +1,83 @@
-# Design: Phase A — CI/Test Quality Gaps
+# Design: Phase C (partial) — Deployment Reliability
 
-### A-2: BDD pipeline suite over real HTTP
-`tests_bdd/steps/pipeline_acceptance_steps.py` swaps `django.test.Client` for
-an `httpx.Client` bound to pytest-django's `live_server.url`. `Given` steps
-keep building fixtures via the ORM; `tests_bdd/conftest.py`'s `_reset_ctx`
-fixture depends on `transactional_db` (not `db`) so rows committed by the test
-process are visible to the live server's background-thread request handling.
-POST steps fetch a CSRF token from the target form page first (`_csrf_token()`
-helper) since httpx doesn't auto-handle Django CSRF the way the test client
-does.
+### C-2: Authenticated ZAP scan runs against an ephemeral CI instance
 
-### A-3: Acceptance suite runs pre-merge
-`tests/acceptance/conftest.py`'s `base_url` fixture falls back to a
-session-scoped `live_server` when `BASE_URL` is unset, lazily requested via
-`request.getfixturevalue(...)` so `BASE_URL`-driven runs never touch Django's
-DB fixtures. A separate autouse `_enable_db_for_live_server` fixture calls
-`request.getfixturevalue("db")` per test function, since pytest-django blocks
-DB access per-test regardless of a session-scoped fixture's own DB setup.
-`ci-quality.yml`'s `acceptance-check` job drops `--collect-only` and runs the
-suite for real, with `BASE_URL` intentionally unset.
+Authenticating against the real deployed environment (what
+`post-deployment.yml` targets) would require provisioning a scan account and
+credentials on that live environment — the same category of infra gap as
+C-1/C-3. Instead, a new `zap-authenticated-scan` job in `ci-quality.yml` runs
+the authenticated scan against an ephemeral instance spun up inside the job
+itself: fresh migrated SQLite DB, `runserver` bound to `0.0.0.0:8000`, scan
+account seeded via a new idempotent management command
+(`core/management/commands/seed_zap_scan_user.py`, mirroring the
+`get_or_create`/`update_or_create` pattern in `seed_markets.py`). Credentials
+(`ZAP_AUTH_USERNAME`/`ZAP_AUTH_PASSWORD`) are fixed CI-only literals defined
+inline in the workflow — not a GitHub secret, since the DB is a throwaway
+SQLite file destroyed at job end.
 
-### A-4: Real build-time budget
-`build-image`'s `job-start` step persists its epoch to `$GITHUB_ENV`. The
-"Check build time" step computes the elapsed duration against that epoch and
-fails (`::error::` + `exit 1`) past 600s. `timeout-minutes: 10` on the job
-itself is a hard backstop independent of the soft check.
+`.zap/prei-auth-context.xml` defines form-based auth against
+`/accounts/login/`, with logged-in/out indicator regexes (presence/absence of
+`/accounts/logout/` and the password field) and a `<users>` entry. The
+credential is embedded as a base64 `username=...&password=...` blob directly
+in the committed XML, rather than injected via a `-P username=... -P
+password=...` CLI flag as originally sketched — `zap-full-scan.py` doesn't
+expose a documented flag for that. This is acceptable because the credential
+is non-secret: CI-only, throwaway-DB-scoped, with no access to anything real.
 
-### A-5: Response-shape validation
-`schemas.py` gained two generic models — `LoginGateAssertion`
-(`Literal[200, 302]`, for pages that redirect anonymous users to login) and
-`NoCrashAssertion` (`status_code < 500`, for pages that must not error
-regardless of auth state) — reused across the status-only files
-(`test_brrrr.py`, `test_dashboard.py`, `test_pipeline.py`, `test_leasing.py`,
-parts of `test_growth.py`/`test_property_pipeline.py`). Files with existing
-purpose-built models (`LoginPageAssertion`, `DiscoveryPageAssertion`,
-`StaticAssetAssertion` in `test_pages.py`; `GrowthAreasResponse` in
-`test_growth.py`) now actually import and validate against them instead of
-duplicating loose dict/status assertions.
+The job runs `zap-full-scan.py -a -n /zap/wrk/.zap/prei-auth-context.xml -U
+zap-ci-scan-only` and is a required check in `pr-gates-pass`, so it runs
+pre-merge on every PR — a stronger "shift security left" posture than the
+existing unauthenticated scan, which only runs post-deployment.
+`post-deployment.yml`'s scan is left unchanged (defense in depth: one
+authenticated pre-merge scan, one unauthenticated scan of the real artifact).
 
-### Bugs surfaced by A-3 (fixed, not scope creep — this is what the new gate is for)
-- `pipeline_list` view was missing `@login_required`, unlike sibling
-  `leasing_list`, causing a 500 instead of a redirect for anonymous access.
-- `tests/acceptance/test_leasing.py` hardcoded a stale route (`/leasing/list/`
-  instead of `/leasing/`) that had never actually executed under
-  `--collect-only`.
+Scope decision recorded in `docs/KNOWN_LIMITATIONS.md` LIMIT-22.
+
+### C-4: Flaky test detection, ledger, and quarantine
+
+`pytest.ini`'s `addopts` gains `--report-log=.pytest-report.jsonl`, provided
+by the `pytest-reportlog` plugin (not built into pytest core — this was a
+wrong assumption in the original plan, corrected during implementation once
+`--report-log` failed with "unrecognized arguments"). With
+`pytest-rerunfailures` already wired (`--reruns 1 --reruns-delay 5`), a
+rerun-then-pass test shows up in the report log as two `"call"`-phase
+reports for the same nodeid: an intermediate `"rerun"` outcome followed by a
+final `"passed"` outcome.
+
+`.github/scripts/flaky_report.py` parses that JSONL file and detects exactly
+that signature (`find_flaky_nodeids`). Two modes:
+
+- `--mode report`: prints a markdown summary (also appended to
+  `$GITHUB_STEP_SUMMARY` when set) without touching the ledger. Runs in
+  `ci-quality.yml`'s `tests-unit`/`tests-integration`/`tests-e2e` jobs on
+  every PR — visibility without any write contention between concurrent PR
+  runs or fork-PR permission issues.
+- `--mode write`: same summary, plus updates `docs/quality/flaky_tests.json`
+  (nodeid → `count`, `first_seen`, `last_seen`, `quarantined`) and, once a
+  nodeid's cumulative count reaches the threshold (default 3), adds it to
+  `tests/.flaky_quarantine.txt`. Runs only from `docker-publish.yml`'s
+  `live-test` job (push-to-`main` only) — the single writer for the shared
+  ledger, avoiding merge conflicts between concurrent PRs.
+
+Because `live-test`'s BDD suite runs inside a Docker container (`docker exec
+... pytest tests_bdd/`), the report log is written to `/app/.pytest-report.jsonl`
+inside the container (picked up automatically from `pytest.ini`'s `addopts`,
+since the image includes it) and copied out via `docker cp` before the
+container is torn down. If the ledger or quarantine file changed, the job
+bot-commits as `github-actions[bot]` with `chore(ci): update flaky test
+ledger [skip ci]` and pushes directly to `main` (the job's `permissions` gains
+`contents: write` for this).
+
+A new root `conftest.py` hook, `pytest_collection_modifyitems`, reads
+`tests/.flaky_quarantine.txt` (if present) and marks matching nodeids
+`pytest.mark.xfail(strict=False)` at collection time — quarantined tests keep
+running and reporting on every run, but a known-flaky test can never fail the
+build while it's being fixed. Verified end-to-end with a throwaway
+deliberately-failing test converting to `1 xfailed`.
+
+### Residual gap
+
+The `docker-publish.yml` bot-commit step only runs on push-to-`main`, so it
+can't be exercised from a PR branch. This is flagged in the PR description as
+something to watch on the first post-merge run, not claimed as pre-merge
+verified.

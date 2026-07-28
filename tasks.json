@@ -1,60 +1,71 @@
 {
   "meta": {
     "project": "prei",
-    "session": "top01-phase-a-20260727",
-    "date": "2026-07-27",
-    "feature": "Phase A — CI/Test Quality Gaps (docs/TOP_01_PLAN.md)",
+    "session": "top01-phase-c-20260728",
+    "date": "2026-07-28",
+    "feature": "Phase C (partial) — Deployment Reliability (docs/TOP_01_PLAN.md), C-2 + C-4 only",
     "spec": "specification.md",
-    "design": "design.md"
+    "design": "design.md",
+    "deferred": ["C-1 (canary deployment)", "C-3 (SLO dashboard)"]
   },
   "tasks": [
     {
-      "id": "A-1",
-      "summary": "main-ci-guard blocks PR merge on Tier-2 failure",
-      "description": "Already implemented prior to this session; verified in .github/workflows/main-ci-guard.yml. No action taken.",
+      "id": "C-2a",
+      "summary": "Idempotent ZAP scan-user seed command",
+      "description": "Add core/management/commands/seed_zap_scan_user.py: reads ZAP_AUTH_USERNAME/ZAP_AUTH_PASSWORD from env, get_or_create's a non-staff, non-superuser user and sets/updates the password idempotently.",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-A1-01", "description": "main-ci-guard.yml fails the PR check when Tier 2 fails", "test_type": "ci"}
+        {"id": "AC-C2-01", "description": "seed_zap_scan_user idempotently creates/updates a non-staff, non-superuser scan account from env vars", "test_type": "unit"}
       ]
     },
     {
-      "id": "A-2",
-      "summary": "BDD pipeline suite drives real HTTP via live_server",
-      "description": "Rewrite tests_bdd/steps/pipeline_acceptance_steps.py to use an httpx.Client bound to pytest-django's live_server fixture instead of django.test.Client; switch tests_bdd/conftest.py's _reset_ctx to depend on transactional_db.",
-      "depends_on": [],
+      "id": "C-2b",
+      "summary": "ZAP auth context file + authenticated scan CI job",
+      "description": "Add .zap/prei-auth-context.xml (form-based auth against /accounts/login/, logged-in/out indicator regexes). Add zap-authenticated-scan job to ci-quality.yml: migrate, seed the scan user, boot an ephemeral runserver, wait for healthy, run zap-full-scan.py with the auth context. Wire into pr-gates-pass as a required check.",
+      "depends_on": ["C-2a"],
       "acceptance_criteria": [
-        {"id": "AC-A2-01", "description": "pytest tests_bdd/ passes using live_server + httpx.Client", "test_type": "unit"},
-        {"id": "AC-A2-02", "description": "POST-based BDD steps include a real CSRF token", "test_type": "unit"}
+        {"id": "AC-C2-02", "description": ".zap/prei-auth-context.xml defines form-based auth with logged-in/out indicators", "test_type": "manual"},
+        {"id": "AC-C2-03", "description": "zap-authenticated-scan job seeds the account and scans an ephemeral instance", "test_type": "ci"},
+        {"id": "AC-C2-04", "description": "zap-authenticated-scan is a required check in pr-gates-pass", "test_type": "ci"}
       ]
     },
     {
-      "id": "A-3",
-      "summary": "Acceptance suite executes for real in the PR-gate tier",
-      "description": "Extend tests/acceptance/conftest.py's base_url fixture to fall back to a live_server when BASE_URL is unset; add an autouse fixture to unblock DB access per test; update ci-quality.yml's acceptance-check job to run pytest for real instead of --collect-only.",
-      "depends_on": [],
+      "id": "C-2c",
+      "summary": "Document the ephemeral-instance scope decision",
+      "description": "Add docs/KNOWN_LIMITATIONS.md LIMIT-22: authenticated ZAP scanning runs against an ephemeral CI-seeded instance, not the live deployment, and why.",
+      "depends_on": ["C-2b"],
       "acceptance_criteria": [
-        {"id": "AC-A3-01", "description": "pytest tests/acceptance/ passes with no BASE_URL set (live_server fallback)", "test_type": "unit"},
-        {"id": "AC-A3-02", "description": "ci-quality.yml's acceptance-check job runs tests for real, not --collect-only", "test_type": "ci"},
-        {"id": "AC-A3-03", "description": "BASE_URL-driven runs (make test-acceptance, post-deployment.yml) are unaffected", "test_type": "unit"}
+        {"id": "AC-C2-05", "description": "docs/KNOWN_LIMITATIONS.md documents the ephemeral-CI-instance scope decision", "test_type": "manual"}
       ]
     },
     {
-      "id": "A-4",
-      "summary": "Real build-time budget on docker-publish.yml build-image job",
-      "description": "Persist job-start's epoch to $GITHUB_ENV; replace the no-op 'Check build time' stub with a real duration check that fails past 600s; add timeout-minutes: 10 to the job as a hard backstop.",
+      "id": "C-4a",
+      "summary": "Report-log flag + flaky detection/ledger script",
+      "description": "Add --report-log=.pytest-report.jsonl to pytest.ini's addopts (requires the pytest-reportlog dependency, added to requirements.txt). Add .github/scripts/flaky_report.py with --mode report (summary only) and --mode write (updates docs/quality/flaky_tests.json and tests/.flaky_quarantine.txt once a nodeid's count reaches the threshold).",
       "depends_on": [],
       "acceptance_criteria": [
-        {"id": "AC-A4-01", "description": "build-image job has timeout-minutes: 10", "test_type": "ci"},
-        {"id": "AC-A4-02", "description": "Check build time step fails the job if duration exceeds 600s", "test_type": "ci"}
+        {"id": "AC-C4-01", "description": "pytest.ini's addopts includes --report-log=.pytest-report.jsonl", "test_type": "unit"},
+        {"id": "AC-C4-02", "description": "flaky_report.py --mode report detects rerun-then-pass nodeids without touching the ledger", "test_type": "unit"},
+        {"id": "AC-C4-03", "description": "flaky_report.py --mode write increments the ledger and quarantines at the threshold", "test_type": "unit"}
       ]
     },
     {
-      "id": "A-5",
-      "summary": "Wire remaining acceptance test files to schemas.py",
-      "description": "Add LoginGateAssertion and NoCrashAssertion generic models to schemas.py; wire all 8 previously-unwired tests/acceptance/*.py files to use schemas.py models (existing purpose-built models where available, the new generic ones for status-only checks).",
-      "depends_on": [],
+      "id": "C-4b",
+      "summary": "conftest.py quarantine hook",
+      "description": "Add pytest_collection_modifyitems hook to root conftest.py: nodeids listed in tests/.flaky_quarantine.txt get marked xfail(strict=False) at collection time.",
+      "depends_on": ["C-4a"],
       "acceptance_criteria": [
-        {"id": "AC-A5-01", "description": "All 9 files in tests/acceptance/ import and use schemas.py models", "test_type": "unit"}
+        {"id": "AC-C4-04", "description": "conftest.py marks quarantined nodeids xfail(strict=False) so they can't fail the build", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "C-4c",
+      "summary": "Wire flaky_report.py into CI jobs",
+      "description": "ci-quality.yml's tests-unit/tests-integration/tests-e2e jobs run flaky_report.py --mode report after pytest and upload the report log as an artifact. docker-publish.yml's live-test job (push-to-main only) extracts the report log from the container, runs flaky_report.py --mode write, and bot-commits any ledger/quarantine change to main as github-actions[bot] with [skip ci] (needs contents: write).",
+      "depends_on": ["C-4a", "C-4b"],
+      "acceptance_criteria": [
+        {"id": "AC-C4-05", "description": "PR test jobs run flaky_report.py --mode report and upload the report log artifact", "test_type": "ci"},
+        {"id": "AC-C4-06", "description": "live-test bot-commits ledger/quarantine changes to main via flaky_report.py --mode write", "test_type": "ci"}
       ]
     }
   ]
