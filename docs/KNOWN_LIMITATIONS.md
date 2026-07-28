@@ -212,6 +212,30 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
+### [LIMIT-20] 🟡 HIGH — Divergent bare-function vs. `calculate_*` contracts for the same formulas, plus a duplicate `score_listing_v2`
+
+**Location:** `investor_app/finance/utils.py` — `noi`/`cap_rate`/`cash_on_cash`/`dscr` vs. `calculate_noi`/`calculate_cap_rate`/`calculate_cash_on_cash`/`calculate_irr`; `investor_app/finance/utils.py:1830` vs. `core/services/scoring.py:110` (`score_listing_v2`).
+
+**Impact:** Two independent implementations exist for the same four KPI formulas — the bare functions return `Decimal("0")` on invalid input (e.g. zero purchase price, zero debt service), while the `calculate_*` variants raise `ValueError` under the same conditions. Callers that reach for the "wrong" variant get silently different failure behavior for identical bad input, and there is no single source of truth to point developers at. Separately, two functions both named `score_listing_v2` exist with different signatures — one in `investor_app/finance/utils.py`, one in `core/services/scoring.py` — an accident waiting to cause a wrong-function-imported bug.
+
+**Workaround:** None currently. Callers must know which variant (bare vs. `calculate_*`) they're calling and its error-handling contract; `score_listing_v2` callers must be careful to import from the intended module.
+
+**Fix tracked in:** Not yet filed. Found during Phase B (docs/TOP_01_PLAN.md) financial-math audit; out of scope for that PR since it requires an API-contract decision (which behavior is canonical) rather than a mechanical fix.
+
+---
+
+### [LIMIT-21] 🟡 HIGH — `prei/pipeline/handlers/offer.py` remains float-based currency
+
+**Location:** `prei/pipeline/handlers/offer.py` — `OfferInput`, `OfferMetrics`, `solve_offer()` and its pricing-strategy multiplier/equity arithmetic.
+
+**Impact:** `OfferInput.mao`/`arv`/`rehab_budget` and `OfferMetrics.offer_price`/`estimated_equity` are `float`-typed, so all offer-price and equity math (strategy multipliers, premium calculations, equity clamping) is done in binary floating point rather than `Decimal`. This is the same class of currency-precision issue as the one fixed in `prei/pipeline/handlers/underwriting.py` during Phase B (docs/TOP_01_PLAN.md) — `AGENTS.md` "Never Do" item 3 ("Float persistence for currency") — but was deliberately left out of that PR's scope since the user approved only the underwriting.py fix, and converting `offer.py` also touches its downstream callers (`tests/test_offer_integration.py`, `tests/test_pipeline_e2e.py`, `tests_bdd/`) in ways that deserve their own reviewed change.
+
+**Workaround:** None — offer-price rounding/precision errors from float arithmetic are small in absolute terms (cents-level) for typical property values, so this is not currently causing observable defects, but the pattern should not be extended.
+
+**Fix tracked in:** Not yet filed. Recommended as a follow-up PR using the same `Decimal`/`to_decimal()` conversion approach applied to `underwriting.py`.
+
+---
+
 ### [LIMIT-22] 🟡 HIGH — Authenticated OWASP ZAP scan runs against an ephemeral CI instance, not the live deployment
 
 **Location:** `.github/workflows/ci-quality.yml` — `zap-authenticated-scan` job; `.zap/prei-auth-context.xml`; `core/management/commands/seed_zap_scan_user.py`

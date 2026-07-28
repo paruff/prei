@@ -118,9 +118,9 @@ class TestOfferIntegration:
             target_cap_rate=0.08,
         )
         offer = solve_offer(
-            OfferInput(mao=uw.mao, arv=uw.mao * 1.15), OfferStrategy.TARGET
+            OfferInput(mao=uw.mao, arv=float(uw.mao) * 1.15), OfferStrategy.TARGET
         )
-        assert offer.offer_price == pytest.approx(uw.mao, rel=1e-3)
+        assert offer.offer_price == pytest.approx(float(uw.mao), rel=1e-3)
         assert offer.estimated_equity is not None
         assert offer.estimated_equity > 0
 
@@ -164,7 +164,9 @@ class TestOfferE2E:
         )
         assert result.success
         mao = result.underwriting.mao
-        offer = solve_offer(OfferInput(mao=mao, arv=mao * 1.2), OfferStrategy.TARGET)
+        offer = solve_offer(
+            OfferInput(mao=mao, arv=float(mao) * 1.2), OfferStrategy.TARGET
+        )
         assert offer.offer_price > 0
         assert offer.estimated_equity is not None
 
