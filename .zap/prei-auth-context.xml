@@ -51,6 +51,12 @@
     </session>
     <authorization>
       <type>0</type>
+      <basic>
+        <header/>
+        <body/>
+        <logic>AND</logic>
+        <code>-1</code>
+      </basic>
     </authorization>
     <users>
       <user>1;true;zap-ci-scan-only;2;__ZAP_AUTH_CREDS_B64__</user>
