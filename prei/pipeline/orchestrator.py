@@ -7,8 +7,10 @@ returning the final asset state and all computed metrics.
 from __future__ import annotations
 
 import logging
+from decimal import Decimal
 from typing import Any, Dict, Optional, Set
 
+from investor_app.finance.utils import to_decimal
 from prei.models.pipeline import PipelineStage, PropertyAsset
 from prei.pipeline.engine import (
     AssetRepository,
@@ -192,14 +194,18 @@ class PipelineOrchestrator:
 
         # ── Stage 3: UNDERWRITING ────────────────────────────────────────
         # Build input from canonical data (with sensible defaults)
-        price = canonical.price or 0.0
-        rent = canonical.estimated_rent or 0.0
+        price = to_decimal(canonical.price or 0.0)
+        rent = to_decimal(canonical.estimated_rent or 0.0)
         uw_input = UnderwritingInput(
             purchase_price=price,
             estimated_rent=rent,
-            property_tax_annual=raw_payload.get("property_tax_annual", price * 0.012),
-            insurance_annual=raw_payload.get("insurance_annual", price * 0.004),
-            hoa_annual=raw_payload.get("hoa_annual", 0.0),
+            property_tax_annual=raw_payload.get(
+                "property_tax_annual", price * Decimal("0.012")
+            ),
+            insurance_annual=raw_payload.get(
+                "insurance_annual", price * Decimal("0.004")
+            ),
+            hoa_annual=raw_payload.get("hoa_annual", Decimal("0")),
         )
         uw_metrics = solve_underwriting(uw_input, self.target_cap_rate)
 

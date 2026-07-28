@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "project": "prei",
+    "session": "top01-phase-a-20260727",
+    "date": "2026-07-27",
+    "feature": "Phase A — CI/Test Quality Gaps (docs/TOP_01_PLAN.md)",
+    "spec": "specification.md",
+    "design": "design.md"
+  },
+  "tasks": [
+    {
+      "id": "A-1",
+      "summary": "main-ci-guard blocks PR merge on Tier-2 failure",
+      "description": "Already implemented prior to this session; verified in .github/workflows/main-ci-guard.yml. No action taken.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-A1-01", "description": "main-ci-guard.yml fails the PR check when Tier 2 fails", "test_type": "ci"}
+      ]
+    },
+    {
+      "id": "A-2",
+      "summary": "BDD pipeline suite drives real HTTP via live_server",
+      "description": "Rewrite tests_bdd/steps/pipeline_acceptance_steps.py to use an httpx.Client bound to pytest-django's live_server fixture instead of django.test.Client; switch tests_bdd/conftest.py's _reset_ctx to depend on transactional_db.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-A2-01", "description": "pytest tests_bdd/ passes using live_server + httpx.Client", "test_type": "unit"},
+        {"id": "AC-A2-02", "description": "POST-based BDD steps include a real CSRF token", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "A-3",
+      "summary": "Acceptance suite executes for real in the PR-gate tier",
+      "description": "Extend tests/acceptance/conftest.py's base_url fixture to fall back to a live_server when BASE_URL is unset; add an autouse fixture to unblock DB access per test; update ci-quality.yml's acceptance-check job to run pytest for real instead of --collect-only.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-A3-01", "description": "pytest tests/acceptance/ passes with no BASE_URL set (live_server fallback)", "test_type": "unit"},
+        {"id": "AC-A3-02", "description": "ci-quality.yml's acceptance-check job runs tests for real, not --collect-only", "test_type": "ci"},
+        {"id": "AC-A3-03", "description": "BASE_URL-driven runs (make test-acceptance, post-deployment.yml) are unaffected", "test_type": "unit"}
+      ]
+    },
+    {
+      "id": "A-4",
+      "summary": "Real build-time budget on docker-publish.yml build-image job",
+      "description": "Persist job-start's epoch to $GITHUB_ENV; replace the no-op 'Check build time' stub with a real duration check that fails past 600s; add timeout-minutes: 10 to the job as a hard backstop.",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-A4-01", "description": "build-image job has timeout-minutes: 10", "test_type": "ci"},
+        {"id": "AC-A4-02", "description": "Check build time step fails the job if duration exceeds 600s", "test_type": "ci"}
+      ]
+    },
+    {
+      "id": "A-5",
+      "summary": "Wire remaining acceptance test files to schemas.py",
+      "description": "Add LoginGateAssertion and NoCrashAssertion generic models to schemas.py; wire all 8 previously-unwired tests/acceptance/*.py files to use schemas.py models (existing purpose-built models where available, the new generic ones for status-only checks).",
+      "depends_on": [],
+      "acceptance_criteria": [
+        {"id": "AC-A5-01", "description": "All 9 files in tests/acceptance/ import and use schemas.py models", "test_type": "unit"}
+      ]
+    }
+  ]
+}

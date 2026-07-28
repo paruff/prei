@@ -86,17 +86,27 @@ def ref_monthly_mortgage(
 
 
 # Pass if monthly_rent >= purchase_price × 0.01
+# purchase_price must be > 0 for the ratio to be meaningful — matches
+# production's ValueError contract (investor_app/finance/utils.py:1663).
 def ref_one_percent_rule(monthly_rent: Decimal, purchase_price: Decimal) -> bool:
-    return monthly_rent >= purchase_price * Decimal("0.01")
+    if purchase_price <= Decimal("0"):
+        raise ValueError(
+            f"purchase_price must be greater than zero (received {purchase_price})"
+        )
+    return monthly_rent / purchase_price >= Decimal("0.01")
 
 
 # ── Gross Rent Multiplier ──────────────────────────────────────────────────
 
 
 # GRM = Purchase Price ÷ Annual Rent
+# annual_rent must be > 0 for the ratio to be meaningful — matches
+# production's ValueError contract (investor_app/finance/utils.py:1687).
 def ref_gross_rent_multiplier(purchase_price: Decimal, annual_rent: Decimal) -> Decimal:
-    if annual_rent == Decimal("0"):
-        return Decimal("0")
+    if annual_rent <= Decimal("0"):
+        raise ValueError(
+            f"annual_rent must be greater than zero (received {annual_rent})"
+        )
     return purchase_price / annual_rent
 
 
@@ -106,3 +116,65 @@ def ref_gross_rent_multiplier(purchase_price: Decimal, annual_rent: Decimal) -> 
 # Annual Depreciation = (Purchase Price - Land Value) ÷ 27.5
 def ref_annual_depreciation(purchase_price: Decimal, land_value: Decimal) -> Decimal:
     return (purchase_price - land_value) / Decimal("27.5")
+
+
+# ── IRR: Internal Rate of Return ───────────────────────────────────────────
+
+
+def _npv(rate: Decimal, cashflows: list[Decimal]) -> Decimal:
+    """NPV(r) = Σ cashflows[t] / (1+r)^t, t an integer period index."""
+    base = Decimal("1") + rate
+    total = Decimal("0")
+    for t, cf in enumerate(cashflows):
+        total += cf / (base**t)
+    return total
+
+
+# IRR is the rate r solving NPV(r) = 0. No closed form exists in general, so
+# this brackets a sign change in NPV over a coarse grid and bisects within
+# it. Returns Decimal("0") when no sign change is found in the scanned range
+# (no real root — e.g. all-same-sign cashflows), mirroring production's
+# existing NaN/Inf -> Decimal("0") fallback (investor_app/finance/utils.py:49-53).
+def ref_irr(cashflows: list[Decimal]) -> Decimal:
+    if len(cashflows) < 2:
+        return Decimal("0")
+
+    grid_lo = Decimal("-0.9999")
+    grid_hi = Decimal("10")
+    step = Decimal("0.01")
+
+    r_prev = grid_lo
+    npv_prev = _npv(r_prev, cashflows)
+    if npv_prev == Decimal("0"):
+        return r_prev
+
+    bracket = None
+    r = grid_lo + step
+    while r <= grid_hi:
+        npv_cur = _npv(r, cashflows)
+        if npv_cur == Decimal("0"):
+            return r
+        if (npv_prev < Decimal("0")) != (npv_cur < Decimal("0")):
+            bracket = (r_prev, r)
+            break
+        r_prev, npv_prev = r, npv_cur
+        r += step
+
+    if bracket is None:
+        return Decimal("0")
+
+    lo, hi = bracket
+    npv_lo = _npv(lo, cashflows)
+    tolerance = Decimal("0.0000001")
+    for _ in range(100):
+        if hi - lo < tolerance:
+            break
+        mid = (lo + hi) / Decimal("2")
+        npv_mid = _npv(mid, cashflows)
+        if npv_mid == Decimal("0"):
+            return mid
+        if (npv_lo < Decimal("0")) == (npv_mid < Decimal("0")):
+            lo, npv_lo = mid, npv_mid
+        else:
+            hi = mid
+    return (lo + hi) / Decimal("2")

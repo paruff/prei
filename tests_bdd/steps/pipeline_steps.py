@@ -244,7 +244,7 @@ def then_noi(uw_result):
 
 @then("the cap rate should be approximately 5.94%")
 def then_cap(uw_result):
-    assert uw_result.cap_rate == pytest.approx(0.0594, rel=1e-3)
+    assert float(uw_result.cap_rate) == pytest.approx(0.0594, rel=1e-3)
 
 
 @then("the MAO should be approximately $222,750")

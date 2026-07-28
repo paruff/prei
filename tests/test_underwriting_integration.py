@@ -1,5 +1,7 @@
 """Integration and E2E tests for the underwriting stage."""
 
+from decimal import Decimal
+
 import pytest
 from prei.pipeline.handlers.underwriting import (
     UnderwritingInput,
@@ -7,10 +9,10 @@ from prei.pipeline.handlers.underwriting import (
 )
 
 BASE = UnderwritingInput(
-    purchase_price=300000,
-    estimated_rent=2500,
-    property_tax_annual=3600,
-    insurance_annual=1200,
+    purchase_price=Decimal("300000"),
+    estimated_rent=Decimal("2500"),
+    property_tax_annual=Decimal("3600"),
+    insurance_annual=Decimal("1200"),
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -36,7 +38,7 @@ class TestUnderwritingIntegration:
         low = solve_underwriting(BASE, 0.07)
         high = solve_underwriting(BASE, 0.10)
         assert high.mao < low.mao
-        assert high.mao == pytest.approx(low.mao * 0.07 / 0.10, rel=1e-4)
+        assert float(high.mao) == pytest.approx(float(low.mao) * 0.07 / 0.10, rel=1e-4)
 
     def test_rehab_budget_reduces_coc(self):
         """Adding rehab budget reduces cash-on-cash yield."""
