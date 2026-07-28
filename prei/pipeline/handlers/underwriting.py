@@ -7,8 +7,11 @@ backsolves for purchase price given a target cap rate.
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from pydantic import BaseModel
 
+from investor_app.finance.utils import cap_rate, cash_on_cash, to_decimal
 
 # ── Data models ───────────────────────────────────────────────────────────────
 
@@ -16,115 +19,114 @@ from pydantic import BaseModel
 class UnderwritingInput(BaseModel):
     """Input parameters for the underwriting solver.
 
-    All monetary values are in dollars (float). Rate fields are fractions.
+    All monetary values are Decimal dollars. Rate fields are fractions.
     """
 
-    purchase_price: float
-    estimated_rent: float
-    vacancy_rate: float = 0.05  # Default 5%
-    rehab_budget: float = 0.0
-    property_tax_annual: float
-    insurance_annual: float
-    maintenance_reserve_rate: float = 0.10  # 10% of gross rent
-    management_fee_rate: float = 0.08  # 8% of EGI
-    hoa_annual: float = 0.0
+    purchase_price: Decimal
+    estimated_rent: Decimal
+    vacancy_rate: Decimal = Decimal("0.05")  # Default 5%
+    rehab_budget: Decimal = Decimal("0")
+    property_tax_annual: Decimal
+    insurance_annual: Decimal
+    maintenance_reserve_rate: Decimal = Decimal("0.10")  # 10% of gross rent
+    management_fee_rate: Decimal = Decimal("0.08")  # 8% of EGI
+    hoa_annual: Decimal = Decimal("0")
 
 
 class UnderwritingMetrics(BaseModel):
     """Output metrics from the underwriting solver."""
 
-    noi: float
-    cap_rate: float
-    cash_on_cash: float
-    mao: float
+    noi: Decimal
+    cap_rate: Decimal
+    cash_on_cash: Decimal
+    mao: Decimal
 
 
 # ── Pure arithmetic helpers ────────────────────────────────────────────────────
 
 
-def gross_potential_rent(estimated_rent: float) -> float:
+def gross_potential_rent(estimated_rent: Decimal) -> Decimal:
     """Compute Gross Potential Rent (annual).
 
-    GPR = estimated_monthly_rent × 12
+    GPR = estimated_monthly_rent x 12
     """
-    return estimated_rent * 12.0
+    return to_decimal(estimated_rent) * Decimal(12)
 
 
-def effective_gross_income(gpr: float, vacancy_rate: float) -> float:
+def effective_gross_income(gpr: Decimal, vacancy_rate: Decimal) -> Decimal:
     """Compute Effective Gross Income.
 
-    EGI = GPR × (1 - vacancy_rate)
+    EGI = GPR x (1 - vacancy_rate)
     """
-    return gpr * (1.0 - vacancy_rate)
+    return to_decimal(gpr) * (Decimal("1") - to_decimal(vacancy_rate))
 
 
 def total_operating_expenses(
-    property_tax_annual: float,
-    insurance_annual: float,
-    gpr: float,
-    maintenance_reserve_rate: float,
-    egi: float,
-    management_fee_rate: float,
-    hoa_annual: float,
-) -> float:
+    property_tax_annual: Decimal,
+    insurance_annual: Decimal,
+    gpr: Decimal,
+    maintenance_reserve_rate: Decimal,
+    egi: Decimal,
+    management_fee_rate: Decimal,
+    hoa_annual: Decimal,
+) -> Decimal:
     """Compute total annual operating expenses.
 
     Operating Expenses = Property Taxes + Insurance + Maintenance Reserve
                         + Property Management Fees + HOA
 
-    Maintenance Reserve = GPR × maintenance_reserve_rate
-    Management Fees = EGI × management_fee_rate
+    Maintenance Reserve = GPR x maintenance_reserve_rate
+    Management Fees = EGI x management_fee_rate
     """
-    maintenance = gpr * maintenance_reserve_rate
-    management = egi * management_fee_rate
+    maintenance = to_decimal(gpr) * to_decimal(maintenance_reserve_rate)
+    management = to_decimal(egi) * to_decimal(management_fee_rate)
     return (
-        property_tax_annual + insurance_annual + maintenance + management + hoa_annual
+        to_decimal(property_tax_annual)
+        + to_decimal(insurance_annual)
+        + maintenance
+        + management
+        + to_decimal(hoa_annual)
     )
 
 
-def net_operating_income(egi: float, opex: float) -> float:
+def net_operating_income(egi: Decimal, opex: Decimal) -> Decimal:
     """Compute Net Operating Income.
 
     NOI = EGI - Operating Expenses
     """
-    return egi - opex
+    return to_decimal(egi) - to_decimal(opex)
 
 
-def cap_rate(noi: float, purchase_price: float) -> float:
-    """Compute Capitalization Rate.
-
-    Cap Rate = NOI / Purchase Price
-
-    Returns 0.0 if purchase_price <= 0 to avoid division by zero.
-    """
-    if purchase_price <= 0:
-        return 0.0
-    return noi / purchase_price
-
-
-def cash_on_cash_yield(noi: float, purchase_price: float, rehab_budget: float) -> float:
+def cash_on_cash_yield(
+    noi: Decimal, purchase_price: Decimal, rehab_budget: Decimal
+) -> Decimal:
     """Compute Cash-on-Cash Yield (all-cash baseline).
 
     CoC = NOI / (Purchase Price + Rehab Budget)
 
-    Returns 0.0 if initial cash outlay <= 0.
+    Delegates the division to investor_app.finance.utils.cash_on_cash (which
+    already returns Decimal("0") when the denominator is zero) rather than
+    reimplementing it locally. This is deliberately *not* a call to that
+    module's true leveraged cash-on-cash metric conceptually - no debt
+    service is netted out of ``noi`` here, since this models an all-cash
+    acquisition yield (NOI over total cash outlay) rather than the return on
+    an investor's equity after financing.
     """
-    initial_cash = purchase_price + rehab_budget
-    if initial_cash <= 0:
-        return 0.0
-    return noi / initial_cash
+    initial_cash = to_decimal(purchase_price) + to_decimal(rehab_budget)
+    return cash_on_cash(to_decimal(noi), initial_cash)
 
 
-def max_allowable_offer(noi: float, target_cap_rate: float) -> float:
+def max_allowable_offer(noi: Decimal, target_cap_rate: Decimal | float) -> Decimal:
     """Solve for Max Allowable Offer given a target cap rate.
 
     MAO = NOI / Target Cap Rate
 
-    Returns 0.0 if target_cap_rate <= 0.
+    Returns Decimal("0") if target_cap_rate <= 0.
     """
-    if target_cap_rate <= 0:
-        return 0.0
-    return noi / target_cap_rate
+    rate = to_decimal(target_cap_rate)
+    if rate <= 0:
+        return Decimal("0")
+    return to_decimal(noi) / rate
 
 
 # ── Composition solver ────────────────────────────────────────────────────────
@@ -132,7 +134,7 @@ def max_allowable_offer(noi: float, target_cap_rate: float) -> float:
 
 def solve_underwriting(
     inputs: UnderwritingInput,
-    target_cap_rate: float,
+    target_cap_rate: Decimal | float,
 ) -> UnderwritingMetrics:
     """Compute all underwriting metrics and solve for MAO.
 
@@ -178,8 +180,8 @@ def solve_underwriting(
     mao = max_allowable_offer(noi, target_cap_rate)
 
     return UnderwritingMetrics(
-        noi=round(noi, 2),
-        cap_rate=round(cap, 6),
-        cash_on_cash=round(coc, 6),
-        mao=round(mao, 2),
+        noi=noi.quantize(Decimal("0.01")),
+        cap_rate=cap.quantize(Decimal("0.000001")),
+        cash_on_cash=coc.quantize(Decimal("0.000001")),
+        mao=mao.quantize(Decimal("0.01")),
     )
