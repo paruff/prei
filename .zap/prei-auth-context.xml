@@ -58,8 +58,12 @@
         <code>-1</code>
       </basic>
     </authorization>
+    <!-- User line format: id;enabled;base64(name);authTypeId;credentials
+         (ZAP's User.encode()/decode() base64-encodes the name field - a
+         plaintext name here decodes to garbage and -U lookup silently
+         fails to match). emFwLWNpLXNjYW4tb25seQ== = "zap-ci-scan-only". -->
     <users>
-      <user>1;true;zap-ci-scan-only;2;__ZAP_AUTH_CREDS_B64__</user>
+      <user>1;true;emFwLWNpLXNjYW4tb25seQ==;2;__ZAP_AUTH_CREDS_B64__</user>
     </users>
     <forceduser>1</forceduser>
     <verification>
