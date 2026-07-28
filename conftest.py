@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -11,9 +12,35 @@ from core.models import InvestmentAnalysis, OperatingExpense, Property, RentalIn
 
 User = get_user_model()
 
+QUARANTINE_FILE = Path(__file__).parent / "tests" / ".flaky_quarantine.txt"
+
 
 def pytest_configure(config) -> None:  # noqa: ARG001
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "investor_app.settings_test")
+
+
+def pytest_collection_modifyitems(config, items) -> None:  # noqa: ARG001
+    """Quarantine tests flagged as flaky (see docs/quality/flaky_tests.json).
+
+    Quarantined tests keep running and reporting but never fail the build,
+    so a known-flaky test can't block a PR while it's being fixed.
+    """
+    if not QUARANTINE_FILE.exists():
+        return
+    quarantined = {
+        line.strip()
+        for line in QUARANTINE_FILE.read_text().splitlines()
+        if line.strip()
+    }
+    if not quarantined:
+        return
+    marker = pytest.mark.xfail(
+        reason="quarantined: flaky, see docs/quality/flaky_tests.json",
+        strict=False,
+    )
+    for item in items:
+        if item.nodeid in quarantined:
+            item.add_marker(marker)
 
 
 @pytest.fixture

@@ -82,4 +82,5 @@ test-report.md
 verification-output.md
 verification-report.md
 .coverage
+.pytest-report.jsonl
 drafts/
