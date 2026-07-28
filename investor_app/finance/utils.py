@@ -19,30 +19,125 @@ def to_decimal(value: Decimal | float | int) -> Decimal:
 
 
 def noi(monthly_income: Decimal, monthly_expenses: Decimal) -> Decimal:
+    """Calculate annual Net Operating Income (NOI).
+
+    NOI = (Monthly Income - Monthly Expenses) x 12
+
+    Derivation: NOI is the income-statement identity for property-level
+    operating income - gross income less operating expenses, before any
+    financing costs (debt service) or capital expenditures. Annualizing
+    the monthly figure gives the standard basis for cap rate, DSCR, and
+    other per-year KPIs.
+
+    Args:
+        monthly_income: Gross monthly income (rent + other income).
+        monthly_expenses: Monthly operating expenses (excludes debt service).
+
+    Returns:
+        Annual NOI as a Decimal.
+    """
     return to_decimal(monthly_income) * Decimal(12) - to_decimal(
         monthly_expenses
     ) * Decimal(12)
 
 
 def cap_rate(annual_noi: Decimal, purchase_price: Decimal) -> Decimal:
+    """Calculate the Capitalization Rate (Cap Rate).
+
+    Cap Rate = Annual NOI / Purchase Price
+
+    Derivation: Cap rate is the property's unlevered yield - the return
+    an all-cash buyer would earn on the purchase price from operations
+    alone, independent of financing. It is the direct-capitalization
+    analogue of a bond's coupon yield: NOI divided by price, both taken
+    as of the same period.
+
+    Args:
+        annual_noi: Annual Net Operating Income.
+        purchase_price: Total purchase price of the property.
+
+    Returns:
+        Cap rate as a Decimal (e.g. 0.06 for 6%). Returns Decimal("0")
+        when purchase_price is zero.
+    """
     if to_decimal(purchase_price) == 0:
         return Decimal("0")
     return to_decimal(annual_noi) / to_decimal(purchase_price)
 
 
 def cash_on_cash(annual_cash_flow: Decimal, total_cash_invested: Decimal) -> Decimal:
+    """Calculate Cash-on-Cash (CoC) Return.
+
+    CoC = Annual Cash Flow / Total Cash Invested
+
+    Derivation: Unlike cap rate, CoC is a levered return - it measures
+    the actual cash yield on the investor's own capital (down payment,
+    closing costs, rehab) after debt service, since annual_cash_flow is
+    NOI net of mortgage payments. It answers what the investor earns on
+    the cash actually put in, not what the property earns overall.
+
+    Args:
+        annual_cash_flow: Annual cash flow after debt service.
+        total_cash_invested: Total cash invested by the investor (down
+            payment + closing costs + any rehab).
+
+    Returns:
+        Cash-on-cash return as a Decimal (e.g. 0.12 for 12%). Returns
+        Decimal("0") when total_cash_invested is zero.
+    """
     if to_decimal(total_cash_invested) == 0:
         return Decimal("0")
     return to_decimal(annual_cash_flow) / to_decimal(total_cash_invested)
 
 
 def dscr(annual_noi: Decimal, annual_debt_service: Decimal) -> Decimal:
+    """Calculate the Debt Service Coverage Ratio (DSCR).
+
+    DSCR = Annual NOI / Annual Debt Service
+
+    Derivation: DSCR is a lender solvency ratio, not an investor return
+    metric - it measures how many times over the property's NOI covers
+    its annual mortgage payments (principal + interest). A DSCR below
+    1.0 means NOI alone cannot cover debt service; most lenders require
+    DSCR >= 1.20-1.25 as an underwriting minimum.
+
+    Args:
+        annual_noi: Annual Net Operating Income.
+        annual_debt_service: Total annual mortgage payments (P&I).
+
+    Returns:
+        DSCR as a Decimal (e.g. 1.25 means NOI covers debt service
+        1.25x). Returns Decimal("0") when annual_debt_service is zero.
+    """
     if to_decimal(annual_debt_service) == 0:
         return Decimal("0")
     return to_decimal(annual_noi) / to_decimal(annual_debt_service)
 
 
 def irr(cashflows: list[Decimal]) -> Decimal:
+    """Calculate the Internal Rate of Return (IRR) for a cashflow series.
+
+    IRR is the discount rate r solving NPV(r) = 0, where
+    NPV(r) = sum(cashflows[t] / (1 + r)^t) over each period t.
+
+    Derivation: IRR has no closed-form solution in general - it is
+    defined implicitly as the root of the NPV equation, found here via
+    numpy_financial's iterative solver. It answers what constant annual
+    return would make this series of cash in/outflows break even, which
+    lets cashflows of uneven timing/magnitude (purchase, several years
+    of rental income, then a sale) be compared on a single annualized
+    basis, unlike cap rate or CoC which are single-period snapshots.
+
+    Args:
+        cashflows: Cashflow series; cashflows[0] is the initial outflow
+            (negative), subsequent entries are periodic net cashflows,
+            typically ending with a period that includes sale proceeds.
+
+    Returns:
+        IRR as a Decimal (e.g. 0.15 for 15%). Returns Decimal("0") if
+        the solver fails to converge or returns a non-finite value (no
+        real root - e.g. all-same-sign cashflows).
+    """
     cf = np.array([float(c) for c in cashflows], dtype=float)
     try:
         value = float(npf.irr(cf))
@@ -1666,6 +1761,11 @@ def one_percent_rule(monthly_rent: Decimal, purchase_price: Decimal) -> bool:
     The 1% Rule is a quick pass/fail filter: monthly rent should be at least
     1% of the purchase price to indicate a potentially viable rental investment.
 
+    Derivation: it's a rule-of-thumb proxy for gross yield (monthly_rent x 12
+    / purchase_price >= 0.12) rescaled to a monthly figure so it can be
+    screened without annualizing - a fast pre-filter, not a substitute for
+    cap rate or CoC.
+
     Args:
         monthly_rent: Expected gross monthly rental income.
         purchase_price: Total purchase price of the property.
@@ -1691,6 +1791,11 @@ def gross_rent_multiplier(purchase_price: Decimal, annual_rent: Decimal) -> Deci
 
     Lower GRM values indicate better value relative to rental income.
     Typical benchmarks: < 10 excellent, 10–15 good, 15–20 fair, > 20 poor.
+
+    Derivation: GRM is the reciprocal-scaled inverse of a rent yield
+    (price / rent, vs. cap rate's noi / price) - a valuation multiple
+    analogous to a price-to-revenue ratio, using gross rent rather than
+    NOI so it can be computed without first estimating operating expenses.
 
     Args:
         purchase_price: Total purchase price of the property.
