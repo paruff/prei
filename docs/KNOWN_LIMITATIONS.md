@@ -212,6 +212,18 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
+### [LIMIT-22] 🟡 HIGH — Authenticated OWASP ZAP scan runs against an ephemeral CI instance, not the live deployment
+
+**Location:** `.github/workflows/ci-quality.yml` — `zap-authenticated-scan` job; `.zap/prei-auth-context.xml`; `core/management/commands/seed_zap_scan_user.py`
+
+**Impact:** `docs/TOP_01_PLAN.md` Phase C (C-2) calls for the full OWASP ZAP scan to be made auth-aware so it can reach pages behind `/accounts/login/`. Authenticating against the *real* deployed environment (the target of `post-deployment.yml`'s existing unauthenticated scan) would require provisioning a scan-only account and credentials on that live environment — this repo has no deploy-pipeline or production-DB access to do that safely, the same infra gap documented for C-1 (canary) and C-3 (SLO dashboard) in `docs/TOP_01_PLAN.md`'s "What You Can't Ship Yet" section.
+
+**Workaround:** The authenticated scan instead runs pre-merge, inside a new PR-gate job (`zap-authenticated-scan`) against a fresh, ephemeral instance: a newly migrated SQLite DB seeded with a throwaway, low-privilege account via `manage.py seed_zap_scan_user`, torn down at job end. This is strictly a "shift security left" improvement (every PR, not just post-deploy) and involves no production credentials. `post-deployment.yml`'s existing unauthenticated full scan against the live artifact is unchanged, so defense in depth against the real deployment is preserved.
+
+**Fix tracked in:** Revisit once C-1/C-3 infrastructure (progressive delivery + monitoring stack) exists and a safe way to provision/rotate a live-environment scan account is designed. Not yet filed as a GitHub issue.
+
+---
+
 ## Resolved Limitations
 
 ### [LIMIT-R01] Docker container permissions — `app` user could not write `db.sqlite3`

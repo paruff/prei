@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  ZAP context for the Phase C (C-2) authenticated full scan.
+
+  Targets the ephemeral CI instance started by the zap-authenticated-scan
+  job in .github/workflows/ci-quality.yml (localhost:8000, freshly migrated
+  SQLite DB, seeded via `manage.py seed_zap_scan_user`). Never used against
+  the live deployment - post-deployment.yml's unauthenticated full scan is
+  unchanged and still runs against the real deployed artifact.
+
+  The embedded credential is a fixed, CI-only, non-production literal
+  (matches ZAP_AUTH_USERNAME/ZAP_AUTH_PASSWORD in ci-quality.yml) scoped to
+  a throwaway database that is destroyed at job end - not a secret.
+  See docs/KNOWN_LIMITATIONS.md LIMIT-22.
+-->
+<configuration>
+  <context>
+    <name>prei-ci</name>
+    <id>1</id>
+    <desc>prei ephemeral CI instance - authenticated scan</desc>
+    <inscope>true</inscope>
+    <incregexes>http://localhost:8000.*</incregexes>
+    <excregexes>http://localhost:8000/accounts/logout.*</excregexes>
+    <urlparser>
+      <class>org.zaproxy.zap.model.StandardParameterParser</class>
+      <config>&amp;=</config>
+    </urlparser>
+    <postparser>
+      <class>org.zaproxy.zap.model.StandardParameterParser</class>
+      <config>&amp;=</config>
+    </postparser>
+    <authentication>
+      <type>2</type>
+      <strategy>EACH_RESP</strategy>
+      <pollurl/>
+      <polldata/>
+      <pollheaders/>
+      <pollfreq>60</pollfreq>
+      <pollunits>REQUESTS</pollunits>
+      <form>
+        <loginpageurl>http://localhost:8000/accounts/login/</loginpageurl>
+        <loginurl>http://localhost:8000/accounts/login/</loginurl>
+        <loginbody>csrfmiddlewaretoken=&amp;username={%username%}&amp;password={%password%}</loginbody>
+      </form>
+    </authentication>
+    <session>
+      <type>0</type>
+    </session>
+    <authorization>
+      <type>0</type>
+    </authorization>
+    <users>
+      <user>1;true;zap-ci-scan-only;1;dXNlcm5hbWU9emFwLWNpLXNjYW4tb25seSZwYXNzd29yZD1aYXBDaU9ubHlQdzIwMjY=</user>
+    </users>
+    <forceduser>1</forceduser>
+    <verification>
+      <method>RESPONSE</method>
+      <loggedInRegex>\Q/accounts/logout/\E</loggedInRegex>
+      <loggedOutRegex>\Qname="password"\E</loggedOutRegex>
+      <pollFrequency>60</pollFrequency>
+      <pollUnits>REQUESTS</pollUnits>
+    </verification>
+  </context>
+</configuration>

@@ -221,6 +221,63 @@ jobs:
       - name: Verify KPI calculations
         run: python -m pytest tests/test_finance_math.py -v --tb=short
 
+  # ── Authenticated security scan (ephemeral CI instance, not live deploy) ──
+  # See docs/KNOWN_LIMITATIONS.md LIMIT-22: this scans a freshly-migrated,
+  # freshly-seeded CI-only instance, not the real deployment. The existing
+  # unauthenticated full scan in post-deployment.yml still runs against the
+  # live artifact and is unchanged.
+
+  zap-authenticated-scan:
+    name: "🛡️ Authenticated ZAP Scan"
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
+      SECRET_KEY: ci-zap-scan-key
+      DATABASE_URL: "sqlite:////tmp/zap_scan.sqlite3"
+      ZAP_AUTH_USERNAME: zap-ci-scan-only
+      ZAP_AUTH_PASSWORD: ZapCiOnlyPw2026
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install dependencies
+        run: pip install -r requirements.txt -q
+      - name: Migrate
+        run: python manage.py migrate --noinput
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --verbosity 0
+      - name: Seed ZAP scan user
+        run: python manage.py seed_zap_scan_user
+      - name: Start server
+        run: nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
+      - name: Wait for healthy
+        run: |
+          set -e
+          HEALTHY=0
+          for i in $(seq 1 60); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8000/health/ 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Healthy after ~$((i * 2))s"
+              HEALTHY=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$HEALTHY" != "1" ]; then
+            echo "::error::Server never became healthy within 120s"
+            cat server.log || true
+            exit 1
+          fi
+      - name: OWASP ZAP Authenticated Full Scan
+        uses: zaproxy/action-full-scan@v1
+        with:
+          target: "http://localhost:8000"
+          allow_issue_writing: false
+          fail_action: true
+          cmd_options: "-a -n /zap/wrk/.zap/prei-auth-context.xml -U zap-ci-scan-only"
+      - name: Server logs
+        if: always()
+        run: cat server.log || true
+
   # ── Coverage combine (gate: all test jobs must pass) ──────────────────────
 
   coverage:
@@ -253,7 +310,7 @@ jobs:
 
   pr-gates-pass:
     name: "All Gates Passed"
-    needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, acceptance-check, finance-math, coverage]
+    needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, acceptance-check, finance-math, coverage, zap-authenticated-scan]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -271,6 +328,7 @@ jobs:
           if [ "${{ needs.acceptance-check.result }}" != "success" ]; then FAILED="$FAILED acceptance"; fi
           if [ "${{ needs.finance-math.result }}" != "success" ]; then FAILED="$FAILED finance-math"; fi
           if [ "${{ needs.coverage.result }}" != "success" ]; then FAILED="$FAILED coverage"; fi
+          if [ "${{ needs.zap-authenticated-scan.result }}" != "success" ]; then FAILED="$FAILED zap-authenticated-scan"; fi
           if [ -n "$FAILED" ]; then
             echo "❌ Failed gates:${FAILED}"
             exit 1
