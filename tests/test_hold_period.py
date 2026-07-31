@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from investor_app.finance.utils import (
+from investor_app.finance.taxes import (
     net_sale_proceeds,
     project_annual_cash_flows,
     project_property_value,

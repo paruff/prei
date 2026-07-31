@@ -359,7 +359,8 @@ def calculate_ytd_cashflow(
 
 def _get_annual_debt_service(property_obj: Property) -> Decimal:
     """Calculate annual debt service for a property."""
-    from investor_app.finance.utils import calculate_monthly_mortgage, to_decimal
+    from investor_app.finance.mortgage import calculate_monthly_mortgage
+    from investor_app.finance.utils import to_decimal
 
     loan_amount = to_decimal(property_obj.purchase_price) * (
         Decimal("1") - to_decimal(property_obj.down_payment_pct)

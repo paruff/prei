@@ -130,26 +130,3 @@ def compute_noi_from_amounts(
         Annual NOI as a ``Decimal``, quantized to two decimal places.
     """
     return noi(monthly_income, monthly_expenses).quantize(Decimal("0.01"))
-
-
-def calculate_noi(
-    gross_income: Decimal,
-    operating_expenses: Decimal,
-) -> Decimal:
-    """Calculate annual Net Operating Income (NOI).
-
-    NOI = Gross Income - Operating Expenses
-
-    This is a pure service-layer function that delegates to the finance
-    utility layer. It does not touch the database.
-
-    Args:
-        gross_income: Total annual gross income from the property.
-        operating_expenses: Total annual operating expenses (excluding debt service).
-
-    Returns:
-        Annual NOI as a ``Decimal``, quantized to two decimal places.
-    """
-    return (to_decimal(gross_income) - to_decimal(operating_expenses)).quantize(
-        Decimal("0.01")
-    )

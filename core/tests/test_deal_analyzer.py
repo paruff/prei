@@ -8,18 +8,16 @@ from decimal import Decimal
 
 import pytest
 
-from investor_app.finance.utils import (
+from investor_app.finance.mortgage import (
     calculate_break_even_rent,
-    calculate_flip_strategy,
     calculate_monthly_mortgage,
-    calculate_rental_strategy,
     calculate_roi_components,
-    cap_rate,
-    cash_on_cash,
-    dscr,
-    irr,
-    noi,
 )
+from investor_app.finance.strategies import (
+    calculate_flip_strategy,
+    calculate_rental_strategy,
+)
+from investor_app.finance.utils import cap_rate, cash_on_cash, dscr, irr, noi
 
 # ---------------------------------------------------------------------------
 # noi

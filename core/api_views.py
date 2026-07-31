@@ -26,13 +26,17 @@ from rest_framework.views import APIView
 from .models import VrmProperty
 from .serializers import VrmPropertySerializer
 
-from investor_app.finance.utils import (
+from investor_app.finance.mortgage import (
     calculate_break_even_rent,
     calculate_carrying_costs as calc_costs,
+    calculate_roi_components,
+)
+from investor_app.finance.strategies import (
     calculate_flip_strategy,
     calculate_rental_strategy,
-    calculate_roi_components,
     calculate_vacation_rental_strategy,
+)
+from investor_app.finance.utils import (
     cap_rate as calc_cap_rate,
     cash_on_cash as calc_coc,
     compute_analysis_for_property,

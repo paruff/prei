@@ -7,13 +7,8 @@ from typing import Iterable, Tuple
 from django.conf import settings
 
 from core.models import Listing, MarketSnapshot
-from investor_app.finance.utils import (
-    calculate_monthly_mortgage,
-    cap_rate,
-    cash_on_cash,
-    dscr,
-    noi,
-)
+from investor_app.finance.mortgage import calculate_monthly_mortgage
+from investor_app.finance.utils import cap_rate, cash_on_cash, dscr, noi
 
 logger = logging.getLogger(__name__)
 

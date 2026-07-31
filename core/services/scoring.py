@@ -130,12 +130,11 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     Returns:
         UnderwritingScore with all fields populated.
     """
-    from investor_app.finance.utils import (
-        build_cashflows,
+    from investor_app.finance.taxes import (
         calculate_annual_depreciation,
         calculate_after_tax_cashflow,
-        irr as calc_irr,
     )
+    from investor_app.finance.utils import build_cashflows, irr as calc_irr
     from core.models import UserProfile
 
     pp = property_obj.purchase_price
@@ -167,12 +166,8 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     total_expenses = opex + mgmt_fee
     annual_noi = effective_rent - total_expenses
     # KPIs using utils functions
-    from investor_app.finance.utils import (
-        cap_rate as calc_cap_rate,
-        cash_on_cash,
-        dscr,
-        gross_rent_multiplier,
-    )
+    from investor_app.finance.scoring import gross_rent_multiplier
+    from investor_app.finance.utils import cap_rate as calc_cap_rate, cash_on_cash, dscr
 
     cap = calc_cap_rate(annual_noi, pp)
     grm = gross_rent_multiplier(pp, annual_rent) if annual_rent > 0 else Decimal("999")

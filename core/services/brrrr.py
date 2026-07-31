@@ -34,17 +34,15 @@ from decimal import Decimal
 from django.conf import settings
 
 from core.models import Listing
-from investor_app.finance.utils import (
+from investor_app.finance.mortgage import calculate_monthly_mortgage
+from investor_app.finance.strategies import (
     brrrr_coc_return,
-    calculate_monthly_mortgage,
     cash_left_in_deal,
-    dscr,
     estimate_arv,
     estimate_rehab_cost,
     max_refinance_loan,
-    noi,
-    to_decimal,
 )
+from investor_app.finance.utils import dscr, noi, to_decimal
 
 logger = logging.getLogger(__name__)
 

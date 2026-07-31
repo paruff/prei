@@ -212,15 +212,15 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-20] 🟡 HIGH — Divergent bare-function vs. `calculate_*` contracts for the same formulas, plus a duplicate `score_listing_v2`
+### [LIMIT-20] 🟡 HIGH — Divergent bare-function vs. `calculate_*` contracts for the same formulas, plus a duplicate `score_listing_v2` (resolved)
 
 **Location:** `investor_app/finance/utils.py` — `noi`/`cap_rate`/`cash_on_cash`/`dscr` vs. `calculate_noi`/`calculate_cap_rate`/`calculate_cash_on_cash`/`calculate_irr`; `investor_app/finance/utils.py:1830` vs. `core/services/scoring.py:110` (`score_listing_v2`).
 
 **Impact:** Two independent implementations exist for the same four KPI formulas — the bare functions return `Decimal("0")` on invalid input (e.g. zero purchase price, zero debt service), while the `calculate_*` variants raise `ValueError` under the same conditions. Callers that reach for the "wrong" variant get silently different failure behavior for identical bad input, and there is no single source of truth to point developers at. Separately, two functions both named `score_listing_v2` exist with different signatures — one in `investor_app/finance/utils.py`, one in `core/services/scoring.py` — an accident waiting to cause a wrong-function-imported bug.
 
-**Workaround:** None currently. Callers must know which variant (bare vs. `calculate_*`) they're calling and its error-handling contract; `score_listing_v2` callers must be careful to import from the intended module.
+**Workaround:** Resolved by the finance-utils split. The `calculate_*` aliases (`calculate_noi`, `calculate_cap_rate`, `calculate_cash_on_cash`, `calculate_irr`), the dead `score_listing_v1` chain, and the duplicate pure `score_listing_v2` were deleted. The bare functions (`noi`, `cap_rate`, `cash_on_cash`, `dscr`, `irr`) are now the single source of truth in `investor_app/finance/utils.py`, with the production underwriting score living only in `core/services/scoring.py`. The service-layer duplicate `calculate_noi` in `core/services/property_service.py` was also removed.
 
-**Fix tracked in:** Not yet filed. Found during Phase B (docs/TOP_01_PLAN.md) financial-math audit; out of scope for that PR since it requires an API-contract decision (which behavior is canonical) rather than a mechanical fix.
+**Fix tracked in:** Resolved in the finance-utils split PR (finance package reorganized into `mortgage`, `taxes`, `scoring`, `strategies` submodules).
 
 ---
 

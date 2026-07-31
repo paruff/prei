@@ -3,8 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from investor_app.finance.utils import (
-    build_cashflows,
+from investor_app.finance.mortgage import (
     calculate_appreciation,
     calculate_break_even_rent,
     calculate_carrying_costs,
@@ -13,12 +12,15 @@ from investor_app.finance.utils import (
     calculate_principal_paydown,
     calculate_property_tax,
     calculate_roi_components,
-    calculate_tax_benefits,
+    estimate_insurance,
+)
+from investor_app.finance.taxes import calculate_tax_benefits
+from investor_app.finance.utils import (
+    build_cashflows,
     cap_rate,
     cash_on_cash,
-    dscr,
-    estimate_insurance,
     compute_analysis_for_property,
+    dscr,
     irr,
     noi,
 )
