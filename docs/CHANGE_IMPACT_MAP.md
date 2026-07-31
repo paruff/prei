@@ -21,6 +21,11 @@
 |`cma.py` function signatures                |`core/api_views.py` calls, `docs/API_SURFACE.md`                                               |
 |`market_data.refresh_market_snapshot` logic |`core/tests/test_neighborhood_insights.py`, `docs/API_SURFACE.md`                              |
 |`market_data.py` adapter imports            |`core/integrations/market/` (comps, rents, crime, schools), `core/tests/test_neighborhood_insights.py`|
+|`discovery.py` / `discovery_processor.py`   |`core/views/__init__.py` (Growth Explorer + VRM pipeline bridges), `core/services/sources/`, `tests/test_discovery*.py`|
+|`screening.py` (pure evaluator)             |`core/views/__init__.py` bridges, `tests/test_pipeline.py`, `tests/test_screening_integration.py`, `tests_bdd/steps/pipeline_steps.py`|
+|`underwriting.py` signatures                |`core/services/offer.py`, `tests/test_underwriting_integration.py`, `tests_bdd/steps/pipeline_steps.py`|
+|`offer.py` signatures                       |`tests/test_offer_integration.py`, `tests/test_pipeline_e2e.py`, `docs/KNOWN_LIMITATIONS.md` (LIMIT-21)|
+|`sources/` adapters                         |`core/tests/test_county/`, `core/tests/test_ingestion/`, `core/tests/test_hud_source_index.py`|
 
 ## Finance Utils Changes (investor_app/finance/utils.py)
 

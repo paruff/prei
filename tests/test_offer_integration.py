@@ -1,14 +1,25 @@
-"""Unit, integration, and E2E tests for the offer stage handler."""
+"""Unit, integration, and E2E tests for the offer stage handler.
+
+The offer port to core.services.offer is Decimal-based (LIMIT-21 resolved),
+so float equality/type assertions from the pydantic era were replaced with
+Decimal comparisons.
+"""
 
 import pytest
-from prei.pipeline.handlers.offer import (
+from dataclasses import replace
+from decimal import Decimal
+
+from core.services.offer import (
     OfferInput,
     OfferStrategy,
     solve_offer,
 )
 
 BASE_INPUT = OfferInput(
-    mao=300_000.0, arv=420_000.0, rehab_budget=20_000.0, desired_equity=0.20
+    mao=Decimal("300000.00"),
+    arv=Decimal("420000.00"),
+    rehab_budget=Decimal("20000.00"),
+    desired_equity=Decimal("0.20"),
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -24,8 +35,10 @@ class TestOfferUnit:
 
     def test_target_at_mao(self):
         result = solve_offer(BASE_INPUT, OfferStrategy.TARGET)
-        assert result.offer_price == pytest.approx(BASE_INPUT.mao, rel=1e-4)
-        assert result.premium_pct == pytest.approx(0, abs=1e-4)
+        assert result.offer_price == pytest.approx(
+            BASE_INPUT.mao, rel=Decimal("0.0001")
+        )
+        assert result.premium_pct == pytest.approx(0, abs=Decimal("0.0001"))
 
     def test_aggressive_above_mao(self):
         result = solve_offer(BASE_INPUT, OfferStrategy.AGGRESSIVE)
@@ -35,14 +48,14 @@ class TestOfferUnit:
     def test_competition_multiplier_increases_offer(self):
         base = solve_offer(BASE_INPUT, OfferStrategy.TARGET)
         hot = solve_offer(
-            BASE_INPUT.model_copy(update={"competition_multiplier": 1.5}),
+            replace(BASE_INPUT, competition_multiplier=Decimal("1.5")),
             OfferStrategy.TARGET,
         )
         assert hot.offer_price > base.offer_price
 
     def test_competition_multiplier_decreases_offer(self):
         cold = solve_offer(
-            BASE_INPUT.model_copy(update={"competition_multiplier": 0.75}),
+            replace(BASE_INPUT, competition_multiplier=Decimal("0.75")),
             OfferStrategy.TARGET,
         )
         assert cold.offer_price < BASE_INPUT.mao
@@ -50,23 +63,25 @@ class TestOfferUnit:
     def test_equity_constraint_clamps_offer(self):
         """High desired equity clamps offer below MAO."""
         high_equity = OfferInput(
-            mao=300_000, arv=320_000, rehab_budget=20_000, desired_equity=0.25
+            mao=Decimal("300000"),
+            arv=Decimal("320000"),
+            rehab_budget=Decimal("20000"),
+            desired_equity=Decimal("0.25"),
         )
         result = solve_offer(high_equity, OfferStrategy.AGGRESSIVE)
         # Max offer for 25% equity: 320000*0.75 - 20000 = 220000
-        assert result.offer_price <= 220_000
+        assert result.offer_price <= Decimal("220000")
 
     def test_no_arv_skips_equity_calc(self):
         """Without ARV, equity fields are None."""
-        result = solve_offer(
-            BASE_INPUT.model_copy(update={"arv": None}), OfferStrategy.TARGET
-        )
+        result = solve_offer(replace(BASE_INPUT, arv=None), OfferStrategy.TARGET)
         assert result.estimated_equity is None
         assert result.estimated_equity_pct is None
 
-    def test_mao_zero_returns_zero_offer(self):
-        result = solve_offer(OfferInput(mao=0), OfferStrategy.TARGET)
-        assert result.offer_price == 0.0
+    def test_mao_zero_raises_value_error(self):
+        """MAO of zero is rejected (must be > 0)."""
+        with pytest.raises(ValueError):
+            solve_offer(OfferInput(mao=Decimal("0")), OfferStrategy.TARGET)
 
     def test_strategy_enum_values(self):
         assert OfferStrategy.CONSERVATIVE.value == "conservative"
@@ -81,18 +96,22 @@ class TestOfferUnit:
         result = solve_offer(BASE_INPUT, OfferStrategy.CONSERVATIVE)
         assert result.premium_pct < 0
 
-    def test_offer_metrics_are_floats(self):
+    def test_offer_metrics_are_decimal(self):
         result = solve_offer(BASE_INPUT, OfferStrategy.TARGET)
-        assert isinstance(result.offer_price, float)
-        assert isinstance(result.premium_over_mao, float)
+        assert isinstance(result.offer_price, Decimal)
+        assert isinstance(result.premium_over_mao, Decimal)
 
     def test_equity_calculation_correct(self):
         """Equity = ARV - (offer + rehab). For TARGET strategy: offer = MAO = 300k."""
         result = solve_offer(BASE_INPUT, OfferStrategy.TARGET)
         # offer = MAO = 300000 (no clamp since 300000 + 20000 = 320000 <= 420000*0.80 = 336000)
         expected_equity = BASE_INPUT.arv - (BASE_INPUT.mao + BASE_INPUT.rehab_budget)
-        assert result.estimated_equity == pytest.approx(expected_equity, rel=1e-4)
-        assert result.estimated_equity == pytest.approx(100_000.0, rel=1e-4)
+        assert result.estimated_equity == pytest.approx(
+            expected_equity, rel=Decimal("0.0001")
+        )
+        assert result.estimated_equity == pytest.approx(
+            Decimal("100000.00"), rel=Decimal("0.0001")
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -103,24 +122,24 @@ class TestOfferUnit:
 class TestOfferIntegration:
     def test_offer_from_underwriting_mao(self):
         """Underwriting MAO feeds directly into offer solver."""
-        from prei.pipeline.handlers.underwriting import (
+        from core.services.underwriting import (
             solve_underwriting,
             UnderwritingInput,
         )
 
         uw = solve_underwriting(
             UnderwritingInput(
-                purchase_price=300000,
-                estimated_rent=2500,
-                property_tax_annual=3600,
-                insurance_annual=1200,
+                purchase_price=Decimal("300000"),
+                estimated_rent=Decimal("2500"),
+                property_tax_annual=Decimal("3600"),
+                insurance_annual=Decimal("1200"),
             ),
             target_cap_rate=0.08,
         )
         offer = solve_offer(
-            OfferInput(mao=uw.mao, arv=float(uw.mao) * 1.15), OfferStrategy.TARGET
+            OfferInput(mao=uw.mao, arv=uw.mao * Decimal("1.15")), OfferStrategy.TARGET
         )
-        assert offer.offer_price == pytest.approx(float(uw.mao), rel=1e-3)
+        assert offer.offer_price == pytest.approx(uw.mao, rel=Decimal("0.001"))
         assert offer.estimated_equity is not None
         assert offer.estimated_equity > 0
 
@@ -134,7 +153,12 @@ class TestOfferIntegration:
     def test_offer_equity_clamp_preserves_strategy_label(self):
         """Clamped offer still reports correct strategy."""
         result = solve_offer(
-            OfferInput(mao=300000, arv=310000, rehab_budget=20000, desired_equity=0.20),
+            OfferInput(
+                mao=Decimal("300000"),
+                arv=Decimal("310000"),
+                rehab_budget=Decimal("20000"),
+                desired_equity=Decimal("0.20"),
+            ),
             OfferStrategy.AGGRESSIVE,
         )
         assert result.strategy == OfferStrategy.AGGRESSIVE
@@ -147,42 +171,41 @@ class TestOfferIntegration:
 
 @pytest.mark.e2e
 class TestOfferE2E:
-    def test_e2e_full_pipeline_with_offer(self):
-        """Run full pipeline and use MAO for offer calculation."""
-        from prei.pipeline.orchestrator import PipelineOrchestrator
-
-        orch = PipelineOrchestrator(target_cap_rate=0.08)
-        result = orch.run(
-            {
-                "id": "OFFER-E2E",
-                "address": "500 Deal St",
-                "price": 350000,
-                "rent": 2800,
-                "beds": 3,
-                "baths": 2,
-            }
-        )
-        assert result.success
-        mao = result.underwriting.mao
-        offer = solve_offer(
-            OfferInput(mao=mao, arv=float(mao) * 1.2), OfferStrategy.TARGET
-        )
-        assert offer.offer_price > 0
-        assert offer.estimated_equity is not None
-
-    def test_e2e_multiple_strategies(self):
-        """Generate offers for all three strategies from same underwriting."""
-        from prei.pipeline.handlers.underwriting import (
+    def test_e2e_underwriting_to_offer(self):
+        """Underwriting MAO feeds offer calculation."""
+        from core.services.underwriting import (
             solve_underwriting,
             UnderwritingInput,
         )
 
         uw = solve_underwriting(
             UnderwritingInput(
-                purchase_price=300000,
-                estimated_rent=2500,
-                property_tax_annual=3600,
-                insurance_annual=1200,
+                purchase_price=Decimal("350000"),
+                estimated_rent=Decimal("2800"),
+                property_tax_annual=Decimal("3600"),
+                insurance_annual=Decimal("1200"),
+            ),
+            target_cap_rate=0.08,
+        )
+        offer = solve_offer(
+            OfferInput(mao=uw.mao, arv=uw.mao * Decimal("1.2")), OfferStrategy.TARGET
+        )
+        assert offer.offer_price > 0
+        assert offer.estimated_equity is not None
+
+    def test_e2e_multiple_strategies(self):
+        """Generate offers for all three strategies from same underwriting."""
+        from core.services.underwriting import (
+            solve_underwriting,
+            UnderwritingInput,
+        )
+
+        uw = solve_underwriting(
+            UnderwritingInput(
+                purchase_price=Decimal("300000"),
+                estimated_rent=Decimal("2500"),
+                property_tax_annual=Decimal("3600"),
+                insurance_annual=Decimal("1200"),
             ),
             0.08,
         )

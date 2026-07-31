@@ -1,9 +1,10 @@
 """Integration and E2E tests for the underwriting stage."""
 
+from dataclasses import replace
 from decimal import Decimal
 
 import pytest
-from prei.pipeline.handlers.underwriting import (
+from core.services.underwriting import (
     UnderwritingInput,
     solve_underwriting,
 )
@@ -24,9 +25,7 @@ class TestUnderwritingIntegration:
     def test_noi_sensitivity_to_vacancy(self):
         """Higher vacancy reduces NOI proportionally."""
         base = solve_underwriting(BASE, 0.08)
-        high_vac = solve_underwriting(
-            BASE.model_copy(update={"vacancy_rate": 0.15}), 0.08
-        )
+        high_vac = solve_underwriting(replace(BASE, vacancy_rate=Decimal("0.15")), 0.08)
         assert high_vac.noi < base.noi
         # EGI difference: GPR*(1-0.05) vs GPR*(1-0.15) → 10% of GPR less
         # GPR = 30000, so EGI difference = 3000. But OpEx also changes (mgmt fee on EGI)
@@ -44,7 +43,7 @@ class TestUnderwritingIntegration:
         """Adding rehab budget reduces cash-on-cash yield."""
         no_rehab = solve_underwriting(BASE, 0.08)
         with_rehab = solve_underwriting(
-            BASE.model_copy(update={"rehab_budget": 50000}), 0.08
+            replace(BASE, rehab_budget=Decimal("50000")), 0.08
         )
         assert with_rehab.cash_on_cash < no_rehab.cash_on_cash
 
@@ -66,7 +65,7 @@ class TestUnderwritingIntegration:
 
     def test_zero_rent_still_produces_metrics(self):
         """Zero rent → negative NOI (expenses still exist), but no crash."""
-        result = solve_underwriting(BASE.model_copy(update={"estimated_rent": 0}), 0.08)
+        result = solve_underwriting(replace(BASE, estimated_rent=Decimal("0")), 0.08)
         assert result.noi < 0
         assert result.cap_rate < 0
         assert result.mao < 0
@@ -75,7 +74,7 @@ class TestUnderwritingIntegration:
         """Higher purchase price → lower cap rate."""
         cheap = solve_underwriting(BASE, 0.08)
         expensive = solve_underwriting(
-            BASE.model_copy(update={"purchase_price": 500000}), 0.08
+            replace(BASE, purchase_price=Decimal("500000")), 0.08
         )
         assert expensive.cap_rate < cheap.cap_rate
 
@@ -87,22 +86,17 @@ class TestUnderwritingIntegration:
 
 @pytest.mark.e2e
 class TestUnderwritingE2E:
-    def test_e2e_underwriting_via_orchestrator(self):
-        """Underwriting metrics computed via full pipeline orchestration."""
-        from prei.pipeline.orchestrator import PipelineOrchestrator
-
-        orch = PipelineOrchestrator(target_cap_rate=0.08)
-        payload = {
-            "id": "UW-E2E",
-            "address": "300 Test Ave",
-            "price": 350000,
-            "rent": 2800,
-            "beds": 3,
-            "baths": 2,
-        }
-        result = orch.run(payload)
-        assert result.success
-        uw = result.underwriting
+    def test_e2e_underwriting_from_property(self):
+        """Underwriting metrics computed from a realistic payload."""
+        uw = solve_underwriting(
+            UnderwritingInput(
+                purchase_price=Decimal("350000"),
+                estimated_rent=Decimal("2800"),
+                property_tax_annual=Decimal("3600"),
+                insurance_annual=Decimal("1200"),
+            ),
+            0.08,
+        )
         assert uw.noi > 0
         assert uw.cap_rate > 0.05
         assert uw.mao > 200000
@@ -110,27 +104,26 @@ class TestUnderwritingE2E:
 
     def test_e2e_multi_property_underwriting(self):
         """Different properties get different underwriting metrics."""
-        from prei.pipeline.orchestrator import PipelineOrchestrator
-
-        orch = PipelineOrchestrator()
         results = []
         for p in [
             {
-                "id": "A",
-                "address": "A St",
-                "price": 200000,
-                "rent": 2000,
-                "beds": 2,
-                "baths": 1,
+                "price": "200000",
+                "rent": "2000",
             },
             {
-                "id": "B",
-                "address": "B St",
-                "price": 500000,
-                "rent": 4000,
-                "beds": 4,
-                "baths": 3,
+                "price": "500000",
+                "rent": "4000",
             },
         ]:
-            results.append(orch.run(p))
-        assert results[0].underwriting.cap_rate != results[1].underwriting.cap_rate
+            results.append(
+                solve_underwriting(
+                    UnderwritingInput(
+                        purchase_price=Decimal(p["price"]),
+                        estimated_rent=Decimal(p["rent"]),
+                        property_tax_annual=Decimal("3600"),
+                        insurance_annual=Decimal("1200"),
+                    ),
+                    0.08,
+                )
+            )
+        assert results[0].cap_rate != results[1].cap_rate

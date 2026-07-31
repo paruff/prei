@@ -6,8 +6,8 @@ Covers three critical scenarios per the specification:
   3. Batch deduplication integrity with hash collision
 """
 
-from prei.pipeline.handlers.discovery import DiscoverySanitizer
-from prei.pipeline.handlers.discovery_processor import DiscoveryProcessor
+from core.services.discovery import DiscoverySanitizer
+from core.services.discovery_processor import process_discovery_batch
 
 
 class TestScrubbingNormalization:
@@ -140,7 +140,7 @@ class TestBatchDeduplication:
 
     def test_batch_deduplication_integrity(self):
         """3-item batch: all hash-identical → 1 new + 2 duplicates."""
-        processor = DiscoveryProcessor(existing_hashes=set())
+        existing_hashes: set[str] = set()
 
         mock_batch = [
             {"id": "PROP-1", "address": "Duplicate St 1", "price": 200_000},
@@ -152,9 +152,11 @@ class TestBatchDeduplication:
         dup_hash = DiscoverySanitizer.transform_input(
             mock_batch[0], source="TEST"
         ).address_hash
-        processor.existing_hashes.add(dup_hash)
+        existing_hashes.add(dup_hash)
 
-        metrics = processor.process_batch(mock_batch, source_name="TEST_FEED")
+        metrics = process_discovery_batch(
+            mock_batch, source_name="TEST_FEED", existing_hashes=existing_hashes
+        )
 
         # PROP-1 is new (address_hash matches dup_hash but was added *after*
         #   the existing hash was injected, so PROP-1 is caught as duplicate)
@@ -167,7 +169,7 @@ class TestBatchDeduplication:
 
     def test_three_identical_in_five_item_batch(self):
         """5-item batch with 3 identical addresses → 3 new + 2 duplicates."""
-        processor = DiscoveryProcessor(existing_hashes=set())
+        existing_hashes: set[str] = set()
 
         mock_batch = [
             {"id": "A1", "address": "100 Common St", "price": 150_000},
@@ -181,9 +183,11 @@ class TestBatchDeduplication:
         dup_hash = DiscoverySanitizer.transform_input(
             mock_batch[0], source="TEST"
         ).address_hash
-        processor.existing_hashes.add(dup_hash)
+        existing_hashes.add(dup_hash)
 
-        metrics = processor.process_batch(mock_batch, source_name="TEST_FEED")
+        metrics = process_discovery_batch(
+            mock_batch, source_name="TEST_FEED", existing_hashes=existing_hashes
+        )
 
         # A1: duplicate (hash pre-existing) → skip
         # A2: new address → discover
@@ -196,20 +200,19 @@ class TestBatchDeduplication:
 
     def test_no_duplicates_in_empty_existing_set(self):
         """Empty existing_hashes → all items discovered."""
-        processor = DiscoveryProcessor(existing_hashes=set())
         batch = [
             {"id": "X1", "address": "Alpha St", "price": 100_000},
             {"id": "X2", "address": "Beta Ave", "price": 200_000},
             {"id": "X3", "address": "Gamma Blvd", "price": 300_000},
         ]
-        metrics = processor.process_batch(batch, source_name="test")
+        metrics = process_discovery_batch(batch, source_name="test")
         assert metrics["new_assets_discovered"] == 3
         assert metrics["duplicates_skipped"] == 0
         assert metrics["failed_records"] == 0
 
     def test_all_duplicates_no_new(self):
         """When all items' hashes already exist → zero discovered."""
-        processor = DiscoveryProcessor(existing_hashes=set())
+        existing_hashes: set[str] = set()
         batch = [
             {"id": "D1", "address": "Same St", "price": 100_000},
             {"id": "D2", "address": "Same St", "price": 200_000},
@@ -218,9 +221,11 @@ class TestBatchDeduplication:
         dup_hash = DiscoverySanitizer.transform_input(
             batch[0], source="TEST"
         ).address_hash
-        processor.existing_hashes.add(dup_hash)
+        existing_hashes.add(dup_hash)
 
-        metrics = processor.process_batch(batch, source_name="test")
+        metrics = process_discovery_batch(
+            batch, source_name="test", existing_hashes=existing_hashes
+        )
         assert metrics["new_assets_discovered"] == 0
         assert metrics["duplicates_skipped"] == 2
 
@@ -231,12 +236,8 @@ class TestBatchDeduplication:
             {"id": "P2", "address": "100 Main", "price": 100_000},
             {"id": "P3", "address": "200 Oak", "price": 200_000},
         ]
-        p1 = DiscoveryProcessor(existing_hashes=set())
-        p2 = DiscoveryProcessor(existing_hashes=set())
         h = DiscoverySanitizer.transform_input(batch[0], source="T").address_hash
-        p1.existing_hashes.add(h)
-        p2.existing_hashes.add(h)
-        r1 = p1.process_batch(batch, "test")
-        r2 = p2.process_batch(batch, "test")
+        r1 = process_discovery_batch(batch, "test", existing_hashes={h})
+        r2 = process_discovery_batch(batch, "test", existing_hashes={h})
         for key in ("new_assets_discovered", "duplicates_skipped", "failed_records"):
             assert r1[key] == r2[key]

@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from prei.pipeline.sources.base import DiscoverySource
+from core.services.sources.base import DiscoverySource
 
 logger = logging.getLogger(__name__)
 

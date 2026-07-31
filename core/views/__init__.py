@@ -47,7 +47,7 @@ from core.models import (
     UserScreeningPreferences,
 )
 
-from prei.integrations.landlord_data import get_state_landlord_score
+from core.services.landlord_data import get_state_landlord_score
 from investor_app.finance.utils import (
     compute_analysis_for_property,
     calculate_whatif_monthly_cashflow,
@@ -1232,11 +1232,9 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
     pipeline_results = None
     pipeline_city = request.POST.get("pipeline_city", "").strip()
     if pipeline_city:
-        from prei.pipeline.handlers.discovery_processor import DiscoveryProcessor
-        from prei.pipeline.handlers.screening import ScreeningThresholds
-        from prei.pipeline.handlers.batch_screening import BatchScreeningProcessor
-        from prei.pipeline.engine import InMemoryAssetRepository, PipelineEngine
-        from prei.pipeline.sources.registry import discover_from_all
+        from core.services.discovery_processor import process_discovery_batch
+        from core.services.screening import ScreeningThresholds, screen_batch
+        from core.services.sources.registry import discover_from_all
 
         logger.info(
             "Growth Explorer: running pipeline discovery for %s, %s",
@@ -1253,8 +1251,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                     all_listings.append(listing)
 
             # Run through discovery processor (dedup + state inception)
-            processor = DiscoveryProcessor(existing_hashes=set())
-            discovery_result = processor.process_batch(
+            discovery_result = process_discovery_batch(
                 all_listings, source_name="growth_explorer"
             )
 
@@ -1279,9 +1276,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 min_beds=min_beds,
                 min_baths=min_baths,
             )
-            engine = PipelineEngine(repository=InMemoryAssetRepository())
-            batch_processor = BatchScreeningProcessor(engine, thresholds)
-            screening_result = batch_processor.process(all_listings)
+            screening_result = screen_batch(all_listings, thresholds)
 
             pipeline_results = {
                 "city": pipeline_city,
@@ -3224,9 +3219,7 @@ def vrm_properties_list(request: HttpRequest) -> HttpResponse:
 
     # Handle pipeline request: run selected properties through discovery
     if request.method == "POST" and "run_pipeline" in request.POST:
-        from prei.pipeline.engine import InMemoryAssetRepository, PipelineEngine
-        from prei.pipeline.handlers.screening import ScreeningThresholds
-        from prei.pipeline.handlers.batch_screening import BatchScreeningProcessor
+        from core.services.screening import ScreeningThresholds, screen_batch
 
         prop_ids = request.POST.getlist("pipeline_props")
         if prop_ids:
@@ -3252,9 +3245,7 @@ def vrm_properties_list(request: HttpRequest) -> HttpResponse:
                 min_beds=1,
                 min_baths=1,
             )
-            engine = PipelineEngine(repository=InMemoryAssetRepository())
-            processor = BatchScreeningProcessor(engine, thresholds)
-            result = processor.process(payloads)
+            result = screen_batch(payloads, thresholds)
             pipeline_message = (
                 f"{len(payloads)} properties processed: "
                 f"{result['advanced']} passed screening, "

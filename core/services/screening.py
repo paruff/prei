@@ -11,7 +11,160 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Tuple
+
+# ── Pure screening evaluator (ported from prei.pipeline.handlers.screening) ──
+
+
+@dataclass
+class ScreeningThresholds:
+    """Threshold configuration for the SCREENING pipeline stage.
+
+    All fields are required unless marked optional. Float-based because this
+    evaluator is transient ratio math (no persistence); the ORM persistence
+    path (screen_property/PipelineProperty) is Decimal-based.
+    """
+
+    min_gross_yield: float
+    max_price_to_rent_ratio: float
+    excluded_hoas: list[str] = field(default_factory=list)
+    min_beds: int = 0
+    min_baths: int = 0
+
+
+def gross_yield(monthly_rent: float, purchase_price: float) -> float:
+    """Compute gross yield as a fraction: (monthly_rent × 12) / purchase_price.
+
+    Returns 0.0 for non-positive price or rent.
+    """
+    if purchase_price <= 0 or monthly_rent <= 0:
+        return 0.0
+    return (monthly_rent * 12.0) / purchase_price
+
+
+def price_to_rent_ratio(monthly_rent: float, purchase_price: float) -> float:
+    """Compute price-to-rent ratio: purchase_price / (monthly_rent × 12).
+
+    Returns float('inf') when annual rent is zero.
+    """
+    annual_rent = monthly_rent * 12.0
+    if annual_rent <= 0:
+        return float("inf")
+    return purchase_price / annual_rent
+
+
+def compute_screening_metrics(asset_data: dict[str, Any]) -> dict[str, float]:
+    """Compute gross_yield and price_to_rent_ratio from raw asset data."""
+    rent = float(asset_data.get("estimated_monthly_rent", 0))
+    price = float(asset_data.get("purchase_price", 0))
+    return {
+        "gross_yield": gross_yield(rent, price),
+        "price_to_rent_ratio": price_to_rent_ratio(rent, price),
+    }
+
+
+def evaluate_screening_stage(
+    asset_data: dict[str, Any],
+    thresholds: ScreeningThresholds,
+) -> Tuple[bool, Optional[str]]:
+    """Evaluate a property against all screening thresholds.
+
+    Checks run in order of lowest computational cost first; the first
+    violation short-circuits and returns the kill reason.
+
+    Returns:
+        Tuple of (pass: bool, kill_reason: str | None).
+    """
+    # 1. Beds check
+    beds = asset_data.get("beds")
+    if beds is not None and int(beds) < thresholds.min_beds:
+        return False, f"Insufficient bedrooms: {beds} < {thresholds.min_beds}"
+
+    # 2. Baths check
+    baths = asset_data.get("baths")
+    if baths is not None and float(baths) < thresholds.min_baths:
+        return False, f"Insufficient bathrooms: {baths} < {thresholds.min_baths}"
+
+    # 3. HOA exclusion check
+    hoa = asset_data.get("hoa_name")
+    if hoa and thresholds.excluded_hoas:
+        hoa_lower = hoa.strip().lower()
+        for excluded in thresholds.excluded_hoas:
+            if excluded.strip().lower() == hoa_lower:
+                return False, f"Excluded HOA: {hoa}"
+
+    # 4. Gross yield check
+    rent = asset_data.get("estimated_monthly_rent")
+    price = asset_data.get("purchase_price")
+    if rent is not None and price is not None and price > 0 and float(rent) > 0:
+        gy = gross_yield(float(rent), float(price))
+        if gy < thresholds.min_gross_yield:
+            return (
+                False,
+                f"Gross yield too low: {gy:.4f} < {thresholds.min_gross_yield}",
+            )
+
+    # 5. Price-to-rent ratio check
+    if rent is not None and price is not None and price > 0 and float(rent) > 0:
+        ptr = price_to_rent_ratio(float(rent), float(price))
+        if ptr > thresholds.max_price_to_rent_ratio:
+            return (
+                False,
+                f"Price-to-rent ratio too high: {ptr:.2f} > "
+                f"{thresholds.max_price_to_rent_ratio}",
+            )
+
+    return True, None
+
+
+def screen_batch(
+    property_dicts: list[dict[str, Any]],
+    thresholds: ScreeningThresholds,
+) -> dict[str, Any]:
+    """Evaluate a batch of property payloads through SCREENING (stats only).
+
+    Pure batch equivalent of the former prei BatchScreeningProcessor: returns
+    the same operational summary dict (processed/advanced/killed/execution_time_ms)
+    without engine state or persistence.
+
+    Args:
+        property_dicts: List of property payload dicts with at minimum
+            asset_id, address, estimated_monthly_rent, purchase_price,
+            beds, baths keys.
+        thresholds: ScreeningThresholds for the evaluator.
+
+    Returns:
+        Dict with processed (int), advanced (int), killed (int),
+        execution_time_ms (float).
+    """
+    import time
+
+    start = time.perf_counter()
+    advanced = 0
+    killed = 0
+
+    for payload in property_dicts:
+        asset_data = {
+            "estimated_monthly_rent": payload.get("estimated_monthly_rent"),
+            "purchase_price": payload.get("purchase_price"),
+            "beds": payload.get("beds"),
+            "baths": payload.get("baths"),
+            "hoa_name": payload.get("hoa_name"),
+        }
+        passed, _ = evaluate_screening_stage(asset_data, thresholds)
+        if passed:
+            advanced += 1
+        else:
+            killed += 1
+
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    return {
+        "processed": len(property_dicts),
+        "advanced": advanced,
+        "killed": killed,
+        "execution_time_ms": round(elapsed_ms, 2),
+    }
+
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import User

@@ -1,5 +1,6 @@
 """Canonical schema and structural ingestion sanitizer for the DISCOVERY stage.
 
+Ported from prei.pipeline.handlers.discovery (pydantic removed).
 Creates an unyielding data normalization layer that maps erratic, multi-source
 external data structures (MLS listings, county foreclosure scraps, wholesale
 raw JSON dumps) into a clean, unified internal Python schema.
@@ -9,88 +10,87 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+
+def _coerce_float(v: Any) -> float | None:
+    """Coerce messy numeric inputs to float or None.
+
+    Handles string representations ("1998", ""), float types (3.0),
+    and missing/null values uniformly.
+    """
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except ValueError, TypeError:
+        return 0.0
 
 
-class CanonicalPropertyPayload(BaseModel):
+def _coerce_beds(v: Any) -> int:
+    """Coerce beds to int. Handles 3.0, "3", None."""
+    if v is None or v == "":
+        return 0
+    try:
+        return int(float(v))
+    except ValueError, TypeError:
+        return 0
+
+
+def _coerce_baths(v: Any) -> float:
+    """Coerce baths to float. Handles "2", 2, 2.5, None."""
+    if v is None or v == "":
+        return 0.0
+    try:
+        return float(v)
+    except ValueError, TypeError:
+        return 0.0
+
+
+def _coerce_sqft(v: Any) -> float | None:
+    """Coerce sqft to Optional[float]."""
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except ValueError, TypeError:
+        return None
+
+
+def _coerce_year(v: Any) -> int | None:
+    """Coerce year_built to Optional[int]."""
+    if v is None or v == "":
+        return None
+    try:
+        return int(float(v))
+    except ValueError, TypeError:
+        return None
+
+
+@dataclass
+class CanonicalPropertyPayload:
     """Unified internal schema for property data entering the pipeline.
 
     All fields are strictly typed. Secondary fields that cannot be extracted
     from a given source default to None rather than a magic value.
+
+    Monetary fields (price, estimated_rent) are float in this transient DTO
+    (behavior preserved from the prei port); Decimal conversion happens at the
+    persistence boundary (core.services.discovery_processor).
     """
 
     source_id: str
     source_name: str
     raw_address: str
     address_hash: str
-    price: Optional[float] = None
-    estimated_rent: Optional[float] = None
-    beds: int
-    baths: float
-    sqft: Optional[float] = None
-    year_built: Optional[int] = None
-    raw_metadata: Dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator("price", "estimated_rent", mode="before")
-    @classmethod
-    def coerce_float(cls, v: Any) -> Optional[float]:
-        """Coerce messy numeric inputs to float or None.
-
-        Handles string representations ("1998", ""), float types (3.0),
-        and missing/null values uniformly.
-        """
-        if v is None or v == "":
-            return None
-        try:
-            return float(v)
-        except ValueError, TypeError:
-            return 0.0
-
-    @field_validator("beds", mode="before")
-    @classmethod
-    def coerce_beds(cls, v: Any) -> int:
-        """Coerce beds to int. Handles 3.0, "3", None."""
-        if v is None or v == "":
-            return 0
-        try:
-            return int(float(v))
-        except ValueError, TypeError:
-            return 0
-
-    @field_validator("baths", mode="before")
-    @classmethod
-    def coerce_baths(cls, v: Any) -> float:
-        """Coerce baths to float. Handles "2", 2, 2.5, None."""
-        if v is None or v == "":
-            return 0.0
-        try:
-            return float(v)
-        except ValueError, TypeError:
-            return 0.0
-
-    @field_validator("sqft", mode="before")
-    @classmethod
-    def coerce_sqft(cls, v: Any) -> Optional[float]:
-        """Coerce sqft to Optional[float]."""
-        if v is None or v == "":
-            return None
-        try:
-            return float(v)
-        except ValueError, TypeError:
-            return None
-
-    @field_validator("year_built", mode="before")
-    @classmethod
-    def coerce_year(cls, v: Any) -> Optional[int]:
-        """Coerce year_built to Optional[int]."""
-        if v is None or v == "":
-            return None
-        try:
-            return int(float(v))
-        except ValueError, TypeError:
-            return None
+    price: float | None = None
+    estimated_rent: float | None = None
+    beds: int = 0
+    baths: float = 0.0
+    sqft: float | None = None
+    year_built: int | None = None
+    raw_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class DiscoverySanitizer:
@@ -129,7 +129,7 @@ class DiscoverySanitizer:
     @classmethod
     def transform_input(
         cls,
-        raw: Dict[str, Any],
+        raw: dict[str, Any],
         source: str,
     ) -> CanonicalPropertyPayload:
         """Transform a raw external data dict into a canonical payload.
@@ -174,18 +174,23 @@ class DiscoverySanitizer:
             source_name=source,
             raw_address=raw_address,
             address_hash=addr_hash,
-            price=raw.get("price") or raw.get("ListPrice") or raw.get("sale_price"),
-            estimated_rent=raw.get("rent")
-            or raw.get("RentEstimate")
-            or raw.get("estimated_rent"),
-            beds=raw.get("beds") or raw.get("BedroomsTotal") or 0,
-            baths=raw.get("baths")
-            or raw.get("BathroomsTotalInteger")
-            or raw.get("BathroomsFull")
-            or 0.0,
-            sqft=raw.get("sqft") or raw.get("LivingArea") or raw.get("SquareFootage"),
-            year_built=raw.get("year_built")
-            or raw.get("YearBuilt")
-            or raw.get("yearBuilt"),
+            price=_coerce_float(
+                raw.get("price") or raw.get("ListPrice") or raw.get("sale_price")
+            ),
+            estimated_rent=_coerce_float(
+                raw.get("rent") or raw.get("RentEstimate") or raw.get("estimated_rent")
+            ),
+            beds=_coerce_beds(raw.get("beds") or raw.get("BedroomsTotal")),
+            baths=_coerce_baths(
+                raw.get("baths")
+                or raw.get("BathroomsTotalInteger")
+                or raw.get("BathroomsFull")
+            ),
+            sqft=_coerce_sqft(
+                raw.get("sqft") or raw.get("LivingArea") or raw.get("SquareFootage")
+            ),
+            year_built=_coerce_year(
+                raw.get("year_built") or raw.get("YearBuilt") or raw.get("yearBuilt")
+            ),
             raw_metadata=raw,
         )

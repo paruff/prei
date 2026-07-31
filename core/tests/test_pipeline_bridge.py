@@ -20,7 +20,7 @@ class TestPipelineBridge:
     @patch("core.views.FREDAdapter.fetch_state_employment_growth")
     @patch("core.views.fetch_place_growth_metrics")
     @patch("core.views.fetch_housing_demand_index")
-    @patch("prei.pipeline.sources.registry.discover_from_all")
+    @patch("core.services.sources.registry.discover_from_all")
     @pytest.mark.django_db
     def test_pipeline_button_triggers_discovery(
         self,

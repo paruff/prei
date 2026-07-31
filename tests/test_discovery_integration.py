@@ -1,15 +1,16 @@
 """Integration tests for the discovery stage — components working together.
 
-Tests how DiscoverySanitizer, DiscoveryProcessor, and data sources
-integrate with each other and with the PipelineOrchestrator.
+Tests how DiscoverySanitizer, the discovery processor, and data sources
+integrate with each other and with the downstream screening/underwriting
+services (the prei orchestrator class was deleted in the pydantic→Django
+consolidation; orchestration is now explicit service composition).
 """
 
-from prei.models.pipeline import PipelineStage
-from prei.pipeline.handlers.discovery import DiscoverySanitizer
-from prei.pipeline.handlers.discovery_processor import DiscoveryProcessor
-from prei.pipeline.orchestrator import PipelineOrchestrator
-from prei.pipeline.sources.county import TexasCountyForeclosureSource
-from prei.pipeline.sources.registry import discover_from_all, get_source
+from core.services.discovery import DiscoverySanitizer
+from core.services.discovery_processor import process_discovery_batch
+from core.services.screening import ScreeningThresholds, screen_batch
+from core.services.sources.county import TexasCountyForeclosureSource
+from core.services.sources.registry import discover_from_all, get_source
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ COUNTY_BATCH = [
 
 
 class TestSanitizerToProcessor:
-    """DiscoverySanitizer output feeds directly into DiscoveryProcessor."""
+    """DiscoverySanitizer output feeds directly into the processor."""
 
     def test_sanitizer_output_matches_processor_input(self):
         """CanonicalPropertyPayload fields map correctly to processor expectations."""
@@ -81,22 +82,21 @@ class TestSanitizerToProcessor:
     def test_processor_uses_correct_hash(self):
         """Processor dedup uses same hash as sanitizer produces."""
         canonical = DiscoverySanitizer.transform_input(MLS_BATCH[0], "test")
-        proc = DiscoveryProcessor(existing_hashes={canonical.address_hash})
-        result = proc.process_batch(MLS_BATCH, source_name="test")
+        result = process_discovery_batch(
+            MLS_BATCH, source_name="test", existing_hashes={canonical.address_hash}
+        )
         # MLS-001 is duplicate (hash pre-populated)
         # MLS-002 and MLS-003 are new
         assert result["new_assets_discovered"] == 2
         assert result["duplicates_skipped"] == 1
 
-    def test_processor_outputs_are_property_assets(self):
-        """Processor returns PropertyAsset instances with correct stage."""
-        proc = DiscoveryProcessor(existing_hashes=set())
-        result = proc.process_batch(MLS_BATCH[:1], source_name="test")
+    def test_processor_outputs_are_canonical_payloads(self):
+        """Processor returns canonical payloads with source identity."""
+        result = process_discovery_batch(MLS_BATCH[:1], source_name="test")
         assert len(result["payloads"]) == 1
-        asset = result["payloads"][0]
-        assert asset.current_stage == PipelineStage.DISCOVERY
-        assert asset.asset_id == "MLS-001"
-        assert "123 main st" in asset.address.lower()
+        payload = result["payloads"][0]
+        assert payload.source_id == "MLS-001"
+        assert "123 main st" in payload.raw_address.lower()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -108,24 +108,24 @@ class TestMultiSourceProcessing:
     """Different source schemas all flow through the same processor."""
 
     def test_mls_schema_processed(self):
-        """MLS-format listings produce valid assets."""
-        proc = DiscoveryProcessor(existing_hashes=set())
-        result = proc.process_batch(MLS_BATCH, source_name="mls")
+        """MLS-format listings produce valid payloads."""
+        result = process_discovery_batch(MLS_BATCH, source_name="mls")
         assert result["new_assets_discovered"] == 3
         assert result["failed_records"] == 0
 
     def test_county_schema_processed(self):
-        """County-foreclosure-format listings produce valid assets."""
-        proc = DiscoveryProcessor(existing_hashes=set())
-        result = proc.process_batch(COUNTY_BATCH, source_name="county")
+        """County-foreclosure-format listings produce valid payloads."""
+        result = process_discovery_batch(COUNTY_BATCH, source_name="county")
         assert result["new_assets_discovered"] == 2
         assert result["failed_records"] == 0
 
     def test_mixed_source_deduplication(self):
         """Same address from different sources matches via hash."""
-        proc = DiscoveryProcessor(existing_hashes=set())
+        existing: set[str] = set()
         # Process MLS batch first
-        r1 = proc.process_batch(MLS_BATCH, source_name="mls")
+        r1 = process_discovery_batch(
+            MLS_BATCH, source_name="mls", existing_hashes=existing
+        )
         assert r1["new_assets_discovered"] == 3
 
         # Process a batch containing a duplicate address in county format
@@ -134,15 +134,16 @@ class TestMultiSourceProcessing:
             "FullStreetAddress": "123 Main St.",  # same as MLS-001
             "sale_price": 310_000.0,
         }
-        r2 = proc.process_batch([duplicate], source_name="county")
+        r2 = process_discovery_batch(
+            [duplicate], source_name="county", existing_hashes=existing
+        )
         assert r2["new_assets_discovered"] == 0
         assert r2["duplicates_skipped"] == 1
 
     def test_empty_batch_mixed_sources(self):
         """Empty batches from any source produce zero results."""
         for source_name in ["mls", "county", "fannie_mae"]:
-            proc = DiscoveryProcessor(existing_hashes=set())
-            result = proc.process_batch([], source_name=source_name)
+            result = process_discovery_batch([], source_name=source_name)
             assert result["total_received"] == 0
             assert result["new_assets_discovered"] == 0
 
@@ -175,81 +176,104 @@ class TestSourceRegistryToProcessor:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  4. Dedup across batches (stateful processor)
+#  4. Dedup across batches (shared hash set)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestCrossBatchDeduplication:
-    """Processor maintains state across multiple batches."""
+    """Shared hash set dedups across multiple batches."""
 
-    def test_same_processor_multiple_batches(self):
-        """Same processor instance dedups across batches."""
-        proc = DiscoveryProcessor(existing_hashes=set())
+    def test_shared_hashes_multiple_batches(self):
+        """Same hash set across batches dedups."""
+        existing: set[str] = set()
 
-        r1 = proc.process_batch(MLS_BATCH[:2], source_name="mls")
+        r1 = process_discovery_batch(
+            MLS_BATCH[:2], source_name="mls", existing_hashes=existing
+        )
         assert r1["new_assets_discovered"] == 2
 
-        r2 = proc.process_batch(MLS_BATCH[2:], source_name="mls")
+        r2 = process_discovery_batch(
+            MLS_BATCH[2:], source_name="mls", existing_hashes=existing
+        )
         assert r2["new_assets_discovered"] == 1
 
-        r3 = proc.process_batch(MLS_BATCH, source_name="mls")
+        r3 = process_discovery_batch(
+            MLS_BATCH, source_name="mls", existing_hashes=existing
+        )
         assert r3["new_assets_discovered"] == 0
         assert r3["duplicates_skipped"] == 3
 
-    def test_separate_processors_independent(self):
-        """Different processor instances have independent hash sets."""
-        p1 = DiscoveryProcessor(existing_hashes=set())
-        p2 = DiscoveryProcessor(existing_hashes=set())
-        p1.process_batch(MLS_BATCH, source_name="mls")
-        p2.process_batch(MLS_BATCH, source_name="mls")
+    def test_separate_hash_sets_independent(self):
+        """Different hash sets are independent."""
+        p1: set[str] = set()
+        p2: set[str] = set()
+        process_discovery_batch(MLS_BATCH, source_name="mls", existing_hashes=p1)
+        process_discovery_batch(MLS_BATCH, source_name="mls", existing_hashes=p2)
         # Both should have discovered all 3 since their hash sets started empty
-        assert len(p1.existing_hashes) == 3
-        assert len(p2.existing_hashes) == 3
+        assert len(p1) == 3
+        assert len(p2) == 3
 
     def test_existing_hashes_persistence(self):
         """existing_hashes set is mutated in-place after each batch."""
-        hashes: set = set()
-        proc = DiscoveryProcessor(existing_hashes=hashes)
-        proc.process_batch(MLS_BATCH, source_name="test")
+        hashes: set[str] = set()
+        process_discovery_batch(MLS_BATCH, source_name="test", existing_hashes=hashes)
         assert len(hashes) == 3
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  5. Processor → PipelineOrchestrator integration
+#  5. Discovery → Screening → Underwriting composition
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-class TestProcessorToOrchestrator:
-    """DiscoveryProcessor output feeds into PipelineOrchestrator."""
+class TestDiscoveryToDownstreamServices:
+    """Discovery payloads feed into screening and underwriting (orchestrator
+    equivalent — the prei orchestrator class was deleted)."""
 
-    def test_discovered_asset_can_run_through_orchestrator(self):
-        """An asset discovered by processor can be pipelined through orchestrator."""
-        proc = DiscoveryProcessor(existing_hashes=set())
-        result = proc.process_batch(MLS_BATCH[:1], source_name="mls")
-        asset = result["payloads"][0]
-        assert asset.current_stage == PipelineStage.DISCOVERY
+    def test_discovered_payload_runs_through_screening(self):
+        """A discovered payload can be screened with standard thresholds."""
+        result = process_discovery_batch(MLS_BATCH[:1], source_name="mls")
+        payload = result["payloads"][0]
+        threshold = ScreeningThresholds(
+            min_gross_yield=0.07,
+            max_price_to_rent_ratio=15.0,
+            min_beds=2,
+            min_baths=1,
+        )
+        screening = screen_batch(
+            [
+                {
+                    "asset_id": payload.source_id,
+                    "address": payload.raw_address,
+                    "estimated_monthly_rent": payload.estimated_rent,
+                    "purchase_price": payload.price,
+                    "beds": payload.beds,
+                    "baths": payload.baths,
+                }
+            ],
+            threshold,
+        )
+        # MLS-001: (2500*12)/300000 = 10% yield, ratio 10 → passes
+        assert screening["advanced"] == 1
+        assert screening["killed"] == 0
 
-        # The orchestrator would take the raw payload directly
-        orch = PipelineOrchestrator(existing_hashes=set())
-        or_result = orch.run(MLS_BATCH[0], source_name="mls")
-        assert or_result.success
-        assert or_result.asset.current_stage == PipelineStage.UNDERWRITING
+    def test_duplicate_payload_rejected_at_discovery(self):
+        """Same address twice → second run discovers nothing."""
+        existing: set[str] = set()
+        r1 = process_discovery_batch(
+            MLS_BATCH[:1], source_name="mls", existing_hashes=existing
+        )
+        assert r1["new_assets_discovered"] == 1
+        r2 = process_discovery_batch(
+            MLS_BATCH[:1], source_name="mls", existing_hashes=existing
+        )
+        assert r2["new_assets_discovered"] == 0
+        assert r2["duplicates_skipped"] == 1
 
-    def test_orchestrator_rejects_duplicates(self):
-        """Orchestrator rejects duplicate address hashes."""
-        orch = PipelineOrchestrator(existing_hashes=set())
-        r1 = orch.run(MLS_BATCH[0], source_name="mls")
-        assert r1.success
-        r2 = orch.run(MLS_BATCH[0], source_name="mls")
-        assert r2.success is False
-        assert "Duplicate" in (r2.error or "")
-
-    def test_orchestrator_fails_missing_address(self):
-        """Orchestrator fails gracefully on address-less payload."""
-        orch = PipelineOrchestrator()
-        result = orch.run({"id": "BAD"}, source_name="test")
-        assert result.success is False
-        assert "Discovery" in (result.error or "")
+    def test_missing_address_fails_gracefully(self):
+        """Address-less payload is counted as failed, not raised."""
+        result = process_discovery_batch([{"id": "BAD"}], source_name="test")
+        assert result["failed_records"] == 1
+        assert result["new_assets_discovered"] == 0
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -272,8 +296,7 @@ class TestLargeBatchProcessing:
             }
             for i in range(1000)
         ]
-        proc = DiscoveryProcessor(existing_hashes=set())
-        result = proc.process_batch(batch, source_name="stress")
+        result = process_discovery_batch(batch, source_name="stress")
         assert result["total_received"] == 1000
         assert result["new_assets_discovered"] == 1000
         assert result["duplicates_skipped"] == 0
@@ -302,8 +325,7 @@ class TestLargeBatchProcessing:
                     "baths": 2,
                 }
             )
-        proc = DiscoveryProcessor(existing_hashes=set())
-        result = proc.process_batch(batch, source_name="stress")
+        result = process_discovery_batch(batch, source_name="stress")
         assert result["new_assets_discovered"] == 500
         assert result["duplicates_skipped"] == 500
         assert result["failed_records"] == 0
@@ -316,8 +338,7 @@ class TestLargeBatchProcessing:
             {"id": "BAD", "price": 100},  # bad — no address
             *COUNTY_BATCH,
         ]
-        proc = DiscoveryProcessor(existing_hashes=set())
-        result = proc.process_batch(batch, source_name="mixed")
+        result = process_discovery_batch(batch, source_name="mixed")
         # 3 MLS + 2 county = 5 valid, 2 bad
         assert result["new_assets_discovered"] == 5
         assert result["failed_records"] == 2
