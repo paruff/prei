@@ -13,12 +13,8 @@ from django.utils import timezone
 from pytest_bdd import given, parsers, scenario, then, when
 
 from core.models import InvestmentAnalysis, OperatingExpense, Property, RentalIncome
-from investor_app.finance.utils import (
-    cap_rate,
-    dscr,
-    estimate_insurance,
-    noi,
-)
+from investor_app.finance.mortgage import estimate_insurance
+from investor_app.finance.utils import cap_rate, dscr, noi
 
 # Acceptance criteria require NOI and cap rate checks with ±3% relative tolerance.
 REL_TOLERANCE = 0.03

@@ -85,7 +85,7 @@ def _score_market_from_snapshot(snapshot) -> Decimal:
     Returns a Decimal in [0, 100] computed as a weighted average of
     normalised sub-scores for each available signal.
     """
-    from investor_app.finance.utils import (
+    from investor_app.finance.scoring import (
         clamp_market_score,
         normalize_market_growth_rate_score,
         normalize_market_price_to_rent_score,

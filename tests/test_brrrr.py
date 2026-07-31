@@ -12,7 +12,7 @@ from decimal import Decimal
 
 import pytest
 
-from investor_app.finance.utils import (
+from investor_app.finance.strategies import (
     brrrr_coc_return,
     cash_left_in_deal,
     estimate_arv,

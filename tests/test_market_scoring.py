@@ -7,7 +7,7 @@ from django.test import override_settings
 
 from core.models import MarketSnapshot
 from core.services.market_scoring import score_market, update_market_scores
-from investor_app.finance.utils import (
+from investor_app.finance.scoring import (
     clamp_market_score,
     normalize_market_growth_rate_score,
     normalize_market_price_to_rent_score,

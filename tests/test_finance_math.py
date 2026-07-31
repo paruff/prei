@@ -16,17 +16,10 @@ from decimal import Decimal
 import pytest
 
 # ── Production functions ───────────────────────────────────────────────────
-from investor_app.finance.utils import (
-    annual_depreciation,
-    calculate_monthly_mortgage,
-    cap_rate,
-    cash_on_cash,
-    dscr,
-    gross_rent_multiplier,
-    irr,
-    noi,
-    one_percent_rule,
-)
+from investor_app.finance.mortgage import calculate_monthly_mortgage
+from investor_app.finance.scoring import gross_rent_multiplier, one_percent_rule
+from investor_app.finance.taxes import annual_depreciation
+from investor_app.finance.utils import cap_rate, cash_on_cash, dscr, irr, noi
 
 # ── Reference implementations ──────────────────────────────────────────────
 from tests.finance_reference import (

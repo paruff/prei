@@ -4,13 +4,13 @@ from decimal import Decimal
 
 import pytest
 
-from investor_app.finance.utils import (
+from investor_app.finance.taxes import (
     after_tax_cash_flow,
     after_tax_irr,
     annual_depreciation,
-    calculate_irr,
     depreciation_recapture_tax,
 )
+from investor_app.finance.utils import irr
 
 
 class TestAnnualDepreciation:
@@ -178,7 +178,7 @@ class TestAfterTaxIrr:
         dep_schedule = [Decimal("9091"), Decimal("9091")]
         after_tax = after_tax_irr(cash_flows, dep_schedule, Decimal("0"))
         # With 0% tax rate, no shield, so the cash flows are unchanged
-        pre_tax = calculate_irr(cash_flows)
+        pre_tax = irr(cash_flows)
         assert abs(after_tax - pre_tax) < Decimal("0.0001")
 
     def test_insufficient_cash_flows_raises(self) -> None:
@@ -232,7 +232,7 @@ class TestAfterTaxIrr:
         """Test that an empty depreciation schedule applies no shields."""
         cash_flows = [Decimal("-100000"), Decimal("55000"), Decimal("60000")]
         result = after_tax_irr(cash_flows, [], Decimal("0.24"))
-        pre_tax = calculate_irr(cash_flows)
+        pre_tax = irr(cash_flows)
         # No depreciation shield → should equal pre-tax IRR
         assert abs(result - pre_tax) < Decimal("0.0001")
 

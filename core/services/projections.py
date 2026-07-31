@@ -10,12 +10,12 @@ from typing import TYPE_CHECKING, List
 import numpy as np
 import numpy_financial as npf
 
-from investor_app.finance.utils import (
+from investor_app.finance.mortgage import calculate_monthly_mortgage
+from investor_app.finance.taxes import (
     calculate_after_tax_cashflow,
     calculate_annual_depreciation,
-    calculate_monthly_mortgage,
-    to_decimal,
 )
+from investor_app.finance.utils import to_decimal
 
 if TYPE_CHECKING:
     from core.models import Property
