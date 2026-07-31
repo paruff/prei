@@ -17,7 +17,7 @@ pytest-asyncio==1.4.0
 pytest-rerunfailures==16.1  # flaky test retry (Phase C)
 pytest-reportlog==1.0.0  # flaky test detection report log (Phase C)
 ruff==0.15.22  # Must match .pre-commit-config.yaml rev: v0.15.20
-mypy==2.2.0
+mypy==2.3.0
 django-stubs==6.0.7
 djangorestframework-stubs==3.17.0
 types-psycopg2==2.9.21.20260712
