@@ -2,7 +2,11 @@ SHELL := /bin/bash
 
 .PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev test-live
 
-PYTHON ?= python
+# Prefer the local venv; fall back to `python` (containers, bare environments).
+# Avoids the Apple /usr/bin/python3 shim that triggers the xcode-select prompt.
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python)
+# Interpreter inside containers (system Python; containers have no venv).
+CONTAINER_PY ?= python
 ENV_FILE ?= .env
 REQUIREMENTS ?= requirements.txt
 DOCKER_TAG := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
@@ -108,8 +112,8 @@ deploy-dev: ensure-env
 		exit 1; \
 	fi
 	@docker compose up -d
-	@docker compose exec web $(PYTHON) manage.py migrate
-	@docker compose exec web $(PYTHON) manage.py seed_data
+	@docker compose exec web $(CONTAINER_PY) manage.py migrate
+	@docker compose exec web $(CONTAINER_PY) manage.py seed_data
 	@echo "Docker stack is running on port 8000"
 
 deploy-local: ensure-env
@@ -171,8 +175,8 @@ clean:
 
 docker-dev: ensure-env build up
 	$(call ensure_django)
-	@docker compose exec web $(PYTHON) manage.py migrate
-	@docker compose exec web $(PYTHON) manage.py seed_data
+	@docker compose exec web $(CONTAINER_PY) manage.py migrate
+	@docker compose exec web $(CONTAINER_PY) manage.py seed_data
 	@echo ""
 	@echo "Docker dev stack running on http://localhost:8000"
 	@echo "  make logs     — tail container logs"
