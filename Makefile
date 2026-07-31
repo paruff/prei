@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev test-live
+.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev test-live
 
 # Prefer the local venv; fall back to `python` (containers, bare environments).
 # Avoids the Apple /usr/bin/python3 shim that triggers the xcode-select prompt.
@@ -86,6 +86,15 @@ test-integration:
 	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ \
 		-v --tb=short \
 		-k "integration"
+
+test-live-sources:
+	@echo "Running live integration tests"
+	$(PYTHON) -m pytest -m live core/tests/test_live_sources.py
+	$(call ensure_django)
+	@echo "Running live sources verification tests..."
+	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest core/tests/test_live_sources.py \
+		-m live \
+		-v --tb=short
 
 test-e2e:
 	$(call ensure_django)

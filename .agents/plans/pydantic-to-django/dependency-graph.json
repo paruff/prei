@@ -1,0 +1,41 @@
+{
+  "skill": "plan",
+  "status": "pass",
+  "nodes": ["TASK-01", "TASK-02", "TASK-03", "TASK-04", "TASK-05", "TASK-06", "TASK-07", "TASK-08", "TASK-09", "TASK-10", "TASK-11"],
+  "edges": [
+    ["TASK-02", "TASK-04"],
+    ["TASK-01", "TASK-05"],
+    ["TASK-02", "TASK-05"],
+    ["TASK-04", "TASK-05"],
+    ["TASK-01", "TASK-06"],
+    ["TASK-02", "TASK-06"],
+    ["TASK-04", "TASK-06"],
+    ["TASK-01", "TASK-07"],
+    ["TASK-02", "TASK-07"],
+    ["TASK-03", "TASK-07"],
+    ["TASK-04", "TASK-07"],
+    ["TASK-05", "TASK-08"],
+    ["TASK-06", "TASK-08"],
+    ["TASK-07", "TASK-08"],
+    ["TASK-07", "TASK-09"],
+    ["TASK-08", "TASK-10"],
+    ["TASK-09", "TASK-10"],
+    ["TASK-10", "TASK-11"]
+  ],
+  "notes": {
+    "parallel_waves": {
+      "wave_1": ["TASK-01", "TASK-02", "TASK-03"],
+      "wave_2": ["TASK-04", "TASK-07"],
+      "wave_3": ["TASK-05", "TASK-06", "TASK-09"],
+      "wave_4": ["TASK-08"],
+      "wave_5": ["TASK-10"],
+      "wave_6": ["TASK-11"]
+    },
+    "critical_path": ["TASK-02", "TASK-04", "TASK-05", "TASK-08", "TASK-10", "TASK-11"],
+    "bottlenecks": [
+      "TASK-05/TASK-06 both touch core/views/__init__.py (~5,000 LOC file) — high merge-conflict risk if run in parallel; run TASK-05 before TASK-06",
+      "TASK-08 and TASK-10 are large deletion tasks (1,100 + 2,100 lines) exceeding the 400-line guidance — acceptable because pure deletions of dead code are low-risk; split per-file if reviewers object"
+    ],
+    "pm_signoff_gate": "TASK-08 through TASK-11 (deletion of PropertyAsset/StageLog/FastAPI/CLI, engine, orchestrator, sources) require PM sign-off per user directive — plan pending approval for those tasks."
+  }
+}

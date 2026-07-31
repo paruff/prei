@@ -1,0 +1,25 @@
+{
+  "skill": "plan",
+  "status": "pass",
+  "estimates": {
+    "TASK-01": {"task": "Port screening evaluator + thresholds to core/services/screening.py", "lines": 160, "complexity": "low", "risk": "low", "justification": "Pure function + dataclass port; existing prei test suite covers behavior"},
+    "TASK-02": {"task": "Port DiscoverySanitizer to core/services/discovery.py", "lines": 130, "complexity": "low", "risk": "low", "justification": "Pure normalization; pydantic model becomes dataclass/dict"},
+    "TASK-03": {"task": "Port underwriting solver to core/services/underwriting.py", "lines": 150, "complexity": "low", "risk": "low", "justification": "Already Decimal-based; only BaseModel->dataclass swap"},
+    "TASK-04": {"task": "Port DiscoveryProcessor to Django model layer", "lines": 120, "complexity": "medium", "risk": "medium", "justification": "First Django-model write path; dedup semantics must match address_hash rule"},
+    "TASK-05": {"task": "Rewrite Growth Explorer bridge (~line 1235)", "lines": 140, "complexity": "high", "risk": "high", "justification": "Touches 5,000-LOC view file; behavior must stay identical; highest regression surface"},
+    "TASK-06": {"task": "Rewrite vrm_properties_list run_pipeline bridge (~line 3227)", "lines": 110, "complexity": "medium", "risk": "medium", "justification": "Second view bridge; simpler path than TASK-05"},
+    "TASK-07": {"task": "Migrate 9 test files + tests_bdd steps to core.services", "lines": 260, "complexity": "medium", "risk": "medium", "justification": "Import churn across 9 files; BDD feature may need rewrite if engine-only"},
+    "TASK-08": {"task": "Delete pydantic state machine + engine + orchestrator", "lines": 1100, "complexity": "low", "risk": "medium", "justification": "Pure deletion of dead code (1100 lines) after TASK-05/06/07; exceeds 400-line guidance but low risk; requires PM sign-off"},
+    "TASK-09": {"task": "Delete FastAPI router + CLI + offer float handler", "lines": 400, "complexity": "low", "risk": "medium", "justification": "Deletion of api/cli; offer math port decision resolves LIMIT-21; requires PM sign-off"},
+    "TASK-10": {"task": "Migrate or delete prei/pipeline/tests + remaining handlers/sources", "lines": 2100, "complexity": "low", "risk": "medium", "justification": "Final prei package removal (2100 lines, mostly tests/sources); exceeds 400-line guidance but is deletion; requires PM sign-off"},
+    "TASK-11": {"task": "Remove deps from requirements + docs update", "lines": 120, "complexity": "low", "risk": "low", "justification": "requirements.txt edit + docs; pydantic retention depends on tests/acceptance"}
+  },
+  "totals": {
+    "tasks": 11,
+    "estimated_lines_changed": 4790,
+    "estimated_new_code": 550,
+    "estimated_deleted_code": 4240
+  },
+  "critical_path": ["TASK-02", "TASK-04", "TASK-05", "TASK-08", "TASK-10", "TASK-11"],
+  "effort_units": "lines changed (deletions dominate; new code is small)"
+}
