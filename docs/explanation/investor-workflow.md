@@ -26,15 +26,16 @@ and skip straight to underwriting. The pages simply connect when you follow the 
 **Goal:** identify cities with rising employment, population, income, and school quality.
 
 - **What is GACS?** The Growth Area Composite Score — see the
-  [GACS Guide](GACS_GUIDE.md) for a deep dive on the 6 weighted signals.
+  [GACS Guide](GACS_GUIDE.md) for a deep dive on the 7 weighted signals.
 - **How to explore:** use the [Growth Explorer](../how-to-guides/analyze-growth-areas.md)
   to analyze the top cities in any state, or browse the ranked
   [Growth Areas list](../how-to-guides/analyze-growth-areas.md).
-- **Data confidence:** each score shows a confidence % — how many of the 6 signals
+- **Data confidence:** each score shows a confidence % — how many of the 7 signals
   have real data vs. defaults. Configure `FRED_API_KEY` and `HUD_API_KEY` for full
   coverage.
 - **Limitations:** scores use an experimental weighting model, and employment growth
-  is state-level, not county-level. Use GACS to rank markets, not to predict prices.
+  prefers county-level QCEW data with a state-level FRED fallback. Use GACS to rank
+  markets, not to predict prices.
 
 ## Stage 2: Discovery
 
@@ -44,8 +45,9 @@ and skip straight to underwriting. The pages simply connect when you follow the 
   County foreclosure notices — see [Discovering Properties](../how-to-guides/discover-properties.md).
 - **How it works:** pick a growth area, choose which sources to query, and run
   discovery. Matching records become `PipelineProperty` records in your pipeline.
-- **Results:** discovery runs synchronously for checked sources; VRM scraping runs in a
-  background thread when no VA listings exist yet. You land on the screener afterward.
+- **Results:** discovery renders **in-page** on the discovery page with KPI cards and
+  per-source results; a "View in Screener" button takes you to the screener. VRM
+  scraping runs in a background thread when no VA listings exist yet.
 
 ## Stage 3: Screening
 
@@ -82,7 +84,8 @@ Growth Areas (/growth/)  ──►  Growth Explorer (/growth-explorer/)
         │  "Discover Properties" button
         ▼
 Property Discovery (/discovery/?growth_area_id=X)
-        │  POST → sources queried
+        │  POST → sources queried, results render in-page
+        │  "View in Screener" button
         ▼
 Pipeline Screener (/pipeline/screener/?growth_area_id=X)
         │  "→ Underwriting" action (passed properties)

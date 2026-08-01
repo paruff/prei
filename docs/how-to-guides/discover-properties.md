@@ -49,21 +49,22 @@ What happens:
 
 - prei queries the selected sources for the growth area's state + city and creates
   `PipelineProperty` records for matches.
-- HUD/USDA/VRM/ATTOM/County collection runs in **background threads** (Gunicorn
-  worker timeout is 30s). If no VRM listings exist for the state yet, a VRM scrape
-  starts in the background — you'll see an info message telling you to refresh in a
-  minute.
-- When finished, you're redirected to the **Screener** for this growth area.
+- **VRM scrape** runs in a background thread if no VA listings exist for the state yet
+  (Gunicorn worker timeout is 30s) — you'll see an info message telling you to refresh
+  in a minute. HUD/USDA bulk data loads run synchronously with retry-on-lock handling.
+- When finished, results render **in-page** on the discovery page — you stay in context
+  instead of being redirected.
 
 ## Step 4: Review Results
 
-After discovery you land on the screener (`/pipeline/screener/?growth_area_id=X`) and
-see:
+Discovery shows the results right on the page:
 
-- **KPI cards** — totals for discovered, passed screening, failed, and already-existing
-  properties in this market.
+- **KPI cards** — discovered, passed screening, failed, and already-existing properties
+  in this market.
+- **Per-source results** — what was found for each selected source.
 - **Success/warning messages** at the top describing what was created.
-- The properties themselves in the screener table, ready for review.
+- A **View in Screener →** button to jump to `/pipeline/screener/?growth_area_id=X`
+  and review the properties in detail.
 
 Continue to [Screening Properties](screen-properties.md).
 
