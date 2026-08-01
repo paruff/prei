@@ -225,8 +225,10 @@ class Command(BaseCommand):
                     errors += 1
                     continue
 
-                pop_growth = census_data.get("population_growth_rate")
-                income_growth = census_data.get("median_income_growth_rate")
+                # Values may be None if the underlying census vintage is missing; the
+                # GrowthArea fields are non-nullable so None here surfaces as a DB error.
+                pop_growth: Any = census_data.get("population_growth_rate")
+                income_growth: Any = census_data.get("median_income_growth_rate")
                 units_growth = census_data.get("housing_units_growth_rate")
 
                 # 2. Employment growth via FRED (state-level, cached per state)

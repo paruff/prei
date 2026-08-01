@@ -74,13 +74,13 @@ class TestAddToPipelineView:
             {"source_type": "vrm", "source_id": "5001"},
         )
         assert resp.status_code == 302
-        assert "/login/" in resp.url
+        assert "/login/" in resp["Location"]
 
     def test_get_returns_error(self, client):
         """GET request returns error and redirects to pipeline_list."""
         resp = client.get(self.URL)
         assert resp.status_code == 302
-        assert "/pipeline/list/" in resp.url
+        assert "/pipeline/list/" in resp["Location"]
 
     def test_adds_vrm_to_pipeline(self, client, user, vrm_property):
         """POST with valid source creates PipelineProperty and redirects to detail."""
@@ -93,7 +93,7 @@ class TestAddToPipelineView:
         # Should redirect to pipeline_detail
         assert resp.status_code == 302
         detail_url = reverse("pipeline_detail", kwargs={"pk": 1})
-        assert detail_url in resp.url
+        assert detail_url in resp["Location"]
 
         # PipelineProperty should exist
         pp = PipelineProperty.objects.get(user=user, source_type="vrm")
@@ -120,7 +120,7 @@ class TestAddToPipelineView:
         # Should redirect to existing detail page
         pp = PipelineProperty.objects.get(user=user, source_type="vrm")
         detail_url = reverse("pipeline_detail", kwargs={"pk": pp.pk})
-        assert detail_url in resp.url
+        assert detail_url in resp["Location"]
 
     def test_unknown_source_type(self, client):
         """Unknown source_type returns error and redirects."""

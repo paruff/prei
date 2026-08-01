@@ -70,7 +70,7 @@ class TestLeasingList:
         c = Client()
         resp = c.get(reverse("leasing_list"))
         assert resp.status_code == 302
-        assert "/login/" in resp.url
+        assert "/login/" in resp["Location"]
 
     def test_shows_entries(self, client, leasing_entry):
         resp = client.get(reverse("leasing_list"))
@@ -102,7 +102,7 @@ class TestLeasingAdd:
         c = Client()
         resp = c.get(reverse("leasing_add"))
         assert resp.status_code == 302
-        assert "/login/" in resp.url
+        assert "/login/" in resp["Location"]
 
     def test_get_shows_form(self, client, owned_property):
         resp = client.get(reverse("leasing_add"))
@@ -140,7 +140,7 @@ class TestLeasingDetail:
         url = reverse("leasing_detail", kwargs={"pk": leasing_entry.pk})
         resp = c.get(url)
         assert resp.status_code == 302
-        assert "/login/" in resp.url
+        assert "/login/" in resp["Location"]
 
     def test_404_for_other_user(self, db, leasing_entry):
         other = User.objects.create_user(

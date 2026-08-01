@@ -301,7 +301,7 @@ class TestPDFExportService:
             "propertyType": "condo",
         }
 
-        analysis_results = {}
+        analysis_results: dict[str, object] = {}
 
         # Should not raise exception
         pdf_bytes = service.generate_property_analysis_report(

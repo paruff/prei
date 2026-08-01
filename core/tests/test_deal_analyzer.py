@@ -5,6 +5,7 @@ for every function listed in the Phase 2.1 issue.
 """
 
 from decimal import Decimal
+from typing import Any
 
 import pytest
 
@@ -358,7 +359,7 @@ def test_roi_components_very_large_purchase_price():
 # calculate_flip_strategy
 # ---------------------------------------------------------------------------
 
-_FLIP_DEFAULTS = dict(
+_FLIP_DEFAULTS: dict[str, Any] = dict(
     purchase_price=Decimal("200000"),
     renovation_costs=Decimal("30000"),
     holding_period_months=6,
@@ -449,7 +450,7 @@ def test_flip_strategy_keys():
 # calculate_rental_strategy
 # ---------------------------------------------------------------------------
 
-_RENTAL_DEFAULTS = dict(
+_RENTAL_DEFAULTS: dict[str, Any] = dict(
     purchase_price=Decimal("350000"),
     down_payment=Decimal("70000"),
     loan_amount=Decimal("280000"),

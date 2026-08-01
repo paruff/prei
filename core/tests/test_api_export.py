@@ -156,7 +156,7 @@ class TestExportForeclosuresCSV:
         """Test CSV export fails without location."""
         url = reverse("api:export-foreclosures-csv")
 
-        data = {"filters": {}}
+        data: dict[str, object] = {"filters": {}}
 
         response = api_client.post(url, data, format="json")
 

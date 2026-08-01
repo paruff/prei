@@ -42,7 +42,7 @@ repos:
           - opentelemetry-api
           - opentelemetry-sdk
           - opentelemetry-exporter-otlp
-        args: [--show-error-codes, --no-incremental]
+        args: [--show-error-codes, --no-incremental, --check-untyped-defs]
         exclude: ^migrations/|^tests_bdd/|^tests/acceptance/
         verbose: true
 

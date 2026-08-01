@@ -164,6 +164,7 @@ class WalkScoreFetchWalkScoreTest(TestCase):
         }
         mock_get.return_value = mock_resp
         result = fetch_walk_score("123 Main St", "test-key")
+        assert result is not None
         assert isinstance(result["walk_score"], int)
         assert isinstance(result["transit_score"], int)
         assert isinstance(result["bike_score"], int)
@@ -177,6 +178,7 @@ class WalkScoreFetchWalkScoreTest(TestCase):
         mock_resp.json.return_value = {"walkscore": 50}
         mock_get.return_value = mock_resp
         result = fetch_walk_score("123 Main St", "test-key")
+        assert result is not None
         assert result["walk_score"] == 50
         assert result["transit_score"] is None
         assert result["bike_score"] is None
@@ -201,6 +203,7 @@ class WalkScoreFetchWalkScoreTest(TestCase):
             cache_key, {"walk_score": 95, "transit_score": None, "bike_score": None}
         )
         result = fetch_walk_score(address, "test-key")
+        assert result is not None
         assert result["walk_score"] == 95
         mock_get.assert_not_called()
 

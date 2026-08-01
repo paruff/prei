@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import cast
 
+from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -319,7 +321,9 @@ class PropertyFormTest(TestCase):
         from core.forms import PropertyForm
 
         form = PropertyForm()
-        choices = [c[0] for c in form.fields["property_type"].choices]
+        field = form.fields["property_type"]
+        assert isinstance(field, forms.ChoiceField)
+        choices = [c[0] for c in cast("list[tuple[str, str]]", field.choices)]
         self.assertIn("SFR", choices)
         self.assertIn("duplex", choices)
         self.assertIn("triplex", choices)

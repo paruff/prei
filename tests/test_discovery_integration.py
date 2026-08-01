@@ -6,6 +6,8 @@ services (the prei orchestrator class was deleted in the pydantic→Django
 consolidation; orchestration is now explicit service composition).
 """
 
+from typing import Any
+
 from core.services.discovery import DiscoverySanitizer
 from core.services.discovery_processor import process_discovery_batch
 from core.services.screening import ScreeningThresholds, screen_batch
@@ -14,7 +16,7 @@ from core.services.sources.registry import discover_from_all, get_source
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-MLS_BATCH = [
+MLS_BATCH: list[dict[str, Any]] = [
     {
         "id": "MLS-001",
         "address": "123 Main St.",
@@ -43,7 +45,7 @@ MLS_BATCH = [
     },
 ]
 
-COUNTY_BATCH = [
+COUNTY_BATCH: list[dict[str, Any]] = [
     {
         "parcel_id": "PCN-101",
         "FullStreetAddress": "101 Foreclosure Dr",

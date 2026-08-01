@@ -39,7 +39,7 @@ class CensusFetchZipDemographicsTest(TestCase):
 
         result = fetch_zip_demographics("90210", "test-key")
 
-        self.assertIsNotNone(result)
+        assert result is not None
         self.assertIn("population", result)
         self.assertIn("population_growth_pct_5yr", result)
         self.assertIn("median_household_income", result)
@@ -143,7 +143,7 @@ class BlsFetchUnemploymentRateTest(TestCase):
 
         result = fetch_unemployment_rate("VA", "test-key")
 
-        self.assertIsNotNone(result)
+        assert result is not None
         self.assertIsInstance(result, Decimal)
         self.assertEqual(result, Decimal("0.032"))
 
@@ -171,7 +171,7 @@ class BlsFetchUnemploymentRateTest(TestCase):
     @patch("core.integrations.market.bls.requests.post")
     def test_returns_none_on_empty_series(self, mock_post):
         """Gracefully returns None when BLS returns no series data."""
-        bls_response = {"Results": {"series": []}}
+        bls_response: dict[str, object] = {"Results": {"series": []}}
         mock_post.return_value = self._mock_response(bls_response)
 
         result = fetch_unemployment_rate("VA", "test-key")
