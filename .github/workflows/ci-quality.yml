@@ -230,10 +230,7 @@ jobs:
       - name: Collect static files
         run: python manage.py collectstatic --noinput --verbosity 0
       - name: Run acceptance tests against live_server
-        # -k "" overrides pytest.ini's addopts default (which excludes
-        # "acceptance" so a bare `pytest` stays safe-by-default); the
-        # last -k on the command line wins over the one baked into addopts.
-        run: python -m pytest tests/acceptance/ -q --tb=short -k ""
+        run: python -m pytest tests/acceptance/ -q --tb=short -m acceptance
 
   # ── Financial math verification ────────────────────────────────────────────
 
