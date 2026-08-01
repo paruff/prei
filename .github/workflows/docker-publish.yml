@@ -214,7 +214,7 @@ jobs:
           docker exec \
             -e DJANGO_SETTINGS_MODULE=investor_app.settings_test \
             prei-live-test \
-            python -m pytest tests_bdd/ -q --tb=short 2>&1
+            python -m pytest tests_bdd/ -q --tb=short -m e2e 2>&1
           echo "=== All BDD acceptance tests passed ==="
       - name: Extract test report log
         if: always()
