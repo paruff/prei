@@ -79,7 +79,7 @@ jobs:
         env:
           BASE_URL: ${{ needs.smoke.outputs.target }}
         run: |
-          python -m pytest tests/acceptance/ -q --tb=short -v
+          python -m pytest tests/acceptance/ -q --tb=short -v -m acceptance
 
   # ── Performance budgets via Lighthouse ────────────────────────────────────
 
