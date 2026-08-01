@@ -42,7 +42,7 @@ class TestScreeningSettingsView:
         c = Client()
         resp = c.get(self.URL)
         assert resp.status_code == 302
-        assert "/login/" in resp.url
+        assert "/login/" in resp["Location"]
 
     def test_get_creates_criteria(self, client, user):
         """GET creates ScreeningCriteria if it doesn't exist."""

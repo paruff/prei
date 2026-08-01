@@ -105,6 +105,7 @@ def test_vrm_property_model_fields_and_constraints(db):
         "days_on_site",
     ):
         field = VrmProperty._meta.get_field(field_name)
+        assert isinstance(field, models.Field)
         assert any(
             isinstance(validator, MinValueValidator) and validator.limit_value == 0
             for validator in field.validators
@@ -227,6 +228,7 @@ def test_hud_property_model_fields():
         )
     for int_field in ("bedrooms", "square_feet"):
         field = HudProperty._meta.get_field(int_field)
+        assert isinstance(field, models.Field)
         assert any(
             isinstance(v, MinValueValidator) and v.limit_value == 0
             for v in field.validators
@@ -297,6 +299,7 @@ def test_usda_property_model_fields():
         )
     for int_field in ("bedrooms", "square_feet"):
         field = UsdaProperty._meta.get_field(int_field)
+        assert isinstance(field, models.Field)
         assert any(
             isinstance(v, MinValueValidator) and v.limit_value == 0
             for v in field.validators

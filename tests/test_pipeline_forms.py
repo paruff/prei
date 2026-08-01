@@ -62,7 +62,7 @@ class TestOfferCreate:
         url = reverse("pipeline_offer_create", kwargs={"pk": pipeline_property.pk})
         resp = c.get(url)
         assert resp.status_code == 302
-        assert "/login/" in resp.url
+        assert "/login/" in resp["Location"]
 
     def test_404_for_other_user(self, db, pipeline_property):
         other = User.objects.create_user(

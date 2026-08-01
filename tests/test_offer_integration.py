@@ -104,6 +104,7 @@ class TestOfferUnit:
     def test_equity_calculation_correct(self):
         """Equity = ARV - (offer + rehab). For TARGET strategy: offer = MAO = 300k."""
         result = solve_offer(BASE_INPUT, OfferStrategy.TARGET)
+        assert BASE_INPUT.arv is not None
         # offer = MAO = 300000 (no clamp since 300000 + 20000 = 320000 <= 420000*0.80 = 336000)
         expected_equity = BASE_INPUT.arv - (BASE_INPUT.mao + BASE_INPUT.rehab_budget)
         assert result.estimated_equity == pytest.approx(

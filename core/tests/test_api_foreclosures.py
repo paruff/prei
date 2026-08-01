@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -39,7 +40,7 @@ def sample_foreclosure_properties(db):
             foreclosure_status="auction",
             foreclosure_stage="Notice of Trustee Sale",
             filing_date=now.date(),
-            auction_date=(now + timezone.timedelta(days=12)).date(),
+            auction_date=(now + timedelta(days=12)).date(),
             auction_time="10:00 AM EST",
             auction_location="Miami-Dade County Courthouse, 73 W Flagler St",
             opening_bid=Decimal("425000"),

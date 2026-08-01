@@ -65,7 +65,7 @@ class TestClosingView:
         url = reverse("pipeline_closing_create", kwargs={"pk": pipeline_property.pk})
         resp = c.get(url)
         assert resp.status_code == 302
-        assert "/login/" in resp.url
+        assert "/login/" in resp["Location"]
 
     def test_404_for_other_user(self, db, pipeline_property):
         other = User.objects.create_user(
@@ -100,7 +100,7 @@ class TestClosingView:
         )
         # Should redirect to portfolio_dashboard
         assert resp.status_code == 302
-        assert resp.url == reverse("portfolio_dashboard")
+        assert resp["Location"] == reverse("portfolio_dashboard")
 
         # ClosingRecord created
         closing = ClosingRecord.objects.get(pipeline_property=pipeline_property)
@@ -137,7 +137,7 @@ class TestClosingView:
             },
         )
         assert resp.status_code == 302
-        assert "/pipeline/" in resp.url  # Back to pipeline_detail
+        assert "/pipeline/" in resp["Location"]  # Back to pipeline_detail
 
     def test_missing_required_fields(self, client, pipeline_property):
         """Missing required fields shows error."""

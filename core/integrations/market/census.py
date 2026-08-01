@@ -567,7 +567,7 @@ def discover_places_in_state(
     state_code: str,
     api_key: str,
     limit: int = 20,
-) -> list[dict[str, object]]:
+) -> list[dict[str, Any]]:
     """Discover the top N places in a state by population via the Census ACS API.
 
     Uses the Census "place" geography with a wildcard query to fetch population
@@ -665,7 +665,7 @@ def discover_places_in_state(
         )
         return []
 
-    places: list[dict[str, object]] = []
+    places: list[dict[str, Any]] = []
     for row in data[1:]:
         raw_pop = row[pop_idx]
         raw_name = row[name_idx]

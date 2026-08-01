@@ -237,7 +237,7 @@ class TestDashboardAuth:
     def test_unauthenticated_redirect(self, client, db):
         resp = client.get(reverse("dashboard"))
         assert resp.status_code == 302
-        assert "login" in resp.url
+        assert "login" in resp["Location"]
 
 
 # ── Multiple properties ───────────────────────────────────────────────────────

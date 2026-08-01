@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from django.contrib.auth.models import User
 from django.db.models import Sum
@@ -27,7 +27,7 @@ def _month_starts(base: date, count: int) -> List[date]:
     return months
 
 
-def monthly_income_series(user, months: int = 12) -> List[Dict[str, object]]:
+def monthly_income_series(user, months: int = 12) -> list[dict[str, Any]]:
     """Return monthly income/expense/NOI for the last ``months`` calendar months.
 
     Args:
@@ -87,7 +87,7 @@ def monthly_income_series(user, months: int = 12) -> List[Dict[str, object]]:
             expense_by_month.get(key, Decimal("0")) + oe.monthly_amount()
         )
 
-    result: List[Dict[str, object]] = []
+    result: list[dict[str, Any]] = []
     for m_start in month_list:
         label = m_start.strftime("%Y-%m")
         gross = income_by_month.get(label, Decimal("0"))
@@ -426,7 +426,7 @@ def check_flag_for_attention(
     return True
 
 
-def compute_portfolio_performance(user: User) -> Dict[str, object]:
+def compute_portfolio_performance(user: User) -> dict[str, Any]:
     """Compute portfolio-wide performance metrics including variance analysis.
 
     Args:

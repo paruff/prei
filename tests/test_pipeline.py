@@ -10,6 +10,7 @@ covered by core/tests/test_pipeline_service.py against PipelineProperty.
 """
 
 from dataclasses import replace
+from typing import Any
 
 from core.services.screening import (
     ScreeningThresholds,
@@ -166,7 +167,7 @@ BATCH_THRESHOLDS = ScreeningThresholds(
 )
 
 # Dataset of 10 mock assets: 3 valid + 7 failing distinct rules
-MOCK_DATASET = [
+MOCK_DATASET: list[dict[str, Any]] = [
     # ── PASSING (3) ─────────────────────────────────────────────────────────
     {
         "asset_id": "PASS-01",

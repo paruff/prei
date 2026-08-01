@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import cast
 
 import csv
 from decimal import Decimal
@@ -108,7 +109,7 @@ class Command(BaseCommand):
                     RentalIncome.objects.create(
                         property=prop,
                         monthly_rent=Decimal(row.get("monthly_rent", "0")),
-                        effective_date=row.get("effective_date"),
+                        effective_date=cast(str, row.get("effective_date")),
                         vacancy_rate=Decimal(row.get("vacancy_rate", "0.05")),
                     )
                     rents_created += 1
@@ -143,7 +144,7 @@ class Command(BaseCommand):
                         frequency=row.get(
                             "frequency", OperatingExpense.Frequency.MONTHLY
                         ),
-                        effective_date=row.get("effective_date"),
+                        effective_date=cast(str, row.get("effective_date")),
                     )
                     expenses_created += 1
             self.stdout.write(

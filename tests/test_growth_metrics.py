@@ -98,7 +98,7 @@ class CensusPlaceGrowthMetricsTest(TestCase):
             api_key="test-key",
         )
 
-        self.assertIsNotNone(result)
+        assert result is not None
         self.assertEqual(result["population_current"], 400000)
         self.assertEqual(result["population_prior"], 380000)
         self.assertAlmostEqual(float(result["population_growth_rate"]), 0.05, places=2)
@@ -191,7 +191,7 @@ class CensusPlaceGrowthMetricsTest(TestCase):
             state_code="CA", place_code="67000", api_key="test-key"
         )
 
-        self.assertIsNotNone(result)
+        assert result is not None
         self.assertLess(result["population_growth_rate"], 0)
         self.assertLess(result["median_income_growth_rate"], 0)
 
@@ -233,7 +233,7 @@ class BlsEmploymentGrowthTest(TestCase):
         result = fetch_employment_growth(
             state_code="CA", api_key="test-key", years_back=5
         )
-        self.assertIsNotNone(result)
+        assert result is not None
         # (1200000-1100000)/1100000 ≈ 0.0909
         self.assertAlmostEqual(float(result), 0.0909, places=4)
 
@@ -279,7 +279,7 @@ class BlsEmploymentGrowthTest(TestCase):
         result = fetch_employment_growth(
             state_code="CA", api_key="test-key", years_back=5
         )
-        self.assertIsNotNone(result)
+        assert result is not None
         self.assertLess(result, 0)
 
     @patch("core.integrations.market.bls.requests.post")
@@ -296,7 +296,7 @@ class BlsEmploymentGrowthTest(TestCase):
         result = fetch_employment_growth(
             state_code="CA", api_key="test-key", years_back=5
         )
-        self.assertIsNotNone(result)
+        assert result is not None
         # Uses M13: (1250000-1100000)/1100000 ≈ 0.1364
         self.assertAlmostEqual(float(result), 0.1364, places=4)
 
@@ -328,7 +328,7 @@ class HousingDemandIndexTest(TestCase):
         result = fetch_housing_demand_index(
             state_code="CA", place_code="67000", api_key="test-key"
         )
-        self.assertIsNotNone(result)
+        assert result is not None
         # (1 - 0.05) * 100 = 95
         self.assertEqual(result, 95)
 
@@ -461,6 +461,7 @@ class PopulateGrowthAreasCommandTest(TestCase):
 
         self.assertIn("Created", out.getvalue())
         ga = GrowthArea.objects.get(state="CA", city_name="San Francisco")
+        assert ga.employment_growth_rate is not None
         self.assertAlmostEqual(float(ga.population_growth_rate), 0.05, places=2)
         self.assertAlmostEqual(float(ga.employment_growth_rate), 0.04, places=2)
         self.assertAlmostEqual(float(ga.median_income_growth), 0.09, places=2)
