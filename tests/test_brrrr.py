@@ -20,6 +20,8 @@ from investor_app.finance.strategies import (
     max_refinance_loan,
 )
 
+pytestmark = pytest.mark.unit
+
 # ---------------------------------------------------------------------------
 # Shared fixture data
 # ---------------------------------------------------------------------------

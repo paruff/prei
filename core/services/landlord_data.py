@@ -1,6 +1,7 @@
 """State landlord-friendliness scoring for the Growth Area Explorer.
 
-Scores are on a 0-10 scale:
+Moved from prei/integrations/landlord_data.py during the pydantic→Django
+consolidation. Scores are on a 0-10 scale:
   0-3 = Tenant-Friendly (red)
   4-6 = Neutral (yellow)
   7-10 = Landlord-Friendly (green)

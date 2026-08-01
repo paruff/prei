@@ -1,8 +1,12 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev test-live
+.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev test-live
 
-PYTHON ?= python
+# Prefer the local venv; fall back to `python` (containers, bare environments).
+# Avoids the Apple /usr/bin/python3 shim that triggers the xcode-select prompt.
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python)
+# Interpreter inside containers (system Python; containers have no venv).
+CONTAINER_PY ?= python
 ENV_FILE ?= .env
 REQUIREMENTS ?= requirements.txt
 DOCKER_TAG := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
@@ -72,23 +76,30 @@ test: test-unit
 
 test-unit:
 	$(call ensure_django)
-	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ tests_bdd/ \
+	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ \
 		-q --tb=short \
-		-k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not acceptance and not export and not unreachable_url"
+		-m unit
 
 test-integration:
 	$(call ensure_django)
 	@echo "Running integration tests..."
 	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ \
 		-v --tb=short \
-		-k "integration"
+		-m integration
+
+test-live-sources:
+	$(call ensure_django)
+	@echo "Running live integration tests (requires API keys)..."
+	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest core/tests/test_live_sources.py \
+		-m live \
+		-v --tb=short
 
 test-e2e:
 	$(call ensure_django)
 	@echo "Running E2E tests (requires Playwright browser)..."
-	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ \
+	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ \
 		-v --tb=short \
-		-k "e2e or docker or container or startup or add_to_pipeline or export"
+		-m e2e
 
 check: ensure-env
 	$(call ensure_django)
@@ -97,6 +108,7 @@ check: ensure-env
 	@$(MAKE) test-unit
 	@$(MAKE) test-integration
 	@$(MAKE) test-e2e
+	@$(MAKE) test-acceptance
 
 # ── Deploy ────────────────────────────────────────────────────────────────
 
@@ -108,8 +120,8 @@ deploy-dev: ensure-env
 		exit 1; \
 	fi
 	@docker compose up -d
-	@docker compose exec web $(PYTHON) manage.py migrate
-	@docker compose exec web $(PYTHON) manage.py seed_data
+	@docker compose exec web $(CONTAINER_PY) manage.py migrate
+	@docker compose exec web $(CONTAINER_PY) manage.py seed_data
 	@echo "Docker stack is running on port 8000"
 
 deploy-local: ensure-env
@@ -171,8 +183,8 @@ clean:
 
 docker-dev: ensure-env build up
 	$(call ensure_django)
-	@docker compose exec web $(PYTHON) manage.py migrate
-	@docker compose exec web $(PYTHON) manage.py seed_data
+	@docker compose exec web $(CONTAINER_PY) manage.py migrate
+	@docker compose exec web $(CONTAINER_PY) manage.py seed_data
 	@echo ""
 	@echo "Docker dev stack running on http://localhost:8000"
 	@echo "  make logs     — tail container logs"

@@ -16,7 +16,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from prei.pipeline.sources.base import DiscoverySource
+from core.services.sources.base import DiscoverySource
 
 logger = logging.getLogger(__name__)
 

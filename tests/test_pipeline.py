@@ -1,199 +1,27 @@
 """Comprehensive unit test suite for the property pipeline.
 
 Covers:
-  - State transition validation (illicit jump controls)
   - Screening engine math edge cases (division by zero, missing data)
   - Batch processor with a 10-mock-asset dataset (3 valid, 7 failing distinct rules)
+
+The prei state-machine tests (stage-machine classes transitions) were
+removed in the pydantic→Django consolidation — stage transitions are now
+covered by core/tests/test_pipeline_service.py against PipelineProperty.
 """
 
-import pytest
+from dataclasses import replace
 
-from prei.models.pipeline import (
-    InvalidStageTransitionException,
-    PipelineStage,
-    PropertyAsset,
-)
-from prei.pipeline.engine import InMemoryAssetRepository, PipelineEngine
-from prei.pipeline.handlers.batch_screening import BatchScreeningProcessor
-from prei.pipeline.handlers.screening import (
+from core.services.screening import (
     ScreeningThresholds,
     evaluate_screening_stage,
     gross_yield,
     price_to_rent_ratio,
+    screen_batch,
 )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  1. STATE TRANSITION VALIDATION
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-class TestStateTransitionValidation:
-    """Verify the state machine enforces all transition rules."""
-
-    def _make_asset(self) -> PropertyAsset:
-        return PropertyAsset(asset_id="T", address="1 Test St")
-
-    # ── Illicit jumps ────────────────────────────────────────────────────────
-
-    def test_gacs_to_underwriting_raises(self):
-        """GACS → UNDERWRITING is an illicit jump (must go through DISCOVERY, SCREENING)."""
-        a = self._make_asset()
-        with pytest.raises(InvalidStageTransitionException) as exc:
-            a.transition_to(PipelineStage.UNDERWRITING)
-        assert "GACS" in str(exc.value)
-        assert "UNDERWRITING" in str(exc.value)
-
-    def test_gacs_to_portfolio_raises(self):
-        """GACS → PORTFOLIO is an illicit jump."""
-        a = self._make_asset()
-        with pytest.raises(InvalidStageTransitionException):
-            a.transition_to(PipelineStage.PORTFOLIO)
-
-    def test_screening_to_closing_raises(self):
-        """SCREENING → CLOSING skips UNDERWRITING, OFFER, DUE_DILIGENCE."""
-        a = self._make_asset()
-        a.transition_to(PipelineStage.DISCOVERY)
-        a.transition_to(PipelineStage.SCREENING)
-        with pytest.raises(InvalidStageTransitionException):
-            a.transition_to(PipelineStage.CLOSING)
-
-    def test_offer_to_turnover_raises(self):
-        """OFFER → TURNOVER skips DUE_DILIGENCE, CLOSING."""
-        a = self._make_asset()
-        a.transition_to(PipelineStage.DISCOVERY)
-        a.transition_to(PipelineStage.SCREENING)
-        a.transition_to(PipelineStage.UNDERWRITING)
-        a.transition_to(PipelineStage.OFFER)
-        with pytest.raises(InvalidStageTransitionException):
-            a.transition_to(PipelineStage.TURNOVER)
-
-    def test_killed_to_anything_raises(self):
-        """KILLED is terminal — no transitions out."""
-        a = self._make_asset()
-        a.transition_to(PipelineStage.KILLED, reason="test")
-        for stage in PipelineStage:
-            if stage == PipelineStage.KILLED:
-                continue
-            with pytest.raises(InvalidStageTransitionException):
-                a.transition_to(stage)
-
-    # ── Valid forward flow ────────────────────────────────────────────────────
-
-    def test_full_forward_flow(self):
-        """Every legal forward transition succeeds."""
-        a = self._make_asset()
-        path = [
-            (PipelineStage.DISCOVERY, "identify"),
-            (PipelineStage.SCREENING, "qualify"),
-            (PipelineStage.UNDERWRITING, "analyze"),
-            (PipelineStage.OFFER, "bid"),
-            (PipelineStage.DUE_DILIGENCE, "inspect"),
-            (PipelineStage.CLOSING, "purchase"),
-            (PipelineStage.TURNOVER, "rehab"),
-            (PipelineStage.LEASING, "rent"),
-            (PipelineStage.PORTFOLIO, "hold"),
-        ]
-        for stage, _ in path:
-            a.transition_to(stage, reason="forward")
-            assert a.current_stage == stage
-        assert a.current_stage == PipelineStage.PORTFOLIO
-
-    def test_leasing_portfolio_bidirectional(self):
-        """LEASING ↔ PORTFOLIO works in both directions."""
-        a = self._make_asset()
-        a.transition_to(PipelineStage.DISCOVERY)
-        a.transition_to(PipelineStage.SCREENING)
-        a.transition_to(PipelineStage.UNDERWRITING)
-        a.transition_to(PipelineStage.OFFER)
-        a.transition_to(PipelineStage.DUE_DILIGENCE)
-        a.transition_to(PipelineStage.CLOSING)
-        a.transition_to(PipelineStage.TURNOVER)
-        a.transition_to(PipelineStage.LEASING)
-
-        # LEASING → PORTFOLIO
-        a.transition_to(PipelineStage.PORTFOLIO)
-        assert a.current_stage == PipelineStage.PORTFOLIO
-
-        # PORTFOLIO → LEASING (back to active management)
-        a.transition_to(PipelineStage.LEASING)
-        assert a.current_stage == PipelineStage.LEASING
-
-    def test_kill_from_any_stage(self):
-        """KILLED is reachable from any non-terminal stage."""
-        stages = [s for s in PipelineStage if s != PipelineStage.KILLED]
-        for stage in stages:
-            a = self._make_asset()
-            # Advance to target stage
-            if stage == PipelineStage.GACS:
-                pass  # already at GACS
-            elif stage == PipelineStage.DISCOVERY:
-                a.transition_to(PipelineStage.DISCOVERY)
-            elif stage == PipelineStage.SCREENING:
-                a.transition_to(PipelineStage.DISCOVERY)
-                a.transition_to(PipelineStage.SCREENING)
-            elif stage == PipelineStage.UNDERWRITING:
-                a.transition_to(PipelineStage.DISCOVERY)
-                a.transition_to(PipelineStage.SCREENING)
-                a.transition_to(PipelineStage.UNDERWRITING)
-            elif stage == PipelineStage.OFFER:
-                self._advance_to(a, PipelineStage.OFFER)
-            elif stage == PipelineStage.DUE_DILIGENCE:
-                self._advance_to(a, PipelineStage.DUE_DILIGENCE)
-            elif stage == PipelineStage.CLOSING:
-                self._advance_to(a, PipelineStage.CLOSING)
-            elif stage == PipelineStage.TURNOVER:
-                self._advance_to(a, PipelineStage.TURNOVER)
-            elif stage == PipelineStage.LEASING:
-                self._advance_to(a, PipelineStage.LEASING)
-            elif stage == PipelineStage.PORTFOLIO:
-                self._advance_to(a, PipelineStage.PORTFOLIO)
-
-            a.transition_to(PipelineStage.KILLED, reason=f"Killed at {stage.value}")
-            assert a.current_stage == PipelineStage.KILLED
-            assert a.kill_reason == f"Killed at {stage.value}"
-
-    def _advance_to(self, a: PropertyAsset, target: PipelineStage) -> None:
-        """Advance asset through the pipeline to the given stage."""
-        path = [
-            PipelineStage.DISCOVERY,
-            PipelineStage.SCREENING,
-            PipelineStage.UNDERWRITING,
-            PipelineStage.OFFER,
-            PipelineStage.DUE_DILIGENCE,
-            PipelineStage.CLOSING,
-            PipelineStage.TURNOVER,
-            PipelineStage.LEASING,
-            PipelineStage.PORTFOLIO,
-        ]
-        for stage in path:
-            a.transition_to(stage, reason="forward")
-            if stage == target:
-                break
-
-    # ── Stage history integrity ───────────────────────────────────────────────
-
-    def test_stage_history_records_all_transitions(self):
-        """Every transition adds a StageLog entry with correct timestamps."""
-        a = self._make_asset()
-        a.transition_to(PipelineStage.DISCOVERY)
-        a.transition_to(PipelineStage.SCREENING)
-        a.transition_to(PipelineStage.KILLED, reason="Budget cut")
-
-        assert len(a.stage_history) == 3
-        assert a.stage_history[0].stage == PipelineStage.DISCOVERY
-        assert a.stage_history[1].stage == PipelineStage.SCREENING
-        assert a.stage_history[2].stage == PipelineStage.KILLED
-
-        # exited_at should be set for completed stages
-        assert a.stage_history[0].exited_at is not None
-        assert a.stage_history[1].exited_at is not None
-        # Current (last) stage should have no exit time
-        assert a.stage_history[2].exited_at is None
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  2. SCREENING ENGINE MATH EDGE CASES
+#  1. SCREENING ENGINE MATH EDGE CASES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -311,7 +139,7 @@ class TestScreeningMathEdgeCases:
 
     def test_empty_excluded_hoas_list(self):
         """Empty excluded_hoas list never blocks any HOA."""
-        thresholds = self.THRESHOLDS.model_copy(update={"excluded_hoas": []})
+        thresholds = replace(self.THRESHOLDS, excluded_hoas=[])
         data = {
             "estimated_monthly_rent": 2500,
             "purchase_price": 300000,
@@ -324,7 +152,7 @@ class TestScreeningMathEdgeCases:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  3. BATCH PROCESSOR — 10 MOCK ASSETS (3 PASS, 7 FAIL DISTINCT RULES)
+#  2. BATCH PROCESSOR — 10 MOCK ASSETS (3 PASS, 7 FAIL DISTINCT RULES)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -428,9 +256,6 @@ MOCK_DATASET = [
 class TestBatchProcessorTenAssets:
     """Verify the batch processor against a 10-asset mock dataset."""
 
-    def _make_engine(self) -> PipelineEngine:
-        return PipelineEngine(repository=InMemoryAssetRepository())
-
     # ── Individual expected outcomes ──────────────────────────────────────────
 
     def test_individual_asset_outcomes(self):
@@ -458,93 +283,31 @@ class TestBatchProcessorTenAssets:
 
     def test_batch_summary_counts(self):
         """Batch processor returns correct processed/advanced/killed counts."""
-        engine = self._make_engine()
-        processor = BatchScreeningProcessor(engine, BATCH_THRESHOLDS)
-
-        summary = processor.process(MOCK_DATASET)
+        summary = screen_batch(MOCK_DATASET, BATCH_THRESHOLDS)
 
         assert summary["processed"] == 10
         assert summary["advanced"] == 4  # 3 passing + 1 missing-rent (falls through)
         assert summary["killed"] == 6  # 7 failing - 1 missing-rent (not killed)
         assert summary["execution_time_ms"] >= 0
 
-    # ── All assets persisted ─────────────────────────────────────────────────
-
-    def test_all_assets_persisted(self):
-        """All 10 assets are saved to the repository."""
-        engine = self._make_engine()
-        processor = BatchScreeningProcessor(engine, BATCH_THRESHOLDS)
-        processor.process(MOCK_DATASET)
-
-        all_assets = engine.repository.list_all()
-        assert len(all_assets) == 10
-        asset_ids = {a.asset_id for a in all_assets}
-        expected_ids = {d["asset_id"] for d in MOCK_DATASET}
-        assert asset_ids == expected_ids
-
-    # ── Killed assets have kill_reason ────────────────────────────────────────
-
-    def test_killed_assets_have_reason(self):
-        """All killed assets have a non-empty kill_reason."""
-        engine = self._make_engine()
-        processor = BatchScreeningProcessor(engine, BATCH_THRESHOLDS)
-        processor.process(MOCK_DATASET)
-
-        killed_ids = [
-            "FAIL-BEDS-01",
-            "FAIL-BATHS-01",
-            "FAIL-HOA-01",
-            "FAIL-YIELD-01",
-            "FAIL-RATIO-01",
-            "FAIL-MULTI-01",
-        ]
-        for aid in killed_ids:
-            asset = engine.repository.load(aid)
-            assert asset is not None
-            assert asset.current_stage == PipelineStage.KILLED
-            assert asset.kill_reason is not None
-            assert len(asset.kill_reason) > 0
-
-    # ── Advanced assets are at UNDERWRITING ──────────────────────────────────
-
-    def test_advanced_assets_at_underwriting(self):
-        """All advanced assets are in UNDERWRITING stage."""
-        engine = self._make_engine()
-        processor = BatchScreeningProcessor(engine, BATCH_THRESHOLDS)
-        processor.process(MOCK_DATASET)
-
-        for aid in ["PASS-01", "PASS-02", "PASS-03", "FAIL-RENT-MISSING"]:
-            asset = engine.repository.load(aid)
-            assert asset is not None
-            assert asset.current_stage == PipelineStage.UNDERWRITING, (
-                f"{aid} should be UNDERWRITING, got {asset.current_stage}"
-            )
-
     # ── First-failure short-circuit within single asset ───────────────────────
 
     def test_multi_fail_asset_reports_first_violation(self):
         """FAIL-MULTI-01 fails on beds (first check) before yield."""
-        engine = self._make_engine()
-        processor = BatchScreeningProcessor(engine, BATCH_THRESHOLDS)
-        processor.process(MOCK_DATASET)
-
-        asset = engine.repository.load("FAIL-MULTI-01")
-        assert asset is not None
-        assert asset.current_stage == PipelineStage.KILLED
+        passed, reason = evaluate_screening_stage(
+            next(a for a in MOCK_DATASET if a["asset_id"] == "FAIL-MULTI-01"),
+            BATCH_THRESHOLDS,
+        )
+        assert passed is False
         # Should fail on beds before yield
-        assert "bedroom" in (asset.kill_reason or "").lower()
+        assert "bedroom" in (reason or "").lower()
 
     # ── Deterministic: running twice yields same results ─────────────────────
 
     def test_deterministic_output(self):
         """Processing the same dataset twice produces identical counts."""
-        engine1 = self._make_engine()
-        engine2 = self._make_engine()
-        p1 = BatchScreeningProcessor(engine1, BATCH_THRESHOLDS)
-        p2 = BatchScreeningProcessor(engine2, BATCH_THRESHOLDS)
-
-        s1 = p1.process(MOCK_DATASET)
-        s2 = p2.process(MOCK_DATASET)
+        s1 = screen_batch(MOCK_DATASET, BATCH_THRESHOLDS)
+        s2 = screen_batch(MOCK_DATASET, BATCH_THRESHOLDS)
 
         for key in ("processed", "advanced", "killed"):
             assert s1[key] == s2[key], f"Mismatch on {key}: {s1[key]} != {s2[key]}"

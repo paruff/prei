@@ -40,9 +40,13 @@ def fetch_fmr_entity_id(state_code: str, city_name: str) -> str | None:
     Returns:
         HUD entity ID string, or ``None`` if not found.
     """
-    api_key = getattr(settings, "HUD_API_KEY", "")
+    api_key = getattr(settings, "HUD_FMR_TOKEN", "") or getattr(
+        settings, "HUD_API_KEY", ""
+    )
     if not api_key:
-        logger.warning("HUD_API_KEY not configured — cannot look up entity ID")
+        logger.warning(
+            "HUD_FMR_TOKEN or HUD_API_KEY not configured — cannot look up entity ID"
+        )
         return None
 
     client = FMRClient(api_key=api_key)
@@ -101,9 +105,11 @@ def fetch_fmr_data(
         Returns ``None`` if the HUD API key is missing or the entity
         ID cannot be resolved.
     """
-    api_key = getattr(settings, "HUD_API_KEY", "")
+    api_key = getattr(settings, "HUD_FMR_TOKEN", "") or getattr(
+        settings, "HUD_API_KEY", ""
+    )
     if not api_key:
-        logger.info("HUD_API_KEY not set — skipping FMR data fetch")
+        logger.info("HUD_FMR_TOKEN or HUD_API_KEY not set — skipping FMR data fetch")
         return None
 
     if not entity_id:

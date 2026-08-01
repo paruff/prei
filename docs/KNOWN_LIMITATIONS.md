@@ -224,15 +224,11 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-21] 🟡 HIGH — `prei/pipeline/handlers/offer.py` remains float-based currency
+### [LIMIT-21] 🟡 HIGH — `prei/pipeline/handlers/offer.py` remains float-based currency (resolved)
 
-**Location:** `prei/pipeline/handlers/offer.py` — `OfferInput`, `OfferMetrics`, `solve_offer()` and its pricing-strategy multiplier/equity arithmetic.
+**Location:** Resolved in the pydantic→Django consolidation — `prei/pipeline/handlers/offer.py` was deleted and the offer solver was ported to `core/services/offer.py` (`OfferInput`/`OfferMetrics`/`solve_offer`), with all monetary values converted to `Decimal` and validation moved to `OfferInput.__post_init__` (raises `ValueError` on non-positive MAO, negative rehab budget, or out-of-range equity/competition factors). Downstream callers migrated: `tests/test_offer_integration.py`, `tests/test_pipeline_e2e.py`, `tests_bdd/` now assert Decimal equality.
 
-**Impact:** `OfferInput.mao`/`arv`/`rehab_budget` and `OfferMetrics.offer_price`/`estimated_equity` are `float`-typed, so all offer-price and equity math (strategy multipliers, premium calculations, equity clamping) is done in binary floating point rather than `Decimal`. This is the same class of currency-precision issue as the one fixed in `prei/pipeline/handlers/underwriting.py` during Phase B (docs/TOP_01_PLAN.md) — `AGENTS.md` "Never Do" item 3 ("Float persistence for currency") — but was deliberately left out of that PR's scope since the user approved only the underwriting.py fix, and converting `offer.py` also touches its downstream callers (`tests/test_offer_integration.py`, `tests/test_pipeline_e2e.py`, `tests_bdd/`) in ways that deserve their own reviewed change.
-
-**Workaround:** None — offer-price rounding/precision errors from float arithmetic are small in absolute terms (cents-level) for typical property values, so this is not currently causing observable defects, but the pattern should not be extended.
-
-**Fix tracked in:** Not yet filed. Recommended as a follow-up PR using the same `Decimal`/`to_decimal()` conversion approach applied to `underwriting.py`.
+**Fix tracked in:** Resolved by the pydantic→Django consolidation (offer port to `core/services/offer.py`).
 
 ---
 

@@ -11,6 +11,8 @@ from investor_app.finance.taxes import (
     total_return_summary,
 )
 
+pytestmark = pytest.mark.unit
+
 
 class TestProjectAnnualCashFlows:
     """Tests for project_annual_cash_flows function."""

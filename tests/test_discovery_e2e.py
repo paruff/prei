@@ -1,7 +1,7 @@
 """Live end-to-end tests for the discovery stage of the pipeline.
 
 Tests simulate the full discovery flow:
-  raw listings → DiscoverySanitizer → DiscoveryProcessor → PipelineOrchestrator
+  raw listings → DiscoverySanitizer → process_discovery_batch
 
 These are marked as 'e2e' and 'slow' — skipped in CI unless explicitly requested.
 Run with: pytest tests/test_discovery_e2e.py -v -m e2e
@@ -9,10 +9,8 @@ Run with: pytest tests/test_discovery_e2e.py -v -m e2e
 
 import pytest
 
-from prei.models.pipeline import PipelineStage
-from prei.pipeline.handlers.discovery import DiscoverySanitizer
-from prei.pipeline.handlers.discovery_processor import DiscoveryProcessor
-from prei.pipeline.orchestrator import PipelineOrchestrator
+from core.services.discovery import DiscoverySanitizer
+from core.services.discovery_processor import process_discovery_batch
 
 pytestmark = [
     pytest.mark.e2e,
@@ -95,7 +93,7 @@ REALISTIC_COUNTY_FEED = [
 
 @pytest.mark.e2e
 class TestE2EMlsPipeline:
-    """End-to-end: raw MLS listings through the full discovery pipeline."""
+    """End-to-end: raw MLS listings through the discovery pipeline."""
 
     def test_mls_feed_through_sanitizer(self):
         """MLS listing normalizes to canonical payload with correct fields."""
@@ -114,28 +112,15 @@ class TestE2EMlsPipeline:
 
     def test_mls_feed_through_discovery_processor(self):
         """MLS listings are ingested without duplicates."""
-        proc = DiscoveryProcessor(existing_hashes=set())
-        result = proc.process_batch(REALISTIC_MLS_FEED, source_name="mls")
+        result = process_discovery_batch(REALISTIC_MLS_FEED, source_name="mls")
         assert result["total_received"] == 3
         assert result["new_assets_discovered"] == 3
         assert result["duplicates_skipped"] == 0
         assert result["failed_records"] == 0
         assert len(result["payloads"]) == 3
-        for asset in result["payloads"]:
-            assert asset.current_stage == PipelineStage.DISCOVERY
-
-    def test_mls_feed_through_full_orchestrator(self):
-        """A single MLS listing completes the full pipeline."""
-        orch = PipelineOrchestrator()
-        result = orch.run(REALISTIC_MLS_FEED[0], source_name="mls")
-        assert result.success
-        assert result.screening_passed is True
-        assert result.asset.current_stage == PipelineStage.UNDERWRITING
-        assert result.underwriting is not None
-        assert result.underwriting.noi > 0
-        assert result.underwriting.cap_rate > 0
-        assert result.underwriting.mao > 0
-        assert result.underwriting.cash_on_cash > 0
+        for payload in result["payloads"]:
+            assert payload.source_name == "mls"
+            assert payload.address_hash
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -160,12 +145,16 @@ class TestE2ECountyPipeline:
 
     def test_county_feed_dedup_against_mls(self):
         """County records with same address as MLS listings are deduplicated."""
-        proc = DiscoveryProcessor(existing_hashes=set())
+        existing: set[str] = set()
         # Process MLS feed first
-        proc.process_batch(REALISTIC_MLS_FEED, source_name="mls")
+        process_discovery_batch(
+            REALISTIC_MLS_FEED, source_name="mls", existing_hashes=existing
+        )
 
         # Process county feed — should have no overlap if addresses are unique
-        result = proc.process_batch(REALISTIC_COUNTY_FEED, source_name="county")
+        result = process_discovery_batch(
+            REALISTIC_COUNTY_FEED, source_name="county", existing_hashes=existing
+        )
         assert result["new_assets_discovered"] == 2
         assert result["duplicates_skipped"] == 0
 
@@ -188,42 +177,34 @@ class TestE2EMultiSourceOrchestration:
 
     def test_multi_source_dedup_shared_hashes(self):
         """Shared existing_hashes set prevents cross-source duplicates."""
-        hashes: set = set()
-        proc = DiscoveryProcessor(existing_hashes=hashes)
-        proc.process_batch(REALISTIC_MLS_FEED, "mls")
+        hashes: set[str] = set()
+        process_discovery_batch(REALISTIC_MLS_FEED, "mls", existing_hashes=hashes)
         assert len(hashes) == 3
 
-        proc.process_batch(REALISTIC_COUNTY_FEED, "county")
+        process_discovery_batch(REALISTIC_COUNTY_FEED, "county", existing_hashes=hashes)
         assert len(hashes) == 5  # 3 MLS + 2 county (all unique addresses)
 
-    def test_multi_source_orchestrator(self):
-        """Orchestrator with shared existing_hashes dedups across calls."""
-        hashes: set = set()
-        orch = PipelineOrchestrator(existing_hashes=hashes)
+    def test_multi_source_dedup_via_batch(self):
+        """Shared hash set dedups across calls."""
+        hashes: set[str] = set()
 
-        r1 = orch.run(REALISTIC_MLS_FEED[0], source_name="mls")
-        assert r1.success
+        r1 = process_discovery_batch(
+            REALISTIC_MLS_FEED[:1], source_name="mls", existing_hashes=hashes
+        )
+        assert r1["new_assets_discovered"] == 1
 
         # Same address again → duplicate
-        r2 = orch.run(REALISTIC_MLS_FEED[0], source_name="mls")
-        assert r2.success is False
-        assert "Duplicate" in (r2.error or "")
+        r2 = process_discovery_batch(
+            REALISTIC_MLS_FEED[:1], source_name="mls", existing_hashes=hashes
+        )
+        assert r2["new_assets_discovered"] == 0
+        assert r2["duplicates_skipped"] == 1
 
         # Different address → success
-        r3 = orch.run(REALISTIC_MLS_FEED[1], source_name="mls")
-        assert r3.success
-
-    def test_pipeline_result_contains_underwriting(self):
-        """Pipeline result includes full underwriting metrics."""
-        orch = PipelineOrchestrator(target_cap_rate=0.08)
-        for payload in REALISTIC_MLS_FEED:
-            result = orch.run(payload, source_name="mls")
-            assert result.success
-            uw = result.underwriting
-            assert uw.noi >= 0
-            assert uw.mao > 0
-            assert uw.cap_rate > 0
-            assert uw.cash_on_cash > 0
+        r3 = process_discovery_batch(
+            REALISTIC_MLS_FEED[1:2], source_name="mls", existing_hashes=hashes
+        )
+        assert r3["new_assets_discovered"] == 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -237,67 +218,27 @@ class TestE2EDailyPipelineRun:
 
     def test_simulated_daily_pipeline(self):
         """Full daily run: ingest MLS + county, dedup, compute metrics."""
-        hashes: set = set()
-        mls_processor = DiscoveryProcessor(existing_hashes=hashes)
-        county_processor = DiscoveryProcessor(existing_hashes=hashes)
-        orch = PipelineOrchestrator(existing_hashes=hashes)
+        hashes: set[str] = set()
 
         # ── Morning: MLS feed ─────────────────────────────────────────────
-        mls_result = mls_processor.process_batch(REALISTIC_MLS_FEED, "mls")
+        mls_result = process_discovery_batch(
+            REALISTIC_MLS_FEED, "mls", existing_hashes=hashes
+        )
         assert mls_result["new_assets_discovered"] == 3
         assert mls_result["failed_records"] == 0
 
         # ── Afternoon: County feed ────────────────────────────────────────
-        county_result = county_processor.process_batch(REALISTIC_COUNTY_FEED, "county")
+        county_result = process_discovery_batch(
+            REALISTIC_COUNTY_FEED, "county", existing_hashes=hashes
+        )
         assert county_result["new_assets_discovered"] == 2
         assert county_result["duplicates_skipped"] == 0
 
-        # ── Evening: Run full pipeline on each new asset ──────────────────
-        for payload in REALISTIC_MLS_FEED + REALISTIC_COUNTY_FEED:
-            # Convert county key schema to discoverable dict
-            if "parcel_id" in payload:
-                feed_payload = {
-                    "id": payload["parcel_id"],
-                    "address": payload["FullStreetAddress"],
-                    "price": payload["sale_price"],
-                    "rent": payload.get(
-                        "estimated_rent", payload["sale_price"] * 0.008
-                    ),
-                    "beds": int(float(payload["BedroomsTotal"])),
-                    "baths": float(payload["BathroomsTotalInteger"]),
-                    "sqft": float(payload.get("LivingArea", 0)),
-                    "year_built": payload.get("YearBuilt"),
-                }
-            else:
-                feed_payload = payload
-
-            result = orch.run(feed_payload, source_name="daily_pipeline")
-            # Assets should already be in hashes set from processor runs
-            # but orchestrator has its own hashes set — they should match
-            if result.success:
-                assert result.asset.current_stage == PipelineStage.UNDERWRITING  # noqa: E501
-                assert result.underwriting.mao > 0
-
-    def test_pipeline_summary_output(self):
-        """Pipeline to_dict() output contains all expected fields."""
-        orch = PipelineOrchestrator()
-        result = orch.run(REALISTIC_MLS_FEED[0], source_name="mls")
-        summary = result.to_dict()
-        expected_keys = {
-            "success",
-            "asset_id",
-            "current_stage",
-            "address_hash",
-            "price",
-            "beds",
-            "baths",
-            "screening_passed",
-            "noi",
-            "cap_rate",
-            "cash_on_cash",
-            "mao",
-            "target_cap_rate",
-        }
-        assert expected_keys.issubset(summary.keys())
-        assert summary["screening_passed"] is True
-        assert summary["current_stage"] == "UNDERWRITING"
+        # ── Evening: re-run full feeds — everything should dedup ──────────
+        rerun = process_discovery_batch(
+            REALISTIC_MLS_FEED + REALISTIC_COUNTY_FEED,
+            "daily_pipeline",
+            existing_hashes=hashes,
+        )
+        assert rerun["new_assets_discovered"] == 0
+        assert rerun["duplicates_skipped"] == 5

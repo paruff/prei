@@ -32,7 +32,11 @@ class FMRClient:
     """Client for the HUD Fair Market Rent API."""
 
     def __init__(self, api_key: str | None = None) -> None:
-        self.api_key = api_key or getattr(settings, "HUD_API_KEY", "")
+        self.api_key = (
+            api_key
+            or getattr(settings, "HUD_FMR_TOKEN", "")
+            or getattr(settings, "HUD_API_KEY", "")
+        )
 
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}

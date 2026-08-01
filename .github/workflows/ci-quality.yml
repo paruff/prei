@@ -101,9 +101,8 @@ jobs:
       - name: Run unit tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          coverage run --parallel-mode -m pytest tests/ core/tests/ tests_bdd/ prei/pipeline/tests/ \
-            -q --tb=short \
-            -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not acceptance and not export and not unreachable_url"
+          coverage run --parallel-mode -m pytest tests/ core/tests/ -m unit \
+            -q --tb=short
       - name: Flaky test report
         if: always()
         run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
@@ -134,14 +133,15 @@ jobs:
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
+      - name: Install Playwright
+        run: playwright install --with-deps chromium
       - name: Collect static files
         run: python manage.py collectstatic --noinput --verbosity 0
       - name: Run integration tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          coverage run --parallel-mode -m pytest tests/ core/tests/ \
-            -q --tb=short \
-            -k "integration"
+          coverage run --parallel-mode -m pytest tests/ core/tests/ -m integration \
+            -q --tb=short
       - name: Flaky test report
         if: always()
         run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
@@ -177,9 +177,8 @@ jobs:
       - name: Run E2E tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          coverage run --parallel-mode -m pytest tests/ \
-            -q --tb=short \
-            -k "e2e or docker or container or startup or add_to_pipeline or export"
+          coverage run --parallel-mode -m pytest tests/ core/tests/ -m e2e \
+            -q --tb=short
       - name: Flaky test report
         if: always()
         run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
@@ -233,10 +232,7 @@ jobs:
       - name: Collect static files
         run: python manage.py collectstatic --noinput --verbosity 0
       - name: Run acceptance tests against live_server
-        # -k "" overrides pytest.ini's addopts default (which excludes
-        # "acceptance" so a bare `pytest` stays safe-by-default); the
-        # last -k on the command line wins over the one baked into addopts.
-        run: python -m pytest tests/acceptance/ -q --tb=short -k ""
+        run: python -m pytest tests/acceptance/ -q --tb=short -m acceptance
 
   # ── Financial math verification ────────────────────────────────────────────
 

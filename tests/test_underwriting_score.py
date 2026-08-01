@@ -14,6 +14,8 @@ from investor_app.finance.scoring import (
     one_percent_rule,
 )
 
+pytestmark = pytest.mark.unit
+
 # ── one_percent_rule ───────────────────────────────────────────────────────────
 
 

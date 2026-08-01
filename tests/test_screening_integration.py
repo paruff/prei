@@ -1,18 +1,18 @@
 """Integration and E2E tests for the screening stage."""
 
 import pytest
-from prei.pipeline.handlers.screening import (
+
+from core.services.screening import (
     ScreeningThresholds,
     evaluate_screening_stage,
     gross_yield,
     price_to_rent_ratio,
     compute_screening_metrics,
+    screen_batch,
 )
-from prei.pipeline.engine import InMemoryAssetRepository, PipelineEngine
-from prei.pipeline.handlers.batch_screening import BatchScreeningProcessor
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  INTEGRATION — screening + engine
+#  INTEGRATION — screening math + batch
 # ═══════════════════════════════════════════════════════════════════════════════
 
 THRESHOLDS = ScreeningThresholds(
@@ -21,18 +21,6 @@ THRESHOLDS = ScreeningThresholds(
 
 
 class TestScreeningIntegration:
-    def test_screening_via_engine_hook(self):
-        """Screening as a PipelineEngine pre-transition hook blocks failing assets."""
-        engine = PipelineEngine(repository=InMemoryAssetRepository())
-
-        def screening_hook(asset, target, ctx):
-            data = ctx.get("asset_data", {})
-            passed, _ = evaluate_screening_stage(data, THRESHOLDS)
-            return passed
-
-        engine.register_hook("UNDERWRITING", screening_hook)  # Intentional bad hook key
-        # Hook not directly testable without a full asset — verifying interface works
-
     def test_gross_yield_vs_price_to_rent_consistency(self):
         """gross_yield and price_to_rent_ratio are mathematical inverses."""
         gy = gross_yield(2500, 300000)
@@ -56,13 +44,11 @@ class TestScreeningIntegration:
         assert metrics["gross_yield"] == pytest.approx(expected_yield, rel=1e-3)
         assert metrics["price_to_rent_ratio"] == pytest.approx(expected_ptr, rel=1e-3)
 
-    def test_batch_processor_with_custom_thresholds(self):
-        """BatchScreeningProcessor with relaxed thresholds passes all."""
-        engine = PipelineEngine(repository=InMemoryAssetRepository())
+    def test_screen_batch_with_custom_thresholds(self):
+        """screen_batch with relaxed thresholds passes all."""
         relaxed = ScreeningThresholds(
             min_gross_yield=0.03, max_price_to_rent_ratio=30.0, min_beds=1, min_baths=1
         )
-        processor = BatchScreeningProcessor(engine, relaxed)
         payloads = [
             {
                 "asset_id": "A",
@@ -81,7 +67,7 @@ class TestScreeningIntegration:
                 "baths": 1,
             },
         ]
-        result = processor.process(payloads)
+        result = screen_batch(payloads, relaxed)
         assert result["advanced"] == 2
 
 
@@ -92,36 +78,32 @@ class TestScreeningIntegration:
 
 @pytest.mark.e2e
 class TestScreeningE2E:
-    def test_e2e_screening_within_orchestrator(self):
-        """Full pipeline with passing and failing properties."""
-        from prei.pipeline.orchestrator import PipelineOrchestrator
-
-        orch = PipelineOrchestrator()
+    def test_e2e_screening_passing_and_failing(self):
+        """evaluate_screening_stage distinguishes passing and failing properties."""
         passing = {
             "id": "P",
             "address": "100 Good St",
-            "price": 200000,
-            "rent": 2000,
+            "estimated_monthly_rent": 2000,
+            "purchase_price": 200000,
             "beds": 3,
             "baths": 2,
         }
         failing = {
             "id": "F",
             "address": "200 Bad St",
-            "price": 500000,
-            "rent": 1000,
+            "estimated_monthly_rent": 1000,
+            "purchase_price": 500000,
             "beds": 1,
             "baths": 0.5,
         }
-        assert orch.run(passing).screening_passed is True
-        assert orch.run(failing).screening_passed is False
+        assert evaluate_screening_stage(passing, THRESHOLDS)[0] is True
+        assert evaluate_screening_stage(failing, THRESHOLDS)[0] is False
 
-    def test_e2e_screening_batch_then_orchestrate(self):
-        """Discover → screen → underwrite in sequence."""
-        from prei.pipeline.orchestrator import PipelineOrchestrator
+    def test_e2e_discover_then_screen(self):
+        """Discover → screen in sequence (orchestrator equivalent)."""
+        from core.services.discovery_processor import process_discovery_batch
 
-        hashes = set()
-        orch = PipelineOrchestrator(existing_hashes=hashes)
+        existing: set[str] = set()
         batch = [
             {
                 "id": "E2E-1",
@@ -140,7 +122,22 @@ class TestScreeningE2E:
                 "baths": 1,
             },
         ]
-        for p in batch:
-            result = orch.run(p)
-            assert result.success
-            assert result.asset.current_stage.value == "UNDERWRITING"
+        discovered = process_discovery_batch(
+            batch, source_name="e2e", existing_hashes=existing
+        )
+        assert discovered["new_assets_discovered"] == 2
+
+        screening_payloads = [
+            {
+                "asset_id": p["id"],
+                "address": p["address"],
+                "estimated_monthly_rent": p["rent"],
+                "purchase_price": p["price"],
+                "beds": p["beds"],
+                "baths": p["baths"],
+            }
+            for p in batch
+        ]
+        summary = screen_batch(screening_payloads, THRESHOLDS)
+        assert summary["advanced"] == 2
+        assert summary["killed"] == 0

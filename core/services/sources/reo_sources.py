@@ -15,8 +15,8 @@ from typing import Any, Dict, List, Optional, Set
 
 import requests
 
-from prei.pipeline.handlers.discovery import DiscoverySanitizer
-from prei.pipeline.sources.base import DiscoverySource
+from core.services.discovery import DiscoverySanitizer
+from core.services.sources.base import DiscoverySource
 
 logger = logging.getLogger(__name__)
 

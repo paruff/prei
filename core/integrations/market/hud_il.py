@@ -32,7 +32,11 @@ class ILClient:
     """Client for the HUD Income Limits API."""
 
     def __init__(self, api_key: str | None = None) -> None:
-        self.api_key = api_key or getattr(settings, "HUD_API_KEY", "")
+        self.api_key = (
+            api_key
+            or getattr(settings, "HUD_FMR_TOKEN", "")
+            or getattr(settings, "HUD_API_KEY", "")
+        )
 
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
@@ -106,9 +110,13 @@ def fetch_area_median_income(entity_id: str) -> dict[str, Any] | None:
         Dict with median_income, very_low_income_1, very_low_income_4,
         low_income_4, year — or None if unavailable.
     """
-    api_key = getattr(settings, "HUD_API_KEY", "")
+    api_key = getattr(settings, "HUD_FMR_TOKEN", "") or getattr(
+        settings, "HUD_API_KEY", ""
+    )
     if not api_key:
-        logger.info("HUD_API_KEY not set — skipping Income Limits fetch")
+        logger.info(
+            "HUD_FMR_TOKEN or HUD_API_KEY not set — skipping Income Limits fetch"
+        )
         return None
 
     client = ILClient(api_key=api_key)

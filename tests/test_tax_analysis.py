@@ -12,6 +12,8 @@ from investor_app.finance.taxes import (
 )
 from investor_app.finance.utils import irr
 
+pytestmark = pytest.mark.unit
+
 
 class TestAnnualDepreciation:
     """Tests for annual_depreciation function."""

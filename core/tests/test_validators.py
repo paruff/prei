@@ -13,6 +13,8 @@ from core.validators import (
     validate_state_code,
 )
 
+pytestmark = pytest.mark.unit
+
 
 class TestValidateStateCode:
     def test_valid_normalized(self) -> None:

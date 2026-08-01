@@ -351,7 +351,10 @@ GROWTH_AREAS_CACHE_DURATION = 86400  # 24 hours
 # REHAB_COST_MODERATE, REHAB_COST_FULL_GUT (dollar amounts, e.g. "15").
 # FRED API key for economic data (employment growth, unemployment)
 FRED_API_KEY: str = env("FRED_API_KEY", default="")
+# HUD API keys — HUD_FMR_TOKEN is preferred for FMR dataset (Fair Market Rent + Income Limits)
+# Create at https://www.huduser.gov/portal/dataset/fmr-api.html — must select FMR dataset before generating token.
 HUD_API_KEY: str = env("HUD_API_KEY", default="")
+HUD_FMR_TOKEN: str = env("HUD_FMR_TOKEN", default="")
 ATTOM_API_KEY: str = env(
     "ATTOM_API_KEY", default=""
 )  # ATTOM preforeclosure + property data

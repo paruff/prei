@@ -8,15 +8,15 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Type
 
-from prei.pipeline.sources.base import DiscoverySource
-from prei.pipeline.sources.county import TexasCountyForeclosureSource
-from prei.pipeline.sources.reo_sources import (
+from core.services.sources.base import DiscoverySource
+from core.services.sources.county import TexasCountyForeclosureSource
+from core.services.sources.reo_sources import (
     FannieMaeSource,
     HUDHomestoreSource,
     USDAForeclosuresSource,
     VAForeclosuresSource,
 )
-from prei.pipeline.sources.vrm_source import VrmDiscoverySource
+from core.services.sources.vrm_source import VrmDiscoverySource
 
 # ── Built-in source registry ──────────────────────────────────────────────────
 

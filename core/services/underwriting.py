@@ -1,5 +1,7 @@
 """Financial underwriting solver engine for the property pipeline.
 
+Ported from prei.pipeline.handlers.underwriting (pydantic removed —
+BaseModel replaced with dataclasses; all monetary values remain Decimal).
 Computes institutional performance indicators: NOI, Cap Rate, Cash-on-Cash
 Yield, and Max Allowable Offer (MAO). Includes an optimization solver that
 backsolves for purchase price given a target cap rate.
@@ -7,16 +9,14 @@ backsolves for purchase price given a target cap rate.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from decimal import Decimal
-
-from pydantic import BaseModel
 
 from investor_app.finance.utils import cap_rate, cash_on_cash, to_decimal
 
-# ── Data models ───────────────────────────────────────────────────────────────
 
-
-class UnderwritingInput(BaseModel):
+@dataclass
+class UnderwritingInput:
     """Input parameters for the underwriting solver.
 
     All monetary values are Decimal dollars. Rate fields are fractions.
@@ -24,16 +24,17 @@ class UnderwritingInput(BaseModel):
 
     purchase_price: Decimal
     estimated_rent: Decimal
-    vacancy_rate: Decimal = Decimal("0.05")  # Default 5%
-    rehab_budget: Decimal = Decimal("0")
     property_tax_annual: Decimal
     insurance_annual: Decimal
-    maintenance_reserve_rate: Decimal = Decimal("0.10")  # 10% of gross rent
-    management_fee_rate: Decimal = Decimal("0.08")  # 8% of EGI
-    hoa_annual: Decimal = Decimal("0")
+    vacancy_rate: Decimal = field(default=Decimal("0.05"))  # Default 5%
+    rehab_budget: Decimal = field(default=Decimal("0"))
+    maintenance_reserve_rate: Decimal = field(default=Decimal("0.10"))  # 10% of GPR
+    management_fee_rate: Decimal = field(default=Decimal("0.08"))  # 8% of EGI
+    hoa_annual: Decimal = field(default=Decimal("0"))
 
 
-class UnderwritingMetrics(BaseModel):
+@dataclass
+class UnderwritingMetrics:
     """Output metrics from the underwriting solver."""
 
     noi: Decimal

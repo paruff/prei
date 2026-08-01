@@ -47,6 +47,25 @@ core/forms.py         → Django form classes with styled widget base classes.
                         CSS classes from the design system.
 ```
 
+## Pipeline Stage Services
+
+Acquisition-pipeline business logic lives in `core/services/` (Django-canonical
+since the pydantic→Django consolidation removed the standalone `prei/` package):
+
+| Stage | Service module |
+|-------|----------------|
+| Discovery | `core/services/discovery.py` (sanitizer/`CanonicalPropertyPayload`), `core/services/discovery_processor.py` (`process_discovery_batch` stats pass + `process_discovery` ORM write at DISCOVERED) |
+| Sources | `core/services/sources/` — registry, county, REO (Fannie/HUD/VA/USDA), VRM, file adapters |
+| Screening | `core/services/screening.py` — pure evaluator (`ScreeningThresholds`, `evaluate_screening_stage`, `screen_batch`) + ORM `screen_property` |
+| Underwriting | `core/services/underwriting.py` — `UnderwritingInput`/`solve_underwriting` (Decimal) |
+| Offer | `core/services/offer.py` — `OfferInput`/`solve_offer` (Decimal, LIMIT-21 resolved) |
+| Landlord score | `core/services/landlord_data.py` (moved from `prei/integrations/`) |
+
+View bridges (`core/views/__init__.py` Growth Explorer + VRM pipeline runs) call
+the pure services directly and are stats-only — they never persist engine state.
+Persistence goes through `PipelineProperty` (`core/models/pipeline.py`) via
+`process_discovery` and the stage-advance helpers in `core/services/pipeline.py`.
+
 ## Dependency Diagram
 
 ```

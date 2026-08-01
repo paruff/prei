@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from prei.pipeline.sources.base import DiscoverySource
+from core.services.sources.base import DiscoverySource
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +74,9 @@ TEXAS_COUNTY_FEEDS: Dict[str, Dict[str, str]] = {
     "tarrant": {
         "name": "Tarrant County",
         "state": "TX",
-        "type": "csv",
-        "foreclosure_url": "https://www.tarrantcounty.com/en/county-clerk/real-property/foreclosure-listings.html",
-        "notes": "Monthly foreclosure listing",
+        "type": "html",
+        "foreclosure_url": "https://www.tarrantcountytx.gov/en/constables/constable-3/delinquent-tax-sales/monthly-tax-sales-listings.html",
+        "notes": "Monthly delinquent tax sale listings from Constable Precinct 3 (first Tuesday auctions)",
     },
     "collin": {
         "name": "Collin County",
@@ -253,12 +253,95 @@ class TexasCountyForeclosureSource(DiscoverySource):
             return []
 
     def _fetch_html(self, url: str, limit: int) -> List[Dict[str, Any]]:
-        """Fallback HTML scraper for sites without structured feeds."""
-        logger.info(
-            "TX County %s: HTML scraping not implemented — returning empty",
-            self.county_key,
-        )
-        return []
+        """Scrape Tarrant County monthly delinquent tax sale listings.
+
+        The county clerk does not publish a machine-readable foreclosure
+        list; Constable Precinct 3 publishes monthly sale pages (first
+        Tuesday auctions) with cause/account numbers and status.  The
+        listings index page links each month's sale page, which contains
+        a ``CAUSE NUMBER / ACCOUNT NUMBER / STATUS`` table.
+        """
+        if self.county_key != "tarrant":
+            logger.info(
+                "TX County %s: HTML scraping not implemented — returning empty",
+                self.county_key,
+            )
+            return []
+
+        try:
+            index_html = _fetch_via_playwright(url)
+            if not index_html:
+                logger.warning("Tarrant: index page unreachable")
+                return []
+
+            from urllib.parse import urljoin
+
+            from bs4 import BeautifulSoup
+
+            soup = BeautifulSoup(index_html, "html.parser")
+            month_links = []
+            for a in soup.select("#wpsm-mainContent a, main a"):
+                href = a.get("href")
+                if (
+                    isinstance(href, str)
+                    and "monthly-tax-sales-listings" in href
+                    and a.get_text(strip=True)
+                ):
+                    month_links.append(href)
+            # Prefer the most recent sale page (list is in chronological order).
+            sale_href = str(month_links[-1]) if month_links else None
+            if not sale_href:
+                logger.warning("Tarrant: no monthly sale links found")
+                return []
+            sale_url = str(urljoin(url, sale_href))
+
+            sale_html = _fetch_via_playwright(sale_url)
+            if not sale_html:
+                logger.warning("Tarrant: sale page unreachable: %s", sale_url)
+                return []
+
+            sale_soup = BeautifulSoup(sale_html, "html.parser")
+            listings: List[Dict[str, Any]] = []
+            for table in sale_soup.find_all("table"):
+                rows = table.find_all("tr")
+                for row in rows[1:]:
+                    cells = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
+                    if len(cells) < 2:
+                        continue
+                    cause, account = cells[0], cells[1]
+                    if not cause or not account:
+                        continue
+                    status = cells[2] if len(cells) > 2 else ""
+                    if status.lower() in ("withdrawn", "sold", "struck off"):
+                        continue
+                    listings.append(
+                        {
+                            "id": f"tarrant-tax-{account}",
+                            "case_number": cause,
+                            "account_number": account,
+                            "address": f"Tarrant County tax account {account}",
+                            "city": "Fort Worth",
+                            "state": "TX",
+                            "county": "Tarrant",
+                            "source_url": sale_url,
+                            "status": status,
+                            "notice_type": "tax_sale",
+                        }
+                    )
+                    if len(listings) >= limit:
+                        break
+                if len(listings) >= limit:
+                    break
+
+            logger.info(
+                "Tarrant: %d tax sale listings parsed from %s",
+                len(listings),
+                sale_url,
+            )
+            return listings
+        except Exception as exc:
+            logger.warning("Tarrant HTML scrape error: %s", exc)
+            return []
 
     @staticmethod
     def _map_county_row(
@@ -376,3 +459,43 @@ class FloridaCountyForeclosureSource(DiscoverySource):
     @staticmethod
     def available_counties() -> List[str]:
         return list(FLORIDA_COUNTY_FEEDS.keys())
+
+
+def _fetch_via_playwright(url: str) -> str | None:
+    """Fetch page HTML via Playwright headless Chromium (county sites are JS-rendered).
+
+    Returns the rendered HTML string, or None on failure.  Playwright must
+    be installed (requirements.txt) with browsers fetched via
+    ``playwright install chromium``.
+    """
+    try:
+        from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
+    except ImportError:
+        logger.warning("playwright not installed — cannot render county pages")
+        return None
+
+    try:
+        with sync_playwright() as pw:
+            with pw.chromium.launch(headless=True) as browser:
+                context = browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    )
+                )
+                page = context.new_page()
+                response = page.goto(
+                    url, timeout=TIMEOUT * 1000, wait_until="domcontentloaded"
+                )
+                if response is None or response.status >= 400:
+                    logger.warning(
+                        "Page returned %s for %s",
+                        getattr(response, "status", "?"),
+                        url,
+                    )
+                    return None
+                return str(page.content())
+    except Exception as exc:
+        logger.warning("Playwright fetch failed for %s: %s", url, exc)
+        return None

@@ -3,15 +3,14 @@
 import pytest
 from pytest_bdd import given, then, when
 
-from prei.pipeline.handlers.discovery import DiscoverySanitizer
-from prei.pipeline.handlers.discovery_processor import DiscoveryProcessor
-from prei.pipeline.handlers.screening import (
+from core.services.discovery import DiscoverySanitizer
+from core.services.discovery_processor import process_discovery_batch
+from core.services.screening import (
     ScreeningThresholds,
     evaluate_screening_stage,
+    screen_batch,
 )
-from prei.pipeline.handlers.underwriting import solve_underwriting, UnderwritingInput
-from prei.pipeline.handlers.batch_screening import BatchScreeningProcessor
-from prei.pipeline.engine import InMemoryAssetRepository, PipelineEngine
+from core.services.underwriting import solve_underwriting, UnderwritingInput
 
 
 @given(
@@ -30,7 +29,7 @@ def given_raw_listing():
 
 @given("a discovery processor with no existing addresses", target_fixture="processor")
 def given_processor():
-    return DiscoveryProcessor(existing_hashes=set())
+    return {"existing_hashes": set()}
 
 
 @when(
@@ -50,7 +49,9 @@ def when_batch(processor):
         {"id": "A1", "address": "100 Oak St", "price": 200_000},
         {"id": "A2", "address": "100 Oak St", "price": 200_000},
     ]
-    return processor.process_batch(batch, source_name="bdd_test")
+    return process_discovery_batch(
+        batch, source_name="bdd_test", existing_hashes=processor["existing_hashes"]
+    )
 
 
 @then("the address hash should be a 64-character SHA-256 string")
@@ -191,8 +192,7 @@ def given_mixed_batch():
 
 @when("I run the batch screening processor", target_fixture="batch_result2")
 def when_batch_process(mixed_batch, batch_thresholds):
-    engine = PipelineEngine(repository=InMemoryAssetRepository())
-    return BatchScreeningProcessor(engine, batch_thresholds).process(mixed_batch)
+    return screen_batch(mixed_batch, batch_thresholds)
 
 
 @then("the result should show 4 processed")
@@ -249,4 +249,4 @@ def then_cap(uw_result):
 
 @then("the MAO should be approximately $222,750")
 def then_mao(uw_result):
-    assert uw_result.mao == pytest.approx(222_750, rel=1e-3)
+    assert float(uw_result.mao) == pytest.approx(222_750, rel=1e-3)
