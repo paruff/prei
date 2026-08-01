@@ -10,7 +10,10 @@ from __future__ import annotations
 import time
 import uuid
 
-import structlog
+try:
+    import structlog
+except ImportError:  # pragma: no cover — settings.py tolerates missing structlog too
+    structlog = None
 
 try:
     from opentelemetry import trace
@@ -20,7 +23,7 @@ try:
 except ImportError:  # pragma: no cover
     _otel_available = False
 
-logger = structlog.get_logger(__name__)
+logger = structlog.get_logger(__name__) if structlog is not None else None
 if _otel_available:
     tracer = trace.get_tracer("prei.http")
 
@@ -62,12 +65,13 @@ class RequestTimingMiddleware:
             )
             span.end()
 
-        logger.info(
-            "request",
-            method=request.method,
-            path=request.path,
-            status=response.status_code,
-            duration_ms=duration_ms,
-            request_id=request.request_id,
-        )
+        if logger is not None:
+            logger.info(
+                "request",
+                method=request.method,
+                path=request.path,
+                status=response.status_code,
+                duration_ms=duration_ms,
+                request_id=request.request_id,
+            )
         return response
