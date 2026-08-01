@@ -14,6 +14,10 @@ Tutorials are designed to help newcomers learn by doing. They provide step-by-st
 ### How-to Guides (`how-to-guides/`)
 **Problem-oriented** — Practical solutions for specific tasks
 
+- `analyze-growth-areas.md` — Find high-growth markets with the Growth Explorer
+- `discover-properties.md` — Source distressed properties in a growth area
+- `screen-properties.md` — Filter pipeline properties against your criteria
+- `underwrite-deals.md` — Analyze deals financially (pipeline + BRRRR)
 - `add-property.md` — Add a new investment property
 - `import-data.md` — Import bulk data from CSV files
 - `running-tests.md` — Execute test suite
@@ -24,6 +28,9 @@ How-to guides assume some familiarity with the system and focus on solving speci
 **Information-oriented** — Technical descriptions and specifications
 
 - `financial-kpis.md` — Detailed financial calculation reference
+- `data-sources.md` — Data pipeline sources and coverage
+- `api-keys.md` — API keys and signup links
+- `ui-patterns.md` — UI components and design-system conventions
 - Model documentation (planned)
 - API documentation (planned)
 - Configuration reference (planned)
@@ -34,6 +41,9 @@ Reference documentation provides authoritative technical information about the a
 **Understanding-oriented** — Background and design rationale
 
 - `architecture.md` — System design and component organization
+- `investor-workflow.md` — How the four investment stages connect
+- `GACS_GUIDE.md` — Growth Area Composite Score explained
+- `design-system.md` — Styling and component conventions
 - Technology choices (planned)
 - Design decisions (planned)
 
