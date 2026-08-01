@@ -88,6 +88,11 @@ nav:
       - Getting Started: tutorials/getting-started.md
   - How-to Guides:
       - how-to-guides/index.md
+      - Investor Workflow:
+          - Analyze Growth Areas: how-to-guides/analyze-growth-areas.md
+          - Discover Properties: how-to-guides/discover-properties.md
+          - Screen Properties: how-to-guides/screen-properties.md
+          - Underwrite Deals: how-to-guides/underwrite-deals.md
       - Analysis:
           - Use the BRRRR Calculator: how-to-guides/use-brrrr-calculator.md
           - Calculate Financial Metrics: how-to-guides/calculate-metrics.md
@@ -102,8 +107,11 @@ nav:
       - reference/index.md
       - Financial KPIs: reference/financial-kpis.md
       - Data Sources: reference/data-sources.md
+      - UI Patterns: reference/ui-patterns.md
   - Explanation:
       - explanation/index.md
+      - Investor Workflow: explanation/investor-workflow.md
+      - GACS Guide: explanation/GACS_GUIDE.md
       - Architecture: explanation/architecture.md
       - Design System: explanation/design-system.md
 

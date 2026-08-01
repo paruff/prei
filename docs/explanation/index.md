@@ -20,6 +20,9 @@ This section provides background information, design decisions, and the rational
 - [Real Estate Investment Fundamentals](investment-fundamentals.md) — Understanding property investing
 - [KPI Selection Rationale](kpi-selection.md) — Why these specific metrics matter
 - [Risk Factors](risk-factors.md) — Understanding investment risks and limitations
+- [Investor Workflow](investor-workflow.md) — How the four investment stages connect
+- [GACS — Growth Area Composite Score](GACS_GUIDE.md) — How markets are scored
+- [Design System](design-system.md) — Styling conventions and UI components
 
 ## Project Evolution
 

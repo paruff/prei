@@ -1,58 +1,113 @@
-# Specification: Phase C (partial) — Deployment Reliability (docs/TOP_01_PLAN.md)
-# Written: 2026-07-28
-# Status: IN PROGRESS (feat/top01-phase-c)
+# Specification: Comprehensive Documentation Review & Revision
+
+**Feature**: Documentation overhaul for Growth Areas, Discovery, Screening, and Underwriting workflows
+**Issue**: #335
+**Status**: Draft
 
 ---
 
-## 0. Problem
+## User Intent
 
-`docs/TOP_01_PLAN.md` Phase C ("Deployment Reliability") lists four gaps:
-canary deployment (C-1), an authenticated OWASP ZAP full scan (C-2), an SLO
-dashboard (C-3), and flaky-test quarantine + a flaky-test dashboard (C-4).
+The user wants a comprehensive review and revision of documentation covering four core investor workflows:
+1. **Growth Areas** — Market analysis and growth area identification
+2. **Discovery** — Property sourcing from multiple data sources
+3. **Screening** — Automated property evaluation against criteria
+4. **Underwriting** — Financial analysis and deal evaluation
 
-C-1 and C-3 both need infrastructure this repo doesn't have — a load
-balancer/traffic-splitting layer for canary, and a monitoring/metrics stack
-for SLOs — which `docs/TOP_01_PLAN.md`'s own "What You Can't Ship Yet"
-section already flags. They are deferred to a future phase, not silently
-dropped; see `docs/TOP_01_PLAN.md` and `docs/KNOWN_LIMITATIONS.md` LIMIT-22
-for the scope decision. **This PR implements C-2 and C-4 only.**
+The documentation should be current, accurate, and improve the user experience (UX/UI perspective) for buy-and-hold real estate investors.
 
-Prior state:
-- `post-deployment.yml`'s `security` job already runs an unauthenticated full
-  ZAP scan (`zaproxy/action-full-scan@v1`, `cmd_options: "-a"`) against the
-  live deployed URL. ZAP never sees anything behind `/accounts/login/`.
-- `pytest-rerunfailures` was already wired via `pytest.ini`'s
-  `--reruns 1 --reruns-delay 5` — a rerun happens, but nothing records which
-  tests needed it, and nothing quarantines a test that fails repeatedly.
+---
 
-## 1. Requirements
+## Current State Assessment
 
-- C-2: An OWASP ZAP full scan authenticates before spidering/scanning, so it
-  can reach pages behind Django's login-required views.
-- C-4: A test that needed a rerun to pass is recorded; once a given test's
-  cumulative flaky count crosses a threshold, it's quarantined (kept running
-  and reporting, but never fails the build) until fixed.
+### Existing Documentation Files
 
-## 2. Acceptance Criteria
+| Domain | Current Docs | Quality Notes |
+|--------|--------------|---------------|
+| **Growth Areas** | `docs/implementation-summary-growth-areas.md` (API spec), `docs/explanation/GACS_GUIDE.md` (conceptual guide), `docs/how-to-guides/` (missing growth areas guide) | API spec is detailed but implementation-focused; GACS guide is good but lacks UI flow context |
+| **Discovery** | `docs/how-to-guides/import-data.md` (generic), `templates/property_discovery.html` (UI), view logic in `core/views/__init__.py:3450` | No dedicated discovery guide; UI flow not documented |
+| **Screening** | `core/services/screening.py` (code has docstrings), `templates/pipeline/screener.html` (UI), view logic in `core/views/__init__.py:1898` | No user-facing documentation; complex logic not explained |
+| **Underwriting** | `core/services/underwriting.py` (code has docstrings), `templates/brrrr_calculator.html` (UI) | No user-facing documentation; BRRRR calc is separate from pipeline underwriting |
 
-| ID | Criterion | test_type |
-|---|---|---|
-| AC-C2-01 | `core/management/commands/seed_zap_scan_user.py` idempotently creates/updates a non-staff, non-superuser scan account from `ZAP_AUTH_USERNAME`/`ZAP_AUTH_PASSWORD` env vars | unit |
-| AC-C2-02 | `.zap/prei-auth-context.xml` defines form-based auth against `/accounts/login/` with logged-in/out indicator regexes | manual |
-| AC-C2-03 | `ci-quality.yml`'s `zap-authenticated-scan` job seeds the account, boots an ephemeral `runserver` instance against a fresh migrated SQLite DB, and runs `zap-full-scan.py` with the auth context | ci |
-| AC-C2-04 | `zap-authenticated-scan` is a required check in `pr-gates-pass` | ci |
-| AC-C2-05 | `docs/KNOWN_LIMITATIONS.md` documents that the authenticated scan targets an ephemeral CI instance, not the live deployment | manual |
-| AC-C4-01 | `pytest.ini`'s `addopts` includes `--report-log=.pytest-report.jsonl` | unit |
-| AC-C4-02 | `.github/scripts/flaky_report.py --mode report` detects a rerun-then-pass nodeid from a report-log file and prints a markdown summary without touching the ledger | unit |
-| AC-C4-03 | `.github/scripts/flaky_report.py --mode write` increments `docs/quality/flaky_tests.json`'s per-nodeid count and marks it quarantined once the count reaches the threshold (default 3), writing matching nodeids to `tests/.flaky_quarantine.txt` | unit |
-| AC-C4-04 | Root `conftest.py`'s `pytest_collection_modifyitems` hook marks nodeids listed in `tests/.flaky_quarantine.txt` as `xfail(strict=False)` so they can't fail the build | unit |
-| AC-C4-05 | `ci-quality.yml`'s `tests-unit`/`tests-integration`/`tests-e2e` jobs run `flaky_report.py --mode report` and upload the report log as an artifact | ci |
-| AC-C4-06 | `docker-publish.yml`'s `live-test` job (push-to-`main` only) runs `flaky_report.py --mode write` and bot-commits any ledger/quarantine change back to `main` | ci |
+### Gaps Identified
 
-## 3. Out of Scope (this PR)
+1. **No unified workflow documentation** — Users don't understand the end-to-end flow: Growth Areas → Discovery → Screening → Underwriting
+2. **Missing how-to guides** for Growth Areas, Discovery, Screening, Underwriting
+3. **UI/UX not documented** — Template structure, user journeys, navigation patterns
+4. **API vs UI disconnect** — Implementation summary is API-focused, not user-journey focused
+5. **Screening criteria configuration** — Not documented for users
+5. **Underwriting solver usage** — Not explained in user terms (BRRRR vs pipeline underwriting)
+6. **Data confidence & limitations** — Not prominently surfaced in UI docs
 
-- C-1 (canary deployment) — deferred, needs traffic-splitting infra.
-- C-3 (SLO dashboard) — deferred, needs a monitoring/metrics stack.
-- Authenticating the ZAP scan against the real deployed environment — would
-  need provisioning a scan account and secrets on live infra, the same
-  category of gap as C-1/C-3.
+---
+
+## Requirements
+
+### Functional Requirements
+
+| ID | Requirement | Priority | Description |
+|----|-------------|----------|-------------|
+| REQ-1 | **Workflow Overview Document** | High | Create a unified guide explaining the 4-stage investor workflow: Growth Areas → Discovery → Screening → Underwriting |
+| REQ-2 | **Growth Areas Documentation** | High | Update/replace implementation summary with user-facing guide covering: GACS scoring, Growth Explorer UI, interpreting results, data confidence |
+| REQ-3 | **Discovery Documentation** | High | Create how-to guide for property discovery: source selection, running discovery, understanding results, screening integration |
+| REQ-4 | **Screening Documentation** | High | Create how-to guide for screening: criteria configuration, hard vs soft criteria, understanding pass/fail, re-screening |
+| REQ-5 | **Underwriting Documentation** | High | Create how-to guide for underwriting: BRRRR calculator vs pipeline underwriting, input fields, interpreting metrics (NOI, Cap Rate, CoC, MAO), DSCR requirements |
+| REQ-6 | **UX/UI Documentation** | Medium | Document template patterns, navigation flow, component library usage, accessibility considerations |
+| REQ-7 | **Cross-references & Navigation** | Medium | Ensure all docs cross-link correctly; add to main index/README |
+| REQ-8 | **Accuracy Review** | High | Verify all documented features match current implementation (code, templates, views) |
+
+### Non-Functional Requirements
+
+| ID | Requirement | Priority | Description |
+|----|-------------|----------|-------------|
+| NFR-1 | **Audience-appropriate tone** | High | Written for buy-and-hold investors (not developers); avoid implementation details unless relevant |
+| NFR-2 | **Visual clarity** | Medium | Use tables, code blocks, callouts consistently; match existing design system |
+| NFR-3 | **Accuracy** | Critical | All documented behavior must match actual code/templates |
+| NFR-4 | **Discoverability** | Medium | Linked from main docs index, README, and in-app help where possible |
+| NFR-5 | **Maintainability** | Medium | Separate conceptual guides from implementation details; use consistent structure |
+
+---
+
+## Acceptance Criteria
+
+| ID | Criterion | Test Type | Reasoning |
+|----|-----------|-----------|-----------|
+| AC-1 | Workflow overview document exists and links to all 4 domain guides | unit (file exists) | Verifies structural completeness |
+| AC-2 | Growth Areas guide explains GACS, Growth Explorer, data confidence, and links to API spec | live-system | Must verify UI matches documented behavior |
+| AC-3 | Discovery guide covers source selection, running discovery, results interpretation, screening integration | live-system | End-to-end user flow verification |
+| AC-4 | Screening guide covers criteria setup, hard/soft criteria, kill reasons, pass/fail logic, re-screen | live-system | Complex business logic verification |
+| AC-5 | Underwriting guide distinguishes BRRRR calc from pipeline underwriting; explains all metrics | live-system | Financial accuracy critical |
+| AC-6 | All documented UI elements (buttons, tables, chips, forms) match actual templates | live-system | UI accuracy verification |
+| AC-7 | All cross-references resolve (no broken links) | unit | Link validation |
+| AC-8 | No documented feature that doesn't exist in code | unit | Accuracy check against implementation |
+| AC-9 | Data confidence/warnings prominently displayed in relevant guides | unit | Risk communication requirement |
+
+---
+
+## Constraints
+
+1. **Stack**: Django templates, vanilla CSS (custom properties), no Bootstrap
+2. **Design System**: Uses `tokens.css` + `base.css` — document component patterns
+3. **Accuracy First**: If code and docs disagree, code wins — update docs to match
+3. **No New Features**: This is documentation-only; no code changes unless fixing bugs found during review
+4. **Governance**: Follow existing doc structure in `docs/` (how-to-guides/, explanation/, reference/, tutorials/)
+5. **Links**: Use relative paths; ensure they work in GitHub Pages deployment
+
+---
+
+## Governance Alignment
+
+- **Documentation Standards**: Follows `docs/FEATURE_SPEC_GUIDE.md` and `docs/DOCS_AUDIT.md`
+- **Design System**: Uses existing CSS custom properties; no inline styles
+- **Security**: No secrets in docs; no PII
+- **Accessibility**: Document semantic HTML patterns used in templates
+
+---
+
+## Out of Scope
+
+- API reference documentation (covered by `API_SURFACE.md`)
+- Deployment/ops guides (covered by `DEPLOYMENT_STRATEGY.md`, `DEVEX_LOG.md`)
+- Code architecture docs (covered by `ARCHITECTURE.md`)
+- Developer onboarding (covered by `DEVEX_LOG.md`)
+- Testing guides (covered by `TEST_PYRAMID_PLAN.md`)

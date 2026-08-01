@@ -1,170 +1,186 @@
 {
-  "meta": {
-    "project": "prei",
-    "session": "pydantic-to-django-20260731",
-    "date": "2026-07-31",
-    "feature": "Consolidate prei pydantic/FastAPI/CLI pipeline onto Django — remove CLI + pydantic, port discovery/screening/underwriting processors to core/services, rewrite the two view bridges, delete prei package",
-    "spec": "specification.md",
-    "design": "design.md",
-    "governance": ["PM sign-off required before deletion tasks (TASK-05+)"],
-    "decision_record": {
-      "user_directive": "no cli, pydantic — migrate discovery/screening processors to Django, do not build new state on pydantic models",
-      "verified_assumption": "docker-compose ghcr.io/paruff/prei:latest is the Django web image (OTEL_SERVICE_NAME: prei only) — NOT a separate FastAPI microservice; no standalone deploy surface exists",
-      "unverified": "whether docker-compose web service is actively run in any environment (compose file exists; local usage unconfirmed)"
-    }
-  },
+  "skill": "plan",
+  "status": "pass",
   "tasks": [
     {
-      "id": "TASK-01",
-      "summary": "Port pure screening evaluator + thresholds to Django (Decimal, no pydantic)",
-      "description": "Add to core/services/screening.py: evaluate_screening_stage-equivalent pure function (gross_yield, price_to_rent, stage decision) operating on Decimal via to_decimal from investor_app.finance.utils, and a dataclass ScreeningThresholds mirroring the pydantic model (min_gross_yield_pct, max_price_to_rent_ratio, min_beds, max_beds, min_sqft, max_year_built, allowed_property_types, allowed_states, allowed_foreclosure_statuses). Do not reuse pydantic. Existing core.services.screening.ScreenProperty/ScreeningResult remain; the prei evaluate_screening_stage logic is the new pure layer callers use.",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {"id": "AC-01-1", "description": "evaluate_screening_stage ported to core/services/screening.py without pydantic, Decimal-based", "test_type": "unit"},
-        {"id": "AC-01-2", "description": "ScreeningThresholds is a dataclass with same defaults as pydantic original", "test_type": "unit"},
-        {"id": "AC-01-3", "description": "Tests from prei/pipeline/tests/test_screening.py pass against the new location", "test_type": "unit"}
-      ],
-      "agent": "build",
-      "estimated_lines": 160,
-      "skills": ["build/refactoring", "lang-python"]
-    },
-    {
-      "id": "TASK-02",
-      "summary": "Port DiscoverySanitizer to Django (no pydantic)",
-      "description": "Add core/services/discovery.py: DiscoverySanitizer-equivalent pure class + CanonicalPropertyPayload as dataclass (or dict), normalizing raw listing dicts (id, address, price, beds, baths, sqft, property_type, year_built, state, foreclosure_status) with Decimal for price. No pydantic. Preserve output key names the two view bridges and BDD steps rely on.",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {"id": "AC-02-1", "description": "DiscoverySanitizer ported to core/services/discovery.py without pydantic", "test_type": "unit"},
-        {"id": "AC-02-2", "description": "CanonicalPropertyPayload is pydantic-free (dataclass or dict) with Decimal price", "test_type": "unit"},
-        {"id": "AC-02-3", "description": "prei/pipeline/tests/test_discovery.py sanitizer tests pass against new location", "test_type": "unit"}
-      ],
-      "agent": "build",
-      "estimated_lines": 130,
-      "skills": ["build/refactoring", "lang-python"]
-    },
-    {
-      "id": "TASK-03",
-      "summary": "Port underwriting solver to Django (Decimal, dataclasses)",
-      "description": "Add core/services/underwriting.py: solve_underwriting + UnderwritingInput/UnderwritingMetrics as dataclasses (they are already Decimal-based; replace pydantic BaseModel with dataclasses), importing cap_rate/cash_on_cash/to_decimal from investor_app.finance.utils. Pure function — no views, no models.",
-      "depends_on": [],
-      "acceptance_criteria": [
-        {"id": "AC-03-1", "description": "solve_underwriting ported to core/services/underwriting.py, pydantic-free dataclasses", "test_type": "unit"},
-        {"id": "AC-03-2", "description": "UnderwritingInput/Metrics dataclasses use Decimal only", "test_type": "unit"},
-        {"id": "AC-03-3", "description": "prei/pipeline/tests/test_underwriting.py passes against new location", "test_type": "unit"}
-      ],
+      "id": "TASK-001",
+      "title": "Create Workflow Overview Document",
+      "description": "Create docs/explanation/investor-workflow.md linking all 4 stages with navigation map",
       "agent": "build",
       "estimated_lines": 150,
-      "skills": ["build/refactoring", "lang-python"]
+      "dependencies": [],
+      "skills": ["build/code-generation", "documentation"],
+      "acceptance_criteria": [
+        "File exists at docs/explanation/investor-workflow.md",
+        "Links to all 4 domain guides",
+        "Includes navigation map/table",
+        "Describes 4-stage flow accurately"
+      ]
     },
     {
-      "id": "TASK-04",
-      "summary": "Port DiscoveryProcessor (dedup + persist) to Django model layer",
-      "description": "Add core/services/discovery_processor.py (or extend core/services/pipeline.py): process_discovery(canonical_payload) -> PipelineProperty — dedup by address_hash (SHA-256 of normalized address, same rule as PipelineAsset.address_hash), create-or-update PipelineProperty at DISCOVERY stage. Replaces prei DiscoveryProcessor which built pydantic PropertyAsset objects.",
-      "depends_on": ["TASK-02"],
-      "acceptance_criteria": [
-        {"id": "AC-04-1", "description": "process_discovery persists PipelineProperty at DISCOVERY stage with dedup on address_hash", "test_type": "unit"},
-        {"id": "AC-04-2", "description": "No pydantic PropertyAsset creation anywhere in the Django path", "test_type": "unit"},
-        {"id": "AC-04-3", "description": "prei/pipeline/tests/test_discovery_processor.py logic covered by new Django test", "test_type": "unit"}
-      ],
+      "id": "TASK-002",
+      "title": "Enhance GACS_GUIDE.md with UI Context",
+      "description": "Update docs/explanation/GACS_GUIDE.md with Growth Explorer UI context, cross-links, and common questions",
       "agent": "build",
-      "estimated_lines": 120,
-      "skills": ["build/code-generation", "lang-python"]
+      "estimated_lines": 100,
+      "dependencies": [],
+      "skills": ["build/code-generation", "documentation"],
+      "acceptance_criteria": [
+        "Growth Explorer UI described (state picker, results table)",
+        "Cross-links to analyze-growth-areas.md",
+        "Data Confidence explained in UI context",
+        "Common Questions section added"
+      ]
     },
     {
-      "id": "TASK-05",
-      "summary": "Rewrite Growth Explorer bridge in core/views/__init__.py (~line 1235) onto Django services",
-      "description": "Replace lazy prei imports (DiscoveryProcessor, ScreeningThresholds, BatchScreeningProcessor, InMemoryAssetRepository, PipelineEngine, discover_from_all) with core.services equivalents: discovery via sources + DiscoverySanitizer, persist via process_discovery, screen via evaluate_screening_stage, advance PipelineProperty stage on pass, KILLED + kill_reason on fail. Keep view behavior (growth explorer pipeline_city branch) identical.",
-      "depends_on": ["TASK-01", "TASK-02", "TASK-04"],
-      "acceptance_criteria": [
-        {"id": "AC-05-1", "description": "Growth Explorer pipeline_city branch has zero prei imports", "test_type": "manual"},
-        {"id": "AC-05-2", "description": "PipelineProperty rows created/screened identically to prior engine behavior", "test_type": "integration"},
-        {"id": "AC-05-3", "description": "No regression in growth_explorer tests", "test_type": "ci"}
-      ],
+      "id": "TASK-003",
+      "title": "Create Growth Areas How-To Guide",
+      "description": "Create docs/how-to-guides/analyze-growth-areas.md with step-by-step user workflow",
       "agent": "build",
-      "estimated_lines": 140,
-      "skills": ["build/refactoring", "lang-python"]
+      "estimated_lines": 200,
+      "dependencies": ["TASK-002"],
+      "skills": ["build/code-generation", "documentation"],
+      "acceptance_criteria": [
+        "File exists at docs/how-to-guides/analyze-growth-areas.md",
+        "Covers: Prerequisites, Growth Explorer, Running Analysis, Interpreting Results, Export",
+        "Table columns explained matching template",
+        "Confidence chips explained",
+        "Data sources & limitations section"
+      ]
     },
     {
-      "id": "TASK-06",
-      "summary": "Rewrite vrm_properties_list run_pipeline bridge in core/views/__init__.py (~line 3227) onto Django services",
-      "description": "Replace lazy prei imports (InMemoryAssetRepository, PipelineEngine, ScreeningThresholds, BatchScreeningProcessor) with core.services screening + PipelineProperty persistence. Keep POST behavior for run_pipeline.",
-      "depends_on": ["TASK-01", "TASK-02", "TASK-04"],
-      "acceptance_criteria": [
-        {"id": "AC-06-1", "description": "vrm_properties_list run_pipeline has zero prei imports", "test_type": "manual"},
-        {"id": "AC-06-2", "description": "run_pipeline persists/screens via Django services; existing tests updated and passing", "test_type": "integration"}
-      ],
+      "id": "TASK-004",
+      "title": "Create Discovery How-To Guide",
+      "description": "Create docs/how-to-guides/discover-properties.md with step-by-step discovery workflow",
       "agent": "build",
-      "estimated_lines": 110,
-      "skills": ["build/refactoring", "lang-python"]
+      "estimated_lines": 250,
+      "dependencies": ["TASK-003"],
+      "skills": ["build/code-generation", "documentation"],
+      "acceptance_criteria": [
+        "File exists at docs/how-to-guides/discover-properties.md",
+        "Covers: Prerequisites, Choose Growth Area, Source Selection, Running Discovery, Results",
+        "All 5 source types documented (HUD, USDA, VRM, ATTOM, County)",
+        "Troubleshooting section"
+      ]
     },
     {
-      "id": "TASK-07",
-      "summary": "Migrate the 9 prei-importing test files + tests_bdd steps to core.services",
-      "description": "Update imports in tests/test_pipeline.py, test_pipeline_e2e.py, test_discovery.py, test_discovery_integration.py, test_discovery_e2e.py, test_offer_integration.py, test_screening_integration.py, test_underwriting_integration.py, and tests_bdd/steps/pipeline_steps.py to point at core/services/* and core/services/pipeline.py instead of prei.pipeline.* and prei.models.*. Delete the pipeline BDD feature only if it exclusively exercises deleted engine state (PipelineEngine/InMemoryAssetRepository); otherwise rewrite steps to Django-backed equivalents.",
-      "depends_on": ["TASK-01", "TASK-02", "TASK-03", "TASK-04"],
-      "acceptance_criteria": [
-        {"id": "AC-07-1", "description": "No test file outside prei/ imports prei (grep prei.pipeline returns nothing outside prei/)", "test_type": "ci"},
-        {"id": "AC-07-2", "description": "Full test suite green after import migration", "test_type": "ci"}
-      ],
+      "id": "TASK-005",
+      "title": "Create Screening How-To Guide",
+      "description": "Create docs/how-to-guides/screen-properties.md with criteria setup and screening logic",
       "agent": "build",
-      "estimated_lines": 260,
-      "skills": ["build/refactoring", "lang-python"]
+      "estimated_lines": 300,
+      "dependencies": ["TASK-004"],
+      "skills": ["build/code-generation", "documentation"],
+      "acceptance_criteria": [
+        "File exists at docs/how-to-guides/screen-properties.md",
+        "Hard kill criteria documented (4 criteria)",
+        "Soft criteria documented (5 criteria with deduction logic)",
+        "Rent data availability explained per source type",
+        "Score interpretation (100, ≥50, <50, 0)",
+        "Actions documented (→Underwriting, Kill, Re-Screen)"
+      ]
     },
     {
-      "id": "TASK-08",
-      "summary": "Delete pydantic state machine + engine + orchestrator (PropertyAsset/StageLog/PipelineStage/InMemory/SQLite repos, PipelineEngine, StateAggregator, PipelineOrchestrator)",
-      "description": "Delete prei/models/pipeline.py, prei/pipeline/engine.py, prei/pipeline/orchestrator.py. PipelineProperty (Django) + core/services/pipeline.py STAGE_ORDER transitions are the canonical state. Requires PM sign-off. Requires TASK-05/06/07 so no production or test import remains.",
-      "depends_on": ["TASK-05", "TASK-06", "TASK-07"],
-      "acceptance_criteria": [
-        {"id": "AC-08-1", "description": "prei/models/pipeline.py, engine.py, orchestrator.py deleted", "test_type": "manual"},
-        {"id": "AC-08-2", "description": "Grep for PropertyAsset/StageLog/PipelineEngine/PipelineOrchestrator returns nothing outside git history", "test_type": "ci"},
-        {"id": "AC-08-3", "description": "Full suite + ruff + mypy green", "test_type": "ci"}
-      ],
+      "id": "TASK-006",
+      "title": "Create Underwriting How-To Guide",
+      "description": "Create docs/how-to-guides/underwrite-deals.md covering both pipeline underwriting and BRRRR calculator",
       "agent": "build",
-      "estimated_lines": 1100,
-      "skills": ["build/refactoring", "build/governance-enforcement"]
+      "estimated_lines": 300,
+      "dependencies": ["TASK-005"],
+      "skills": ["build/code-generation", "documentation"],
+      "acceptance_criteria": [
+        "File exists at docs/how-to-guides/underwrite-deals.md",
+        "Distinguishes Pipeline Underwriting vs BRRRR Calculator",
+        "All 7 pipeline metrics explained (GPR, EGI, OpEx, NOI, Cap Rate, CoC, MAO)",
+        "BRRRR inputs/outputs/verdicts documented",
+        "DSCR warning explained",
+        "Comparison table included"
+      ]
     },
     {
-      "id": "TASK-09",
-      "summary": "Delete FastAPI router + CLI (prei/api/, prei/cli.py) and the offer.py float handler",
-      "description": "Delete prei/api/pipeline_routes.py and prei/cli.py (click). Resolve LIMIT-21 (offer.py float-based) by porting offer math to Decimal in core/services/offer.py OR deleting the handler — port the pure math (OfferInput/OfferMetrics as Decimal dataclasses) to keep tests/test_offer_integration.py behavior, delete the pydantic/CLI/API surface. Requires PM sign-off.",
-      "depends_on": ["TASK-07"],
-      "acceptance_criteria": [
-        {"id": "AC-09-1", "description": "prei/api/ and prei/cli.py deleted; no fastapi/click imports in production code", "test_type": "ci"},
-        {"id": "AC-09-2", "description": "Offer math ported Decimal-based to core/services/offer.py (LIMIT-21 resolved) or explicitly deferred with PM sign-off", "test_type": "manual"},
-        {"id": "AC-09-3", "description": "prei/pipeline/tests/test_api.py deleted (tests deleted code)", "test_type": "manual"}
-      ],
+      "id": "TASK-007",
+      "title": "Create UI Patterns Reference",
+      "description": "Create docs/reference/ui-patterns.md documenting template components and design system",
       "agent": "build",
-      "estimated_lines": 400,
-      "skills": ["build/refactoring", "lang-python"]
+      "estimated_lines": 200,
+      "dependencies": [],
+      "skills": ["build/code-generation", "documentation", "design-system"],
+      "acceptance_criteria": [
+        "File exists at docs/reference/ui-patterns.md",
+        "Page layout components documented",
+        "Data table patterns with chips",
+        "Form patterns documented",
+        "Loading states, empty states, accessibility"
+      ]
     },
     {
-      "id": "TASK-10",
-      "summary": "Migrate or delete prei/pipeline/tests/* and remaining handlers/sources",
-      "description": "Port valuable tests (test_sources, test_county, test_reo_sources, test_screening, test_underwriting, test_discovery math) to core/tests/. Delete tests that only exercised deleted engine state (test_engine, test_repository, test_orchestrator, test_batch_screening, test_api). Delete prei/pipeline/handlers/batch_screening.py, discovery.py, discovery_processor.py, screening.py, underwriting.py (pure logic now lives in core/services) and prei/pipeline/sources/* (county/reo_sources/vrm/file_source/registry/base) only after confirming nothing imports them; if sources are still needed by the Growth Explorer bridge, move them into core/services/sources/ first in TASK-05.",
-      "depends_on": ["TASK-08", "TASK-09"],
-      "acceptance_criteria": [
-        {"id": "AC-10-1", "description": "prei/ package fully deleted (no prei.* imports anywhere in repo)", "test_type": "ci"},
-        {"id": "AC-10-2", "description": "All valuable test coverage relocated to core/tests/ and green", "test_type": "ci"},
-        {"id": "AC-10-3", "description": "Full suite + ruff + mypy green with prei/ gone", "test_type": "ci"}
-      ],
+      "id": "TASK-008",
+      "title": "Update Cross-References and Navigation",
+      "description": "Update docs/index.md, docs/README.md, and add links to new guides",
       "agent": "build",
-      "estimated_lines": 2100,
-      "skills": ["build/refactoring", "build/governance-enforcement"]
+      "estimated_lines": 50,
+      "dependencies": ["TASK-001", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007"],
+      "skills": ["build/code-generation", "documentation"],
+      "acceptance_criteria": [
+        "docs/index.md updated with new guide links",
+        "docs/README.md updated with workflow navigation",
+        "All relative links resolve",
+        "GACS_GUIDE.md links to new guides"
+      ]
     },
     {
-      "id": "TASK-11",
-      "summary": "Remove pydantic/fastapi/uvicorn/click from requirements + docs update",
-      "description": "Remove pydantic==2.13.4, fastapi==0.139.2, uvicorn[standard]==0.51.0, click==8.4.2 from requirements.txt only if no remaining code imports them (tests/acceptance/schemas.py + tests/acceptance/test_api.py use pydantic for acceptance payload validation — verify whether that is test-only and keep pydantic pinned for those, or migrate acceptance schemas to dataclasses; fastapi/click must be fully removable). Update docs/ARCHITECTURE.md, docs/KNOWN_LIMITATIONS.md (mark LIMIT-21 resolved or explicitly deferred), docs/CHANGE_IMPACT_MAP.md.",
-      "depends_on": ["TASK-10"],
-      "acceptance_criteria": [
-        {"id": "AC-11-1", "description": "fastapi, uvicorn, click removable from requirements.txt; pydantic only retained if tests/acceptance still needs it", "test_type": "ci"},
-        {"id": "AC-11-2", "description": "KNOWN_LIMITATIONS LIMIT-21 status updated", "test_type": "manual"},
-        {"id": "AC-11-3", "description": "ARCHITECTURE.md and CHANGE_IMPACT_MAP.md reflect Django-canonical pipeline", "test_type": "manual"}
-      ],
+      "id": "TASK-009",
+      "title": "Archive Implementation Summary",
+      "description": "Move docs/implementation-summary-growth-areas.md to docs/assessments/",
       "agent": "build",
-      "estimated_lines": 120,
-      "skills": ["build/refactoring", "documentation"]
+      "estimated_lines": 10,
+      "dependencies": [],
+      "skills": ["build/refactoring"],
+      "acceptance_criteria": [
+        "File moved to docs/assessments/implementation-summary-growth-areas.md",
+        "Original location removed"
+      ]
+    },
+    {
+      "id": "TASK-010",
+      "title": "Validate Documentation Against Implementation",
+      "description": "Live-system verification: walk through each documented workflow and verify accuracy",
+      "agent": "test-execution",
+      "estimated_lines": 0,
+      "dependencies": ["TASK-003", "TASK-004", "TASK-005", "TASK-006"],
+      "skills": ["test-execution/live-system-verification", "verification"],
+      "acceptance_criteria": [
+        "Growth Areas UI matches documentation",
+        "Discovery form matches template",
+        "Screener table columns match",
+        "Screening logic matches service code",
+        "Underwriting metrics match service code",
+        "BRRRR calculator matches template JS"
+      ]
     }
-  ]
+  ],
+  "dependency_graph": {
+    "nodes": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010"],
+    "edges": [
+      ["TASK-002", "TASK-003"],
+      ["TASK-003", "TASK-004"],
+      ["TASK-004", "TASK-005"],
+      ["TASK-005", "TASK-006"],
+      ["TASK-001", "TASK-008"],
+      ["TASK-003", "TASK-008"],
+      ["TASK-004", "TASK-008"],
+      ["TASK-005", "TASK-008"],
+      ["TASK-006", "TASK-008"],
+      ["TASK-007", "TASK-008"],
+      ["TASK-003", "TASK-010"],
+      ["TASK-004", "TASK-010"],
+      ["TASK-005", "TASK-010"],
+      ["TASK-006", "TASK-010"]
+    ]
+  },
+  "summary": {
+    "total_tasks": 10,
+    "total_estimated_lines": 1560,
+    "critical_path": ["TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-008", "TASK-010"]
+  }
 }
