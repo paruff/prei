@@ -101,9 +101,8 @@ jobs:
       - name: Run unit tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          coverage run --parallel-mode -m pytest tests/ core/tests/ tests_bdd/ \
-            -q --tb=short \
-            -k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not acceptance and not export and not unreachable_url and not live"
+          coverage run --parallel-mode -m pytest tests/ core/tests/ -m unit \
+            -q --tb=short
       - name: Flaky test report
         if: always()
         run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
@@ -139,9 +138,8 @@ jobs:
       - name: Run integration tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          coverage run --parallel-mode -m pytest tests/ core/tests/ \
-            -q --tb=short \
-            -k "integration"
+          coverage run --parallel-mode -m pytest tests/ core/tests/ -m integration \
+            -q --tb=short
       - name: Flaky test report
         if: always()
         run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
@@ -177,9 +175,8 @@ jobs:
       - name: Run E2E tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          coverage run --parallel-mode -m pytest tests/ \
-            -q --tb=short \
-            -k "e2e or docker or container or startup or add_to_pipeline or export"
+          coverage run --parallel-mode -m pytest tests/ core/tests/ -m e2e \
+            -q --tb=short
       - name: Flaky test report
         if: always()
         run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report

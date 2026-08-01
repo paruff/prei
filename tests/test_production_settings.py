@@ -9,6 +9,10 @@ import subprocess
 import sys
 from typing import Any
 
+import pytest
+
+pytestmark = pytest.mark.unit
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SECURITY_ENV_KEYS = [
     "DJANGO_ENV",

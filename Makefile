@@ -76,22 +76,20 @@ test: test-unit
 
 test-unit:
 	$(call ensure_django)
-	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ tests_bdd/ \
+	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ \
 		-q --tb=short \
-		-k "not e2e and not docker and not integration and not container and not startup and not add_to_pipeline and not acceptance and not export and not unreachable_url"
+		-m unit
 
 test-integration:
 	$(call ensure_django)
 	@echo "Running integration tests..."
 	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ \
 		-v --tb=short \
-		-k "integration"
+		-m integration
 
 test-live-sources:
-	@echo "Running live integration tests"
-	$(PYTHON) -m pytest -m live core/tests/test_live_sources.py
 	$(call ensure_django)
-	@echo "Running live sources verification tests..."
+	@echo "Running live integration tests (requires API keys)..."
 	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest core/tests/test_live_sources.py \
 		-m live \
 		-v --tb=short
@@ -99,9 +97,9 @@ test-live-sources:
 test-e2e:
 	$(call ensure_django)
 	@echo "Running E2E tests (requires Playwright browser)..."
-	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ \
+	@DJANGO_SETTINGS_MODULE=investor_app.settings_test $(PYTHON) -m pytest tests/ core/tests/ \
 		-v --tb=short \
-		-k "e2e or docker or container or startup or add_to_pipeline or export"
+		-m e2e
 
 check: ensure-env
 	$(call ensure_django)
@@ -110,6 +108,7 @@ check: ensure-env
 	@$(MAKE) test-unit
 	@$(MAKE) test-integration
 	@$(MAKE) test-e2e
+	@$(MAKE) test-acceptance
 
 # ── Deploy ────────────────────────────────────────────────────────────────
 

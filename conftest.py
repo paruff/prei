@@ -20,27 +20,78 @@ def pytest_configure(config) -> None:  # noqa: ARG001
 
 
 def pytest_collection_modifyitems(config, items) -> None:  # noqa: ARG001
-    """Quarantine tests flagged as flaky (see docs/quality/flaky_tests.json).
+    """Auto-assign test-layer markers and quarantine flaky tests.
 
-    Quarantined tests keep running and reporting but never fail the build,
-    so a known-flaky test can't block a PR while it's being fixed.
+    Markers are assigned by file path so that CI can filter via -m.
+    Explicit pytestmark overrides these; files without an explicit
+    marker default to ``integration`` (safe — always passes with DB).
     """
-    if not QUARANTINE_FILE.exists():
-        return
-    quarantined = {
-        line.strip()
-        for line in QUARANTINE_FILE.read_text().splitlines()
-        if line.strip()
+    # ── Quarantine flaky tests ──
+    if QUARANTINE_FILE.exists():
+        quarantined = {
+            line.strip()
+            for line in QUARANTINE_FILE.read_text().splitlines()
+            if line.strip()
+        }
+        if quarantined:
+            q_marker = pytest.mark.xfail(
+                reason="quarantined: flaky, see docs/quality/flaky_tests.json",
+                strict=False,
+            )
+            for item in items:
+                if item.nodeid in quarantined:
+                    item.add_marker(q_marker)
+
+    # ── Auto-assign layer markers by file path ──
+    _ACCEPTANCE_DIR = "tests/acceptance/"
+    _SMOKE_FILES = {"test_container_startup.py", "test_docker_e2e.py"}
+    _LIVE_FILES = {
+        "test_live_sources.py",
+        "test_integration_attom.py",
+        "test_integration_fred.py",
     }
-    if not quarantined:
-        return
-    marker = pytest.mark.xfail(
-        reason="quarantined: flaky, see docs/quality/flaky_tests.json",
-        strict=False,
-    )
+    _BDD_DIR = "tests_bdd/"
+    _E2E_SUFFIX = "_e2e.py"
+
     for item in items:
-        if item.nodeid in quarantined:
-            item.add_marker(marker)
+        fpath = item.fspath.strpath
+
+        # Already has an explicit marker — leave it alone
+        already_marked = any(
+            m.name in ("unit", "integration", "smoke", "acceptance", "e2e", "live")
+            for m in item.iter_markers()
+        )
+        if already_marked:
+            continue
+
+        # Acceptance tests
+        if _ACCEPTANCE_DIR in fpath:
+            item.add_marker(pytest.mark.acceptance)
+            continue
+
+        # Smoke tests
+        fname = item.fspath.purebasename
+        if fname in _SMOKE_FILES:
+            item.add_marker(pytest.mark.smoke)
+            continue
+
+        # Live API tests
+        if fname in _LIVE_FILES:
+            item.add_marker(pytest.mark.live)
+            continue
+
+        # BDD — e2e
+        if _BDD_DIR in fpath:
+            item.add_marker(pytest.mark.e2e)
+            continue
+
+        # Files ending in _e2e.py
+        if fname.endswith("_e2e"):
+            item.add_marker(pytest.mark.e2e)
+            continue
+
+        # Default: integration (DB-backed) — safest fallback for Django apps
+        item.add_marker(pytest.mark.integration)
 
 
 @pytest.fixture

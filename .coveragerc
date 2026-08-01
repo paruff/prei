@@ -1,5 +1,5 @@
 [run]
-source = core, prei
+source = core, investor_app
 omit =
     */migrations/*
     */tests/*
