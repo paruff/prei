@@ -45,4 +45,4 @@ python-json-logger==4.1.0  # JSON formatter for structlog
 opentelemetry-api==1.32.1  # OTEL traces for uFawkesObs
 opentelemetry-sdk==1.32.1
 opentelemetry-exporter-otlp==1.32.1
-cryptography==49.0.0  # Fix GHSA-537c-gmf6-5ccf
+cryptography==50.0.0  # Fix GHSA-537c-gmf6-5ccf
