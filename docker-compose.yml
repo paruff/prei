@@ -1,5 +1,5 @@
 services:
-  web:
+  preiweb:
     build:
       context: .
       dockerfile: Dockerfile
