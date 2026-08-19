@@ -91,7 +91,7 @@ def test_render_blueprint_excludes_celery_redis_config() -> None:
 def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
     """Verify Compose grants extra startup time before healthcheck failures."""
     compose = _load_yaml("docker-compose.yml")
-    web = compose.get("services", {}).get("web", {})
+    web = compose.get("services", {}).get("preiweb", {})
     hc = web.get("healthcheck", {})
 
     assert hc.get("start_period") == "90s", (
@@ -105,7 +105,7 @@ def test_compose_healthcheck_allows_longer_prestart_migrations() -> None:
 def test_compose_web_service_has_required_config() -> None:
     """Verify essential web-service configuration keys exist."""
     compose = _load_yaml("docker-compose.yml")
-    web = compose.get("services", {}).get("web", {})
+    web = compose.get("services", {}).get("preiweb", {})
 
     assert web.get("image") == "ghcr.io/paruff/prei:latest"
     assert web.get("env_file") == ".env"
@@ -120,7 +120,7 @@ def test_compose_web_service_has_required_config() -> None:
 def test_compose_runtime_env_vars_set() -> None:
     """Verify runtime environment overrides exist in the web service."""
     compose = _load_yaml("docker-compose.yml")
-    env = compose.get("services", {}).get("web", {}).get("environment", {})
+    env = compose.get("services", {}).get("preiweb", {}).get("environment", {})
 
     # May be a dict or list of KEY=value strings
     env_str = str(env)
