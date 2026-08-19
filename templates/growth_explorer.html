@@ -25,7 +25,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Or pick states</label>
+        <label id="state-select-label">Then pick a state</label>
         <select name="state" id="state-select" class="form-input">
           <option value="">— All states —</option>
           {% for code, name in states %}
@@ -119,12 +119,40 @@
   </div>
 </div>
 
+{{ state_tiers|json_script:"state-tiers-data" }}
 <script>
 (function() {
   const form = document.getElementById('analysis-form');
   const btn = document.getElementById('analyze-btn');
   const overlay = document.getElementById('loading-overlay');
   const results = document.getElementById('results-section');
+  const tierSelect = document.getElementById('tier-select');
+  const stateSelect = document.getElementById('state-select');
+  const stateSelectLabel = document.getElementById('state-select-label');
+  const stateTiers = JSON.parse(document.getElementById('state-tiers-data').textContent);
+  const TIER_MAP = {landlord_friendly: 'top', mixed: 'middle', tenant_friendly: 'bottom'};
+
+  function applyTierFilter() {
+    const wantTier = TIER_MAP[tierSelect.value] || '';
+    let visibleCount = 0;
+    for (const opt of stateSelect.options) {
+      if (!opt.value) continue; // keep "— All states —"
+      const matches = !wantTier || stateTiers[opt.value] === wantTier;
+      opt.hidden = !matches;
+      opt.disabled = !matches;
+      if (matches) visibleCount++;
+    }
+    // If the currently selected state no longer matches, reset to placeholder.
+    if (wantTier && stateSelect.value && stateTiers[stateSelect.value] !== wantTier) {
+      stateSelect.value = '';
+    }
+    stateSelectLabel.textContent = wantTier
+      ? 'Then pick a state (' + visibleCount + ' match)'
+      : 'Then pick a state';
+  }
+
+  tierSelect?.addEventListener('change', applyTierFilter);
+  applyTierFilter();
 
   form?.addEventListener('submit', function(e) {
     e.preventDefault();

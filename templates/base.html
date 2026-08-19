@@ -44,13 +44,14 @@
           📊 Underwrite
           <span class="sub-label">Properties ready for your decision</span>
         </a>
+        <hr class="nav-divider">
         <a href="{% url 'pipeline_kanban' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_kanban' %}active{% endif %}" role="menuitem">
-          📋 Kanban
-          <span class="sub-label">Drag-and-drop pipeline board</span>
+          📋 Portfolio Board
+          <span class="sub-label">Everything, every stage, at a glance — not a step to complete</span>
         </a>
         <a href="{% url 'pipeline_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_list' %}active{% endif %}" role="menuitem">
-          📋 Pipeline
-          <span class="sub-label">Offers, due diligence, closing — all stages</span>
+          📋 Portfolio List
+          <span class="sub-label">Same overview as a table — offers, due diligence, closing</span>
         </a>
         <hr class="nav-divider">
         <a href="{% url 'pipeline_screening_settings' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_screening_settings' %}active{% endif %}" role="menuitem">

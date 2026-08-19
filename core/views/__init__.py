@@ -26,6 +26,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views import View
 from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
@@ -976,6 +977,11 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
     fred_key = getenv("FRED_API_KEY") or getenv("FRED_api_key") or ""
     fred_configured = bool(fred_key)
     api_keys_configured = bool(census_api_key)
+    # Landlord-friendliness tier per state, for the "Tier" selector to narrow
+    # the "pick a state" dropdown client-side (JS filters options by data-tier).
+    state_tiers = {
+        code: get_state_landlord_score(code)["tier"] for code, _ in US_STATES
+    }
 
     if request.method == "GET":
         return render(
@@ -983,6 +989,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             "growth_explorer.html",
             {
                 "states": US_STATES,
+                "state_tiers": state_tiers,
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": census_configured,
                 "fred_key_configured": fred_configured,
@@ -996,6 +1003,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             "growth_explorer.html",
             {
                 "states": US_STATES,
+                "state_tiers": state_tiers,
                 "api_keys_configured": False,
                 "census_key_configured": bool(census_api_key),
                 "fred_key_configured": fred_configured,
@@ -1010,6 +1018,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             "growth_explorer.html",
             {
                 "states": US_STATES,
+                "state_tiers": state_tiers,
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": bool(census_api_key),
                 "fred_key_configured": fred_configured,
@@ -1034,6 +1043,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             "growth_explorer.html",
             {
                 "states": US_STATES,
+                "state_tiers": state_tiers,
                 "api_keys_configured": api_keys_configured,
                 "census_key_configured": bool(census_api_key),
                 "fred_key_configured": fred_configured,
@@ -1304,6 +1314,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
         "growth_explorer.html",
         {
             "states": US_STATES,
+            "state_tiers": state_tiers,
             "selected_state": state,
             "results": results,
             "emp_growth": emp_growth,
@@ -1679,14 +1690,29 @@ def pipeline_advance_stage(request: HttpRequest, pk: int) -> HttpResponse:
         raise Http404
 
     action = request.POST.get("action", "")
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or ""
 
     if action == "hold":
         prop.status = PipelineProperty.Status.ON_HOLD
         prop.save(update_fields=["status", "updated_at"])
         messages.info(request, f"{prop.address} has been moved to Hold.")
+    elif action == "advance":
+        from core.services.pipeline import advance_stage
+
+        try:
+            advance_stage(prop)
+            messages.success(
+                request, f"{prop.address} advanced to {prop.get_stage_display()}."
+            )
+        except ValueError as exc:
+            messages.warning(request, str(exc))
     else:
         messages.warning(request, f"Unknown action: {action}")
 
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}
+    ):
+        return redirect(next_url)
     return redirect("pipeline_review_queue")
 
 
@@ -3693,6 +3719,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         "screening_failed": 0,
         "sources_attempted": [],
         "errors": [],
+        "properties": [],
     }
 
     # --- HUD ---
@@ -3710,6 +3737,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 )
                 if created:
                     results["discovered"] += 1
+                    results["properties"].append(pp)
                     if criteria and pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
@@ -3736,6 +3764,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 )
                 if created:
                     results["discovered"] += 1
+                    results["properties"].append(pp)
                     if criteria and pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
@@ -3762,6 +3791,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 )
                 if created:
                     results["discovered"] += 1
+                    results["properties"].append(pp)
                     if criteria and pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
@@ -3787,6 +3817,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 )
                 if created:
                     results["discovered"] += 1
+                    results["properties"].append(pp)
                     if criteria and pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
