@@ -57,7 +57,7 @@
 </div>
 {% endif %}
 
-<form method="post" action="?growth_area_id={{ growth_area.pk }}">
+<form method="post" action="?growth_area_id={{ growth_area.pk }}" id="discovery-form">
   {% csrf_token %}
   <input type="hidden" name="growth_area_id" value="{{ growth_area.pk }}">
 
@@ -108,7 +108,7 @@
   </div>
 
   <div class="form-actions">
-    <button type="submit" class="btn btn-primary">Discover Properties in {{ growth_area.city_name }}</button>
+    <button type="submit" class="btn btn-primary" id="discover-btn">Discover Properties in {{ growth_area.city_name }}</button>
     {% if already_discovered > 0 %}
     <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}" class="btn">View Screened ({{ already_discovered }})</a>
     {% endif %}
@@ -118,7 +118,8 @@
 
 {% endif %}{# growth_area selected #}
 
-{# ── POST Results (shown after discovery runs) ───────────────────── #}
+{# ── POST Results (shown after discovery runs, and swapped in via AJAX) ── #}
+<div id="results-section"{% if not show_results %} hidden{% endif %}>
 {% if show_results and discovery_results %}
 <div class="card">
   <h2 class="card-title">Discovery Results</h2>
@@ -129,29 +130,106 @@
     <div class="kpi-card"><div class="kpi-label">Already Existed</div><div class="kpi-value">{{ discovery_results.already_existed }}</div></div>
   </div>
   {% if discovery_results.discovered > 0 %}
-  <div class="message message-success mt-3">{{ discovery_results.discovered }} new. {{ discovery_results.screening_passed }} passed screening.</div>
+  <div class="message message-success mt-3">{{ discovery_results.discovered }} new. {{ discovery_results.screening_passed }} passed screening — auto-screened against your criteria below, no extra step needed.</div>
   {% else %}
   <div class="message message-warning mt-3">No new properties found.</div>
   {% endif %}
+
+  {% if discovery_results.properties %}
+  <div class="table-wrap mt-4">
+    <table class="data-table">
+      <thead><tr><th>Address</th><th>Screening</th><th></th></tr></thead>
+      <tbody>
+        {% for prop in discovery_results.properties %}
+        <tr>
+          <td>{{ prop.address }}</td>
+          <td>
+            {% if prop.screening_passed %}<span class="chip chip-success">Passed</span>
+            {% elif prop.screening_passed is False %}<span class="chip chip-danger">Failed</span>
+            {% else %}<span class="chip">Not screened</span>{% endif %}
+          </td>
+          <td>
+            {% if prop.screening_passed %}
+            <form method="post" action="{% url 'pipeline_advance_stage' pk=prop.pk %}" class="inline-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="advance">
+              <input type="hidden" name="next" value="?growth_area_id={{ growth_area.pk }}">
+              <button type="submit" class="btn btn-primary btn-sm">Continue to Underwriting →</button>
+            </form>
+            {% else %}
+            <a href="{% url 'pipeline_detail' pk=prop.pk %}" class="btn btn-sm">View →</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <div class="form-actions mt-4">
-    <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}" class="btn btn-primary">View in Screener →</a>
+    <a href="{% url 'pipeline_screener' %}?growth_area_id={{ growth_area.pk }}" class="btn">View All in Screener →</a>
     <a href="?growth_area_id={{ growth_area.pk }}" class="btn">Discover More</a>
   </div>
 </div>
 {% endif %}
+</div>
 
 {# Loading overlay shown during discovery POST #}
 <div id="discovery-loading" class="kanban-modal-overlay kanban-hidden">
   <div class="kanban-modal">
     <h2 class="text-center">Discovering Properties...</h2>
-    <p class="page-sub text-center" id="discovery-status-msg">Scraping data sources and creating pipeline entries. This may take a minute.</p>
+    <p class="page-sub text-center" id="discovery-status-msg">Scraping data sources and creating pipeline entries. Elapsed: <span id="discovery-elapsed">0s</span></p>
+    <div class="progress-bar-wrap"><div id="discovery-progress" class="progress-bar" role="progressbar"></div></div>
   </div>
 </div>
 
+<style>
+  .progress-bar-wrap { height:6px;background:var(--color-border,#e5e7eb);border-radius:3px;margin-top:16px;overflow:hidden; }
+  .progress-bar { height:100%;width:0;background:var(--color-primary,#2563eb);border-radius:3px;transition:width 1s ease; }
+</style>
+
 <script>
-  document.querySelector('form[method="post"]')?.addEventListener('submit', function() {
-    document.getElementById('discovery-loading').classList.remove('kanban-hidden');
+(function() {
+  const form = document.getElementById('discovery-form');
+  const btn = document.getElementById('discover-btn');
+  const overlay = document.getElementById('discovery-loading');
+  const results = document.getElementById('results-section');
+  if (!form) return;
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const csrf = form.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    const formData = new URLSearchParams(new FormData(form));
+    overlay.classList.remove('kanban-hidden');
+    btn.disabled = true;
+
+    let elapsed = 0;
+    const timer = setInterval(() => {
+      elapsed++;
+      document.getElementById('discovery-elapsed').textContent = elapsed + 's';
+      document.getElementById('discovery-progress').style.width = Math.min(elapsed * 2, 95) + '%';
+    }, 1000);
+
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 130000);
+
+    fetch(form.action || window.location.href, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+      body: formData,
+      signal: controller.signal,
+    })
+    .then(r => r.text())
+    .then(html => {
+      clearInterval(timer); overlay.classList.add('kanban-hidden'); btn.disabled = false;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newResults = doc.getElementById('results-section');
+      if (newResults) { results.innerHTML = newResults.innerHTML; results.hidden = false; results.scrollIntoView({behavior: 'smooth'}); }
+    })
+    .catch(() => { clearInterval(timer); overlay.classList.add('kanban-hidden'); btn.disabled = false; });
   });
+})();
 </script>
 
 {% endblock %}
