@@ -71,6 +71,7 @@ graphify-out/memory/
 
 # Headroom AI memory cache
 .headroom/
+.omo/
 
 # Agent build / CI / review artifacts
 build-report.md
