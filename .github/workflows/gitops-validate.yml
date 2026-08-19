@@ -41,6 +41,7 @@ jobs:
   validate:
     name: "🔍 GitOps Best Practices"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: "job-start"
         run: |
@@ -64,6 +65,7 @@ jobs:
   docker-build:
     name: "🐳 Docker Build Check"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: "job-start"
         run: |
@@ -93,6 +95,7 @@ jobs:
   kustomize-build:
     name: "📦 Kustomize Build Check"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: "job-start"
         run: |
@@ -137,6 +140,7 @@ jobs:
     name: "✅ GitOps Validation Complete"
     needs: [validate, docker-build, kustomize-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: always()
     steps:
       - name: "job-start"

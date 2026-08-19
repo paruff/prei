@@ -104,6 +104,7 @@ jobs:
     name: "🧪 Tier 2 — Smoke + BDD"
     needs: build-image
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
       packages: read
@@ -252,6 +253,7 @@ jobs:
     name: "🛡️ Tier 2 — Scan Image"
     needs: build-image
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: read
@@ -297,6 +299,7 @@ jobs:
     name: "📤 Tier 2 — Publish"
     needs: [build-image, scan-image]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: production
     permissions:
       contents: read
@@ -356,6 +359,7 @@ jobs:
     name: "🚀 Tier 2 — GitOps Deploy"
     needs: [publish, live-test, scan-image]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
       packages: read
@@ -420,6 +424,7 @@ jobs:
     name: "🧾 Tier 2 — Attest"
     needs: [publish, build-image]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write

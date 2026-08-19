@@ -19,6 +19,7 @@ jobs:
   pr-title:
     name: "📝 PR Title"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Validate PR title
         uses: actions/github-script@v9
@@ -35,6 +36,7 @@ jobs:
   lint:
     name: "🔍 Lint"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
@@ -48,6 +50,7 @@ jobs:
   secrets:
     name: "🔑 Secrets"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -65,6 +68,7 @@ jobs:
   django-checks:
     name: "🩺 Django Checks"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       DJANGO_SETTINGS_MODULE: investor_app.settings_test
       SECRET_KEY: ci-checks-django
@@ -87,6 +91,7 @@ jobs:
   tests-unit:
     name: "🧪 Unit Tests"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       DJANGO_SETTINGS_MODULE: investor_app.settings_test
     steps:
@@ -124,6 +129,7 @@ jobs:
   tests-integration:
     name: "🔗 Integration Tests"
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       DJANGO_SETTINGS_MODULE: investor_app.settings_test
     steps:
@@ -173,6 +179,7 @@ jobs:
   tests-e2e:
     name: "🌐 E2E Tests"
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       DJANGO_SETTINGS_MODULE: investor_app.settings_test
     steps:
@@ -182,8 +189,18 @@ jobs:
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-1.62.0
       - name: Install Playwright
         run: playwright install --with-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+      - name: Install Playwright system deps only
+        run: playwright install-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
       - name: Run E2E tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
@@ -210,6 +227,7 @@ jobs:
   typecheck:
     name: "🔷 Typecheck"
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
@@ -217,6 +235,13 @@ jobs:
         run: sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Cache mypy
+        uses: actions/cache@v4
+        with:
+          path: .mypy_cache
+          key: ${{ runner.os }}-mypy-2.3.0-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-mypy-2.3.0-
       - name: Mypy
         run: mypy core/ investor_app/finance/ --ignore-missing-imports --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code operator --disable-error-code misc --disable-error-code has-type --disable-error-code arg-type --disable-error-code assignment
 
@@ -228,6 +253,7 @@ jobs:
   acceptance-check:
     name: "🧪 Acceptance Tests"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       SECRET_KEY: ci-acceptance-check-key
       DATABASE_URL: sqlite:////tmp/acceptance_check.sqlite3
@@ -249,6 +275,7 @@ jobs:
   finance-math:
     name: "💰 Financial Math"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
@@ -266,6 +293,7 @@ jobs:
   zap-authenticated-scan:
     name: "🛡️ Authenticated ZAP Scan"
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       DJANGO_SETTINGS_MODULE: investor_app.settings_test
       SECRET_KEY: ci-zap-scan-key
@@ -326,6 +354,7 @@ jobs:
     name: "📊 Coverage"
     needs: [tests-unit, tests-integration, tests-e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
@@ -354,6 +383,7 @@ jobs:
     name: "All Gates Passed"
     needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, acceptance-check, finance-math, coverage, zap-authenticated-scan]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: always()
     steps:
       - name: Verify all gates

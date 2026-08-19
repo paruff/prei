@@ -26,6 +26,7 @@ jobs:
     name: "☑️ Bump & Tag"
     if: github.event_name == 'push' && !contains(toJson(github.event.head_commit.message), '[skip release]')
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v7

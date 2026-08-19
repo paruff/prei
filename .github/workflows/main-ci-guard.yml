@@ -9,6 +9,7 @@ jobs:
   check-main-ci:
     name: "🛡️ Main CI Health"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check latest Tier 2 Governance run on main
         uses: actions/github-script@v9

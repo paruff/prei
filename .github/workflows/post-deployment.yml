@@ -20,6 +20,7 @@ jobs:
   smoke:
     name: "💨 Smoke Tests"
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       target: ${{ steps.url.outputs.target }}
     steps:
@@ -70,6 +71,7 @@ jobs:
     name: "🧪 Acceptance Tests"
     needs: smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
@@ -87,6 +89,7 @@ jobs:
     name: "📈 Performance"
     needs: smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - name: Lighthouse CI
@@ -122,6 +125,7 @@ jobs:
     needs: [smoke, acceptance, performance, security]
     if: failure() && vars.GITOPS_REPO != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
     env:
@@ -170,6 +174,7 @@ jobs:
     needs: [smoke, acceptance, performance, security]
     if: always() && vars.UFAWKES_WEBHOOK_URL != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Post to uFawkesObs
         run: |

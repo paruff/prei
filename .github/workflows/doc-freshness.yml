@@ -23,6 +23,7 @@ jobs:
   cves:
     name: "🚨 Tier 3 — CVEs"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: "job-start"
         run: |
@@ -116,6 +117,7 @@ jobs:
   dependency-drift:
     name: "📦 Tier 3 — Dependency Drift"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: "job-start"
         run: |
@@ -203,6 +205,7 @@ jobs:
   docs-drift:
     name: "📄 Tier 3 — Docs Drift"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: "job-start"
         run: |
