@@ -1,0 +1,124 @@
+name: opencode
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  opencode:
+    if: |
+      github.event.comment.user.type != 'Bot' &&
+      (contains(github.event.comment.body, '/oc') ||
+       contains(github.event.comment.body, '/opencode'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      actions: write
+      contents: write
+    steps:
+      - name: job-start
+        run: echo "job-start:$(date -u +%Y-%m-%dT%H:%M:%SZ) sha:${{ github.sha }}"
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "opencode-agent[bot]"
+          git config --global user.email "opencode-agent[bot]@users.noreply.github.com"
+
+      # Install the same commit-msg hook humans get via scripts/commit-msg.sh
+      # (see .pre-commit-config.yaml), so opencode's own `git commit` gets
+      # rejected with the actual regex+reason inline and can retry, instead
+      # of only finding out after pushing. Only the commit-msg hook type --
+      # not the full pre-commit stage, which runs unrelated file-content
+      # checks that could block a commit for issues in files opencode
+      # didn't touch.
+      - name: Install commit-msg hook
+        run: |
+          pip install --quiet pre-commit
+          pre-commit install --hook-type commit-msg
+
+      - name: Run OpenCode
+        uses: anomalyco/opencode/github@31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d  # v1.18.18
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        with:
+          # Model routing by comment tag: default is the free Zen model;
+          # add [security] or [feature] anywhere in the comment to route to
+          # NVIDIA NIM's nemotron-3-ultra (1M context) instead, e.g.
+          # "/oc [security] fix this CVE". build.nvidia.com labels this
+          # endpoint "Free Endpoint" in its own product metadata — do not
+          # trust models.dev's cost field for NVIDIA NIM models without
+          # cross-checking build.nvidia.com directly, it has been wrong here.
+          # The bracket tag is required for THIS routing expression to match
+          # ("/oc-security ..." does not contain "[security]" so it silently
+          # falls through to the default model below) — confirmed live on a
+          # sibling repo (fawkes, issue #1587): "/oc-security ..." does still
+          # trigger the action, just without escalating the model.
+          #
+          # Model string is doubled ("nvidia/nvidia/...") deliberately, not a
+          # typo: NVIDIA-published models on NVIDIA's own NIM catalog carry
+          # "nvidia/" as part of the model's own org/name identifier (an
+          # org/model convention, same as e.g. "microsoft/phi-4-..." models
+          # hosted on the same catalog) -- confirmed against models.dev's raw
+          # JSON directly (data['nvidia']['models'] keys). opencode splits on
+          # the FIRST "/" only for provider vs. model, so referencing this
+          # specific model needs provider "nvidia" + catalog key
+          # "nvidia/nemotron-3-ultra-550b-a55b" == "nvidia/nvidia/...".
+          model: ${{ (contains(github.event.comment.body, '[security]') || contains(github.event.comment.body, '[feature]')) && 'nvidia/nvidia/nemotron-3-ultra-550b-a55b' || 'opencode/deepseek-v4-flash-free' }}
+
+      # opencode does not reliably follow Conventional Commits format even
+      # with documentation in place (confirmed on a sibling repo, fawkes,
+      # PRs #1619 and #1625). Documentation alone isn't reliable enough;
+      # enforce mechanically as a backstop in case the commit-msg hook above
+      # doesn't catch it (e.g. opencode retries and still gets it wrong).
+      - name: Normalize commit message if non-compliant
+        if: always()
+        run: |
+          set -euo pipefail
+          if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+            echo "No commits to check."
+            exit 0
+          fi
+          if [ "$(git rev-parse HEAD)" = "${{ github.sha }}" ]; then
+            echo "No new commits; nothing to normalize."
+            exit 0
+          fi
+          subject="$(git log -1 --format=%s)"
+          if echo "$subject" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|ci|perf|build|revert)(\(.+\))?: .{1,72}$'; then
+            echo "Commit message already compliant: $subject"
+            exit 0
+          fi
+          echo "Non-compliant commit subject, rewriting: $subject"
+          desc="$subject"
+          if [ "${#desc}" -gt 69 ]; then
+            desc="${desc:0:69}..."
+          fi
+          body="$(git log -1 --format=%b)"
+          {
+            echo "fix: ${desc}"
+            echo
+            echo "Original subject: ${subject}"
+            if [ -n "$body" ]; then
+              echo
+              echo "$body"
+            fi
+          } > /tmp/normalized_commit_msg.txt
+          git commit --amend -F /tmp/normalized_commit_msg.txt
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push --force-with-lease
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: job-finish
+        if: always()
+        run: echo "job-finish:$(date -u +%Y-%m-%dT%H:%M:%SZ)"
