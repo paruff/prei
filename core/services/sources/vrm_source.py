@@ -85,10 +85,9 @@ class VrmDiscoverySource(DiscoverySource):
             )
 
         logger.info(
-            "VRM source fetched %d properties for %s (zip=%s, statuses=%s)",
+            "VRM source fetched %d properties for %s (statuses=%s)",
             len(listings),
             state,
-            zip_code or "any",
             statuses,
         )
         return listings
