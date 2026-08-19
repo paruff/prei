@@ -27,6 +27,7 @@
 7. Hardcode hex colors in templates (exception: PDF export inline styles).
 8. Use `!important` in CSS — if a responsive rule is broken, fix the template.
 9. Use uppercase in PR title description — the first word after `type(scope):` must be lowercase (see `docs/PR_STANDARD.md`).
+10. Swallow an exception in a check, validator, or test assertion without logging what broke — a silently-caught exception makes a check that never ran indistinguishable from one that ran and found nothing.
 
 ## GitOps Principles
 See `gitops-principles` skill — load before touching workflows, deployment config, or the GitOps manifest repo.
