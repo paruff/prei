@@ -43,6 +43,6 @@ structlog==26.1.0  # direct dep — imported by settings.py and core/middleware.
 django-structlog==9.0.0  # structured JSON logging (Phase D)
 python-json-logger==4.1.0  # JSON formatter for structlog
 opentelemetry-api==1.44.0  # OTEL traces for uFawkesObs
-opentelemetry-sdk==1.32.1
-opentelemetry-exporter-otlp==1.32.1
+opentelemetry-sdk==1.44.0
+opentelemetry-exporter-otlp==1.44.0
 cryptography==50.0.0  # Fix GHSA-537c-gmf6-5ccf
