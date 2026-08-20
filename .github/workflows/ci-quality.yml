@@ -184,6 +184,8 @@ jobs:
         run: pip install -r requirements.txt coverage
       - name: Install Playwright
         run: playwright install --with-deps chromium
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --verbosity 0
       - name: Run E2E tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
