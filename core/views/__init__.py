@@ -306,6 +306,66 @@ def system_status(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def refresh_all_sources(request: HttpRequest) -> HttpResponse:
+    """Trigger all data source refreshes in background threads."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    import threading
+    from django.db import connection as _conn
+
+    def _run_ingestion(name, func, *args):
+        _conn.close()
+        try:
+            func(*args)
+        except Exception as e:
+            logger.error("%s ingestion failed: %s", name, e)
+
+    tasks = [
+        (
+            "HUD",
+            lambda: __import__(
+                "core.services.ingestion", fromlist=["ingest_hud_reo"]
+            ).ingest_hud_reo(),
+        ),
+        (
+            "USDA",
+            lambda: __import__(
+                "core.services.ingestion", fromlist=["ingest_usda_reo"]
+            ).ingest_usda_reo(),
+        ),
+        (
+            "Counties",
+            lambda: __import__(
+                "core.services.ingestion", fromlist=["ingest_tx_counties"]
+            ).ingest_tx_counties(),
+        ),
+    ]
+
+    for name, func in tasks:
+        t = threading.Thread(target=_run_ingestion, args=(name, func), daemon=True)
+        t.start()
+
+    messages.success(
+        request, "Refresh started for all data sources. Page will update automatically."
+    )
+    return redirect("system_status")
+
+
+@login_required
+def health_json(request: HttpRequest) -> HttpResponse:
+    """Return data source health as JSON for polling."""
+    from core.models import DataSourceHealth
+
+    health = list(
+        DataSourceHealth.objects.values(
+            "source_name", "last_run", "record_count", "status", "consecutive_errors"
+        )
+    )
+    return JsonResponse(health, safe=False)
+
+
+@login_required
 def dashboard(request):
     if _is_client_only_user(request.user):
         return redirect("property_list")
