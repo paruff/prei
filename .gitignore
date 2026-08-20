@@ -86,3 +86,6 @@ verification-report.md
 .pytest-report.jsonl
 .zap/prei-auth-context-runtime.xml
 drafts/
+
+# Agent logs
+.agents/logs/

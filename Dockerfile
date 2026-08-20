@@ -5,7 +5,7 @@
 # PYTHON_IMAGE_VERSION = full semver for the FROM tag.
 # PYTHON_VERSION      = major.minor for the filesystem path
 # (Python always installs to /usr/local/lib/python3.X regardless of patch).
-ARG PYTHON_IMAGE_VERSION=3.14.6
+ARG PYTHON_IMAGE_VERSION=3.14.7
 ARG PYTHON_VERSION=3.14
 
 # ── Version metadata (injected by CI, or default for local dev) ────────────
@@ -23,10 +23,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PREI_VERSION=${VERSION} \
     PREI_COMMIT=${COMMIT}
 
-# Remove Perl (not needed by this Python project) to eliminate Trivy alerts:
-#   #137 — perl-archive-tar path traversal via symlinks (Critical)
-#   #136 — Perl heap buffer overflow through 5.43.10 (Critical)
+# Remove Perl (not needed by this Python project) and upgrade all OS packages
+# to resolve Trivy alerts for perl, openssl, sqlite, zlib, ncurses, libblkid, etc.
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get remove --purge -y --auto-remove perl libperl* && \
     rm -rf /var/lib/apt/lists/*
 
@@ -43,7 +43,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip==26.1.2 setuptools==83.0.0 wheel==0.46.2 && \
+    pip install --upgrade setuptools==83.0.0 wheel==0.46.2 && \
     pip install -r requirements.txt
 
 # ── final image ──────────────────────────────────────────────────────────
@@ -55,11 +55,10 @@ ARG BUILD_DATE
 ARG BRANCH
 COPY --from=deps /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python${PYTHON_VERSION}
 COPY --from=deps /usr/local/bin /usr/local/bin
-# Re-upgrade pip, setuptools, and wheel so the base image's stale dist-info is replaced.
-# setuptools 79.x vendors jaraco.context 5.3.0 (CVE-2026-23949) and wheel 0.45.1
-# (CVE-2026-24049); upgrading brings the patched vendored versions.
-# wheel 0.45.1 (standalone) also carries CVE-2026-24049; upgrade to 0.46.2+.
-RUN pip install --upgrade pip==26.1.2 setuptools==83.0.0 wheel==0.46.2
+# Upgrade setuptools and wheel for CVE patches (setuptools 83.0.0 vendors
+# jaraco.context 5.3.0 for CVE-2026-23949; wheel 0.46.2+ for CVE-2026-24049).
+# Don't pin pip — the base image ships 26.2.1+ and downgrading breaks imports.
+RUN pip install --upgrade setuptools==83.0.0 wheel==0.46.2
 COPY . .
 
 # Bake version into files so the runtime can read them without a .git dir
