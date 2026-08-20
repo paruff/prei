@@ -67,11 +67,11 @@
     </thead>
     <tbody>
       {% for h in health %}
-      <tr>
+      <tr data-source="{{ h.source_name }}">
         <td>{{ h.source_name }}</td>
-        <td>{{ h.last_run|date:"Y-m-d H:i"|default:"Never" }}</td>
-        <td>{{ h.record_count }}</td>
-        <td>
+        <td class="health-lastrun">{{ h.last_run|date:"Y-m-d H:i"|default:"Never" }}</td>
+        <td class="health-records">{{ h.record_count }}</td>
+        <td class="health-status">
           {% if h.status == "ok" %}
             <span class="chip chip-success">✓ OK</span>
           {% elif h.status == "error" %}
@@ -91,6 +91,14 @@
 <div class="card mt-5">
   <h2 class="card-title">Data Operations</h2>
   <div class="form-actions form-actions--wrap">
+    <form method="post" class="form-inline" id="refresh-all-form" action="{% url 'refresh_all_sources' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="refresh_all">
+      <button class="btn btn-primary" id="refresh-all-btn" type="submit">
+        Refresh All Sources
+      </button>
+      <span id="refresh-status" class="help-text"></span>
+    </form>
     <form method="post" class="form-inline">
       {% csrf_token %}
       <input type="hidden" name="action" value="ingest_hud">
@@ -137,4 +145,58 @@
   {% endfor %}
 </div>
 {% endif %}
+
+<script>
+(function() {
+  var pollInterval = null;
+  var pollCount = 0;
+  var MAX_POLLS = 30;
+
+  function updateHealthTable(data) {
+    data.forEach(function(h) {
+      var row = document.querySelector('tr[data-source="' + h.source_name + '"]');
+      if (!row) return;
+      var statusCell = row.querySelector('.health-status');
+      var recordsCell = row.querySelector('.health-records');
+      var lastRunCell = row.querySelector('.health-lastrun');
+      if (statusCell) {
+        if (h.status === 'ok') {
+          statusCell.innerHTML = '<span class="chip chip-success">✓ OK</span>';
+        } else if (h.status === 'error') {
+          statusCell.innerHTML = '<span class="chip chip-danger">✗ Error</span>';
+        }
+      }
+      if (recordsCell) recordsCell.textContent = h.record_count;
+      if (lastRunCell && h.last_run) {
+        lastRunCell.textContent = new Date(h.last_run).toLocaleString();
+      }
+    });
+  }
+
+  function pollHealth() {
+    fetch('/system/health-json/')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        updateHealthTable(data);
+        pollCount++;
+        if (pollCount < MAX_POLLS) {
+          pollInterval = setTimeout(pollHealth, 2000);
+        } else {
+          document.getElementById('refresh-status').textContent = 'Refresh complete.';
+        }
+      });
+  }
+
+  var form = document.getElementById('refresh-all-form');
+  if (form) {
+    form.addEventListener('submit', function() {
+      setTimeout(function() {
+        document.getElementById('refresh-status').textContent = 'Refreshing...';
+        pollCount = 0;
+        pollHealth();
+      }, 500);
+    });
+  }
+})();
+</script>
 {% endblock %}

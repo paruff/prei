@@ -92,6 +92,29 @@ def growth_area(db) -> object:  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture()
+def kanban_property(db, e2e_login, growth_area):  # type: ignore[no-untyped-def]
+    """Create a PipelineProperty at SCREENING stage for kanban testing."""
+    from core.models import PipelineProperty
+
+    return PipelineProperty.objects.create(
+        user=e2e_login,
+        source_type=PipelineProperty.SourceType.HUD,
+        source_id="KANBAN-001",
+        address="101 Boardwalk Blvd",
+        city="Austin",
+        state="TX",
+        zip_code="78701",
+        county="Travis",
+        growth_area=growth_area,
+        stage=PipelineProperty.Stage.SCREENING,
+        status=PipelineProperty.Status.ACTIVE,
+        screening_passed=True,
+        price=90000,
+        beds=3,
+    )
+
+
+@pytest.fixture()
 def discovery_sources(db, growth_area) -> list:  # type: ignore[no-untyped-def]
     """One record per source in Austin, TX so discovery never hits the network.
 

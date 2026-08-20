@@ -458,6 +458,26 @@ class ScreeningCriteria(models.Model):
         return f"{self.user.email}: yield>={self.min_gross_yield_pct}%, PTR<={self.max_price_to_rent_ratio}"
 
 
+class ScreeningCriteriaVersion(models.Model):
+    """Snapshot of ScreeningCriteria at a point in time."""
+
+    criteria = models.ForeignKey(
+        "ScreeningCriteria",
+        on_delete=models.CASCADE,
+        related_name="versions",
+    )
+    snapshot = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Screening Criteria Version"
+        verbose_name_plural = "Screening Criteria Versions"
+
+    def __str__(self) -> str:
+        return f"Version {self.pk} of {self.criteria_id} @ {self.created_at}"
+
+
 class OfferRecord(models.Model):
     """Record of an offer made on a pipeline property.
 
@@ -969,6 +989,7 @@ class DataSourceHealth(models.Model):
         choices=[("ok", "OK"), ("error", "Error"), ("unknown", "Unknown")],
     )
     error_message = models.TextField(blank=True, default="")
+    consecutive_errors = models.IntegerField(default=0)
 
     class Meta:
         ordering = ["source_name"]

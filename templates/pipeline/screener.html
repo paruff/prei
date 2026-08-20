@@ -113,14 +113,32 @@
 <!-- Property table -->
 {% if properties %}
 
-<!-- Filter bar -->
-<form method="get" class="screener-filters">
-  <div><label>Min Price</label><input type="number" name="price_min" value="{{ request.GET.price_min }}" placeholder="$" class="form-input form-input-sm"></div>
-  <div><label>Max Price</label><input type="number" name="price_max" value="{{ request.GET.price_max }}" placeholder="$" class="form-input form-input-sm"></div>
-  <div><label>Min Rent</label><input type="number" name="rent_min" value="{{ request.GET.rent_min }}" placeholder="$" class="form-input form-input-sm"></div>
-  <div><label>Min Cap Rate %</label><input type="number" name="cap_rate_min" value="{{ request.GET.cap_rate_min }}" placeholder="%" class="form-input form-input-sm" step="0.1"></div>
-  <div class="pt-4"><button type="submit" class="btn">Filter</button></div>
-</form>
+<!-- AJAX Filter bar -->
+<div class="card" id="screener-filters">
+  <h3 class="card-title">Quick Filters</h3>
+  <div class="form-row">
+    <div class="form-field-group">
+      <label class="field-label">Min Price</label>
+      <input type="number" class="field-input" id="filter-min-price" placeholder="0">
+    </div>
+    <div class="form-field-group">
+      <label class="field-label">Max Price</label>
+      <input type="number" class="field-input" id="filter-max-price" placeholder="No limit">
+    </div>
+    <div class="form-field-group">
+      <label class="field-label">Min Yield %</label>
+      <input type="number" class="field-input" id="filter-min-yield" step="0.5" placeholder="0">
+    </div>
+    <div class="form-field-group">
+      <label class="field-label">Max PTR</label>
+      <input type="number" class="field-input" id="filter-max-ptr" step="0.5" placeholder="No limit">
+    </div>
+    <div class="form-field-group">
+      <label class="field-label">Min Beds</label>
+      <input type="number" class="field-input" id="filter-min-beds" min="1" placeholder="1">
+    </div>
+  </div>
+</div>
 
 <div class="table-wrap">
   <table class="data-table">
@@ -227,4 +245,45 @@
 </div>
 {% endif %}
 
+<script>
+(function() {
+  var debounceTimer = null;
+
+  function buildFilterUrl() {
+    var params = new URLSearchParams();
+    var minPrice = document.getElementById('filter-min-price').value;
+    var maxPrice = document.getElementById('filter-max-price').value;
+    var minYield = document.getElementById('filter-min-yield').value;
+    var maxPtr = document.getElementById('filter-max-ptr').value;
+    var minBeds = document.getElementById('filter-min-beds').value;
+
+    if (minPrice) params.set('min_price', minPrice);
+    if (maxPrice) params.set('max_price', maxPrice);
+    if (minYield) params.set('min_yield', minYield);
+    if (maxPtr) params.set('max_ptr', maxPtr);
+    if (minBeds) params.set('min_beds', minBeds);
+
+    return '/pipeline/screener/filter/?' + params.toString();
+  }
+
+  function applyFilters() {
+    fetch(buildFilterUrl())
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
+        var tbody = document.querySelector('.data-table tbody');
+        if (tbody) tbody.innerHTML = html;
+      });
+  }
+
+  function debounce() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(applyFilters, 300);
+  }
+
+  ['filter-min-price', 'filter-max-price', 'filter-min-yield', 'filter-max-ptr', 'filter-min-beds'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', debounce);
+  });
+})();
+</script>
 {% endblock %}

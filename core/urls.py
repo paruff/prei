@@ -9,6 +9,8 @@ urlpatterns = [
     path("onboard/", views.onboard, name="onboard"),
     path("health/", views.health_check, name="health_check"),
     path("system/", views.system_status, name="system_status"),
+    path("system/refresh-all/", views.refresh_all_sources, name="refresh_all_sources"),
+    path("system/health-json/", views.health_json, name="health_json"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("properties/add/", views.property_add, name="property_add"),
     path("properties/create/", views.property_add, name="property_create"),
@@ -89,8 +91,28 @@ urlpatterns = [
     path("pipeline/<int:pk>/", views.pipeline_detail, name="pipeline_detail"),
     path(
         "pipeline/<int:pk>/advance/",
+        views.pipeline_advance,
+        name="pipeline_advance",
+    ),
+    path(
+        "pipeline/<int:pk>/advance-stage/",
         views.pipeline_advance_stage,
         name="pipeline_advance_stage",
+    ),
+    path(
+        "pipeline/<int:pk>/kill/",
+        views.pipeline_kill,
+        name="pipeline_kill",
+    ),
+    path(
+        "pipeline/<int:pk>/hold/",
+        views.pipeline_hold,
+        name="pipeline_hold",
+    ),
+    path(
+        "pipeline/<int:pk>/reactivate/",
+        views.pipeline_reactivate,
+        name="pipeline_reactivate",
     ),
     path(
         "pipeline/add-from-source/",
@@ -103,9 +125,19 @@ urlpatterns = [
         name="pipeline_screener",
     ),
     path(
+        "pipeline/screener/filter/",
+        views.screener_filter,
+        name="screener_filter",
+    ),
+    path(
         "pipeline/screening/settings/",
         views.pipeline_screening_settings,
         name="pipeline_screening_settings",
+    ),
+    path(
+        "pipeline/screening/preview/",
+        views.screening_preview,
+        name="screening_preview",
     ),
     path(
         "pipeline/<int:pk>/offer/",
