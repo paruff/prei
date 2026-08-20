@@ -2319,6 +2319,32 @@ def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
 
         criteria.save()
 
+        # Create version snapshot
+        from core.models import ScreeningCriteriaVersion
+
+        ScreeningCriteriaVersion.objects.create(
+            criteria=criteria,
+            snapshot={
+                "min_price": str(criteria.min_price) if criteria.min_price else None,
+                "max_price": str(criteria.max_price) if criteria.max_price else None,
+                "min_gross_yield_pct": str(criteria.min_gross_yield_pct)
+                if criteria.min_gross_yield_pct
+                else None,
+                "max_price_to_rent_ratio": str(criteria.max_price_to_rent_ratio)
+                if criteria.max_price_to_rent_ratio
+                else None,
+                "min_beds": criteria.min_beds,
+                "max_beds": criteria.max_beds,
+                "min_sqft": criteria.min_sqft,
+                "max_year_built": criteria.max_year_built,
+                "allowed_property_types": criteria.allowed_property_types,
+                "allowed_states": criteria.allowed_states,
+                "min_gacs_score": str(criteria.min_gacs_score)
+                if criteria.min_gacs_score
+                else None,
+            },
+        )
+
         # Re-screen all ACTIVE pipeline properties at DISCOVERED or SCREENING
         rescreen_count = 0
         for pp in PipelineProperty.objects.filter(
@@ -2349,6 +2375,7 @@ def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
         "pipeline/screening_settings.html",
         {
             "criteria": criteria,
+            "versions": criteria.versions.all()[:5],
             "US_STATES": US_STATES,
             "property_type_choices": [
                 "single-family",
