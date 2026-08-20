@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 from decimal import Decimal
+from functools import wraps
 from typing import Any, Dict
 
 import requests
@@ -15,6 +17,8 @@ from django.utils import timezone
 from core.models import ForeclosureProperty
 
 logger = logging.getLogger(__name__)
+
+CIRCUIT_BREAKER_THRESHOLD = 3
 
 
 class DataSourceHealthMonitor:
@@ -29,6 +33,58 @@ class DataSourceHealthMonitor:
     def __init__(self):
         """Initialize health monitor."""
         self.sources = ["attom", "hud"]
+
+    def check_circuit(self, source_name: str) -> bool:
+        """Check if source circuit is open (should skip)."""
+        from core.models import DataSourceHealth
+
+        health, _ = DataSourceHealth.objects.get_or_create(source_name=source_name)
+        if health.consecutive_errors >= CIRCUIT_BREAKER_THRESHOLD:
+            logger.warning(
+                "Circuit open for %s (%d consecutive errors)",
+                source_name,
+                health.consecutive_errors,
+            )
+            return True
+        return False
+
+    def record_success(self, source_name: str, record_count: int = 0) -> None:
+        """Record successful source run."""
+        from core.models import DataSourceHealth
+
+        health, _ = DataSourceHealth.objects.get_or_create(source_name=source_name)
+        health.consecutive_errors = 0
+        health.status = "ok"
+        health.last_run = timezone.now()
+        health.record_count = record_count
+        health.error_message = ""
+        health.save(
+            update_fields=[
+                "consecutive_errors",
+                "status",
+                "last_run",
+                "record_count",
+                "error_message",
+            ]
+        )
+
+    def record_failure(self, source_name: str, error: Exception) -> None:
+        """Record failed source run and increment circuit counter."""
+        from core.models import DataSourceHealth
+
+        health, _ = DataSourceHealth.objects.get_or_create(source_name=source_name)
+        health.consecutive_errors += 1
+        health.status = "error"
+        health.last_run = timezone.now()
+        health.error_message = str(error)[:500]
+        health.save(
+            update_fields=[
+                "consecutive_errors",
+                "status",
+                "last_run",
+                "error_message",
+            ]
+        )
 
     async def check_all_sources(self) -> Dict[str, Any]:
         """
@@ -452,3 +508,37 @@ class DataSourceHealthMonitor:
             dashboard_data["sources"][source] = source_data
 
         return dashboard_data
+
+
+def retry_with_backoff(
+    max_retries: int = 1, base_delay: float = 2.0, timeout: float = 30.0
+):
+    """Decorator: retry on failure with exponential backoff."""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exc: Exception | None = None
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt < max_retries:
+                        delay = base_delay * (2**attempt)
+                        logger.warning(
+                            "Retry %d/%d for %s after %.1fs: %s",
+                            attempt + 1,
+                            max_retries,
+                            func.__name__,
+                            delay,
+                            exc,
+                        )
+                        time.sleep(delay)
+            if last_exc is not None:
+                raise last_exc
+            return None
+
+        return wrapper
+
+    return decorator
