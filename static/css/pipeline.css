@@ -758,3 +758,60 @@
   padding: var(--sp-4);
   font-size: var(--text-lg);
 }
+
+/* ── Kanban Card Action Dropdown ─────────────────────────────────── */
+
+.kanban-card { position: relative; }
+
+.kanban-card-actions {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+}
+
+.kanban-action-trigger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-lg);
+  color: var(--color-neutral-500);
+  padding: 0 var(--sp-1);
+  line-height: 1;
+  border-radius: var(--radius-sm);
+}
+
+.kanban-action-trigger:hover {
+  background: var(--surface-secondary);
+  color: var(--color-neutral-900);
+}
+
+.kanban-action-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--surface-primary);
+  border: var(--border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 50;
+  padding: var(--sp-1) 0;
+}
+
+.kanban-action-menu:not([hidden]) { display: block; }
+
+.kanban-action-item {
+  display: block;
+  width: 100%;
+  padding: var(--sp-1) var(--sp-3);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-900);
+}
+
+.kanban-action-item:hover {
+  background: var(--surface-secondary);
+}

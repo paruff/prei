@@ -89,8 +89,28 @@ urlpatterns = [
     path("pipeline/<int:pk>/", views.pipeline_detail, name="pipeline_detail"),
     path(
         "pipeline/<int:pk>/advance/",
+        views.pipeline_advance,
+        name="pipeline_advance",
+    ),
+    path(
+        "pipeline/<int:pk>/advance-stage/",
         views.pipeline_advance_stage,
         name="pipeline_advance_stage",
+    ),
+    path(
+        "pipeline/<int:pk>/kill/",
+        views.pipeline_kill,
+        name="pipeline_kill",
+    ),
+    path(
+        "pipeline/<int:pk>/hold/",
+        views.pipeline_hold,
+        name="pipeline_hold",
+    ),
+    path(
+        "pipeline/<int:pk>/reactivate/",
+        views.pipeline_reactivate,
+        name="pipeline_reactivate",
     ),
     path(
         "pipeline/add-from-source/",

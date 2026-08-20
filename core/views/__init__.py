@@ -1716,6 +1716,79 @@ def pipeline_advance_stage(request: HttpRequest, pk: int) -> HttpResponse:
     return redirect("pipeline_review_queue")
 
 
+@login_required
+def pipeline_advance(request: HttpRequest, pk: int) -> HttpResponse:
+    """Advance to next sequential stage via POST."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    from core.models import PipelineProperty
+    from core.services.pipeline import advance_stage
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    try:
+        advance_stage(prop)
+        return JsonResponse({"status": "ok", "stage": prop.stage})
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+
+@login_required
+def pipeline_kill(request: HttpRequest, pk: int) -> HttpResponse:
+    """Kill a pipeline property — set status=KILLED."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    from core.models import PipelineProperty
+    from core.services.pipeline import kill_property
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    reason = request.POST.get("reason", "No reason provided")
+    kill_property(prop, reason)
+    return JsonResponse({"status": "ok"})
+
+
+@login_required
+def pipeline_hold(request: HttpRequest, pk: int) -> HttpResponse:
+    """Place a pipeline property on hold — set status=ON_HOLD."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    from core.models import PipelineProperty
+    from core.services.pipeline import hold_property
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    reason = request.POST.get("reason", "")
+    hold_property(prop, reason)
+    return JsonResponse({"status": "ok"})
+
+
+@login_required
+def pipeline_reactivate(request: HttpRequest, pk: int) -> HttpResponse:
+    """Reactivate a KILLED or ON_HOLD property."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    from core.models import PipelineProperty
+    from core.services.pipeline import reactivate_property
+
+    try:
+        prop = PipelineProperty.objects.get(pk=pk, user=request.user)
+    except PipelineProperty.DoesNotExist:
+        raise Http404
+
+    reactivate_property(prop)
+    return JsonResponse({"status": "ok"})
+
+
 def pipeline_detail(request: HttpRequest, pk: int) -> HttpResponse:
     """Pipeline property detail view.
 

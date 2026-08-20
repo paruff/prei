@@ -4,6 +4,12 @@ import os
 from decimal import Decimal
 from pathlib import Path
 
+# Playwright sync API (used by tests/e2e/) starts an asyncio event loop;
+# Django 6 blocks sync DB ops when it detects one. This is safe because
+# Playwright drives the browser in its own thread and all DB writes happen
+# on the pytest main thread.
+os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "1")
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone

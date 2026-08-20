@@ -27,7 +27,16 @@
       <div class="kanban-card"
            draggable="true"
            data-id="{{ pp.pk }}"
-           data-stage="{{ pp.stage }}">
+           data-stage="{{ pp.stage }}"
+           data-status="{{ pp.status }}">
+        <div class="kanban-card-actions">
+          <button class="kanban-action-trigger" aria-label="Actions" type="button">⋮</button>
+          <div class="kanban-action-menu" role="menu" hidden>
+            <button class="kanban-action-item" data-action="kill" role="menuitem" type="button">Kill</button>
+            <button class="kanban-action-item" data-action="hold" role="menuitem" type="button">Hold</button>
+            <button class="kanban-action-item" data-action="reactivate" role="menuitem" type="button" hidden>Reactivate</button>
+          </div>
+        </div>
         <div class="kanban-card-address">
           <a href="{% url 'pipeline_detail' pk=pp.pk %}">{{ pp.address|truncatechars:35 }}</a>
         </div>
@@ -192,6 +201,81 @@
       if (chip) chip.textContent = count;
     });
   }
+
+  // ── Card Action Dropdown ───────────────────────────────────────────
+  // Toggle dropdown on trigger click; close on outside click.
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.kanban-action-trigger')) {
+      var menu = e.target.closest('.kanban-card-actions').querySelector('.kanban-action-menu');
+      document.querySelectorAll('.kanban-action-menu:not([hidden])').forEach(function(m) {
+        if (m !== menu) m.hidden = true;
+      });
+      menu.hidden = !menu.hidden;
+      e.stopPropagation();
+    } else if (!e.target.closest('.kanban-action-menu')) {
+      document.querySelectorAll('.kanban-action-menu:not([hidden])').forEach(function(m) {
+        m.hidden = true;
+      });
+    }
+  });
+
+  // Show/hide Reactivate based on card status.
+  document.querySelectorAll('.kanban-card').forEach(function(card) {
+    var status = card.dataset.status;
+    var reactivateBtn = card.querySelector('[data-action="reactivate"]');
+    if (reactivateBtn) {
+      reactivateBtn.hidden = (status !== 'KILLED' && status !== 'ON_HOLD');
+    }
+  });
+
+  // Action item click handler — calls REST endpoint via fetch.
+  document.addEventListener('click', function(e) {
+    var item = e.target.closest('.kanban-action-item');
+    if (!item) return;
+
+    var card = item.closest('.kanban-card');
+    var propertyId = card.dataset.id;
+    var action = item.dataset.action;
+
+    // Close the dropdown.
+    item.closest('.kanban-action-menu').hidden = true;
+
+    // Confirm destructive actions.
+    if (action === 'kill' && !confirm('Kill this property? This cannot be undone from the board.')) return;
+    if (action === 'hold' && !confirm('Place this property on hold?')) return;
+
+    var reason = '';
+    if (action === 'kill') {
+      reason = prompt('Reason for killing (optional):') || '';
+    } else if (action === 'hold') {
+      reason = prompt('Hold reason (optional):') || '';
+    }
+
+    var formData = new FormData();
+    if (reason) formData.append('reason', reason);
+
+    fetch('/pipeline/' + propertyId + '/' + action + '/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': '{{ csrf_token }}'},
+      body: formData
+    }).then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.status === 'ok') {
+          if (action === 'reactivate') {
+            window.location.reload();
+          } else {
+            // Fade out and remove card.
+            card.style.transition = 'opacity 0.2s, transform 0.2s';
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(20px)';
+            setTimeout(function() { card.remove(); updateCounts(); }, 200);
+          }
+        } else {
+          alert('Error: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(function() { alert('Network error'); });
+  });
 })();
 
 // ── Discovery Modal ─────────────────────────────────────────────────
