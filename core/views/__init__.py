@@ -354,7 +354,12 @@ def refresh_all_sources(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def health_json(request: HttpRequest) -> HttpResponse:
-    """Return data source health as JSON for polling."""
+    """Return data source health as JSON for polling.
+
+    Note: Health data is global (not user-scoped) because data sources
+    are shared across all users. The system_status page shows the same
+    data to all authenticated users.
+    """
     from core.models import DataSourceHealth
 
     health = list(
@@ -2395,35 +2400,32 @@ def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def screening_preview(request: HttpRequest) -> HttpResponse:
-    """Preview how many properties pass current criteria without saving."""
+    """Preview how many properties pass current criteria without saving.
+
+    Uses the actual screen_property function for accuracy.
+    """
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
     from core.models import PipelineProperty, ScreeningCriteria
+    from core.services.pipeline import get_source_record
+    from core.services.screening import screen_property
 
     criteria, _ = ScreeningCriteria.objects.get_or_create(user=request.user)
-    qs = PipelineProperty.objects.filter(
+    properties = PipelineProperty.objects.filter(
         user=request.user,
         stage__in=["DISCOVERED", "SCREENING"],
     )
 
-    total = qs.count()
+    total = properties.count()
+    passed = 0
 
-    # Apply the same filtering logic as pipeline_screening_settings POST
-    if criteria.min_price:
-        qs = qs.filter(price__gte=criteria.min_price)
-    if criteria.max_price:
-        qs = qs.filter(price__lte=criteria.max_price)
-    if criteria.min_gross_yield_pct:
-        qs = qs.filter(gross_yield_pct__gte=criteria.min_gross_yield_pct)
-    if criteria.max_price_to_rent_ratio:
-        qs = qs.filter(price_to_rent_ratio__lte=criteria.max_price_to_rent_ratio)
-    if criteria.min_beds:
-        qs = qs.filter(beds__gte=criteria.min_beds)
-    if criteria.max_beds:
-        qs = qs.filter(beds__lte=criteria.max_beds)
+    for pp in properties:
+        source_record = get_source_record(pp)
+        result = screen_property(pp, criteria, source_record=source_record)
+        if result.passed:
+            passed += 1
 
-    passed = qs.count()
     killed = total - passed
 
     return JsonResponse({"total": total, "passed": passed, "killed": killed})

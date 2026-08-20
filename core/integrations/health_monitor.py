@@ -510,9 +510,7 @@ class DataSourceHealthMonitor:
         return dashboard_data
 
 
-def retry_with_backoff(
-    max_retries: int = 1, base_delay: float = 2.0, timeout: float = 30.0
-):
+def retry_with_backoff(max_retries: int = 1, base_delay: float = 2.0):
     """Decorator: retry on failure with exponential backoff."""
 
     def decorator(func):
