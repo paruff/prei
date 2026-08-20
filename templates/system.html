@@ -91,7 +91,7 @@
 <div class="card mt-5">
   <h2 class="card-title">Data Operations</h2>
   <div class="form-actions form-actions--wrap">
-    <form method="post" class="form-inline" id="refresh-all-form">
+    <form method="post" class="form-inline" id="refresh-all-form" action="{% url 'refresh_all_sources' %}">
       {% csrf_token %}
       <input type="hidden" name="action" value="refresh_all">
       <button class="btn btn-primary" id="refresh-all-btn" type="submit">
