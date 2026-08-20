@@ -88,7 +88,7 @@ def test_discovery_post_renders_per_property_results(
     from core.models import PipelineProperty
 
     pp = PipelineProperty.objects.get(user=user, growth_area=growth_area)
-    advance_url = f"/pipeline/{pp.pk}/advance/"
+    advance_url = f"/pipeline/{pp.pk}/advance-stage/"
 
     if pp.screening_passed:
         assert "Continue to Underwriting" in html
