@@ -112,6 +112,8 @@
 
   {# ── Save ──────────────────────────────────────────────────────── #}
   <div class="form-actions">
+    <button type="button" class="btn" id="preview-impact-btn">Preview Impact</button>
+    <span id="preview-result" class="help-text"></span>
     <button type="submit" class="btn btn-primary">Save &amp; Re-Screen</button>
     <a href="{% url 'pipeline_list' %}" class="btn">Cancel</a>
   </div>
@@ -136,5 +138,24 @@
     }
     label.textContent = display;
   }
+
+  document.getElementById('preview-impact-btn').addEventListener('click', function() {
+    var form = document.getElementById('screening-form');
+    var formData = new FormData(form);
+
+    fetch('/pipeline/screening/preview/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': formData.get('csrfmiddlewaretoken')},
+      body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('preview-result').textContent =
+        data.passed + ' of ' + data.total + ' properties would pass (' + data.killed + ' killed)';
+    })
+    .catch(function() {
+      document.getElementById('preview-result').textContent = 'Error previewing impact';
+    });
+  });
 </script>
 {% endblock %}

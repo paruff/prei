@@ -2367,6 +2367,42 @@ def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def screening_preview(request: HttpRequest) -> HttpResponse:
+    """Preview how many properties pass current criteria without saving."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    from core.models import PipelineProperty, ScreeningCriteria
+
+    criteria, _ = ScreeningCriteria.objects.get_or_create(user=request.user)
+    qs = PipelineProperty.objects.filter(
+        user=request.user,
+        stage__in=["DISCOVERED", "SCREENING"],
+    )
+
+    total = qs.count()
+
+    # Apply the same filtering logic as pipeline_screening_settings POST
+    if criteria.min_price:
+        qs = qs.filter(price__gte=criteria.min_price)
+    if criteria.max_price:
+        qs = qs.filter(price__lte=criteria.max_price)
+    if criteria.min_gross_yield_pct:
+        qs = qs.filter(gross_yield_pct__gte=criteria.min_gross_yield_pct)
+    if criteria.max_price_to_rent_ratio:
+        qs = qs.filter(price_to_rent_ratio__lte=criteria.max_price_to_rent_ratio)
+    if criteria.min_beds:
+        qs = qs.filter(beds__gte=criteria.min_beds)
+    if criteria.max_beds:
+        qs = qs.filter(beds__lte=criteria.max_beds)
+
+    passed = qs.count()
+    killed = total - passed
+
+    return JsonResponse({"total": total, "passed": passed, "killed": killed})
+
+
+@login_required
 def pipeline_offer_create(request: HttpRequest, pk: int) -> HttpResponse:
     """Create or list offers for a pipeline property."""
     from core.models import OfferRecord, PipelineProperty

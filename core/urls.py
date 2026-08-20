@@ -135,6 +135,11 @@ urlpatterns = [
         name="pipeline_screening_settings",
     ),
     path(
+        "pipeline/screening/preview/",
+        views.screening_preview,
+        name="screening_preview",
+    ),
+    path(
         "pipeline/<int:pk>/offer/",
         views.pipeline_offer_create,
         name="pipeline_offer_create",
