@@ -1,0 +1,22 @@
+{% load humanize %}
+{% for pp in properties %}
+<tr>
+  <td><a href="{% url 'pipeline_detail' pk=pp.pk %}">{{ pp.address|truncatechars:40 }}</a></td>
+  <td>{{ pp.city }}, {{ pp.state }}</td>
+  <td>${{ pp.price|intcomma }}</td>
+  <td>{{ pp.gross_yield_pct|default:"—" }}%</td>
+  <td>{{ pp.price_to_rent_ratio|default:"—" }}</td>
+  <td>{{ pp.beds }}</td>
+  <td>
+    {% if pp.screening_passed %}
+      <span class="chip chip-success">✓ Passed</span>
+    {% elif pp.screening_passed == False %}
+      <span class="chip chip-danger">✗ Failed</span>
+    {% else %}
+      <span class="chip chip-default">Unscreened</span>
+    {% endif %}
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="7">No properties match the current filters.</td></tr>
+{% endfor %}

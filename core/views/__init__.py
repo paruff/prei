@@ -2216,6 +2216,47 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def screener_filter(request: HttpRequest) -> HttpResponse:
+    """Filter screener results via AJAX. Returns HTML fragment."""
+    from core.models import PipelineProperty
+
+    qs = PipelineProperty.objects.filter(
+        user=request.user,
+        stage__in=["DISCOVERED", "SCREENING"],
+    )
+
+    # Apply filters from query params
+    min_price = request.GET.get("min_price")
+    max_price = request.GET.get("max_price")
+    min_yield = request.GET.get("min_yield")
+    max_ptr = request.GET.get("max_ptr")
+    min_beds = request.GET.get("min_beds")
+    state = request.GET.get("state")
+    prop_type = request.GET.get("prop_type")
+
+    if min_price:
+        qs = qs.filter(price__gte=Decimal(min_price))
+    if max_price:
+        qs = qs.filter(price__lte=Decimal(max_price))
+    if min_yield:
+        qs = qs.filter(gross_yield_pct__gte=Decimal(min_yield))
+    if max_ptr:
+        qs = qs.filter(price_to_rent_ratio__lte=Decimal(max_ptr))
+    if min_beds:
+        qs = qs.filter(beds__gte=int(min_beds))
+    if state:
+        qs = qs.filter(state=state)
+    if prop_type:
+        qs = qs.filter(property_type=prop_type)
+
+    return render(
+        request,
+        "pipeline/screener_results_fragment.html",
+        {"properties": qs[:50]},
+    )
+
+
+@login_required
 def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
     """View and edit the user's pipeline screening criteria.
 
