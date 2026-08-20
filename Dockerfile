@@ -55,11 +55,10 @@ ARG BUILD_DATE
 ARG BRANCH
 COPY --from=deps /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python${PYTHON_VERSION}
 COPY --from=deps /usr/local/bin /usr/local/bin
-# Re-upgrade pip, setuptools, and wheel so the base image's stale dist-info is replaced.
-# setuptools 79.x vendors jaraco.context 5.3.0 (CVE-2026-23949) and wheel 0.45.1
-# (CVE-2026-24049); upgrading brings the patched vendored versions.
-# wheel 0.45.1 (standalone) also carries CVE-2026-24049; upgrade to 0.46.2+.
-RUN pip install --upgrade pip==26.1.2 setuptools==83.0.0 wheel==0.46.2
+# Upgrade setuptools and wheel for CVE patches (setuptools 83.0.0 vendors
+# jaraco.context 5.3.0 for CVE-2026-23949; wheel 0.46.2+ for CVE-2026-24049).
+# Don't pin pip — the base image ships 26.2.1+ and downgrading breaks imports.
+RUN pip install --upgrade setuptools==83.0.0 wheel==0.46.2
 COPY . .
 
 # Bake version into files so the runtime can read them without a .git dir
