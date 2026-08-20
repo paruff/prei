@@ -43,7 +43,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip==26.1.2 setuptools==83.0.0 wheel==0.46.2 && \
+    pip install --upgrade setuptools==83.0.0 wheel==0.46.2 && \
     pip install -r requirements.txt
 
 # ── final image ──────────────────────────────────────────────────────────
