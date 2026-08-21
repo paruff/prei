@@ -9,9 +9,12 @@ with special handling for VrmProperty (has rent data) vs other source types
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 # ── Pure screening evaluator (ported from prei.pipeline.handlers.screening) ──
 
@@ -394,6 +397,7 @@ def _eval_gross_yield(
     pipeline_property: PipelineProperty,
     criteria: ScreeningCriteria,
     source_record: Any | None,
+    cache_rent: bool = True,
 ) -> tuple[Decimal, Optional[str], Optional[str]]:
     """Evaluate gross yield soft criterion.
 
@@ -408,7 +412,7 @@ def _eval_gross_yield(
         return Decimal("0"), "Gross yield screening skipped — no minimum set", None
 
     # Determine if we have rent data
-    monthly_rent = _get_monthly_rent(pipeline_property, source_record)
+    monthly_rent = _get_monthly_rent(pipeline_property, source_record, cache_rent)
 
     if monthly_rent is None or monthly_rent <= 0:
         return (
@@ -452,6 +456,7 @@ def _eval_price_to_rent_ratio(
     pipeline_property: PipelineProperty,
     criteria: ScreeningCriteria,
     source_record: Any | None,
+    cache_rent: bool = True,
 ) -> tuple[Decimal, Optional[str], Optional[str]]:
     """Evaluate price-to-rent ratio soft criterion.
 
@@ -467,7 +472,7 @@ def _eval_price_to_rent_ratio(
             None,
         )
 
-    monthly_rent = _get_monthly_rent(pipeline_property, source_record)
+    monthly_rent = _get_monthly_rent(pipeline_property, source_record, cache_rent)
 
     if monthly_rent is None or monthly_rent <= 0:
         return (
@@ -510,9 +515,25 @@ def _eval_price_to_rent_ratio(
     )
 
 
+def _cache_rent(pipeline_property: Any, rent: Decimal, cache_rent: bool) -> Decimal:
+    """Set estimated_rent on pipeline_property and persist it if possible.
+
+    The DB write is skipped when cache_rent is False (e.g. screening_preview's
+    documented "without saving" contract) or when pipeline_property has no
+    `pk` (e.g. a _PipelineView adapted from a HUD/USDA source, which is never
+    a persisted PipelineProperty).
+    """
+    pipeline_property.estimated_rent = rent
+    pk = getattr(pipeline_property, "pk", None)
+    if cache_rent and pk:
+        PipelineProperty.objects.filter(pk=pk).update(estimated_rent=rent)
+    return rent
+
+
 def _get_monthly_rent(
     pipeline_property: PipelineProperty,
     source_record: Any | None,
+    cache_rent: bool = True,
 ) -> Decimal | None:
     """Get monthly rent from source_record, PipelineProperty, or market APIs.
 
@@ -521,6 +542,11 @@ def _get_monthly_rent(
 
     The fallback chain tries real rent data first (Rentometer), then falls
     back to HUD FMR when Rentometer is unavailable.
+
+    Args:
+        cache_rent: When False, a fetched rent is still returned but not
+            persisted to the DB — used by screening_preview(), which promises
+            not to save anything.
     """
     # 1. Prefer source_record (VRM has actual rent data)
     if (
@@ -559,14 +585,11 @@ def _get_monthly_rent(
                 bedrooms=int(bedrooms) if bedrooms else 2,
             )
             if rent is not None and rent > 0:
-                # Cache on pipeline_property for future calls
-                pipeline_property.estimated_rent = rent
-                PipelineProperty.objects.filter(pk=pipeline_property.pk).update(
-                    estimated_rent=rent
-                )
-                return rent
+                return _cache_rent(pipeline_property, rent, cache_rent)
         except Exception:
-            pass
+            logger.warning(
+                "Rentometer lookup failed for zip=%s", zip_code, exc_info=True
+            )
 
     # 4. Fallback: HUD Fair Market Rent
     if zip_code:
@@ -579,14 +602,9 @@ def _get_monthly_rent(
                 zip_code=zip_code, bedrooms=int(bedrooms) if bedrooms else 2
             )
             if rent is not None and rent > 0:
-                # Cache on pipeline_property for future calls
-                pipeline_property.estimated_rent = rent
-                PipelineProperty.objects.filter(pk=pipeline_property.pk).update(
-                    estimated_rent=rent
-                )
-                return rent
+                return _cache_rent(pipeline_property, rent, cache_rent)
         except Exception:
-            pass
+            logger.warning("HUD FMR lookup failed for zip=%s", zip_code, exc_info=True)
 
     return None
 
@@ -605,7 +623,10 @@ def _extract_zip(source_record: Any | None, pipeline_property: Any) -> str | Non
     if pipeline_property.address:
         import re
 
-        m = re.search(r"\b(\d{5})\b", pipeline_property.address)
+        # Anchor to the end (optionally with a ZIP+4 suffix) so a 5-digit
+        # street number earlier in the address isn't mistaken for the ZIP,
+        # e.g. "12345 Main St, Austin, TX 78701" must match 78701, not 12345.
+        m = re.search(r"(\d{5})(?:-\d{4})?\s*$", pipeline_property.address.strip())
         if m:
             return m.group(1)
 
@@ -739,10 +760,16 @@ def _adapt_source_to_pipeline(
     """
 
     class _PipelineView:
+        # No `pk` — this is never a persisted PipelineProperty, so callers
+        # must not assume `.pk` exists (see cache_rent guard in
+        # _get_monthly_rent).
         price: Decimal | None = None
         estimated_rent: Decimal | None = None
         beds: int | None = None
         year_built: int | None = None
+        address: str | None = None
+        city: str | None = None
+        state: str | None = None
 
     view = _PipelineView()
 
@@ -754,6 +781,12 @@ def _adapt_source_to_pipeline(
     if hasattr(source, "bedrooms") and source.bedrooms is not None:
         view.beds = int(source.bedrooms)
 
+    # Address/city/state so Rentometer's address-based lookup (step 3 of
+    # _get_monthly_rent) also runs for HUD/USDA sources, not just VRM.
+    view.address = getattr(source, "address", None)
+    view.city = getattr(source, "city", None)
+    view.state = getattr(source, "state", None)
+
     return view
 
 
@@ -762,6 +795,7 @@ def screen_property(
     criteria: ScreeningCriteria,
     source_record: Any | None = None,
     growth_area: Any | None = None,
+    cache_rent: bool = True,
 ) -> ScreeningResult:
     """Evaluate a PipelineProperty against ScreeningCriteria.
 
@@ -793,6 +827,9 @@ def screen_property(
                            UsdaProperty) being evaluated.
         criteria:          ScreeningCriteria with user's thresholds.
         source_record:     Optional source model instance for additional data.
+        cache_rent:        When False, a Rentometer/HUD FMR rent lookup is
+                           still used for scoring but not persisted to the
+                           DB — pass False from preview/dry-run callers.
 
     Returns:
         ScreeningResult with pass/fail, final score, and diagnostic lists.
@@ -905,7 +942,7 @@ def screen_property(
 
     # 6. Gross yield
     ded, pass_msg, fail_msg = _eval_gross_yield(
-        pipeline_property, criteria, source_record
+        pipeline_property, criteria, source_record, cache_rent
     )
     score -= ded
     if pass_msg:
@@ -915,7 +952,7 @@ def screen_property(
 
     # 7. Price-to-rent ratio
     ded, pass_msg, fail_msg = _eval_price_to_rent_ratio(
-        pipeline_property, criteria, source_record
+        pipeline_property, criteria, source_record, cache_rent
     )
     score -= ded
     if pass_msg:

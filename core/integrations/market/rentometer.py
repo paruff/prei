@@ -9,12 +9,14 @@ Rate limit: 1,000 calls/month on basic plan — cache aggressively (7 days).
 
 from __future__ import annotations
 
+import hashlib
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any, cast
 
 import requests
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +41,28 @@ class RentometerClient:
     def _get(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
         """Make a GET request to the Rentometer API."""
         url = f"{RENTO_METER_API_BASE}/{path.lstrip('/')}"
-        resp = requests.get(
-            url, headers=self._headers(), params=params, timeout=REQUEST_TIMEOUT
-        )
-        if resp.status_code == 401:
-            raise RentometerError("Rentometer API key is missing or invalid")
-        if resp.status_code == 404:
-            raise RentometerError(f"No data found: {path}")
-        resp.raise_for_status()
-        data = resp.json()
+        try:
+            resp = requests.get(
+                url, headers=self._headers(), params=params, timeout=REQUEST_TIMEOUT
+            )
+            if resp.status_code == 401:
+                raise RentometerError("Rentometer API key is missing or invalid")
+            if resp.status_code == 404:
+                raise RentometerError(f"No data found: {path}")
+            resp.raise_for_status()
+            data = resp.json()
+        except RentometerError:
+            raise
+        except requests.RequestException as exc:
+            # Timeouts, connection errors, and other non-2xx status codes
+            # (e.g. 429 rate-limit, 5xx) all funnel through RentometerError
+            # so every caller's single `except RentometerError` catches and
+            # logs them, instead of a raw requests exception escaping
+            # uncaught.
+            raise RentometerError(f"Rentometer request failed: {exc}") from exc
+        except ValueError as exc:
+            # resp.json() raises a ValueError subclass on malformed JSON.
+            raise RentometerError(f"Rentometer returned invalid JSON: {exc}") from exc
         return cast(dict[str, Any], data)
 
     def get_rent_by_address(
@@ -91,18 +106,28 @@ def _parse_rent(value: Any) -> Decimal | None:
     if value is None or value == "":
         return None
     try:
-        val = float(value)
-        if val <= 0:
-            return None
-        return Decimal(str(round(val, 2)))
-    except ValueError, TypeError:
+        dec = Decimal(str(value)).quantize(Decimal("0.01"))
+    except InvalidOperation, ValueError, TypeError:
         return None
+    if dec <= 0:
+        return None
+    return dec
 
 
-# ── In-memory cache (simple TTL cache for 7-day window) ──────────────────
+# ── Cache (Django's cache framework — same pattern as walkscore.py) ──────
 
-_rent_cache: dict[str, tuple[float, dict[str, Any] | None]] = {}
 _CACHE_TTL_SECONDS = CACHE_TTL_DAYS * 86400
+
+
+def _cache_key(
+    address: str | None,
+    city: str | None,
+    state: str | None,
+    zip_code: str | None,
+    bedrooms: int,
+) -> str:
+    raw = f"{address or ''}|{city or ''}|{state or ''}|{zip_code or ''}|{bedrooms}"
+    return f"rentometer_{hashlib.md5(raw.encode()).hexdigest()}"
 
 
 def get_rent_estimate(
@@ -121,40 +146,33 @@ def get_rent_estimate(
         address: Street address (improves accuracy).
         city: City name.
         state: 2-letter state code.
-        bedrooms: Number of bedrooms (used for future bed-specific lookups).
+        bedrooms: Number of bedrooms. Used today only to differentiate cache
+            entries (not yet passed to the Rentometer API call itself).
 
     Returns:
         Monthly median rent as Decimal, or None if unavailable.
     """
-    import time
-
     client = RentometerClient()
     if not client.api_key:
         logger.debug("RENTO_METER_API_KEY not configured — skipping Rentometer")
         return None
 
-    # Build cache key from inputs
-    cache_key = (
-        f"{address or ''}|{city or ''}|{state or ''}|{zip_code or ''}|{bedrooms}"
-    )
+    cache_key = _cache_key(address, city, state, zip_code, bedrooms)
 
-    # Check cache
-    if cache_key in _rent_cache:
-        ts, cached = _rent_cache[cache_key]
-        if time.time() - ts < _CACHE_TTL_SECONDS:
-            if cached and cached.get("median_rent"):
-                return cast(Decimal, cached["median_rent"])
-            return None
+    cached = cache.get(cache_key)
+    if cached is not None:
+        median = cached.get("median_rent") if cached else None
+        return cast(Decimal, median) if median else None
 
     # Make API call
     if not address or not city or not state or not zip_code:
         logger.debug("Incomplete address for Rentometer lookup")
-        _rent_cache[cache_key] = (time.time(), None)
+        cache.set(cache_key, {}, timeout=_CACHE_TTL_SECONDS)
         return None
 
     try:
         result = client.get_rent_by_address(address, city, state, zip_code)
-        _rent_cache[cache_key] = (time.time(), result)
+        cache.set(cache_key, result or {}, timeout=_CACHE_TTL_SECONDS)
         if result and result.get("median_rent"):
             logger.debug(
                 "Rentometer: %s %s, %s %s = $%s",
@@ -167,6 +185,6 @@ def get_rent_estimate(
             return cast(Decimal, result["median_rent"])
     except RentometerError as exc:
         logger.warning("Rentometer lookup failed for %s: %s", zip_code, exc)
+        cache.set(cache_key, {}, timeout=_CACHE_TTL_SECONDS)
 
-    _rent_cache[cache_key] = (time.time(), None)
     return None

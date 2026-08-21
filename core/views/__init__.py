@@ -2422,7 +2422,9 @@ def screening_preview(request: HttpRequest) -> HttpResponse:
 
     for pp in properties:
         source_record = get_source_record(pp)
-        result = screen_property(pp, criteria, source_record=source_record)
+        result = screen_property(
+            pp, criteria, source_record=source_record, cache_rent=False
+        )
         if result.passed:
             passed += 1
 
