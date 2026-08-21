@@ -58,6 +58,7 @@ from investor_app.finance.utils import (
 # Moved from deprecated investor_app.finance.utils:
 from core.services.scoring import score_listing
 from core.services.financing_comparison import compare_scenarios, get_best_scenario
+from core.integrations.market.market_trends import get_market_health_summary
 
 # keep only the models that are actually used
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
@@ -1534,6 +1535,57 @@ def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
             "growth_areas": growth_areas,
         },
     )
+
+
+@login_required
+def market_dashboard(request: HttpRequest) -> HttpResponse:
+    """Market cycle indicators dashboard — shows key market health metrics by metro area."""
+    from core.models.growth import MarketIndicator
+
+    metro_filter = request.GET.get("metro", "").strip()
+
+    metro_qs = (
+        MarketIndicator.objects.values("metro_area").distinct().order_by("metro_area")
+    )
+    if metro_filter:
+        metro_qs = metro_qs.filter(metro_area__icontains=metro_filter)
+
+    market_data = []
+    for metro in metro_qs:
+        metro_name = metro["metro_area"]
+        summary = get_market_health_summary(metro_name)
+        indicators = summary.get("indicators", {})
+
+        market_data.append(
+            {
+                "metro_area": metro_name,
+                "overall_health": summary.get("overall_health", "caution"),
+                "health_counts": summary.get("health_counts", {}),
+                "indicators": indicators,
+            }
+        )
+
+    return render(
+        request,
+        "markets/dashboard.html",
+        {
+            "market_data": market_data,
+            "metro_filter": metro_filter,
+        },
+    )
+
+
+@login_required
+def update_market_indicators(request: HttpRequest) -> HttpResponse:
+    """Update market indicators from external data sources."""
+    from core.integrations.market.market_trends import update_market_indicators
+
+    result = update_market_indicators()
+    messages.success(
+        request,
+        f"Updated {result['created']} new indicators, {result['updated']} updated, {result['errors']} errors",
+    )
+    return redirect("markets_dashboard")
 
 
 @login_required
