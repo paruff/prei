@@ -5,12 +5,24 @@ from __future__ import annotations
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
+import pytest
+import requests
+from django.core.cache import cache
 
 from core.integrations.market.rentometer import (
     RentometerClient,
     RentometerError,
+    _parse_rent,
     get_rent_estimate,
 )
+
+
+@pytest.fixture(autouse=True)
+def _clear_rentometer_cache():
+    """Prevent cross-test pollution — the cache is process-wide, not per-test."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 class TestRentometerClient:
@@ -154,3 +166,68 @@ class TestGetRentEstimate:
             assert (
                 mock_instance.get_rent_by_address.call_count == 1
             )  # No additional API call
+
+
+class TestParseRent:
+    """Edge cases for _parse_rent's Decimal coercion."""
+
+    def test_none_returns_none(self) -> None:
+        assert _parse_rent(None) is None
+
+    def test_empty_string_returns_none(self) -> None:
+        assert _parse_rent("") is None
+
+    def test_non_numeric_returns_none(self) -> None:
+        assert _parse_rent("not-a-number") is None
+
+    def test_negative_returns_none(self) -> None:
+        assert _parse_rent(-500) is None
+
+    def test_zero_returns_none(self) -> None:
+        assert _parse_rent(0) is None
+
+    def test_valid_string_returns_decimal(self) -> None:
+        assert _parse_rent("1850") == Decimal("1850.00")
+
+    def test_valid_float_returns_decimal(self) -> None:
+        assert _parse_rent(1850.5) == Decimal("1850.50")
+
+
+class TestGetErrorClassification:
+    """RentometerClient._get() must funnel every failure through RentometerError."""
+
+    @patch("core.integrations.market.rentometer.requests.get")
+    def test_timeout_raises_rentometer_error(self, mock_get: MagicMock) -> None:
+        mock_get.side_effect = requests.exceptions.Timeout("timed out")
+        client = RentometerClient(api_key="test-key")
+        with pytest.raises(RentometerError):
+            client._get("rent", params={})
+
+    @patch("core.integrations.market.rentometer.requests.get")
+    def test_server_error_raises_rentometer_error(self, mock_get: MagicMock) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            "500 Server Error"
+        )
+        mock_get.return_value = mock_resp
+        client = RentometerClient(api_key="test-key")
+        with pytest.raises(RentometerError):
+            client._get("rent", params={})
+
+    @patch("core.integrations.market.rentometer.requests.get")
+    def test_server_error_caught_by_get_rent_by_address(
+        self, mock_get: MagicMock
+    ) -> None:
+        """A 500 must not escape as a raw requests.HTTPError past the adapter."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            "500 Server Error"
+        )
+        mock_get.return_value = mock_resp
+        client = RentometerClient(api_key="test-key")
+        result = client.get_rent_by_address(
+            address="123 Main St", city="Austin", state="TX", zip_code="78701"
+        )
+        assert result is None
