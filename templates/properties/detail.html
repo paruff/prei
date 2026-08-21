@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load humanize math_filters %}
 {% block title %}{{ property.address }}{% endblock %}
 
 {% block content %}
@@ -58,6 +58,7 @@
 
 <div class="tab-bar" role="tablist">
   <button class="tab-btn is-active" data-tab="summary"    role="tab" aria-selected="true"  aria-controls="tab-summary">Summary</button>
+  <button class="tab-btn"           data-tab="capex"      role="tab" aria-selected="false" aria-controls="tab-capex">CapEx Schedule</button>
   <button class="tab-btn"           data-tab="projection" role="tab" aria-selected="false" aria-controls="tab-projection">10-year projection</button>
 </div>
 
@@ -83,6 +84,67 @@
     </div>
   </div>
   <p class="disclosure">After-tax figures use a simplified 27.5-year straight-line depreciation model and do not apply passive activity loss (PAL) rules or cost segregation. Consult a CPA for your specific tax situation.</p>
+</div>
+
+<div id="tab-capex" class="tab-panel" role="tabpanel" hidden>
+  <h3 class="panel-heading">CapEx Reserve Schedule</h3>
+  {% if property.capex_items.exists %}
+  <div class="table-wrap">
+    <table class="data-table" aria-label="CapEx reserve schedule">
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th class="col-right">Replacement Cost</th>
+          <th class="col-right">Useful Life (yrs)</th>
+          <th class="col-right">Age (yrs)</th>
+          <th class="col-right">Annual Reserve</th>
+          <th class="col-right">Monthly Reserve</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in property.capex_items.all %}
+        <tr {% if item.needs_replacement %}class="capex-needs-replacement"{% endif %}>
+          <td>{{ item.get_component_type_display }}</td>
+          <td class="col-right num">${{ item.replacement_cost|intcomma }}</td>
+          <td class="col-right num">{{ item.useful_life_years }}</td>
+          <td class="col-right num">{{ item.age_years }}</td>
+          <td class="col-right num">${{ item.annual_reserve|floatformat:2|intcomma }}</td>
+          <td class="col-right num">${{ item.monthly_reserve|floatformat:2|intcomma }}</td>
+          <td>
+            {% if item.needs_replacement %}
+              <span class="badge badge-warning">Needs Replacement</span>
+            {% else %}
+              <span class="badge badge-good">{{ item.remaining_life_years }} yrs left</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="capex-total">
+          <td><strong>Total</strong></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td class="col-right num"><strong>${{ property.capex_items.all|sum_attr:"annual_reserve"|floatformat:2|intcomma }}</strong></td>
+          <td class="col-right num"><strong>${{ property.capex_items.all|sum_attr:"monthly_reserve"|floatformat:2|intcomma }}</strong></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <div class="kpi-grid capex-summary">
+    {% if score %}
+      {% with capex_annual=property.capex_items.all|sum_attr:"annual_reserve" %}
+      {% include "components/kpi_card.html" with label="Annual CapEx Reserve" value=capex_annual|floatformat:0|intcomma|add:"$" color_class="num" %}
+      {% endwith %}
+    {% endif %}
+    <a href="{% url 'property_edit' property.pk %}" class="btn btn-secondary">Edit CapEx Items</a>
+  </div>
+  {% else %}
+  <p class="disclosure">No CapEx items configured. Defaults will be created on analysis.</p>
+  {% endif %}
 </div>
 
 <div id="tab-projection" class="tab-panel" role="tabpanel" hidden>

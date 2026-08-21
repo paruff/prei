@@ -41,3 +41,20 @@ def get_item(dictionary, key):
         return dictionary.get(key)
     except AttributeError, TypeError:
         return None
+
+
+@register.filter
+def sum_attr(queryset, attr_name):
+    """Sum a queryset or list of objects by the given attribute name.
+
+    Usage: {{ property.capex_items.all|sum_attr:"annual_reserve" }}
+    """
+    try:
+        total = Decimal("0")
+        for obj in queryset:
+            val = getattr(obj, attr_name, None)
+            if val is not None:
+                total += Decimal(str(val))
+        return total
+    except ValueError, TypeError, InvalidOperation, AttributeError:
+        return Decimal("0")

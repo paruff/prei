@@ -159,6 +159,59 @@ class Transaction(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
 
 
+class CapExItem(models.Model):
+    """CapEx reserve item for major property components (roof, HVAC, etc.)."""
+
+    class ComponentType(models.TextChoices):
+        ROOF = "roof", "Roof"
+        HVAC = "hvac", "HVAC"
+        WATER_HEATER = "water_heater", "Water Heater"
+        APPLIANCES = "appliances", "Appliances"
+        OTHER = "other", "Other"
+
+    prop = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="capex_items"
+    )
+    component_type = models.CharField(
+        max_length=32, choices=ComponentType.choices, default=ComponentType.OTHER
+    )
+    replacement_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    useful_life_years = models.PositiveIntegerField()
+    age_years = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["component_type"]
+        unique_together = ["prop", "component_type"]
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"{self.get_component_type_display()} — ${self.replacement_cost} / {self.useful_life_years}yr"
+
+    @property
+    def annual_reserve(self) -> Decimal:
+        """Annual reserve = replacement_cost / useful_life_years."""
+        return self.replacement_cost / Decimal(self.useful_life_years)
+
+    @property
+    def monthly_reserve(self) -> Decimal:
+        """Monthly reserve = annual_reserve / 12."""
+        return (self.annual_reserve / Decimal("12")).quantize(Decimal("0.01"))
+
+    @property
+    def needs_replacement(self) -> bool:
+        """True if component age exceeds or equals useful life."""
+        return self.age_years >= self.useful_life_years
+
+    @property
+    def remaining_life_years(self) -> int:
+        """Remaining useful life in years (can be negative)."""
+        return self.useful_life_years - self.age_years
+
+
 class InvestmentAnalysis(models.Model):
     property = models.OneToOneField(
         Property, on_delete=models.CASCADE, related_name="analysis"
