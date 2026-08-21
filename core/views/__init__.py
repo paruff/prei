@@ -70,7 +70,6 @@ from core.forms import (
     InvestmentTargetsForm,
 )
 from core.models import (
-    FinancingScenario,
     Listing,
     MarketSnapshot,
     Property,

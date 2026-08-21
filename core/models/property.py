@@ -286,11 +286,10 @@ class FinancingScenario(models.Model):
     def monthly_payment(self) -> Decimal:
         """Monthly mortgage payment (principal + interest)."""
         from investor_app.finance.mortgage import calculate_monthly_mortgage
+
         # mortgage.py expects interest_rate as percentage (e.g., 7.5 for 7.5%)
         rate_pct = self.interest_rate * Decimal(100)
-        return calculate_monthly_mortgage(
-            self.loan_amount, rate_pct, self.term_years
-        )
+        return calculate_monthly_mortgage(self.loan_amount, rate_pct, self.term_years)
 
     @property
     def annual_debt_service(self) -> Decimal:

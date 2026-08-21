@@ -52,21 +52,33 @@ class TestDefaultScenarios:
 
     def test_conventional_defaults(self) -> None:
         """Test conventional: 75% LTV, 7.5%, 30yr."""
-        conv = next(s for s in DEFAULT_SCENARIOS if s["loan_type"] == FinancingScenario.LoanType.CONVENTIONAL)
+        conv = next(
+            s
+            for s in DEFAULT_SCENARIOS
+            if s["loan_type"] == FinancingScenario.LoanType.CONVENTIONAL
+        )
         assert conv["ltv_pct"] == Decimal("0.75")
         assert conv["interest_rate"] == Decimal("0.075")
         assert conv["term_years"] == 30
 
     def test_dscr_defaults(self) -> None:
         """Test DSCR: 80% LTV, 8.5%, 30yr."""
-        dscr = next(s for s in DEFAULT_SCENARIOS if s["loan_type"] == FinancingScenario.LoanType.DSCR)
+        dscr = next(
+            s
+            for s in DEFAULT_SCENARIOS
+            if s["loan_type"] == FinancingScenario.LoanType.DSCR
+        )
         assert dscr["ltv_pct"] == Decimal("0.80")
         assert dscr["interest_rate"] == Decimal("0.085")
         assert dscr["term_years"] == 30
 
     def test_seller_financing_defaults(self) -> None:
         """Test seller financing: 90% LTV, 6%, 15yr."""
-        seller = next(s for s in DEFAULT_SCENARIOS if s["loan_type"] == FinancingScenario.LoanType.SELLER_FINANCING)
+        seller = next(
+            s
+            for s in DEFAULT_SCENARIOS
+            if s["loan_type"] == FinancingScenario.LoanType.SELLER_FINANCING
+        )
         assert seller["ltv_pct"] == Decimal("0.90")
         assert seller["interest_rate"] == Decimal("0.06")
         assert seller["term_years"] == 15
@@ -124,7 +136,9 @@ class TestCalculateScenarioResult:
             assert result.cap_rate >= 0
             assert result.dscr >= 0
             assert result.breakeven_rent >= 0
-            assert result.total_cash_invested == result.down_payment + result.closing_costs
+            assert (
+                result.total_cash_invested == result.down_payment + result.closing_costs
+            )
 
     @pytest.mark.django_db
     def test_dscr_calculation(self, property_obj) -> None:
@@ -133,7 +147,9 @@ class TestCalculateScenarioResult:
         for scenario in scenarios:
             result = calculate_scenario_result(property_obj, scenario)
             if result.annual_debt_service > 0:
-                expected_dscr = (result.noi / result.annual_debt_service).quantize(Decimal("0.0001"))
+                expected_dscr = (result.noi / result.annual_debt_service).quantize(
+                    Decimal("0.0001")
+                )
                 assert abs(result.dscr - expected_dscr) < Decimal("0.0001")
 
     @pytest.mark.django_db
@@ -144,7 +160,9 @@ class TestCalculateScenarioResult:
             result = calculate_scenario_result(property_obj, scenario)
             annual_cash_flow = result.noi - result.annual_debt_service
             if result.total_cash_invested > 0:
-                expected_coc = (annual_cash_flow / result.total_cash_invested).quantize(Decimal("0.0001"))
+                expected_coc = (annual_cash_flow / result.total_cash_invested).quantize(
+                    Decimal("0.0001")
+                )
                 assert abs(result.cash_on_cash - expected_coc) < Decimal("0.0001")
 
     @pytest.mark.django_db

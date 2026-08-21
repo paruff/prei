@@ -9,6 +9,7 @@ from core.models import Property
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
+
     User = AbstractUser
 else:
     User = get_user_model()

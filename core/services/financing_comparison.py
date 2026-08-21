@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import List
+from typing import List, TypedDict
 
 from core.models import Property, FinancingScenario
 from investor_app.finance.utils import noi, dscr, cash_on_cash, cap_rate
@@ -30,9 +30,6 @@ class ScenarioResult:
     monthly_cash_flow: Decimal
     total_cash_invested: Decimal
     closing_costs: Decimal
-
-
-from typing import TypedDict
 
 
 class DefaultScenarioDict(TypedDict):
@@ -166,9 +163,7 @@ def compare_scenarios(property: Property) -> List[ScenarioResult]:
         List of ScenarioResult sorted by loan_type order.
     """
     scenarios = get_or_create_default_scenarios(property)
-    results = [
-        calculate_scenario_result(property, scenario) for scenario in scenarios
-    ]
+    results = [calculate_scenario_result(property, scenario) for scenario in scenarios]
 
     # Sort by loan_type order: conventional, dscr, seller_financing
     order = {
@@ -182,7 +177,9 @@ def compare_scenarios(property: Property) -> List[ScenarioResult]:
     return results
 
 
-def get_best_scenario(results: List[ScenarioResult], metric: str) -> ScenarioResult | None:
+def get_best_scenario(
+    results: List[ScenarioResult], metric: str
+) -> ScenarioResult | None:
     """Get the best scenario by a given metric.
 
     Args:
