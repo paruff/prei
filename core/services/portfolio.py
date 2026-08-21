@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Any, Dict, List
@@ -7,6 +10,7 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 
 from core.models import MonthlyActuals, OperatingExpense, Property, RentalIncome
+from investor_app.finance.mortgage import calculate_monthly_mortgage
 from investor_app.finance.utils import (
     compute_analysis_for_property,
     to_decimal,
@@ -14,6 +18,157 @@ from investor_app.finance.utils import (
 
 MONTHS_PER_YEAR = Decimal("12")
 DAYS_PER_MONTH = Decimal("30")
+
+
+@dataclass(frozen=True)
+class PortfolioCashflow:
+    """Portfolio-level aggregated cash flow metrics."""
+
+    total_gross_rent: Decimal
+    total_vacancy_loss: Decimal
+    total_opex: Decimal
+    total_debt_service: Decimal
+    total_capex_reserve: Decimal
+    net_cash_flow: Decimal
+    blended_dscr: Decimal
+    portfolio_coc: Decimal
+    total_equity: Decimal
+    property_breakdown: List[Dict[str, Any]]
+
+
+def compute_portfolio_cashflow(user) -> PortfolioCashflow:
+    """Compute portfolio-level cash flow aggregation with blended DSCR.
+
+    Args:
+        user: Django User instance.
+
+    Returns:
+        PortfolioCashflow with aggregated metrics across all user properties.
+    """
+    from core.models import Property
+    from investor_app.finance.utils import to_decimal
+
+    properties = Property.objects.filter(user=user).select_related("analysis")
+    if not properties.exists():
+        return PortfolioCashflow(
+            total_gross_rent=Decimal("0"),
+            total_vacancy_loss=Decimal("0"),
+            total_opex=Decimal("0"),
+            total_debt_service=Decimal("0"),
+            total_capex_reserve=Decimal("0"),
+            net_cash_flow=Decimal("0"),
+            blended_dscr=Decimal("0"),
+            portfolio_coc=Decimal("0"),
+            total_equity=Decimal("0"),
+            property_breakdown=[],
+        )
+
+    total_gross_rent = Decimal("0")
+    total_vacancy_loss = Decimal("0")
+    total_opex = Decimal("0")
+    total_debt_service = Decimal("0")
+    total_capex_reserve = Decimal("0")
+    total_equity = Decimal("0")
+    total_noi = Decimal("0")
+    property_breakdown = []
+
+    for prop in properties:
+        # Gross rent (monthly rent only, per acceptance criteria)
+        gross_rent = to_decimal(prop.monthly_rent_gross)
+        total_gross_rent += gross_rent
+
+        # Vacancy loss = gross_rent * vacancy_rate
+        vacancy_loss = gross_rent * prop.vacancy_rate
+        total_vacancy_loss += vacancy_loss
+
+        # Effective gross income (after vacancy)
+        effective_gross_income = gross_rent - vacancy_loss
+
+        # Operating expenses (monthly) - taxes, insurance, HOA, maintenance, capex, mgmt
+        monthly_opex = (
+            to_decimal(prop.property_taxes_annual) / Decimal(12)
+            + to_decimal(prop.insurance_annual) / Decimal(12)
+            + prop.hoa_monthly
+            + prop.maintenance_monthly
+            + prop.capex_monthly
+            + effective_gross_income * prop.mgmt_fee_pct
+        )
+        total_opex += monthly_opex
+
+        # Debt service
+        annual_debt = _get_annual_debt_service(prop)
+        total_debt_service += annual_debt
+
+        # CapEx reserve
+        total_capex_reserve += prop.capex_monthly
+
+        # Equity (down payment + estimated principal paydown)
+        down_payment = prop.purchase_price * (Decimal(1) - prop.down_payment_pct)
+        loan_amount = prop.purchase_price * (Decimal(1) - prop.down_payment_pct)
+        annual_principal_paydown = loan_amount / Decimal(prop.loan_term_years)
+        total_equity += down_payment + annual_principal_paydown
+
+        # NOI
+        noi_annual = (effective_gross_income - monthly_opex) * MONTHS_PER_YEAR
+        total_noi += noi_annual
+
+        # Property breakdown
+        monthly_debt = annual_debt / MONTHS_PER_YEAR
+        monthly_cash_flow = (
+            effective_gross_income - monthly_opex - monthly_debt - prop.capex_monthly
+        )
+        dscr_val = (
+            noi_annual / (annual_debt) if annual_debt > Decimal("0") else Decimal("0")
+        )
+
+        property_breakdown.append(
+            {
+                "property": str(prop),
+                "monthly_cf": monthly_cash_flow.quantize(Decimal("0.01")),
+                "dscr": dscr_val.quantize(Decimal("0.01")),
+                "ltv": (Decimal(1) - prop.down_payment_pct).quantize(Decimal("0.01")),
+            }
+        )
+
+    # Calculate blended DSCR = (total_gross_rent - total_vacancy_loss - total_opex) / total_debt_service
+    blended_dscr = (
+        (total_gross_rent - total_vacancy_loss - total_opex) / total_debt_service
+        if total_debt_service > Decimal("0")
+        else Decimal("0")
+    )
+
+    # Net cash flow (annual) = (gross_rent - vacancy_loss - opex - monthly_debt - capex) * 12
+    net_cash_flow = (
+        total_gross_rent
+        - total_vacancy_loss
+        - total_opex
+        - total_debt_service
+        - total_capex_reserve
+    )
+
+    # Portfolio CoC = net_cash_flow / total_equity
+    portfolio_coc = (
+        (net_cash_flow / total_equity).quantize(Decimal("0.0001"))
+        if total_equity > Decimal("0")
+        else Decimal("0")
+    )
+
+    return PortfolioCashflow(
+        total_gross_rent=total_gross_rent.quantize(Decimal("0.01")),
+        total_vacancy_loss=total_vacancy_loss.quantize(Decimal("0.01")),
+        total_opex=total_opex.quantize(Decimal("0.01")),
+        total_debt_service=total_debt_service.quantize(Decimal("0.01")),
+        total_capex_reserve=total_capex_reserve.quantize(Decimal("0.01")),
+        net_cash_flow=net_cash_flow,
+        blended_dscr=blended_dscr,
+        portfolio_coc=portfolio_coc,
+        total_equity=total_equity.quantize(Decimal("0.01")),
+        property_breakdown=property_breakdown,
+    )
+
+    # ---------------------------------------------------------------------------
+    # Internal helpers
+    # ---------------------------------------------------------------------------
 
 
 def _month_starts(base: date, count: int) -> List[date]:
@@ -359,7 +514,6 @@ def calculate_ytd_cashflow(
 
 def _get_annual_debt_service(property_obj: Property) -> Decimal:
     """Calculate annual debt service for a property."""
-    from investor_app.finance.mortgage import calculate_monthly_mortgage
     from investor_app.finance.utils import to_decimal
 
     loan_amount = to_decimal(property_obj.purchase_price) * (
