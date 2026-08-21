@@ -526,7 +526,9 @@ def _cache_rent(pipeline_property: Any, rent: Decimal, cache_rent: bool) -> Deci
     pipeline_property.estimated_rent = rent
     pk = getattr(pipeline_property, "pk", None)
     if cache_rent and pk:
-        PipelineProperty.objects.filter(pk=pk).update(estimated_rent=rent)
+        from core.models import PipelineProperty as PipelinePropertyModel
+
+        PipelinePropertyModel.objects.filter(pk=pk).update(estimated_rent=rent)
     return rent
 
 
@@ -588,7 +590,9 @@ def _get_monthly_rent(
                 return _cache_rent(pipeline_property, rent, cache_rent)
         except Exception:
             logger.warning(
-                "Rentometer lookup failed for zip=%s", zip_code, exc_info=True
+                "Rentometer lookup failed for pipeline_property pk=%s",
+                getattr(pipeline_property, "pk", None),
+                exc_info=True,
             )
 
     # 4. Fallback: HUD Fair Market Rent
@@ -604,7 +608,11 @@ def _get_monthly_rent(
             if rent is not None and rent > 0:
                 return _cache_rent(pipeline_property, rent, cache_rent)
         except Exception:
-            logger.warning("HUD FMR lookup failed for zip=%s", zip_code, exc_info=True)
+            logger.warning(
+                "HUD FMR lookup failed for pipeline_property pk=%s",
+                getattr(pipeline_property, "pk", None),
+                exc_info=True,
+            )
 
     return None
 

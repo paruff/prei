@@ -127,7 +127,7 @@ def _cache_key(
     bedrooms: int,
 ) -> str:
     raw = f"{address or ''}|{city or ''}|{state or ''}|{zip_code or ''}|{bedrooms}"
-    return f"rentometer_{hashlib.md5(raw.encode()).hexdigest()}"
+    return f"rentometer_{hashlib.sha256(raw.encode()).hexdigest()}"
 
 
 def get_rent_estimate(
