@@ -30,6 +30,11 @@ RUN apt-get update && \
     apt-get remove --purge -y --auto-remove perl libperl* && \
     rm -rf /var/lib/apt/lists/*
 
+# Drop ensurepip's bundled setuptools/pip wheels — unused at runtime (nothing
+# in this image creates a venv) but their frozen versions still trip Trivy
+# (e.g. CVE-2025-47273) even after the site-packages copy is patched below.
+RUN rm -f /usr/local/lib/python3.*/ensurepip/_bundled/*.whl
+
 WORKDIR /app
 
 # ── deps layer (cached unless requirements.txt changes) ───────────────────
@@ -59,6 +64,13 @@ COPY --from=deps /usr/local/bin /usr/local/bin
 # jaraco.context 5.3.0 for CVE-2026-23949; wheel 0.46.2+ for CVE-2026-24049).
 # Don't pin pip — the base image ships 26.2.1+ and downgrading breaks imports.
 RUN pip install --upgrade setuptools==83.0.0 wheel==0.46.2
+# Remove pip itself — unused at runtime (entrypoint.sh only calls manage.py/
+# gunicorn) and its pip/_vendor bundle carries its own frozen msgpack/setuptools
+# copies that Trivy flags (GHSA-6v7p-g79w-8964, CVE-2025-47273) independent of
+# the real site-packages copies patched above.
+RUN rm -rf /usr/local/lib/python3.*/site-packages/pip \
+           /usr/local/lib/python3.*/site-packages/pip-*.dist-info \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.*
 COPY . .
 
 # Bake version into files so the runtime can read them without a .git dir
