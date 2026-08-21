@@ -25,6 +25,18 @@ def pytest_configure(config) -> None:  # noqa: ARG001
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "investor_app.settings_test")
 
 
+@pytest.fixture(autouse=True)
+def _clear_django_cache():
+    """Django's cache (rate limiting, Rentometer/Walk Score/etc.) is process-
+    global — without this, state from one test leaks into the next.
+    """
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
+
+
 def pytest_collection_modifyitems(config, items) -> None:  # noqa: ARG001
     """Auto-assign test-layer markers and quarantine flaky tests.
 

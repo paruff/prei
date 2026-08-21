@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from django.core.cache import cache
 
 from core.integrations.market.rentometer import (
     RentometerClient,
@@ -15,14 +14,6 @@ from core.integrations.market.rentometer import (
     _parse_rent,
     get_rent_estimate,
 )
-
-
-@pytest.fixture(autouse=True)
-def _clear_rentometer_cache():
-    """Prevent cross-test pollution — the cache is process-wide, not per-test."""
-    cache.clear()
-    yield
-    cache.clear()
 
 
 class TestRentometerClient:

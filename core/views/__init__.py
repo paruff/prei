@@ -31,6 +31,7 @@ from django.utils.text import slugify
 from django.views import View
 from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
 
+from core.decorators import is_rate_limited, rate_limit
 from core.integrations.market.census import (
     discover_places_in_state,
     fetch_housing_demand_index,
@@ -158,7 +159,20 @@ def home(request):
 
 
 def health_check(request: HttpRequest) -> JsonResponse:
-    """Return an unauthenticated health payload for platform monitoring."""
+    """Return an unauthenticated health payload for platform monitoring.
+
+    Verifies the database is reachable — Render's healthCheckPath gates
+    deploys on this response, so a DB-down instance must not report healthy.
+    """
+    from django.db import connection
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception:
+        return JsonResponse(
+            {"status": "error", "detail": "database unreachable"}, status=503
+        )
     return JsonResponse({"status": "ok"})
 
 
@@ -2143,6 +2157,12 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
 
     # --- Re-screen if user POSTs "rescreen" action ---
     if request.method == "POST" and request.POST.get("action") == "rescreen":
+        if is_rate_limited(request, "rescreen", limit=5, window_seconds=300):
+            messages.error(
+                request,
+                "Too many re-screens — please wait a few minutes and try again.",
+            )
+            return redirect(request.get_full_path())
         if criteria:
             # Use unfiltered queryset — rescreen ALL user properties,
             # not just the growth-area-filtered subset shown on screen
@@ -2352,23 +2372,33 @@ def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
 
         # Re-screen all ACTIVE pipeline properties at DISCOVERED or SCREENING
         rescreen_count = 0
-        for pp in PipelineProperty.objects.filter(
-            user=request.user,
-            status=PipelineProperty.Status.ACTIVE,
-            stage__in=[
-                PipelineProperty.Stage.DISCOVERED,
-                PipelineProperty.Stage.SCREENING,
-            ],
-        ):
-            source_record = None  # Re-resolve source for accurate screening
-            from core.services.pipeline import get_source_record
+        rescreen_limited = is_rate_limited(
+            request, "rescreen_settings", limit=5, window_seconds=300
+        )
+        if not rescreen_limited:
+            for pp in PipelineProperty.objects.filter(
+                user=request.user,
+                status=PipelineProperty.Status.ACTIVE,
+                stage__in=[
+                    PipelineProperty.Stage.DISCOVERED,
+                    PipelineProperty.Stage.SCREENING,
+                ],
+            ):
+                source_record = None  # Re-resolve source for accurate screening
+                from core.services.pipeline import get_source_record
 
-            source_record = get_source_record(pp)
-            result = screen_property(pp, criteria, source_record=source_record)
-            pp.screening_passed = result.passed
-            pp.save(update_fields=["screening_passed", "updated_at"])
-            rescreen_count += 1
+                source_record = get_source_record(pp)
+                result = screen_property(pp, criteria, source_record=source_record)
+                pp.screening_passed = result.passed
+                pp.save(update_fields=["screening_passed", "updated_at"])
+                rescreen_count += 1
 
+        if rescreen_limited:
+            messages.warning(
+                request,
+                "Screening criteria saved, but re-screening was skipped "
+                "(too many re-screens recently — try again in a few minutes).",
+            )
         messages.success(
             request,
             f"Screening criteria saved. {rescreen_count} property(ies) re-screened.",
@@ -2399,6 +2429,7 @@ def pipeline_screening_settings(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+@rate_limit("screening_preview", limit=10, window_seconds=300)
 def screening_preview(request: HttpRequest) -> HttpResponse:
     """Preview how many properties pass current criteria without saving.
 
