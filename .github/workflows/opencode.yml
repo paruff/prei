@@ -33,19 +33,6 @@ jobs:
           git config --global user.name "opencode-agent[bot]"
           git config --global user.email "opencode-agent[bot]@users.noreply.github.com"
 
-      # Pre-install Terraform/TFLint so opencode never needs to self-install
-      # them mid-session. Same pinned versions as security-and-terraform.yml.
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4
-        with:
-          terraform_version: 1.15.8
-
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a  # v6
-        with:
-          tflint_version: v0.64.0
-          github_token: ${{ github.token }}
-
       # Resolve the model against the LIVE models.dev catalog rather than
       # trusting a hardcoded string. Zen/NVIDIA model IDs have broken us
       # twice this session (wrong provider id on issue #1587's timeout
