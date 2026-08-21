@@ -358,6 +358,9 @@ HUD_FMR_TOKEN: str = env("HUD_FMR_TOKEN", default="")
 ATTOM_API_KEY: str = env(
     "ATTOM_API_KEY", default=""
 )  # ATTOM preforeclosure + property data
+RENTO_METER_API_KEY: str = env(
+    "RENTO_METER_API_KEY", default=""
+)  # Rentometer real rent estimates by address/ZIP
 
 REHAB_COST_PER_SQFT: dict[str, Decimal] = {
     "cosmetic": Decimal(
