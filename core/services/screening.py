@@ -542,9 +542,10 @@ def _get_monthly_rent(
     # 3. Try Rentometer (real rent comps) — best data source
     zip_code = _extract_zip(source_record, pipeline_property)
     bedrooms = pipeline_property.beds
-    address = pipeline_property.address
-    city = pipeline_property.city
-    state = pipeline_property.state
+    # Use getattr for safety — some callers pass _PipelineView proxies
+    address = getattr(pipeline_property, "address", None)
+    city = getattr(pipeline_property, "city", None)
+    state = getattr(pipeline_property, "state", None)
 
     if zip_code and address and city and state:
         try:
