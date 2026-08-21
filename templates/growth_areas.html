@@ -97,6 +97,8 @@
                    class="btn btn-primary">Discover Properties</a>
                 <a href="{% url 'pipeline_screener' %}?growth_area_id={{ ga.pk }}"
                    class="btn">View Screened</a>
+                <a href="{% url 'markets_dashboard' %}?metro={{ ga.metro_area }}"
+                   class="btn">Market Indicators</a>
               </td>
             </tr>
             <tr id="breakdown-{{ forloop.counter0 }}" hidden>

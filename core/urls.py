@@ -23,6 +23,12 @@ urlpatterns = [
         "properties/<int:pk>/export/pdf/", views.export_pdf, name="property_export_pdf"
     ),
     path("properties/<int:pk>/", views.property_detail, name="property_detail"),
+    path("markets/", views.market_dashboard, name="markets_dashboard"),
+    path(
+        "markets/update/",
+        views.update_market_indicators,
+        name="update_market_indicators",
+    ),
     path(
         "properties/<int:pk>/financing/",
         views.financing_comparison,

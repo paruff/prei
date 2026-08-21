@@ -7,6 +7,93 @@ from django.db import models
 User = get_user_model()
 
 
+class MarketIndicatorType(models.TextChoices):
+    """Market cycle indicator types for tracking real estate market health."""
+
+    MEDIAN_PRICE = "median_price", "Median Home Price"
+    DOM = "dom", "Days on Market"
+    MONTHS_SUPPLY = "months_supply", "Months of Supply"
+    PRICE_TO_INCOME = "price_to_income", "Price-to-Income Ratio"
+    RENT_GROWTH_YOY = "rent_growth_yoy", "Rent Growth Year-over-Year"
+
+
+class MarketIndicator(models.Model):
+    """Market cycle indicator for tracking real estate market health metrics.
+
+    Stores time-series data for key market indicators per metropolitan area.
+    Used to assess market cycle phase and health.
+    """
+
+    metro_area = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text="Metropolitan Statistical Area name (e.g., 'Dallas-Fort Worth-Arlington, TX')",
+    )
+    indicator_type = models.CharField(
+        max_length=32,
+        choices=MarketIndicatorType.choices,
+        db_index=True,
+    )
+    value = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        help_text="Indicator value (e.g., 425000.00 for median price, 28.0000 for DOM)",
+    )
+    date_recorded = models.DateField(
+        db_index=True,
+        help_text="Date this indicator value was recorded",
+    )
+    source = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Data source (e.g., 'zillow', 'census', 'bls', 'fred', 'manual')",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional context or methodology notes",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date_recorded", "metro_area", "indicator_type"]
+        unique_together = ["metro_area", "indicator_type", "date_recorded"]
+        indexes = [
+            models.Index(fields=["metro_area", "date_recorded"]),
+            models.Index(fields=["indicator_type", "date_recorded"]),
+        ]
+
+    def __str__(self) -> str:  # noqa: D401
+        return f"{self.metro_area} - {self.get_indicator_type_display()} = {self.value} ({self.date_recorded})"
+
+    def health_status(self) -> str:
+        """Determine market health status for this indicator.
+
+        Returns: 'healthy', 'caution', or 'overheated'
+        """
+        from core.integrations.market.market_trends import classify_market_health
+
+        median_income = None
+        # Try to get median income from market snapshot if available
+        from core.models.growth import MarketSnapshot
+
+        snapshot = MarketSnapshot.objects.filter(
+            msa_name__icontains=self.metro_area.split(",")[0].strip()
+        ).first()
+        if snapshot and snapshot.median_household_income:
+            median_income = snapshot.median_household_income
+
+        return classify_market_health(
+            indicator_type=self.indicator_type,
+            value=self.value,
+            metro_area=self.metro_area,
+            median_income=median_income,
+        )
+
+
 def compute_net_migration(
     population: int | None,
     pop_growth_rate: Decimal | None,

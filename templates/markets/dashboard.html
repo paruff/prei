@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Market Cycle Indicators — prei{% endblock %}
+
+{% block content %}
+<div class="detail-hero">
+  <div>
+    <h1 class="page-title">Market Cycle Indicators</h1>
+    <p class="page-sub">Track median price, DOM, supply, and rent growth across metro areas</p>
+  </div>
+  <div class="detail-hero-actions">
+    <form method="post" action="{% url 'update_market_indicators' %}" class="inline-form">
+      {% csrf_token %}
+      <button type="submit" class="btn">Refresh Indicators</button>
+    </form>
+  </div>
+</div>
+
+{% if market_data %}
+<div class="market-summary">
+  <h2 class="panel-heading">Market Overview</h2>
+  <div class="kpi-grid">
+    {% for market in market_data %}
+    <div class="kpi-card {% if market.overall_health == 'healthy' %}health-healthy{% elif market.overall_health == 'overheated' %}health-overheated{% else %}health-caution{% endif %}">
+      <div class="kpi-label">{{ market.metro_area }}</div>
+      <div class="kpi-value">{{ market.overall_health|capfirst }}</div>
+      <div class="kpi-sub">
+        <span class="badge badge-healthy">Healthy {{ market.health_counts.healthy }}</span>
+        <span class="badge badge-caution">Caution {{ market.health_counts.caution }}</span>
+        <span class="badge badge-overheated">Overheated {{ market.health_counts.overheated }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="market-indicators">
+  <h2 class="panel-heading">Indicator Details</h2>
+  {% for market in market_data %}
+  <div class="market-section">
+    <h3 class="market-title">{{ market.metro_area }}</h3>
+    <div class="indicator-grid">
+      {% for ind_type, data in market.indicators.items %}
+      <div class="indicator-card {% if data.health == 'healthy' %}health-healthy{% elif data.health == 'overheated' %}health-overheated{% else %}health-caution{% endif %}">
+        <div class="indicator-header">
+          <span class="indicator-label">{{ ind_type|capfirst }}</span>
+          <span class="indicator-health badge badge-{{ data.health }}">{{ data.health|capfirst }}</span>
+        </div>
+        <div class="indicator-value">
+          {% if data.value >= 1000000 %}
+            ${{ data.value|floatformat:0|intcomma }}
+          {% elif data.value >= 1000 %}
+            ${{ data.value|floatformat:0|intcomma }}
+          {% elif data.value >= 1 %}
+            ${{ data.value|floatformat:1 }}
+          {% else %}
+            {{ data.value|floatformat:2 }}%
+          {% endif %}
+        </div>
+        {% if data.sparkline %}
+        <svg class="sparkline sparkline-{{ data.health }}" viewBox="0 0 100 30"
+             role="img" aria-label="{{ ind_type|capfirst }} trend over {{ data.history|length }} recordings">
+          <polyline points="{{ data.sparkline }}" fill="none" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        {% else %}
+        <div class="sparkline-empty">No history yet</div>
+        {% endif %}
+        <div class="indicator-meta">
+          Source: {{ data.source|default:"N/A" }} · {{ data.date_recorded }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <p class="disclosure">No market indicator data available. Run <code>python manage.py update_market_indicators</code> to populate.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.market-summary {
+  margin-bottom: 2rem;
+}
+
+.indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.indicator-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  transition: box-shadow 0.2s;
+}
+
+.indicator-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.indicator-card.health-healthy {
+  border-left: 4px solid var(--color-success);
+}
+
+.indicator-card.health-caution {
+  border-left: 4px solid var(--color-warning);
+}
+
+.indicator-card.health-overheated {
+  border-left: 4px solid var(--color-danger);
+}
+
+.indicator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.indicator-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-transform: capitalize;
+}
+
+.indicator-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+
+.indicator-meta {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.sparkline {
+  display: block;
+  width: 100%;
+  height: 30px;
+  margin-bottom: 0.5rem;
+}
+
+.sparkline-healthy polyline {
+  stroke: var(--color-success);
+}
+
+.sparkline-caution polyline {
+  stroke: var(--color-warning);
+}
+
+.sparkline-overheated polyline {
+  stroke: var(--color-danger);
+}
+
+.sparkline-empty {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  height: 30px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.badge-healthy {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-caution {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-overheated {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-danger);
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.kpi-card.health-healthy {
+  border-left: 4px solid var(--color-success);
+}
+
+.kpi-card.health-caution {
+  border-left: 4px solid var(--color-warning);
+}
+
+.kpi-card.health-overheated {
+  border-left: 4px solid var(--color-danger);
+}
+
+.kpi-card .kpi-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.kpi-card.health-healthy .kpi-value {
+  color: var(--color-success);
+}
+
+.kpi-card.health-caution .kpi-value {
+  color: var(--color-warning);
+}
+
+.kpi-card.health-overheated .kpi-value {
+  color: var(--color-danger);
+}
+
+.kpi-sub {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .indicator-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
