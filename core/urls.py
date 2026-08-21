@@ -24,6 +24,11 @@ urlpatterns = [
     ),
     path("properties/<int:pk>/", views.property_detail, name="property_detail"),
     path(
+        "properties/<int:pk>/financing/",
+        views.financing_comparison,
+        name="financing_comparison",
+    ),
+    path(
         "properties/<int:pk>/add-income/",
         views.property_add_income,
         name="property_add_income",

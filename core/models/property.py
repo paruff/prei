@@ -288,6 +288,75 @@ class MonthlyActuals(models.Model):
         return Decimal(str(self.actual_vacancy_days)) / Decimal(str(days_in_month))
 
 
+class FinancingScenario(models.Model):
+    """Financing scenario for comparing loan products on a property."""
+
+    class LoanType(models.TextChoices):
+        CONVENTIONAL = "conventional", "Conventional"
+        DSCR = "dscr", "DSCR Loan"
+        SELLER_FINANCING = "seller_financing", "Seller Financing"
+        OTHER = "other", "Other"
+
+    prop = models.ForeignKey(
+        Property, on_delete=models.CASCADE, related_name="financing_scenarios"
+    )
+    loan_type = models.CharField(
+        max_length=32, choices=LoanType.choices, default=LoanType.CONVENTIONAL
+    )
+    ltv_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        help_text="Loan-to-value as fraction (e.g., 0.75 for 75%)",
+    )
+    interest_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        help_text="Annual interest rate as fraction (e.g., 0.075 for 7.5%)",
+    )
+    term_years = models.PositiveIntegerField(default=30)
+    closing_costs = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+
+    class Meta:
+        ordering = ["loan_type"]
+        unique_together = ["prop", "loan_type"]
+
+    def __str__(self) -> str:
+        return f"{self.get_loan_type_display()} — {self.ltv_pct:.0%} LTV @ {self.interest_rate:.2%}"
+
+    @property
+    def down_payment(self) -> Decimal:
+        """Down payment = purchase_price * (1 - LTV)."""
+        return self.prop.purchase_price * (Decimal(1) - self.ltv_pct)
+
+    @property
+    def loan_amount(self) -> Decimal:
+        """Loan amount = purchase_price * LTV."""
+        return self.prop.purchase_price * self.ltv_pct
+
+    @property
+    def monthly_payment(self) -> Decimal:
+        """Monthly mortgage payment (principal + interest)."""
+        from investor_app.finance.mortgage import calculate_monthly_mortgage
+
+        # mortgage.py expects interest_rate as percentage (e.g., 7.5 for 7.5%)
+        rate_pct = self.interest_rate * Decimal(100)
+        return calculate_monthly_mortgage(self.loan_amount, rate_pct, self.term_years)
+
+    @property
+    def annual_debt_service(self) -> Decimal:
+        """Annual debt service = monthly_payment * 12."""
+        return self.monthly_payment * Decimal(12)
+
+    @property
+    def total_cash_invested(self) -> Decimal:
+        """Total cash invested = down_payment + closing_costs."""
+        return self.down_payment + self.closing_costs
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Property Discovery Sources & Requests
 # ═══════════════════════════════════════════════════════════════════════════
 # Property Discovery Sources & Requests
 # ═══════════════════════════════════════════════════════════════════════════
