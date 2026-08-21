@@ -514,12 +514,15 @@ def _get_monthly_rent(
     pipeline_property: PipelineProperty,
     source_record: Any | None,
 ) -> Decimal | None:
-    """Get monthly rent from source_record or PipelineProperty.
+    """Get monthly rent from source_record, PipelineProperty, or market APIs.
 
-    Prefers source_record (VrmProperty.projected_monthly_rent) over
-    PipelineProperty.estimated_rent. Falls back to HUD Fair Market Rent
-    lookup when neither is available.
+    Priority: source_record (VRM) > PipelineProperty.estimated_rent >
+              Rentometer (real comps) > HUD FMR > None.
+
+    The fallback chain tries real rent data first (Rentometer), then falls
+    back to HUD FMR when Rentometer is unavailable.
     """
+    # 1. Prefer source_record (VRM has actual rent data)
     if (
         source_record is not None
         and _is_vrm_source(source_record)
@@ -529,29 +532,48 @@ def _get_monthly_rent(
         if rent is not None and rent > 0:
             return Decimal(str(rent))
 
+    # 2. PipelineProperty.estimated_rent (user-entered or previously cached)
     if (
         pipeline_property.estimated_rent is not None
         and pipeline_property.estimated_rent > 0
     ):
         return Decimal(str(pipeline_property.estimated_rent))
 
-    # Fallback: try HUD FMR if we have a source record with ZIP
-    zip_code = None
+    # 3. Try Rentometer (real rent comps) — best data source
+    zip_code = _extract_zip(source_record, pipeline_property)
     bedrooms = pipeline_property.beds
-    if source_record is not None and hasattr(source_record, "zip_code"):
-        zip_code = str(source_record.zip_code) if source_record.zip_code else None  # type: ignore[union-attr]
+    # Use getattr for safety — some callers pass _PipelineView proxies
+    address = getattr(pipeline_property, "address", None)
+    city = getattr(pipeline_property, "city", None)
+    state = getattr(pipeline_property, "state", None)
 
-    if not zip_code and pipeline_property.address:
-        # Try extracting ZIP from address (common format: "..., TX 75201")
-        import re
+    if zip_code and address and city and state:
+        try:
+            from core.integrations.market.rentometer import get_rent_estimate
 
-        m = re.search(r"\b(\d{5})\b", pipeline_property.address)
-        if m:
-            zip_code = m.group(1)
+            rent = get_rent_estimate(
+                zip_code=zip_code,
+                address=address,
+                city=city,
+                state=state,
+                bedrooms=int(bedrooms) if bedrooms else 2,
+            )
+            if rent is not None and rent > 0:
+                # Cache on pipeline_property for future calls
+                pipeline_property.estimated_rent = rent
+                PipelineProperty.objects.filter(pk=pipeline_property.pk).update(
+                    estimated_rent=rent
+                )
+                return rent
+        except Exception:
+            pass
 
+    # 4. Fallback: HUD Fair Market Rent
     if zip_code:
         try:
-            from core.integrations.market.hud_fmr import get_rent_estimate
+            from core.integrations.market.hud_fmr import (  # type: ignore[assignment]
+                get_rent_estimate,
+            )
 
             rent = get_rent_estimate(
                 zip_code=zip_code, bedrooms=int(bedrooms) if bedrooms else 2
@@ -565,6 +587,27 @@ def _get_monthly_rent(
                 return rent
         except Exception:
             pass
+
+    return None
+
+
+def _extract_zip(source_record: Any | None, pipeline_property: Any) -> str | None:
+    """Extract ZIP code from source_record or pipeline_property."""
+    if source_record is not None and hasattr(source_record, "zip_code"):
+        zip_code = str(source_record.zip_code) if source_record.zip_code else None  # type: ignore[union-attr]
+        if zip_code:
+            return zip_code
+
+    # Check PipelineProperty.zip_code directly
+    if hasattr(pipeline_property, "zip_code") and pipeline_property.zip_code:
+        return str(pipeline_property.zip_code)
+
+    if pipeline_property.address:
+        import re
+
+        m = re.search(r"\b(\d{5})\b", pipeline_property.address)
+        if m:
+            return m.group(1)
 
     return None
 
