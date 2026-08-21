@@ -26,21 +26,28 @@ def to_decimal(value: Decimal | float | int) -> Decimal:
     return value if isinstance(value, Decimal) else Decimal(str(value))
 
 
-def noi(monthly_income: Decimal, monthly_expenses: Decimal) -> Decimal:
+def noi(
+    monthly_income: Decimal,
+    monthly_expenses: Decimal,
+    capex_reserve: Decimal | None = None,
+) -> Decimal:
     """Calculate annual Net Operating Income (NOI).
 
-    NOI = (Monthly Income - Monthly Expenses) x 12
+    NOI = (Monthly Income - Monthly Expenses - CapEx Reserve) x 12
 
     Args:
         monthly_income: Gross monthly income (rent + other income).
         monthly_expenses: Monthly operating expenses (excludes debt service).
+        capex_reserve: Optional monthly CapEx reserve amount. If provided,
+            this is subtracted from net monthly income before annualizing.
 
     Returns:
         Annual NOI as a Decimal.
     """
-    return to_decimal(monthly_income) * Decimal(12) - to_decimal(
-        monthly_expenses
-    ) * Decimal(12)
+    income = to_decimal(monthly_income)
+    expenses = to_decimal(monthly_expenses)
+    capex = to_decimal(capex_reserve) if capex_reserve is not None else Decimal("0")
+    return (income - expenses - capex) * Decimal(12)
 
 
 def cap_rate(annual_noi: Decimal, purchase_price: Decimal) -> Decimal:
@@ -151,12 +158,17 @@ def build_cashflows(
 
 def compute_analysis_for_property(prop: Property) -> InvestmentAnalysis:
     """Compute and persist the full investment analysis for a property."""
+    from core.services.capex import calculate_capex_reserve_for_property
+
     incomes = prop.rental_incomes.all()
     expenses = prop.operating_expenses.all()
 
     monthly_income = sum((ri.effective_gross_income() for ri in incomes), Decimal(0))
     monthly_expense = sum((oe.monthly_amount() for oe in expenses), Decimal(0))
-    annual_noi = noi(monthly_income, monthly_expense)
+
+    # Include CapEx reserve in NOI calculation
+    capex_reserve = calculate_capex_reserve_for_property(prop)
+    annual_noi = noi(monthly_income, monthly_expense, capex_reserve)
 
     # Placeholder values for total cash invested and debt service; refine as data model expands
     total_cash_invested = to_decimal(prop.purchase_price)

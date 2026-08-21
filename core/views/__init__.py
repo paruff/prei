@@ -807,6 +807,25 @@ def property_add(request):
             property_obj = form.save(commit=False)
             property_obj.user = request.user
             property_obj.save()
+
+            # Create default CapEx items based on property age
+            from core.services.capex import get_default_capex_items_for_age
+
+            property_age = 0
+            if property_obj.purchase_date:
+                from django.utils import timezone
+
+                property_age = (
+                    timezone.now().date() - property_obj.purchase_date
+                ).days // 365
+            for item in get_default_capex_items_for_age(property_age):
+                property_obj.capex_items.create(
+                    component_type=item.component_type,
+                    replacement_cost=item.replacement_cost,
+                    useful_life_years=item.useful_life_years,
+                    age_years=item.age_years,
+                )
+
             compute_analysis_for_property(property_obj)
             return redirect("property_detail", pk=property_obj.pk)
     else:
