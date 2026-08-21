@@ -57,6 +57,7 @@ from investor_app.finance.utils import (
 
 # Moved from deprecated investor_app.finance.utils:
 from core.services.scoring import score_listing
+from core.services.financing_comparison import compare_scenarios, get_best_scenario
 
 # keep only the models that are actually used
 from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
@@ -69,6 +70,7 @@ from core.forms import (
     InvestmentTargetsForm,
 )
 from core.models import (
+    FinancingScenario,
     Listing,
     MarketSnapshot,
     Property,
@@ -793,6 +795,34 @@ def property_detail(request, pk: int):
             "exit": exit_analysis,
             "can_edit_property": user_role in {"owner", "team"},
             "can_share_property": user_role == "owner",
+        },
+    )
+
+
+@login_required
+def financing_comparison(request, pk: int):
+    """Show financing scenario comparison for a property."""
+    property_obj = get_object_or_404(Property, pk=pk)
+    if not is_owner_or_shared(request.user, property_obj, min_role="client"):
+        raise Http404
+    user_role = _get_property_role(request.user, property_obj)
+
+    # Compare scenarios
+    results = compare_scenarios(property_obj)
+
+    # Find best scenarios
+    best_coc = get_best_scenario(results, "cash_on_cash")
+    best_dscr = get_best_scenario(results, "dscr")
+
+    return render(
+        request,
+        "properties/financing_comparison.html",
+        {
+            "property": property_obj,
+            "results": results,
+            "best_coc": best_coc,
+            "best_dscr": best_dscr,
+            "can_edit": user_role in {"owner", "team"},
         },
     )
 

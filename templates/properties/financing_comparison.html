@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ property.address }} — Financing Comparison{% endblock %}
+
+{% block content %}
+<div class="detail-hero">
+  <div>
+    <h1 class="page-title">{{ property.address }}</h1>
+    <p class="page-sub">{{ property.city }}, {{ property.state }} {{ property.zip_code }} · ${{ property.purchase_price|intcomma }}</p>
+  </div>
+  <div class="detail-hero-actions">
+    <a href="{% url 'property_detail' property.pk %}" class="btn">Back to Property</a>
+    {% if can_edit %}
+    <a href="{% url 'property_edit' property.pk %}" class="btn">Edit Property</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if results %}
+<div class="financing-comparison">
+  <div class="comparison-header">
+    <h2>Financing Scenario Comparison</h2>
+    <p class="comparison-subtitle">
+      Comparing 3 loan products for {{ property.address }}
+    </p>
+  </div>
+
+  {% for result in results %}
+  <div class="scenario-card {% if best_coc and best_coc.loan_type == result.loan_type %}best-coc{% endif %} {% if best_dscr and best_dscr.loan_type == result.loan_type %}best-dscr{% endif %}">
+    <div class="scenario-header">
+      <h3 class="scenario-name">{{ result.loan_type }}</h3>
+      <div class="scenario-badges">
+        {% if best_coc and best_coc.loan_type == result.loan_type %}
+        <span class="badge badge-coc">Best CoC</span>
+        {% endif %}
+        {% if best_dscr and best_dscr.loan_type == result.loan_type %}
+        <span class="badge badge-dscr">Best DSCR</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="scenario-grid">
+      <div class="scenario-section">
+        <h4>Loan Terms</h4>
+        <table class="data-table scenario-table">
+          <tr><td>LTV</td><td class="col-right">{{ result.ltv_pct|floatformat:1 }}%</td></tr>
+          <tr><td>Interest Rate</td><td class="col-right">{{ result.interest_rate|floatformat:2 }}%</td></tr>
+          <tr><td>Term</td><td class="col-right">{{ result.term_years }} years</td></tr>
+          <tr><td>Down Payment</td><td class="col-right num">${{ result.down_payment|floatformat:0|intcomma }}</td></tr>
+          <tr><td>Closing Costs</td><td class="col-right num">${{ result.closing_costs|floatformat:0|intcomma }}</td></tr>
+          <tr><td class="total-row">Total Cash Invested</td><td class="col-right num total-row">${{ result.total_cash_invested|floatformat:0|intcomma }}</td></tr>
+        </table>
+      </div>
+
+      <div class="scenario-section">
+        <h4>Monthly Payment</h4>
+        <table class="data-table scenario-table">
+          <tr><td>Monthly P&I</td><td class="col-right num">${{ result.monthly_payment|floatformat:0|intcomma }}</td></tr>
+          <tr><td>Annual Debt Service</td><td class="col-right num">${{ result.annual_debt_service|floatformat:0|intcomma }}</td></tr>
+        </table>
+      </div>
+
+      <div class="scenario-section">
+        <h4>Key Metrics</h4>
+        <table class="data-table scenario-table">
+          <tr><td>Annual NOI</td><td class="col-right num">${{ result.noi|floatformat:0|intcomma }}</td></tr>
+          <tr><td>Cap Rate</td><td class="col-right {% if result.cap_rate >= 0.08 %}num-good{% else %}num{% endif %}">{{ result.cap_rate|floatformat:2 }}%</td></tr>
+          <tr><td>Cash-on-Cash</td><td class="col-right {% if result.cash_on_cash >= 0.10 %}num-good{% else %}num{% endif %}">{{ result.cash_on_cash|floatformat:1 }}%</td></tr>
+          <tr><td>DSCR</td><td class="col-right {% if result.dscr >= 1.25 %}num-good{% else %}num{% endif %}">{{ result.dscr|floatformat:2 }}</td></tr>
+          <tr><td>Monthly Cash Flow</td><td class="col-right {% if result.monthly_cash_flow >= 0 %}num-good{% else %}num-bad{% endif %}">${{ result.monthly_cash_flow|floatformat:0|intcomma }}</td></tr>
+        </table>
+      </div>
+
+      <div class="scenario-section">
+        <h4>Break-even Analysis</h4>
+        <table class="data-table scenario-table">
+          <tr><td>Break-even Rent</td><td class="col-right num">${{ result.breakeven_rent|floatformat:0|intcomma }}</td></tr>
+          <tr><td>Current Rent</td><td class="col-right num">${{ property.monthly_rent_gross|floatformat:0|intcomma }}</td></tr>
+          <tr><td class="total-row">Rent Cushion</td><td class="col-right {% if property.monthly_rent_gross >= result.breakeven_rent %}num-good{% else %}num-bad{% endif %} total-row">${{ property.monthly_rent_gross|sub:result.breakeven_rent|floatformat:0|intcomma }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <p class="disclosure">No financing scenarios configured for this property.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.financing-comparison {
+  margin-top: 1.5rem;
+}
+
+.comparison-header {
+  margin-bottom: 1.5rem;
+}
+
+.comparison-subtitle {
+  color: var(--color-muted);
+  margin-top: 0.25rem;
+}
+
+.scenario-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.2s;
+}
+
+.scenario-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.scenario-card.best-coc {
+  border-left: 4px solid var(--color-success);
+}
+
+.scenario-card.best-dscr {
+  border-left: 4px solid var(--color-primary);
+}
+
+.scenario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.scenario-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.scenario-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+}
+
+.badge-coc {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+}
+
+.badge-dscr {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--color-primary);
+}
+
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.scenario-section h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+}
+
+.scenario-table {
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.scenario-table tr {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.scenario-table tr:last-child {
+  border-bottom: none;
+}
+
+.scenario-table td {
+  padding: 0.5rem 0;
+}
+
+.scenario-table td:first-child {
+  color: var(--color-muted);
+}
+
+.scenario-table .col-right {
+  text-align: right;
+  font-weight: 500;
+}
+
+.scenario-table .total-row {
+  font-weight: 700;
+  border-top: 2px solid var(--color-border);
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.num-good {
+  color: var(--color-success);
+}
+
+.num-bad {
+  color: var(--color-danger);
+}
+
+.num {
+  color: var(--color-text);
+}
+
+@media (max-width: 768px) {
+  .scenario-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
