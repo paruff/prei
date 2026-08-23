@@ -26,7 +26,15 @@ class TestManifest:
         with open(manifest_path) as f:
             manifest = json.load(f)
 
-        required_fields = ["name", "short_name", "start_url", "display", "background_color", "theme_color", "icons"]
+        required_fields = [
+            "name",
+            "short_name",
+            "start_url",
+            "display",
+            "background_color",
+            "theme_color",
+            "icons",
+        ]
         for field in required_fields:
             assert field in manifest, f"manifest.json missing required field: {field}"
 
@@ -58,7 +66,10 @@ class TestServiceWorker:
         base_path = Path("templates/base.html")
         with open(base_path) as f:
             content = f.read()
-        assert 'navigator.serviceWorker.register' in content or 'serviceWorker.register' in content
+        assert (
+            "navigator.serviceWorker.register" in content
+            or "serviceWorker.register" in content
+        )
 
     def test_sw_cache_strategy(self):
         """Test that service worker implements cache-first strategy."""
@@ -67,8 +78,8 @@ class TestServiceWorker:
             content = f.read()
 
         # Check for cache-first strategy patterns
-        assert 'cache' in content.lower() or 'cacheFirst' in content
-        assert 'fetch' in content
+        assert "cache" in content.lower() or "cacheFirst" in content
+        assert "fetch" in content
 
 
 class TestOfflineFallback:
@@ -120,7 +131,7 @@ class TestBaseTemplate:
         with open(base_path) as f:
             content = f.read()
         assert 'name="viewport"' in content
-        assert 'width=device-width' in content
+        assert "width=device-width" in content
 
 
 class TestResponsiveCSS:
@@ -133,8 +144,8 @@ class TestResponsiveCSS:
             content = f.read()
 
         # Check for mobile-first breakpoints
-        assert '@media (max-width:' in content
-        assert 'max-width: 640px' in content or 'max-width: 768px' in content
+        assert "@media (max-width:" in content
+        assert "max-width: 640px" in content or "max-width: 768px" in content
 
     def test_css_uses_relative_units(self):
         """Test that CSS uses relative units (rem/em) instead of fixed px."""
@@ -143,7 +154,7 @@ class TestResponsiveCSS:
             content = f.read()
 
         # Check that rem/em are used for spacing/typography
-        assert 'rem' in content or 'em' in content
+        assert "rem" in content or "em" in content
 
 
 class TestLighthouseCI:
@@ -173,19 +184,23 @@ class TestGitHubActions:
         workflow_dir = Path(".github/workflows")
         assert workflow_dir.exists()
 
-        workflow_files = list(workflow_dir.glob("*.yml")) + list(workflow_dir.glob("*.yaml"))
+        workflow_files = list(workflow_dir.glob("*.yml")) + list(
+            workflow_dir.glob("*.yaml")
+        )
         assert len(workflow_files) > 0, "At least one workflow file should exist"
 
     def test_lighthouse_step_in_workflow(self):
         """Test that Lighthouse CI step exists in a workflow."""
         workflow_dir = Path(".github/workflows")
-        workflow_files = list(workflow_dir.glob("*.yml")) + list(workflow_dir.glob("*.yaml"))
+        workflow_files = list(workflow_dir.glob("*.yml")) + list(
+            workflow_dir.glob("*.yaml")
+        )
 
         found = False
         for wf in workflow_files:
             with open(wf) as f:
                 content = f.read()
-                if 'lighthouse' in content.lower() or 'lighthouseci' in content:
+                if "lighthouse" in content.lower() or "lighthouseci" in content:
                     found = True
                     break
 
