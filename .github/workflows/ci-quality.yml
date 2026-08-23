@@ -261,8 +261,8 @@ jobs:
             sleep 2
           done
 
-          # Run Lighthouse CI
-          lhci autorun --config=lighthouserc.json
+          # Run Lighthouse CI with static directory
+          lhci autorun --config=lighthouserc.json --collect.staticDistDir=./staticfiles
 
           # Stop server
           kill $SERVER_PID 2>/dev/null || true
