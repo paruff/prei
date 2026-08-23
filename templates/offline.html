@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Offline - PREI{% endblock %}
+
+{% block extra_css %}
+<style>
+  .offline-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+    padding: var(--sp-8) var(--sp-4);
+  }
+
+  .offline-icon {
+    width: 120px;
+    height: 120px;
+    margin-bottom: var(--sp-6);
+    opacity: 0.6;
+  }
+
+  .offline-title {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-medium);
+    color: var(--color-neutral-900);
+    margin-bottom: var(--sp-3);
+  }
+
+  .offline-message {
+    font-size: var(--text-base);
+    color: var(--color-neutral-500);
+    margin-bottom: var(--sp-6);
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .offline-actions {
+    display: flex;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .offline-icon {
+    width: 80px;
+    height: 80px;
+    stroke: var(--color-neutral-300);
+  }
+
+  .retry-btn {
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(29, 158, 117, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(29, 158, 117, 0); }
+  }
+
+  .offline-features {
+    margin-top: var(--sp-8);
+    padding-top: var(--sp-6);
+    border-top: 1px solid var(--border-default);
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .offline-features-title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--color-neutral-500);
+    margin-bottom: var(--sp-3);
+  }
+
+  .offline-features-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--sp-3);
+  }
+
+  .offline-feature {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2);
+    background: var(--surface-secondary);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-600);
+  }
+
+  .offline-feature svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--color-primary);
+    flex-shrink: 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="offline-container">
+  <svg class="offline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+    <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 0 12 3c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+
+  <h1 class="offline-title">You're Offline</h1>
+
+  <p class="offline-message">
+    It looks like you've lost your internet connection. Don't worry — PREI works offline for previously loaded pages.
+  </p>
+
+  <div class="offline-actions">
+    <button class="btn btn-primary retry-btn" onclick="window.location.reload()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M23 4v6h-6"></path>
+        <path d="M1 20v-6h6"></path>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+      </svg>
+      <span>Try Again</span>
+    </button>
+
+    <a href="/" class="btn">Go Home</a>
+  </div>
+
+  <div class="offline-features">
+    <div class="offline-features-title">Available Offline</div>
+    <div class="offline-features-list">
+      <div class="offline-feature">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <path d="M9 9h6v6H9z"></path>
+        </svg>
+        <span>Cached pages</span>
+      </div>
+      <div class="offline-feature">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 14.24 3c-.7 0-1.3.3-1.77.74L11 9"></path>
+          <path d="M15 3v4h4"></path>
+        </svg>
+        <span>Cached calculations</span>
+      </div>
+      <div class="offline-feature">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Saved reports</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
