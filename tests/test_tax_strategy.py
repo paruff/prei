@@ -1,6 +1,5 @@
 """Tests for tax strategy module (QBI, PAL, 1031 Exchange)."""
 
-import pytest
 from decimal import Decimal
 
 from investor_app.finance.tax_strategy import (
@@ -11,9 +10,6 @@ from investor_app.finance.tax_strategy import (
     calculate_pal_phase_out,
     calculate_total_tax_benefit,
     PAL_FULL_ALLOWANCE,
-    PAL_PHASEOUT_START,
-    PAL_PHASEOUT_END,
-    QBI_DEDUCTION_RATE,
 )
 
 
