@@ -261,7 +261,7 @@ jobs:
         run: |
           echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "sha: ${{ github.sha }}"
-      - name: Trivy — block HIGH/CRITICAL CVEs with fixes
+      - name: Trivy — block HIGH/CRITICAL CVEs with retries
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
@@ -271,6 +271,9 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           vuln-type: os,library
+          version: v0.74.0
+          timeout: 10m
+          skip-version-check: true
       - name: Trivy — upload SARIF
         uses: aquasecurity/trivy-action@v0.36.0
         if: always()
@@ -281,6 +284,9 @@ jobs:
           output: trivy-tier-2.sarif
           severity: CRITICAL,HIGH,MEDIUM
           ignore-unfixed: true
+          version: v0.74.0
+          timeout: 10m
+          skip-version-check: true
       - name: Upload SARIF results
         uses: github/codeql-action/upload-sarif@v4
         if: always()

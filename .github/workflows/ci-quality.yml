@@ -222,6 +222,59 @@ jobs:
       - name: Mypy
         run: mypy core/ investor_app/finance/ --ignore-missing-imports --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code operator --disable-error-code misc --disable-error-code has-type --disable-error-code arg-type --disable-error-code assignment
 
+  # ── Lighthouse PWA audit ────────────────────────────────────────────────
+
+  lighthouse:
+    name: "🚀 Lighthouse PWA Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install system deps
+        run: sudo apt-get install -y libcairo2-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --verbosity 0
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+      - name: Run Lighthouse CI
+        continue-on-error: true
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          export DATABASE_URL="sqlite:///tmp/lighthouse_test.db"
+          export RUN_MIGRATIONS=1
+          export SKIP_SEED=1
+          export DJANGO_ENV=development
+          export DEBUG=True
+          export ALLOWED_HOSTS=localhost,127.0.0.1
+
+          # Start Django server in background
+          python manage.py runserver 0.0.0.0:8000 &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8000/health/ > /dev/null 2>&1; then
+              echo "Server started"
+              break
+            fi
+            sleep 2
+          done
+
+          # Run Lighthouse CI
+          lhci autorun --config=lighthouserc.json --collect.staticDistDir=./staticfiles
+
+          # Stop server
+          kill $SERVER_PID 2>/dev/null || true
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+          retention-days: 7
+
   # ── Acceptance tests (real HTTP, via pytest-django live_server) ────────────
   # BASE_URL is intentionally unset here: tests/acceptance/conftest.py falls
   # back to a live_server for this run. Full acceptance tests also run
