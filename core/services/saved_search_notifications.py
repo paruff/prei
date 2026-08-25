@@ -7,14 +7,13 @@ when matching properties are found.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Dict, List
 
-from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from core.models import SavedSearch, User
+from core.models import SavedSearch
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +77,9 @@ def create_notification_for_match(
         body=f"{listing.get('address', 'Unknown address')} - ${listing.get('price', 0)}",
         data={
             "saved_search_id": saved_search.id,
-            "listing": {k: str(v) if isinstance(v, Decimal) else v for k, v in listing.items()},
+            "listing": {
+                k: str(v) if isinstance(v, Decimal) else v for k, v in listing.items()
+            },
         },
     )
 

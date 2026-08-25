@@ -2,8 +2,6 @@
 
 import pytest
 from decimal import Decimal
-from datetime import datetime, timedelta
-from django.utils import timezone
 
 from core.models.growth import SavedSearch
 from core.services.saved_search_notifications import (
@@ -18,7 +16,6 @@ class TestSavedSearchMatches:
 
     def test_get_saved_search_matches(self) -> None:
         """Test that saved search returns matching listings."""
-        from core.services.saved_search_notifications import get_saved_search_matches
 
         saved_search = SavedSearch(
             name="Test Search",
@@ -32,8 +29,16 @@ class TestSavedSearchMatches:
         listings = [
             {"price": Decimal("350000"), "state": "TX", "zip_code": "78701"},
             {"price": Decimal("450000"), "state": "TX", "zip_code": "78701"},
-            {"price": Decimal("250000"), "state": "TX", "zip_code": "78701"},  # Below min_price
-            {"price": Decimal("550000"), "state": "TX", "zip_code": "78701"},  # Above max_price
+            {
+                "price": Decimal("250000"),
+                "state": "TX",
+                "zip_code": "78701",
+            },  # Below min_price
+            {
+                "price": Decimal("550000"),
+                "state": "TX",
+                "zip_code": "78701",
+            },  # Above max_price
         ]
 
         matches = get_saved_search_matches(saved_search, listings)
@@ -43,7 +48,6 @@ class TestSavedSearchMatches:
 
     def test_get_saved_search_matches_empty(self) -> None:
         """Test that no matches returns empty list."""
-        from core.services.saved_search_notifications import get_saved_search_matches
 
         saved_search = SavedSearch(
             name="Test Search",
@@ -68,13 +72,10 @@ class TestNotificationCreation:
 
     def test_create_notification_for_match(self) -> None:
         """Test that notification is created for a match."""
-        from core.services.saved_search_notifications import create_notification_for_match
         from core.models import User
 
         user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123"
+            username="testuser", email="test@example.com", password="testpass123"
         )
 
         saved_search = SavedSearch.objects.create(
@@ -106,17 +107,14 @@ class TestCheckListings:
 
     def test_check_listings_creates_notifications(self) -> None:
         """Test that checking listings creates notifications for matches."""
-        from core.services.saved_search_notifications import check_listings_against_saved_searches
         from core.models import User
         from unittest.mock import patch
 
         user = User.objects.create_user(
-            username="testuser2",
-            email="test2@example.com",
-            password="testpass123"
+            username="testuser2", email="test2@example.com", password="testpass123"
         )
 
-        saved_search = SavedSearch.objects.create(
+        SavedSearch.objects.create(
             user=user,
             name="Test Search",
             state="TX",
@@ -131,7 +129,10 @@ class TestCheckListings:
             {"price": Decimal("450000"), "state": "TX", "zip_code": "78701"},
         ]
 
-        with patch("core.services.saved_search_notifications.fetch_new_listings", return_value=mock_listings):
+        with patch(
+            "core.services.saved_search_notifications.fetch_new_listings",
+            return_value=mock_listings,
+        ):
             result = check_listings_against_saved_searches()
 
         assert result["searches_checked"] >= 1

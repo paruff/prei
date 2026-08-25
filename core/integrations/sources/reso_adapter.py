@@ -8,7 +8,6 @@ RESO Web API Specification: https://www.reso.org/web-api/
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import logging
 import os
@@ -39,12 +38,6 @@ class RESOAuthenticationError(RESOAPIError):
 
 class RESORateLimitError(RESOAPIError):
     """Rate limit exceeded for RESO Web API."""
-
-    pass
-
-
-class RESOAPIError(RESOAPIError):
-    """General RESO Web API error."""
 
     pass
 
@@ -114,7 +107,9 @@ class RESOAdapter:
             client_secret: OAuth2 client secret (optional)
             token_url: OAuth2 token endpoint URL (optional)
         """
-        self.base_url = base_url or os.getenv("RESO_API_BASE_URL", self.DEFAULT_BASE_URL)
+        self.base_url = base_url or os.getenv(
+            "RESO_API_BASE_URL", self.DEFAULT_BASE_URL
+        )
         self.username = username or os.getenv("RESO_USERNAME")
         self.password = password or os.getenv("RESO_PASSWORD")
         self.access_token = access_token or os.getenv("RESO_ACCESS_TOKEN")
@@ -130,25 +125,24 @@ class RESOAdapter:
 
     def _setup_auth(self) -> None:
         """Configure authentication headers for the session."""
-        headers: Dict[str, str] = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "PREI-RESO-Adapter/1.0",
-        }
-
         if self.access_token:
-            self.session.headers.update({"Authorization": f"Bearer {self.access_token}"})
+            self.session.headers.update(
+                {"Authorization": f"Bearer {self.access_token}"}
+            )
         elif self.username and self.password:
             import base64
+
             credentials = base64.b64encode(
                 f"{self.username}:{self.password}".encode()
             ).decode()
             self.session.headers.update({"Authorization": f"Basic {credentials}"})
 
-        self.session.headers.update({
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        })
+        self.session.headers.update(
+            {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
+        )
 
     def _get_access_token(self) -> Optional[str]:
         """Obtain OAuth2 access token if client credentials are configured."""
@@ -181,7 +175,7 @@ class RESOAdapter:
 
     def _get_headers(self) -> Dict[str, str]:
         """Build request headers with current authentication."""
-        headers = {
+        headers: Dict[str, str] = {
             "Accept": "application/json",
             "Content-Type": "application/json",
             "User-Agent": "PREI-RESO-Adapter/1.0",
@@ -190,9 +184,10 @@ class RESOAdapter:
         if self.access_token or self.client_id:
             token = self._get_access_token()
             if token:
-                return {**self.session.headers, "Authorization": f"Bearer {token}"}
+                headers["Authorization"] = f"Bearer {token}"
+                return headers
 
-        return self.session.headers
+        return headers
 
     def _execute_request(
         self,
@@ -218,7 +213,7 @@ class RESOAdapter:
             RESORateLimitError: Rate limit exceeded
             RESOAPIError: Other API errors
         """
-        url = urljoin(self.base_url, endpoint)
+        url = urljoin(self.base_url or "", endpoint)
         headers = self._get_headers()
 
         for attempt in range(self.MAX_RETRIES):
@@ -244,7 +239,9 @@ class RESOAdapter:
                 if response.status_code == 429:
                     retry_after = int(response.headers.get("Retry-After", "60"))
                     if attempt < self.MAX_RETRIES - 1:
-                        logger.warning(f"Rate limited, waiting {retry_after}s before retry")
+                        logger.warning(
+                            f"Rate limited, waiting {retry_after}s before retry"
+                        )
                         time.sleep(retry_after)
                         continue
                     raise RESORateLimitError("Rate limit exceeded")
@@ -254,17 +251,18 @@ class RESOAdapter:
                         f"API error: {response.status_code} - {response.text}"
                     )
 
-                return response.json()
+                result: Dict[str, Any] = response.json()
+                return result
 
             except requests.exceptions.Timeout:
                 if attempt == self.MAX_RETRIES - 1:
                     raise RESOAPIError("Request timeout")
-                time.sleep(2 ** attempt)  # Exponential backoff
+                time.sleep(2**attempt)  # Exponential backoff
 
             except requests.exceptions.RequestException as e:
                 if attempt == self.MAX_RETRIES - 1:
                     raise RESOAPIError(f"Request failed: {e}")
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
         raise RESOAPIError("Max retries exceeded")
 
@@ -279,7 +277,7 @@ class RESOAdapter:
         count: bool = False,
     ) -> Dict[str, str]:
         """Build OData query parameters."""
-        params = {}
+        params: Dict[str, str] = {}
 
         if filter_expr:
             params["$filter"] = filter_expr
@@ -290,9 +288,9 @@ class RESOAdapter:
         if order_by:
             params["$orderby"] = order_by
         if top is not None:
-            params["$top"] = top
+            params["$top"] = str(top)
         if skip:
-            params["$skip"] = skip
+            params["$skip"] = str(skip)
         if count:
             params["$count"] = "true"
 
@@ -305,13 +303,14 @@ class RESOAdapter:
         value: Any,
     ) -> str:
         """Build OData filter expression."""
-        if isinstance(value, str):
-            value = f"'{value}'"
-        elif isinstance(value, datetime):
-            value = value.strftime("%Y-%m-%dT%H:%M:%SZ")
-        elif isinstance(value, bool):
-            value = str(value).lower()
-        return f"{field} {operator} {value}"
+        rendered: Any = value
+        if isinstance(rendered, str):
+            rendered = f"'{rendered}'"
+        elif isinstance(rendered, datetime):
+            rendered = rendered.strftime("%Y-%m-%dT%H:%M:%SZ")
+        elif isinstance(rendered, bool):
+            rendered = str(rendered).lower()
+        return f"{field} {operator} {rendered}"
 
     def build_filter(
         self,
@@ -339,10 +338,13 @@ class RESOAdapter:
         key_data = f"{self.base_url}/{resource}?{urlencode(sorted(params.items()))}"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
-    def _get_cached(self, resource: str, params: Dict[str, Any]) -> Optional[Dict]:
+    def _get_cached(
+        self, resource: str, params: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Get cached response if available."""
         cache_key = self._get_cache_key(resource, params)
-        return cache.get(cache_key)
+        cached: Optional[Dict[str, Any]] = cache.get(cache_key)
+        return cached
 
     def _set_cache(self, resource: str, params: Dict[str, Any], data: Dict) -> None:
         """Cache response data."""
@@ -456,36 +458,54 @@ class RESOAdapter:
         Returns:
             Dictionary with property listings
         """
-        filters = []
+        filters: List[Dict[str, Any]] = []
 
         if city:
             filters.append({"field": "City", "operator": "eq", "value": city})
         if state:
-            filters.append({"field": "StateOrProvince", "operator": "eq", "value": state})
+            filters.append(
+                {"field": "StateOrProvince", "operator": "eq", "value": state}
+            )
         if postal_code:
-            filters.append({"field": "PostalCode", "operator": "eq", "value": postal_code})
+            filters.append(
+                {"field": "PostalCode", "operator": "eq", "value": postal_code}
+            )
         if min_price is not None:
             filters.append({"field": "ListPrice", "operator": "ge", "value": min_price})
         if max_price is not None:
             filters.append({"field": "ListPrice", "operator": "le", "value": max_price})
         if min_beds is not None:
-            filters.append({"field": "BedroomsTotal", "operator": "ge", "value": min_beds})
+            filters.append(
+                {"field": "BedroomsTotal", "operator": "ge", "value": min_beds}
+            )
         if max_beds is not None:
-            filters.append({"field": "BedroomsTotal", "operator": "le", "value": max_beds})
+            filters.append(
+                {"field": "BedroomsTotal", "operator": "le", "value": max_beds}
+            )
         if min_baths is not None:
-            filters.append({"field": "BathroomsTotalInteger", "operator": "ge", "value": min_baths})
+            filters.append(
+                {"field": "BathroomsTotalInteger", "operator": "ge", "value": min_baths}
+            )
         if max_baths is not None:
-            filters.append({"field": "BathroomsTotalInteger", "operator": "le", "value": max_baths})
+            filters.append(
+                {"field": "BathroomsTotalInteger", "operator": "le", "value": max_baths}
+            )
         if property_type:
-            filters.append({"field": "PropertyType", "operator": "eq", "value": property_type})
+            filters.append(
+                {"field": "PropertyType", "operator": "eq", "value": property_type}
+            )
         if listing_status:
-            filters.append({"field": "StandardStatus", "operator": "eq", "value": listing_status})
+            filters.append(
+                {"field": "StandardStatus", "operator": "eq", "value": listing_status}
+            )
         if min_sqft is not None:
             filters.append({"field": "LivingArea", "operator": "ge", "value": min_sqft})
         if max_sqft is not None:
             filters.append({"field": "LivingArea", "operator": "le", "value": max_sqft})
         if days_on_market_max is not None:
-            filters.append({"field": "DaysOnMarket", "operator": "le", "value": days_on_market_max})
+            filters.append(
+                {"field": "DaysOnMarket", "operator": "le", "value": days_on_market_max}
+            )
 
         filter_expr = self.build_filter(filters) if filters else None
 
@@ -554,7 +574,14 @@ class RESOAdapter:
         """Fetch media (photos, videos) for a listing."""
         return self.query_properties(
             filter_expr=f"Media/any(m: m/ListingKey eq '{listing_id}')",
-            select=["MediaKey", "MediaURL", "MediaType", "Order", "MediaCategory", "Description"],
+            select=[
+                "MediaKey",
+                "MediaURL",
+                "MediaType",
+                "Order",
+                "MediaCategory",
+                "Description",
+            ],
             top=top,
         )
 
@@ -639,14 +666,16 @@ class RESOAdapter:
         Returns:
             Query results
         """
-        params = {}
+        params: Dict[str, Any] = {}
         for pair in odata_query.split("&"):
             if "=" in pair:
                 k, v = pair.split("=", 1)
                 if k in params:
-                    if not isinstance(params[k], list):
-                        params[k] = [params[k]]
-                    params[k].append(v)
+                    existing = params[k]
+                    if not isinstance(existing, list):
+                        existing = [existing]
+                    existing.append(v)
+                    params[k] = existing
                 else:
                     params[k] = v
 
@@ -694,27 +723,42 @@ def normalize_property_data(raw: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "source": "reso",
         "listing_id": raw.get("ListingId") or raw.get("ListingKey"),
-        "address": raw.get("UnparsedAddress") or raw.get("StreetNumber", "") + " " + raw.get("StreetName", ""),
+        "address": raw.get("UnparsedAddress")
+        or raw.get("StreetNumber", "") + " " + raw.get("StreetName", ""),
         "city": raw.get("City"),
         "state": raw.get("StateOrProvince"),
         "zip_code": raw.get("PostalCode"),
-        "price": Decimal(str(raw.get("ListPrice", 0))) if raw.get("ListPrice") else None,
+        "price": Decimal(str(raw.get("ListPrice", 0)))
+        if raw.get("ListPrice")
+        else None,
         "beds": int(raw.get("BedroomsTotal", 0)) if raw.get("BedroomsTotal") else None,
-        "baths": Decimal(str(raw.get("BathroomsTotalInteger", 0))) if raw.get("BathroomsTotalInteger") else None,
+        "baths": Decimal(str(raw.get("BathroomsTotalInteger", 0)))
+        if raw.get("BathroomsTotalInteger")
+        else None,
         "sq_ft": int(raw.get("LivingArea", 0)) if raw.get("LivingArea") else None,
-        "lot_size_sqft": int(raw.get("LotSizeSquareFeet", 0)) if raw.get("LotSizeSquareFeet") else None,
+        "lot_size_sqft": int(raw.get("LotSizeSquareFeet", 0))
+        if raw.get("LotSizeSquareFeet")
+        else None,
         "property_type": normalize_property_type(raw.get("PropertyType")),
         "property_sub_type": raw.get("PropertySubType"),
         "year_built": int(raw.get("YearBuilt", 0)) if raw.get("YearBuilt") else None,
-        "lot_size_acres": Decimal(str(raw.get("LotSizeAcres", 0))) if raw.get("LotSizeAcres") else None,
-        "days_on_market": int(raw.get("DaysOnMarket", 0)) if raw.get("DaysOnMarket") else None,
+        "lot_size_acres": Decimal(str(raw.get("LotSizeAcres", 0)))
+        if raw.get("LotSizeAcres")
+        else None,
+        "days_on_market": int(raw.get("DaysOnMarket", 0))
+        if raw.get("DaysOnMarket")
+        else None,
         "listing_status": raw.get("StandardStatus"),
         "listing_date": raw.get("ListingContractDate"),
         "expiration_date": raw.get("ExpirationDate"),
         "mls_number": raw.get("MlsNumber") or raw.get("MlsId"),
         "mls_id": raw.get("MlsId"),
-        "latitude": Decimal(str(raw.get("Latitude", 0))) if raw.get("Latitude") else None,
-        "longitude": Decimal(str(raw.get("Longitude", 0))) if raw.get("Longitude") else None,
+        "latitude": Decimal(str(raw.get("Latitude", 0)))
+        if raw.get("Latitude")
+        else None,
+        "longitude": Decimal(str(raw.get("Longitude", 0)))
+        if raw.get("Longitude")
+        else None,
         "photos": [
             {
                 "url": m.get("MediaURL"),

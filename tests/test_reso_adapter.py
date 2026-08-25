@@ -2,15 +2,10 @@
 
 import pytest
 from decimal import Decimal
-from unittest.mock import Mock, patch, MagicMock
-from decimal import Decimal
+from unittest.mock import Mock, patch
 
 from core.integrations.sources.reso_adapter import (
     RESOAdapter,
-    RESOAPIError,
-    RESOAuthenticationError,
-    RESORateLimitError,
-    RESOAPIError,
     normalize_property_type,
     normalize_property_data,
 )
@@ -56,7 +51,6 @@ class TestPropertyDataNormalization:
     @pytest.mark.django_db
     def test_normalize_complete_property(self) -> None:
         """Test normalizing complete property data."""
-        from core.integrations.sources.reso_adapter import normalize_property_data
 
         raw = {
             "ListingId": "12345",
@@ -132,7 +126,6 @@ class TestPropertyDataNormalization:
 
     def test_normalize_minimal_property(self) -> None:
         """Test normalizing minimal property data."""
-        from core.integrations.sources.reso_adapter import normalize_property_data
 
         raw = {
             "ListingId": "MIN-001",
@@ -171,16 +164,18 @@ class TestRESOAdapter:
         """Test adapter initialization."""
         assert adapter.base_url == "https://api.test.mls.com/odata"
         assert adapter.username == "test_user"
-        assert adapter.password == "test_pass"
+        assert adapter.password == "test_pass"  # noqa: S105 - test fixture credential
 
     def test_build_filter_simple(self) -> None:
         """Test simple filter building."""
         adapter = RESOAdapter(base_url="https://api.test.com/odata")
 
-        filter_expr = adapter.build_filter([
-            {"field": "City", "operator": "eq", "value": "Austin"},
-            {"field": "ListPrice", "operator": "ge", "value": 300000},
-        ])
+        filter_expr = adapter.build_filter(
+            [
+                {"field": "City", "operator": "eq", "value": "Austin"},
+                {"field": "ListPrice", "operator": "ge", "value": 300000},
+            ]
+        )
 
         # The exact format may vary, but should contain both conditions
         assert "City eq 'Austin'" in filter_expr
@@ -191,13 +186,19 @@ class TestRESOAdapter:
         adapter = RESOAdapter(base_url="https://api.test.com/odata")
 
         # Test gt
-        assert "gt 100" in adapter.build_filter([{"field": "Price", "operator": "gt", "value": 100}])
+        assert "gt 100" in adapter.build_filter(
+            [{"field": "Price", "operator": "gt", "value": 100}]
+        )
 
         # Test lt
-        assert "lt 100" in adapter.build_filter([{"field": "Price", "operator": "lt", "value": 100}])
+        assert "lt 100" in adapter.build_filter(
+            [{"field": "Price", "operator": "lt", "value": 100}]
+        )
 
         # Test contains
-        assert "contains" in adapter.build_filter([{"field": "City", "operator": "contains", "value": "Austin"}])
+        assert "contains" in adapter.build_filter(
+            [{"field": "City", "operator": "contains", "value": "Austin"}]
+        )
 
     @patch("core.integrations.sources.reso_adapter.requests.Session.request")
     def test_fetch_property_success(self, mock_request, adapter: RESOAdapter) -> None:
@@ -230,10 +231,11 @@ class TestRESOAdapter:
         mock_response.raise_for_status = Mock(side_effect=Exception("404 Not Found"))
         mock_request.return_value = mock_response
 
-        from core.integrations.sources.reso_adapter import RESOAPIError
         with pytest.raises(Exception) as exc_info:
             adapter.fetch_property("NONEXISTENT")
-        assert "404" in str(exc_info.value) or "not found" in str(exc_info.value).lower()
+        assert (
+            "404" in str(exc_info.value) or "not found" in str(exc_info.value).lower()
+        )
 
     @patch("core.integrations.sources.reso_adapter.requests.Session.request")
     def test_query_properties(self, mock_request, adapter: RESOAdapter) -> None:
@@ -260,88 +262,5 @@ class TestRESOAdapter:
         assert result["@odata.count"] == 2
 
 
-class TestPropertyDataNormalization:
-    """Tests for property data normalization."""
-
-    def test_normalize_property_data_full(self) -> None:
-        from core.integrations.sources.reso_adapter import normalize_property_data
-
-        raw = {
-            "ListingId": "12345",
-            "ListingKey": "LIST-123",
-            "UnparsedAddress": "123 Main St",
-            "StreetNumber": "123",
-            "StreetName": "Main St",
-            "City": "Austin",
-            "StateOrProvince": "TX",
-            "PostalCode": "78701",
-            "ListPrice": "450000",
-            "BedroomsTotal": "3",
-            "BathroomsTotalInteger": "2",
-            "LivingArea": "2000",
-            "LotSizeSquareFeet": "7500",
-            "PropertyType": "Single Family",
-            "PropertySubType": "Detached",
-            "YearBuilt": "2010",
-            "LotSizeAcres": "0.25",
-            "DaysOnMarket": "15",
-            "StandardStatus": "Active",
-            "ListingContractDate": "2024-01-15",
-            "ExpirationDate": "2024-07-15",
-            "MlsNumber": "1234567",
-            "MlsId": "TX-123",
-            "Latitude": "30.2672",
-            "Longitude": "-97.7431",
-            "Media": [
-                {
-                    "MediaURL": "https://example.com/photo1.jpg",
-                    "MediaType": "Photo",
-                    "Description": "Front view",
-                    "Order": 1,
-                },
-            ],
-            "VirtualTourURL": "https://tour.example.com/123",
-            "PublicRemarks": "Beautiful home",
-            "ListAgentKey": "AGENT123",
-            "ListOfficeKey": "OFFICE456",
-        }
-
-        result = normalize_property_data(raw)
-
-        assert result["listing_id"] == "12345"
-        assert result["city"] == "Austin"
-        assert result["state"] == "TX"
-        assert result["price"] == 450000
-        assert result["beds"] == 3
-        assert result["baths"] == 2
-        assert result["sq_ft"] == 2000
-        assert result["property_type"] == "SFR"
-        assert len(result["photos"]) == 1
-
-    def test_normalize_missing_optional_fields(self) -> None:
-        """Test normalization with missing optional fields."""
-        from core.integrations.sources.reso_adapter import normalize_property_data
-
-        raw = {
-            "ListingId": "MIN-001",
-            "UnparsedAddress": "456 Oak Ave",
-            "City": "Dallas",
-            "StateOrProvince": "TX",
-            "PostalCode": "75201",
-            "ListPrice": "300000",
-        }
-
-        result = normalize_property_data(raw)
-
-        assert result["listing_id"] == "MIN-001"
-        assert result["city"] == "Dallas"
-        assert result["state"] == "TX"
-        assert result["price"] == 300000
-        assert result["beds"] is None
-        assert result["photos"] == []
-        assert result["raw_data"] is raw
-
-
-# Run tests
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -14,7 +14,6 @@ References:
 from __future__ import annotations
 
 from decimal import Decimal
-from dataclasses import dataclass
 
 from investor_app.finance.utils import to_decimal
 
