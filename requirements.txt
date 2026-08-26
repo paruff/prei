@@ -2,7 +2,7 @@
 # Generated from uv.lock on 2026-07-10. Run `uv lock` to refresh.
 # Upper bounds (<NEXT) are set where known incompatibilities exist.
 Django==6.0.7
-djangorestframework==3.17.1
+djangorestframework==3.18.0
 psycopg2-binary==2.9.12
 numpy==2.5.1
 numpy-financial==1.0.0
