@@ -4,7 +4,13 @@ from typing import cast
 
 from django import forms
 
-from .models import OperatingExpense, Property, RentalIncome, UserInvestmentTargets
+from .models import (
+    CapExItem,
+    OperatingExpense,
+    Property,
+    RentalIncome,
+    UserInvestmentTargets,
+)
 
 MIN_REALISTIC_YEAR_BUILT = 1800
 
@@ -168,6 +174,12 @@ class OperatingExpenseForm(forms.ModelForm):
     class Meta:
         model = OperatingExpense
         fields = ["category", "amount", "frequency", "effective_date"]
+
+
+class CapExItemForm(forms.ModelForm):
+    class Meta:
+        model = CapExItem
+        fields = ["replacement_cost", "useful_life_years", "age_years", "notes"]
 
 
 class InvestmentTargetsForm(forms.ModelForm):

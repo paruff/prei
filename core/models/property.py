@@ -180,7 +180,7 @@ class CapExItem(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.01"))],
     )
-    useful_life_years = models.PositiveIntegerField()
+    useful_life_years = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     age_years = models.PositiveIntegerField(default=0)
     notes = models.TextField(blank=True)
 
