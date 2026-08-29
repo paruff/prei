@@ -205,10 +205,14 @@ class TestComputePortfolioCashflow:
     def test_portfolio_coc_calculation(self, user, property_obj) -> None:
         """Test portfolio_coc = net_cash_flow / total_equity_invested."""
         result = compute_portfolio_cashflow(user)
-        total_equity_invested = sum(
-            (prop.purchase_price * (Decimal(1) - prop.down_payment_pct))
-            for prop in [property_obj]
-        )
+
+        def _equity(prop):
+            down_payment = prop.purchase_price * prop.down_payment_pct
+            loan_amount = prop.purchase_price * (Decimal(1) - prop.down_payment_pct)
+            annual_principal_paydown = loan_amount / Decimal(prop.loan_term_years)
+            return down_payment + annual_principal_paydown
+
+        total_equity_invested = sum(_equity(prop) for prop in [property_obj])
         expected_coc = (
             result.net_cash_flow / total_equity_invested
             if total_equity_invested > 0
