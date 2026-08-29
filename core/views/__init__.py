@@ -65,12 +65,14 @@ from core.services.cma import estimate_listing_kpis, find_undervalued, price_per
 from core.services import compute_portfolio_summary
 from core.services.audit import log_action
 from core.forms import (
+    CapExItemForm,
     OperatingExpenseForm,
     PropertyForm,
     RentalIncomeForm,
     InvestmentTargetsForm,
 )
 from core.models import (
+    CapExItem,
     Listing,
     MarketSnapshot,
     Property,
@@ -886,6 +888,31 @@ def property_edit(request, pk: int):
             "form": form,
             "object": property_obj,
             "can_delete_property": user_role == "owner",
+        },
+    )
+
+
+@login_required
+def capex_item_edit(request, pk: int):
+    capex_item = get_object_or_404(CapExItem, pk=pk)
+    property_obj = capex_item.prop
+    if not is_owner_or_shared(request.user, property_obj, min_role="team"):
+        raise Http404
+    if request.method == "POST":
+        form = CapExItemForm(request.POST, instance=capex_item)
+        if form.is_valid():
+            form.save()
+            return redirect("property_detail", pk=property_obj.pk)
+    else:
+        form = CapExItemForm(instance=capex_item)
+
+    return render(
+        request,
+        "properties/capex_item_edit.html",
+        {
+            "form": form,
+            "capex_item": capex_item,
+            "property": property_obj,
         },
     )
 

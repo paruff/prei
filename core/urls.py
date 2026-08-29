@@ -44,6 +44,11 @@ urlpatterns = [
         views.property_add_expense,
         name="property_add_expense",
     ),
+    path(
+        "capex-items/<int:pk>/edit/",
+        views.capex_item_edit,
+        name="capex_item_edit",
+    ),
     path("growth/", views.growth_areas, name="growth_areas"),
     path(
         "growth/export/csv/",

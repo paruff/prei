@@ -119,7 +119,11 @@ def calculate_capex_reserve_for_property(property: Property) -> Decimal:
     Returns:
         Monthly reserve amount.
     """
-    items: List[CapExItemProtocol] = list(property.capex_items.all())
+    # CapExItem (Django model) structurally satisfies CapExItemProtocol at
+    # runtime; mypy can't verify Protocol conformance through a QuerySet.
+    items: List[CapExItemProtocol] = list(
+        property.capex_items.all()  # type: ignore[arg-type]
+    )
     if not items:
         # Fall back to defaults based on property age if available
         property_age = 0
