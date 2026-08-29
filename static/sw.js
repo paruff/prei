@@ -68,6 +68,12 @@ async function networkFirst(request) {
     if (cachedResponse) {
       return cachedResponse;
     }
+    if (request.mode === 'navigate') {
+      const offlineResponse = await cache.match(OFFLINE_URL);
+      if (offlineResponse) {
+        return offlineResponse;
+      }
+    }
     throw error;
   }
 }
