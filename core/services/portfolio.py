@@ -103,7 +103,7 @@ def compute_portfolio_cashflow(user) -> PortfolioCashflow:
         total_capex_reserve += prop.capex_monthly
 
         # Equity (down payment + estimated principal paydown)
-        down_payment = prop.purchase_price * (Decimal(1) - prop.down_payment_pct)
+        down_payment = prop.purchase_price * prop.down_payment_pct
         loan_amount = prop.purchase_price * (Decimal(1) - prop.down_payment_pct)
         annual_principal_paydown = loan_amount / Decimal(prop.loan_term_years)
         total_equity += down_payment + annual_principal_paydown

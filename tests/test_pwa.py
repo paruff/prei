@@ -1,6 +1,10 @@
 """Tests for PWA functionality."""
 
 import json
+import re
+import shutil
+import subprocess
+import tempfile
 import pytest
 from pathlib import Path
 
@@ -69,6 +73,43 @@ class TestServiceWorker:
         assert (
             "navigator.serviceWorker.register" in content
             or "serviceWorker.register" in content
+        )
+
+    @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+    def test_sw_registration_script_is_valid_js(self):
+        """The inline registration <script> must actually parse.
+
+        A substring check alone can pass even when the script is malformed
+        (e.g. an unclosed brace), in which case the browser never executes
+        it and the service worker is never registered.
+        """
+        base_path = Path("templates/base.html")
+        content = base_path.read_text()
+
+        match = re.search(
+            r"<!-- Service Worker Registration -->\s*<script>(.*?)</script>",
+            content,
+            re.S,
+        )
+        assert match, "Service worker registration <script> block not found"
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".js", delete=False
+        ) as script_file:
+            script_file.write(match.group(1))
+            script_path = script_file.name
+
+        try:
+            result = subprocess.run(
+                ["node", "--check", script_path],
+                capture_output=True,
+                text=True,
+            )
+        finally:
+            Path(script_path).unlink()
+
+        assert result.returncode == 0, (
+            f"Service worker registration script is invalid JS: {result.stderr}"
         )
 
     def test_sw_cache_strategy(self):
