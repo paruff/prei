@@ -144,9 +144,11 @@ deploy-devcontainer:
 smoke:
 	@echo "── Smoke test: http://localhost:8000 ──"
 	@curl -sf -o /dev/null -w "  health:           HTTP %{http_code}\n" http://localhost:8000/health/ || { echo "❌ Health check failed"; exit 1; }
-	@curl -sf -o /dev/null -w "  listings:         HTTP %{http_code}\n" http://localhost:8000/api/listings/ || echo "⚠  Listings API not responding"
-	@curl -sf -o /dev/null -w "  growth-areas:     HTTP %{http_code}\n" "http://localhost:8000/api/v1/real-estate/growth-areas" || echo "⚠  Growth areas API not responding"
-	@curl -sf -o /dev/null -w "  foreclosures:     HTTP %{http_code}\n" http://localhost:8000/api/v1/foreclosures || echo "⚠  Foreclosures API not responding"
+	@curl -sf -o /dev/null -w "  listings:         HTTP %{http_code}\n" http://localhost:8000/api/listings/ || { echo "❌ Listings API failed"; exit 1; }
+	@# Both endpoints below take a REQUIRED parameter. Calling them bare returns a
+	@# correct 400, which the old recipe reported as "not responding" on every run.
+	@curl -sf -o /dev/null -w "  growth-areas:     HTTP %{http_code}\n" "http://localhost:8000/api/v1/real-estate/growth-areas?state=TX" || { echo "❌ Growth areas API failed"; exit 1; }
+	@curl -sf -o /dev/null -w "  foreclosures:     HTTP %{http_code}\n" "http://localhost:8000/api/v1/foreclosures?location=Fort%20Worth%2C%20TX" || { echo "❌ Foreclosures API failed"; exit 1; }
 	@echo "✅ Smoke test complete"
 
 # ── GitOps ────────────────────────────────────────────────────────────────

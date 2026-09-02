@@ -111,6 +111,17 @@ def main() -> int:
     parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER)
     parser.add_argument("--quarantine", type=Path, default=DEFAULT_QUARANTINE)
     parser.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD)
+    parser.add_argument(
+        "--fail-over",
+        type=int,
+        default=None,
+        metavar="N",
+        help=(
+            "Exit non-zero when more than N tests in this run passed only on "
+            "retry. Without it the report is advisory, which means --reruns 1 "
+            "silently absorbs flakes instead of surfacing them."
+        ),
+    )
     args = parser.parse_args()
 
     flaky_nodeids = find_flaky_nodeids(args.report_log)
@@ -132,6 +143,15 @@ def main() -> int:
         with open(step_summary, "a") as f:
             f.write("\n## Flaky test report\n\n")
             f.write(summary)
+
+    if args.fail_over is not None and len(flaky_nodeids) > args.fail_over:
+        sys.stderr.write(
+            f"\nERROR: {len(flaky_nodeids)} test(s) passed only on retry, "
+            f"which exceeds --fail-over {args.fail_over}.\n"
+            "A test that needs a retry to pass is a test that can fail in "
+            "production conditions. Fix or quarantine it.\n"
+        )
+        return 1
 
     return 0
 

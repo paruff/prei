@@ -105,7 +105,7 @@ jobs:
             -q --tb=short
       - name: Flaky test report
         if: always()
-        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
+        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report --fail-over 2
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
@@ -154,7 +154,7 @@ jobs:
             -q --tb=short
       - name: Flaky test report
         if: always()
-        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
+        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report --fail-over 2
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
@@ -193,7 +193,7 @@ jobs:
             -q --tb=short
       - name: Flaky test report
         if: always()
-        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report
+        run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report --fail-over 2
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
