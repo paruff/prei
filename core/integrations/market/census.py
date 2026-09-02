@@ -464,10 +464,15 @@ def fetch_place_growth_metrics(
 
     Returns:
         dict with keys:
-            - population (int): Current population
+            - population_current (int): Current-vintage population
+            - population_prior (int): 5-years-prior population
             - population_growth_rate (Decimal): 5-year growth rate as fraction (e.g., 0.0234)
-            - median_household_income (Decimal): Current median household income
-            - median_income_growth (Decimal): 5-year income growth rate as fraction
+            - median_income_current (Decimal): Current median household income
+            - median_income_prior (Decimal): 5-years-prior median household income
+            - median_income_growth_rate (Decimal): 5-year income growth rate as fraction
+            - housing_units_current (int): Current-vintage housing units
+            - housing_units_prior (int): 5-years-prior housing units
+            - housing_units_growth_rate (Decimal): 5-year housing-unit growth rate
         Returns None on any error.
     """
     if not api_key:

@@ -1,0 +1,131 @@
+name: Tier 3 Governance — Live Data Sources
+
+# The live-source tests skip themselves whenever their API keys are absent,
+# which in the PR gate is always. That is deliberate — a third party's outage
+# must never block a merge — but it means ATTOM, HUD, Census, FRED and the
+# county scrapers can degrade without a single red check anywhere.
+#
+# This workflow is where those failures become visible: it runs the same tests
+# nightly WITH the keys, off the merge path, and opens/updates one issue when
+# something breaks.
+
+on:
+  schedule:
+    - cron: "30 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: live-sources-${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  live-sources:
+    name: "🌐 Tier 3 — Live Sources"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
+    steps:
+      - name: "job-start"
+        run: |
+          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
+
+      - name: Checkout
+        uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run live source tests
+        id: live
+        continue-on-error: true
+        env:
+          ATTOM_API_KEY: ${{ secrets.ATTOM_API_KEY }}
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+          HUD_API_KEY: ${{ secrets.HUD_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          # Reruns are disabled here on purpose: a retry that hides a real
+          # outage defeats the whole point of this workflow.
+          python -m pytest \
+            core/tests/test_live_sources.py \
+            core/tests/test_integration_attom.py \
+            -m "live or integration" \
+            -p no:randomly -p no:cacheprovider \
+            --reruns 0 -q --no-header --tb=short \
+            2>&1 | tee live-sources.log
+          echo "exit=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo "## Live data source check"
+            echo ""
+            echo '```'
+            tail -30 live-sources.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update issue on failure
+        if: steps.live.outputs.exit != '0'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '🌐 Live data source failure';
+            const log = fs.readFileSync('live-sources.log', 'utf8').split('\n').slice(-40).join('\n');
+            const body = [
+              '## A live data source is failing',
+              '',
+              `**Detected:** ${new Date().toISOString()}`,
+              `**Workflow:** [View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              '',
+              'These tests skip in the PR gate when keys are absent, so this is the',
+              'only place the failure surfaces. Causes are usually one of:',
+              'an expired or unprovisioned API key, a quota limit, a changed',
+              'upstream response contract, or a scraper whose page layout moved.',
+              '',
+              '### Tail of the run',
+              '```',
+              log,
+              '```',
+            ].join('\n');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find(issue => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.info(`Updated existing issue #${existing.number}.`);
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+              core.info('Created live source failure issue.');
+            }
+
+      - name: "job-finish"
+        if: always()
+        run: |
+          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "sha: ${{ github.sha }}"
