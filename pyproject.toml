@@ -8,39 +8,6 @@
 # ---------------------------------------------------------------------------
 # Semantic Release — automated version bumps from conventional commits
 # ---------------------------------------------------------------------------
-# Triggered by .github/workflows/semantic-release.yml on merge to main.
-# Reads the latest git tag, determines the next version from commit history
-# (feat→minor, fix→patch, BREAKING→major), then creates a new git tag.
-# The tag push triggers docker-publish.yml (build+scan+publish+attest) and
-# release.yml (GitHub Release with auto-generated notes).
-# ---------------------------------------------------------------------------
-[tool.semantic_release]
-version_source = "tag"
-tag_format = "v{version}"
-branch = "main"
-commit_parsers = [
-    { message = "^fix", group = "Fixes" },
-    { message = "^feat", group = "Features" },
-    { message = "^perf", group = "Performance" },
-    { message = "^refactor", group = "Refactoring" },
-    { message = "^doc", group = "Documentation" },
-    { message = "^test", group = "Testing" },
-    { message = "^build", group = "Build" },
-    { message = "^ci", group = "CI/CD" },
-    { message = "^chore", group = "Chores" },
-    { message = "^style", group = "Style" },
-    { message = "BREAKING CHANGE", group = "Breaking Changes" },
-    { message = "break", group = "Breaking Changes" },
-]
-commit_parser = "angular"
-build_command = false
-changelog = false
-version_toml = []
-
-[tool.semantic_release.branches.main]
-match = "main"
-
-# ---------------------------------------------------------------------------
 # Commitizen — local CLI alignment with pre-commit hook
 # ---------------------------------------------------------------------------
 [tool.commitizen]

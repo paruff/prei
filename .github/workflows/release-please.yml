@@ -1,0 +1,49 @@
+name: Release Please
+
+# Replaces python-semantic-release as this repo's release manager.
+#
+# release-please scans Conventional Commits on main and maintains a standing
+# "release PR" carrying the next version bump plus a CHANGELOG entry. Nothing
+# ships until a human merges that PR; merging it creates the tag AND the
+# GitHub Release. That single ownership is why semantic-release.yml and
+# release.yml were removed -- two tools tagging from the same commit history
+# race each other, and two things creating a release for the same tag makes
+# the second one fail.
+#
+# Tag format is unchanged (v{version}), so docker-publish.yml's
+# `tags: ["v[0-9]*"]` trigger keeps matching.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: job-start
+        run: echo "job-start workflow=release-please job=release-please sha=${{ github.sha }} time=$(date -u +%FT%TZ)"
+
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        with:
+          target-branch: main
+          # RELEASE_PLEASE_TOKEN matters more here than in the sibling repos.
+          # Tags pushed using the default GITHUB_TOKEN do not trigger other
+          # workflows (GitHub's anti-recursion protection), and this repo's
+          # docker-publish.yml fires on tag pushes. semantic-release had the
+          # same limitation -- every docker-publish run to date was triggered
+          # by push-to-main, never by a tag -- so behaviour is unchanged
+          # without the PAT, and the cascade starts working with it.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: job-finish
+        if: always()
+        run: echo "job-finish workflow=release-please job=release-please sha=${{ github.sha }} time=$(date -u +%FT%TZ)"
