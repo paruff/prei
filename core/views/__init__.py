@@ -2,19 +2,19 @@ from __future__ import annotations
 
 import io
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal, InvalidOperation
-from typing import Any, Protocol, cast
+from typing import Any, cast
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import redirect_to_login
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import redirect_to_login
 from django.core.paginator import EmptyPage, Paginator
-from django.db.models import F, Q, Count
+from django.db.models import Count, F, Q
 from django.http import (
     Http404,
     HttpRequest,
@@ -32,128 +32,56 @@ from django.views import View
 from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
 
 from core.decorators import is_rate_limited, rate_limit
+from core.forms import (
+    CapExItemForm,
+    InvestmentTargetsForm,
+    OperatingExpenseForm,
+    PropertyForm,
+    RentalIncomeForm,
+)
 from core.integrations.market.census import (
     discover_places_in_state,
     fetch_housing_demand_index,
     fetch_place_growth_metrics,
 )
-from core.integrations.sources.fred_adapter import FREDAdapter
-
-from core.models import (
-    HudProperty,
-    UsdaProperty,
-    VrmProperty,
-    UserInvestmentTargets,
-    GrowthArea,
-    PipelineAsset,
-    UserScreeningPreferences,
-)
-
-from core.services.landlord_data import get_state_landlord_score
-from investor_app.finance.utils import (
-    compute_analysis_for_property,
-    calculate_whatif_monthly_cashflow,
-)
-
-# Moved from deprecated investor_app.finance.utils:
-from core.services.scoring import score_listing
-from core.services.financing_comparison import compare_scenarios, get_best_scenario
 from core.integrations.market.market_trends import get_market_health_summary
-
-# keep only the models that are actually used
-from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
-from core.services import compute_portfolio_summary
-from core.services.audit import log_action
-from core.forms import (
-    CapExItemForm,
-    OperatingExpenseForm,
-    PropertyForm,
-    RentalIncomeForm,
-    InvestmentTargetsForm,
-)
+from core.integrations.sources.fred_adapter import FREDAdapter
 from core.models import (
     CapExItem,
+    GrowthArea,
+    HudProperty,
     Listing,
     MarketSnapshot,
+    PipelineAsset,
     Property,
     PropertyShare,
     SavedSearch,
     Transaction,
+    UsdaProperty,
+    UserInvestmentTargets,
+    UserScreeningPreferences,
+    VrmProperty,
 )
+from core.services import compute_portfolio_summary
+from core.services.audit import log_action
+
+# keep only the models that are actually used
+from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
+from core.services.financing_comparison import compare_scenarios, get_best_scenario
+from core.services.landlord_data import get_state_landlord_score
+
+# Moved from deprecated investor_app.finance.utils:
+from core.services.scoring import score_listing
+from investor_app.finance.utils import (
+    calculate_whatif_monthly_cashflow,
+    compute_analysis_for_property,
+)
+
+from .permissions import _get_property_role, _is_client_only_user, is_owner_or_shared
 
 logger = logging.getLogger(__name__)
 FinancingValue = str | int | float | Decimal | None
 User = get_user_model()
-ROLE_RANK = {"client": 1, "team": 2, "owner": 3}
-
-
-class AuthenticatedUser(Protocol):
-    """Minimal authenticated-user contract used by RBAC helper functions.
-
-    The RBAC helpers only require a persisted integer ``id`` and do not depend on
-    ``AbstractBaseUser`` fields, which avoids ORM typing mismatches in mypy while
-    remaining compatible with configured auth user models.
-
-    Attributes:
-        id: Persisted primary key for the authenticated user.
-    """
-
-    id: int
-
-
-def _get_property_role(user: AuthenticatedUser, property_obj: Property) -> str | None:
-    """Return the caller's role for the property, if any.
-
-    Args:
-        user: Authenticated request user with a persisted integer id.
-        property_obj: Property being authorized.
-
-    Returns:
-        str | None: "owner", "team", or "client" when access exists; otherwise None.
-    """
-    if property_obj.user_id == user.id:
-        return "owner"
-    share = PropertyShare.objects.filter(
-        property=property_obj, shared_with_id=user.id
-    ).first()
-    if share is None:
-        return None
-    return share.role
-
-
-def is_owner_or_shared(
-    user: AuthenticatedUser, property_obj: Property, min_role: str = "client"
-) -> bool:
-    """Check whether user meets or exceeds the minimum property access role.
-
-    Args:
-        user: Authenticated request user with a persisted integer id.
-        property_obj: Property being authorized.
-        min_role: Minimum accepted role ("client", "team", or "owner").
-
-    Returns:
-        bool: True when the user's role rank is at least min_role; otherwise False.
-    """
-    role = _get_property_role(user, property_obj)
-    if role is None:
-        return False
-    return ROLE_RANK[role] >= ROLE_RANK[min_role]
-
-
-def _is_client_only_user(user: AuthenticatedUser) -> bool:
-    """Return True when user only has client-level shared access.
-
-    Args:
-        user: Authenticated request user with a persisted integer id.
-
-    Returns:
-        bool: True when the user owns no properties and has no team-level shares.
-    """
-    if Property.objects.filter(user_id=user.id).exists():
-        return False
-    if PropertyShare.objects.filter(shared_with_id=user.id, role="team").exists():
-        return False
-    return PropertyShare.objects.filter(shared_with_id=user.id, role="client").exists()
 
 
 def home(request):
@@ -184,13 +112,13 @@ def health_check(request: HttpRequest) -> JsonResponse:
 def system_status(request: HttpRequest) -> HttpResponse:
     """System status page — data inventory and operations (no CLI needed)."""
     from core.models import (
+        CountyForeclosureNotice,
         DataSourceHealth,
         GrowthArea,
         HudProperty,
+        PipelineProperty,
         UsdaProperty,
         VrmProperty,
-        CountyForeclosureNotice,
-        PipelineProperty,
     )
 
     hud_count = HudProperty.objects.count()
@@ -227,6 +155,7 @@ def system_status(request: HttpRequest) -> HttpResponse:
                 )
         elif action == "populate_growth":
             import threading
+
             from django.db import connection as _conn
 
             TARGET_STATES = ["TX", "FL", "GA", "NC", "AZ", "OH", "IN", "AL", "SC"]
@@ -255,6 +184,7 @@ def system_status(request: HttpRequest) -> HttpResponse:
             )
         elif action == "sheriff_sales":
             import threading
+
             from django.db import connection as _conn
 
             def _run():
@@ -274,6 +204,7 @@ def system_status(request: HttpRequest) -> HttpResponse:
             )
         elif action == "scrape_counties":
             import threading
+
             from django.db import connection as _conn
 
             def _run():
@@ -330,6 +261,7 @@ def refresh_all_sources(request: HttpRequest) -> HttpResponse:
         return HttpResponseNotAllowed(["POST"])
 
     import threading
+
     from django.db import connection as _conn
 
     def _run_ingestion(name, func, *args):
@@ -393,8 +325,8 @@ def dashboard(request):
     if _is_client_only_user(request.user):
         return redirect("property_list")
 
-    from core.services.scoring import score_listing_v2
     from core.models import UserInvestmentTargets
+    from core.services.scoring import score_listing_v2
 
     try:
         targets = UserInvestmentTargets.objects.get(user=request.user)
@@ -540,8 +472,8 @@ def property_list(request):
     )
 
     # Compute underwriting score for each property
-    from core.services.scoring import score_listing_v2
     from core.models import UserInvestmentTargets
+    from core.services.scoring import score_listing_v2
 
     try:
         targets = UserInvestmentTargets.objects.get(user=request.user)
@@ -763,8 +695,8 @@ def property_detail(request, pk: int):
     user_role = _get_property_role(request.user, property_obj)
 
     # Compute underwriting score
-    from core.services.scoring import score_listing_v2
     from core.models import UserInvestmentTargets
+    from core.services.scoring import score_listing_v2
 
     score = None
     targets = None
@@ -1282,8 +1214,9 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             pass
         if zip_code and data.get("run_school_api", False):
             try:
-                from core.integrations.market.schools import fetch_school_rating
                 from django.conf import settings
+
+                from core.integrations.market.schools import fetch_school_rating
 
                 gs_key = getattr(settings, "GREATSCHOOLS_API_KEY", "")
                 school_score = fetch_school_rating(zip_code, gs_key)
@@ -2823,8 +2756,9 @@ def pipeline_closing_create(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def leasing_list(request: HttpRequest) -> HttpResponse:
     """List leasing pipeline entries for the current user."""
-    from core.models import LeasingPipelineProperty
     from datetime import date
+
+    from core.models import LeasingPipelineProperty
 
     status_filter = request.GET.get("status", "ACTIVE")
 
@@ -2870,8 +2804,9 @@ def leasing_kanban(request: HttpRequest) -> HttpResponse:
     Columns: LISTING → SHOWING → APPLICATION → SCREENING → APPROVED →
              LEASE_SIGNED → MOVE_IN → STABILIZED
     """
-    from core.models import LeasingPipelineProperty
     from datetime import date
+
+    from core.models import LeasingPipelineProperty
 
     qs = LeasingPipelineProperty.objects.filter(
         user=request.user, status=LeasingPipelineProperty.Status.ACTIVE
@@ -4054,9 +3989,11 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         hud_count = HudProperty.objects.count()
         if hud_count == 0:
             try:
-                from core.services.ingestion import ingest_hud_reo
                 import time
+
                 from django.db import OperationalError
+
+                from core.services.ingestion import ingest_hud_reo
 
                 for attempt in range(3):
                     try:
@@ -4080,9 +4017,11 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         usda_count = UsdaProperty.objects.count()
         if usda_count == 0:
             try:
-                from core.services.ingestion import ingest_usda_reo
                 import time as _t
+
                 from django.db import OperationalError as _oe
+
+                from core.services.ingestion import ingest_usda_reo
 
                 for _a in range(3):
                     try:
