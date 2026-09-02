@@ -56,7 +56,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Gitleaks
-        uses: gitleaks/gitleaks-action@v3
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -365,7 +365,7 @@ jobs:
             exit 1
           fi
       - name: OWASP ZAP Authenticated Full Scan
-        uses: zaproxy/action-full-scan@v0.13.0
+        uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
         with:
           target: "http://localhost:8000"
           allow_issue_writing: false

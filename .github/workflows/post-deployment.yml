@@ -90,7 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Lighthouse CI
-        uses: treosh/lighthouse-ci-action@v12
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12
         with:
           urls: |
             ${{ needs.smoke.outputs.target }}/health/
@@ -107,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: OWASP ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.13.0
+        uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
         with:
           target: ${{ needs.smoke.outputs.target }}
           allow_issue_writing: false
