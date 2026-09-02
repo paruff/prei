@@ -85,6 +85,30 @@ from .export_helpers import apply_foreclosure_filters, parse_and_filter_location
 from .services.audit import log_action
 
 logger = logging.getLogger(__name__)
+
+
+def _as_list(value: object) -> list:
+    """Normalize a ValidationError detail node to a flat list."""
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _validation_message(exc: serializers.ValidationError) -> str:
+    """Render a DRF ValidationError as plain text for an API consumer.
+
+    `str(exc)` yields the internal repr — `[ErrorDetail(string='Invalid
+    geographic area.', code='invalid')]` — which is a Python object leaking
+    into a user-facing field. This flattens it to the messages themselves.
+    """
+    detail = exc.detail
+    if isinstance(detail, dict):
+        parts = [str(item) for value in detail.values() for item in _as_list(value)]
+    else:
+        parts = [str(item) for item in _as_list(detail)]
+    return " ".join(parts) or "Invalid request."
+
+
 DEFAULT_LISTING_SCORE = Decimal("0")
 
 
@@ -275,7 +299,7 @@ def growth_areas_list(request):
         except serializers.ValidationError as e:
             return Response(
                 {
-                    "error": str(e),
+                    "error": _validation_message(e),
                     "code": "INVALID_STATE_CODE",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -287,7 +311,7 @@ def growth_areas_list(request):
         except serializers.ValidationError as e:
             return Response(
                 {
-                    "error": str(e),
+                    "error": _validation_message(e),
                     "code": "INVALID_PARAMETER",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -411,7 +435,7 @@ def foreclosures_list(request):
         except serializers.ValidationError as e:
             return Response(
                 {
-                    "error": str(e),
+                    "error": _validation_message(e),
                     "code": "INVALID_LOCATION",
                     "validFormats": [
                         "City, State (e.g., 'Miami, FL')",
@@ -552,7 +576,7 @@ def foreclosures_list(request):
 
         except serializers.ValidationError as e:
             return Response(
-                {"error": str(e), "code": "INVALID_PARAMETER"},
+                {"error": _validation_message(e), "code": "INVALID_PARAMETER"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1557,7 +1581,7 @@ def export_foreclosures_csv(request):
         except serializers.ValidationError as e:
             return Response(
                 {
-                    "error": str(e),
+                    "error": _validation_message(e),
                     "code": "INVALID_LOCATION",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -1568,7 +1592,7 @@ def export_foreclosures_csv(request):
             queryset, stages = apply_foreclosure_filters(queryset, filters)
         except serializers.ValidationError as e:
             return Response(
-                {"error": str(e), "code": "INVALID_PARAMETER"},
+                {"error": _validation_message(e), "code": "INVALID_PARAMETER"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1684,7 +1708,7 @@ def export_foreclosures_json(request):
         except serializers.ValidationError as e:
             return Response(
                 {
-                    "error": str(e),
+                    "error": _validation_message(e),
                     "code": "INVALID_LOCATION",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -1695,7 +1719,7 @@ def export_foreclosures_json(request):
             queryset, _ = apply_foreclosure_filters(queryset, filters)
         except serializers.ValidationError as e:
             return Response(
-                {"error": str(e), "code": "INVALID_PARAMETER"},
+                {"error": _validation_message(e), "code": "INVALID_PARAMETER"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

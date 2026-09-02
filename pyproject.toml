@@ -1,9 +1,9 @@
 # This project is NOT a pip-distributable package (no setup.py/setup.cfg).
-# pyproject.toml is used here only for tool configuration (semantic-release,
-# commitizen, etc.). No [build-system] or [project] section is declared.
+# pyproject.toml is used here only for tool configuration (commitizen, ruff,
+# etc.). No [build-system] or [project] section is declared.
 #
 # Versioning is managed entirely through git tags (semver 2.0).
-# See .github/workflows/semantic-release.yml for the automation.
+# See .github/workflows/release-please.yml for the automation.
 
 # ---------------------------------------------------------------------------
 # Semantic Release — automated version bumps from conventional commits

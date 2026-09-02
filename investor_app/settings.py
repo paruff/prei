@@ -5,6 +5,7 @@ from pathlib import Path
 from decimal import Decimal
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 try:
     import structlog
@@ -90,6 +91,18 @@ for origin in (
 # Removed in settings_test.py to keep test behaviour predictable.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
+
+# Fail closed. Every security setting below is gated on `not DEBUG`, so a stray
+# DEBUG=True in production would silently disable HSTS, the SSL redirect and
+# secure cookies — no error, no log line, just an unhardened deployment serving
+# tracebacks. Production and DEBUG must never coexist, so refuse to boot.
+if IS_PRODUCTION and DEBUG:
+    raise ImproperlyConfigured(
+        "DEBUG must be False when DJANGO_ENV=production. Refusing to start: "
+        "with DEBUG on, SECURE_SSL_REDIRECT, SECURE_HSTS_SECONDS, "
+        "SESSION_COOKIE_SECURE and CSRF_COOKIE_SECURE are all skipped, and "
+        "error pages leak settings and environment values."
+    )
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
@@ -303,9 +316,11 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
     ],
+    # Session auth only. BasicAuthentication put username and password on every
+    # request and gave credential-stuffing a target the browser UI never needs —
+    # nothing in this app authenticates with Basic.
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
