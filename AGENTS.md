@@ -43,9 +43,9 @@ See `gitops-principles` skill — load before touching workflows, deployment con
 | `docs/PR_STANDARD.md` | PR naming rules |
 | `docs/FEATURE_SPEC_GUIDE.md` | how to write spec/design/tasks |
 | `docs/DEPLOYMENT_STRATEGY.md` | canary + progressive delivery plan |
-| `docs/TEST_PYRAMID_PLAN.md` | testing gates and phases |
-| `docs/TOP_01_PLAN.md` | top 0.1% quality roadmap |
-| `docs/DOCS_AUDIT.md` | documentation audit and alignment |
+| `docs/archive/TEST_PYRAMID_PLAN.md` | testing gates and phases |
+| `docs/archive/TOP_01_PLAN.md` | top 0.1% quality roadmap |
+| `docs/archive/DOCS_AUDIT.md` | documentation audit and alignment |
 
 ## Project File Structure
 
