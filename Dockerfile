@@ -71,6 +71,16 @@ RUN pip install --upgrade setuptools==83.0.0 wheel==0.46.2
 RUN rm -rf /usr/local/lib/python3.*/site-packages/pip \
            /usr/local/lib/python3.*/site-packages/pip-*.dist-info \
            /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.*
+# PDF export (core/views/_generate_pdf) renders through headless Chromium at
+# request time, so the browser must exist in THIS image — CI installing it on
+# the runner proves nothing about the artifact we ship. Only the headless shell
+# is needed; `pw.chromium.launch(headless=True)` resolves to chrome-headless-shell.
+# Browsers go to a shared path (not $HOME) so the non-root app user can read them.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN playwright install --with-deps --only-shell chromium && \
+    rm -rf /var/lib/apt/lists/* && \
+    chmod -R a+rX /ms-playwright
+
 COPY . .
 
 # Bake version into files so the runtime can read them without a .git dir
