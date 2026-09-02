@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/paruff/prei/compare/v0.4.3...v0.4.4) (2026-09-02)
+
+
+### Fixed
+
+* **docker:** install headless Chromium so PDF export works in the image ([#412](https://github.com/paruff/prei/issues/412)) ([b4edb9d](https://github.com/paruff/prei/commit/b4edb9d7ecd9ab9ae4df0872d923af1e27dbe558))
+
 ## [0.4.3](https://github.com/paruff/prei/compare/v0.4.2...v0.4.3) (2026-09-02)
 
 
