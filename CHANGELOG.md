@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/paruff/prei/compare/v0.4.1...v0.4.2) (2026-09-02)
+
+
+### Fixed
+
+* **ci:** run apt-get update in doc-freshness workflow ([#408](https://github.com/paruff/prei/issues/408)) ([1dc55bd](https://github.com/paruff/prei/commit/1dc55bd7b7b3694858831b0f556ff3fd581feff8))
+
 ## [0.4.1](https://github.com/paruff/prei/compare/v0.4.0...v0.4.1) (2026-09-02)
 
 
