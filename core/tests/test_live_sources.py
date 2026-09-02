@@ -147,8 +147,8 @@ def test_census_place_growth_metrics() -> None:
     assert result is not None, (
         "Census API returned None — key may be invalid or rate-limited"
     )
-    assert result.get("population", 0) > 0, "Census returned zero population"
-    assert "pop_growth" in result
+    assert result.get("population_current", 0) > 0, "Census returned zero population"
+    assert "population_growth_rate" in result
 
 
 # ---------------------------------------------------------------------------
