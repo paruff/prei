@@ -22,9 +22,12 @@ Single source of truth for all AI-assisted development in prei.
 │   ├── data-collection/SKILL.md
 │   ├── evaluation/SKILL.md
 │   ├── finance-review/SKILL.md
+│   ├── gitops-principles/SKILL.md
 │   ├── metrics/SKILL.md
+│   ├── migration-safety/SKILL.md
 │   ├── model-routing/SKILL.md
-│   └── pr-contract/SKILL.md
+│   ├── pr-contract/SKILL.md
+│   └── skill-routing/SKILL.md   (which external skills apply here)
 ├── workflows/      # Multi-agent pipelines
 │   ├── bugfix.yml
 │   ├── evaluate.yml
