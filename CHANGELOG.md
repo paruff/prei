@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.4.3](https://github.com/paruff/prei/compare/v0.4.2...v0.4.3) (2026-09-02)
+
+
+### Fixed
+
+* **census:** correct stale return contract and surface live source failures ([#413](https://github.com/paruff/prei/issues/413)) ([791c8ad](https://github.com/paruff/prei/commit/791c8ad935675c5ec537c1c8b4888576f3972af0))
+* **ci:** make the smoke target and flaky report able to fail ([#414](https://github.com/paruff/prei/issues/414)) ([d4a42c0](https://github.com/paruff/prei/commit/d4a42c06349860944fb47bf3b96565c0ed807f13))
+* **security:** fail closed on DEBUG in production, drop Basic auth, stop leaking ErrorDetail ([#416](https://github.com/paruff/prei/issues/416)) ([a22b1bc](https://github.com/paruff/prei/commit/a22b1bc54cc22e133b2afa9916a2ba30eea1a17e))
+
+
+### Docs
+
+* **plan:** scope the core/views split (H6) ([#417](https://github.com/paruff/prei/issues/417)) ([8657382](https://github.com/paruff/prei/commit/8657382b4564782e7974d235291e216cad3292c0))
+
+
+### Chores
+
+* **ci:** pin third-party actions to commit SHAs ([#415](https://github.com/paruff/prei/issues/415)) ([a7eb825](https://github.com/paruff/prei/commit/a7eb82580e35a7a6290cfec11c143fa12df4a3c5))
+* **main:** release 0.4.2 ([#411](https://github.com/paruff/prei/issues/411)) ([ca4b3cb](https://github.com/paruff/prei/commit/ca4b3cbf0eaef1cc8a2387ad65beed02506e5674))
+
 ## [0.4.2](https://github.com/paruff/prei/compare/v0.4.1...v0.4.2) (2026-09-02)
 
 
