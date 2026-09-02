@@ -194,6 +194,16 @@ jobs:
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/api/health/; echo ""
           echo -n "9. Static CSS: "
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/static/css/base.css; echo ""
+          echo -n "10. PDF renderer (headless Chromium in image): "
+          docker exec prei-live-test python -c "
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as pw:
+              browser = pw.chromium.launch(headless=True)
+              page = browser.new_page()
+              page.set_content('<h1>artifact check</h1>')
+              assert page.pdf(format='A4')[:4] == b'%PDF'
+              browser.close()
+          " >/dev/null 2>&1 && echo "PASS" || { echo "FAIL — PDF export would 500 in production"; exit 1; }
           echo ""
           echo "=== All smoke tests passed ==="
       - name: Seed test data
