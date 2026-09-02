@@ -7,6 +7,11 @@
 
 * **ci:** run apt-get update in doc-freshness workflow ([#408](https://github.com/paruff/prei/issues/408)) ([1dc55bd](https://github.com/paruff/prei/commit/1dc55bd7b7b3694858831b0f556ff3fd581feff8))
 
+
+### Docs
+
+* **agents:** add skill-routing pack and fix stale context pointers ([#409](https://github.com/paruff/prei/issues/409)) ([8720b08](https://github.com/paruff/prei/commit/8720b0872931d6dc60446f0cda0659f81863041e))
+
 ## [0.4.1](https://github.com/paruff/prei/compare/v0.4.0...v0.4.1) (2026-09-02)
 
 
