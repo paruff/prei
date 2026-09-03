@@ -138,7 +138,7 @@ class TestGrowthExplorerPostErrors:
             assert resp.status_code == 200
             assert "CENSUS_API_KEY" in resp.content.decode()
 
-    @patch("core.views.discover_places_in_state")
+    @patch("core.views.growth.discover_places_in_state")
     @pytest.mark.django_db
     def test_no_places_found_shows_error(
         self, mock_discover: MagicMock, authed_client
@@ -152,7 +152,7 @@ class TestGrowthExplorerPostErrors:
         assert resp.status_code == 200
         assert "No Census data returned" in resp.content.decode()
 
-    @patch("core.views.discover_places_in_state")
+    @patch("core.views.growth.discover_places_in_state")
     @pytest.mark.django_db
     def test_place_without_census_data_skipped(
         self, mock_discover: MagicMock, authed_client
@@ -167,10 +167,10 @@ class TestGrowthExplorerPostErrors:
         with (
             patch.dict(os.environ, API_ENV),
             patch(
-                "core.views.FREDAdapter.fetch_state_employment_growth"
+                "core.views.growth.FREDAdapter.fetch_state_employment_growth"
             ) as mock_emp_growth,
-            patch("core.views.fetch_place_growth_metrics") as mock_census,
-            patch("core.views.fetch_housing_demand_index") as mock_housing,
+            patch("core.views.growth.fetch_place_growth_metrics") as mock_census,
+            patch("core.views.growth.fetch_housing_demand_index") as mock_housing,
             patch("core.data.us_lookup.lookup_county_fips") as mock_fips,
         ):
             mock_fips.return_value = None
@@ -201,10 +201,10 @@ class TestGrowthExplorerPostErrors:
 class TestGrowthExplorerPostSuccess:
     """POST behaviour — successful analysis creates/updates GrowthArea rows."""
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch("core.data.us_lookup.lookup_county_fips")
     @pytest.mark.django_db
     def test_creates_growth_areas(
@@ -239,10 +239,10 @@ class TestGrowthExplorerPostSuccess:
         assert la.housing_demand_index == 85
         assert la.metro_area == ""  # blank until CBSA API integration
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch("core.data.us_lookup.lookup_county_fips")
     @pytest.mark.django_db
     def test_updates_existing_growth_area(
@@ -286,10 +286,10 @@ class TestGrowthExplorerPostSuccess:
         assert la.median_income_growth == Decimal("0.15")  # 0.1538 → 0.15
         assert la.housing_demand_index == 90
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch("core.data.us_lookup.lookup_county_fips")
     @pytest.mark.django_db
     def test_employment_growth_is_state_level(
@@ -327,10 +327,10 @@ class TestGrowthExplorerPostSuccess:
         # DecimalField(max_digits=6, decimal_places=2) rounds to 2dp
         assert rates.pop() == Decimal("0.04")  # 0.0375 → 0.04
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch("core.data.us_lookup.lookup_county_fips")
     @pytest.mark.django_db
     def test_results_sorted_by_composite_score(
@@ -386,10 +386,10 @@ class TestGrowthExplorerPostSuccess:
             "San Diego"
         ), f"Los Angeles should rank above San Diego, got order: {names_in_order}"
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch("core.data.us_lookup.lookup_county_fips")
     @pytest.mark.django_db
     def test_context_includes_emp_growth_value(
@@ -416,10 +416,10 @@ class TestGrowthExplorerPostSuccess:
         assert resp.context["emp_growth"] == Decimal("0.0375")
         assert resp.context["selected_state"] == "CA"
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch("core.data.us_lookup.lookup_county_fips")
     @pytest.mark.django_db
     def test_housing_demand_defaults_to_50(

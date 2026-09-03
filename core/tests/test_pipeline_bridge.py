@@ -16,10 +16,10 @@ def authed_client(client):
 
 @patch.dict("os.environ", {"CENSUS_API_KEY": "test-key"})
 class TestPipelineBridge:
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch("core.services.sources.registry.discover_from_all")
     @pytest.mark.django_db
     def test_pipeline_button_triggers_discovery(
@@ -71,10 +71,10 @@ class TestPipelineBridge:
         # (removed in UX redesign — growth page focuses on market analysis only)
         mock_discover_all.assert_called_once()
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @pytest.mark.django_db
     def test_no_pipeline_city_no_discovery(
         self,
