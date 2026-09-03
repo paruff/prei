@@ -19,10 +19,10 @@ from core.models import GrowthArea
 class TestGrowthExplorerPost:
     """Tests for the growth_explorer POST flow."""
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch.dict("os.environ", {"CENSUS_API_KEY": "test-census-key"})
     def test_post_creates_growth_areas(
         self,
@@ -62,10 +62,10 @@ class TestGrowthExplorerPost:
         assert ga.population == 1000000
         assert ga.composite_score is not None
 
-    @patch("core.views.discover_places_in_state")
-    @patch("core.views.FREDAdapter.fetch_state_employment_growth")
-    @patch("core.views.fetch_place_growth_metrics")
-    @patch("core.views.fetch_housing_demand_index")
+    @patch("core.views.growth.discover_places_in_state")
+    @patch("core.views.growth.FREDAdapter.fetch_state_employment_growth")
+    @patch("core.views.growth.fetch_place_growth_metrics")
+    @patch("core.views.growth.fetch_housing_demand_index")
     @patch("core.integrations.market.fmr_adapter.fetch_fmr_data")
     @patch.dict("os.environ", {"CENSUS_API_KEY": "test-census-key"})
     @pytest.mark.django_db
@@ -150,7 +150,7 @@ class TestGrowthExplorerPost:
         assert response.status_code == 200
         assert b"Invalid" in response.content
 
-    @patch("core.views.discover_places_in_state")
+    @patch("core.views.growth.discover_places_in_state")
     @patch.dict("os.environ", {"CENSUS_API_KEY": "test-census-key"})
     def test_no_places_found_shows_error(
         self, mock_discover: Mock, client: Mock, user: Mock

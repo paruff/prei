@@ -146,7 +146,9 @@ def test_compare_computes_analysis_when_missing(
         )
 
     monkeypatch.setattr(
-        views, "compute_analysis_for_property", _fake_compute_analysis_for_property
+        views.properties,
+        "compute_analysis_for_property",
+        _fake_compute_analysis_for_property,
     )
 
     client.force_login(user)

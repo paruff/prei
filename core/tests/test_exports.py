@@ -75,7 +75,7 @@ def test_pdf_export_returns_500_on_generation_failure(
     client, user, property_sfr, analysis_sfr, monkeypatch
 ):
     monkeypatch.setattr(
-        "core.views._generate_pdf",
+        "core.views.exports._generate_pdf",
         lambda html: (_ for _ in ()).throw(Exception("Playwright error")),
     )
     client.force_login(user)
