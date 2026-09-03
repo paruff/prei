@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import io
 import logging
-from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from typing import Any, cast
 
@@ -11,9 +10,8 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import EmptyPage, Paginator
-from django.db.models import Count, F, Q
+from django.db.models import F, Q, Count
 from django.http import (
     Http404,
     HttpRequest,
@@ -27,57 +25,67 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
-from django.views import View
 from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
 
 from core.decorators import is_rate_limited, rate_limit
-from core.forms import (
-    CapExItemForm,
-    InvestmentTargetsForm,
-    OperatingExpenseForm,
-    PropertyForm,
-    RentalIncomeForm,
-)
 from core.integrations.market.census import (
     discover_places_in_state,
     fetch_housing_demand_index,
     fetch_place_growth_metrics,
 )
-from core.integrations.market.market_trends import get_market_health_summary
 from core.integrations.sources.fred_adapter import FREDAdapter
+
+from core.models import (
+    HudProperty,
+    UsdaProperty,
+    VrmProperty,
+    GrowthArea,
+    PipelineAsset,
+    UserScreeningPreferences,
+)
+
+from core.services.landlord_data import get_state_landlord_score
+from investor_app.finance.utils import (
+    compute_analysis_for_property,
+    calculate_whatif_monthly_cashflow,
+)
+
+# Moved from deprecated investor_app.finance.utils:
+from core.services.scoring import score_listing
+from core.services.financing_comparison import compare_scenarios, get_best_scenario
+from core.integrations.market.market_trends import get_market_health_summary
+
+# keep only the models that are actually used
+from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
+from core.services import compute_portfolio_summary
+from core.services.audit import log_action
+from core.forms import (
+    CapExItemForm,
+    OperatingExpenseForm,
+    PropertyForm,
+    RentalIncomeForm,
+)
 from core.models import (
     CapExItem,
-    GrowthArea,
-    HudProperty,
     Listing,
     MarketSnapshot,
-    PipelineAsset,
     Property,
     PropertyShare,
     SavedSearch,
     Transaction,
-    UsdaProperty,
-    UserInvestmentTargets,
-    UserScreeningPreferences,
-    VrmProperty,
-)
-from core.services import compute_portfolio_summary
-from core.services.audit import log_action
-
-# keep only the models that are actually used
-from core.services.cma import estimate_listing_kpis, find_undervalued, price_per_sqft
-from core.services.financing_comparison import compare_scenarios, get_best_scenario
-from core.services.landlord_data import get_state_landlord_score
-
-# Moved from deprecated investor_app.finance.utils:
-from core.services.scoring import score_listing
-from investor_app.finance.utils import (
-    calculate_whatif_monthly_cashflow,
-    compute_analysis_for_property,
 )
 
+from .constants import US_STATES
+
+from .system import home, health_check, system_status, refresh_all_sources, health_json
+from .markets import (
+    investment_targets_edit,
+    MarketRefreshView,
+    markets_list,
+    brrrr_calculator,
+    sell_index,
+)
 from .permissions import _get_property_role, _is_client_only_user, is_owner_or_shared
-from .system import health_check, health_json, home, refresh_all_sources, system_status
 
 logger = logging.getLogger(__name__)
 FinancingValue = str | int | float | Decimal | None
@@ -85,10 +93,15 @@ User = get_user_model()
 
 
 __all__ = [
+    "MarketRefreshView",
+    "brrrr_calculator",
     "health_check",
     "health_json",
     "home",
+    "investment_targets_edit",
+    "markets_list",
     "refresh_all_sources",
+    "sell_index",
     "system_status",
 ]
 
@@ -98,8 +111,8 @@ def dashboard(request):
     if _is_client_only_user(request.user):
         return redirect("property_list")
 
-    from core.models import UserInvestmentTargets
     from core.services.scoring import score_listing_v2
+    from core.models import UserInvestmentTargets
 
     try:
         targets = UserInvestmentTargets.objects.get(user=request.user)
@@ -245,8 +258,8 @@ def property_list(request):
     )
 
     # Compute underwriting score for each property
-    from core.models import UserInvestmentTargets
     from core.services.scoring import score_listing_v2
+    from core.models import UserInvestmentTargets
 
     try:
         targets = UserInvestmentTargets.objects.get(user=request.user)
@@ -468,8 +481,8 @@ def property_detail(request, pk: int):
     user_role = _get_property_role(request.user, property_obj)
 
     # Compute underwriting score
-    from core.models import UserInvestmentTargets
     from core.services.scoring import score_listing_v2
+    from core.models import UserInvestmentTargets
 
     score = None
     targets = None
@@ -987,9 +1000,8 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             pass
         if zip_code and data.get("run_school_api", False):
             try:
-                from django.conf import settings
-
                 from core.integrations.market.schools import fetch_school_rating
+                from django.conf import settings
 
                 gs_key = getattr(settings, "GREATSCHOOLS_API_KEY", "")
                 school_score = fetch_school_rating(zip_code, gs_key)
@@ -2529,9 +2541,8 @@ def pipeline_closing_create(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def leasing_list(request: HttpRequest) -> HttpResponse:
     """List leasing pipeline entries for the current user."""
-    from datetime import date
-
     from core.models import LeasingPipelineProperty
+    from datetime import date
 
     status_filter = request.GET.get("status", "ACTIVE")
 
@@ -2577,9 +2588,8 @@ def leasing_kanban(request: HttpRequest) -> HttpResponse:
     Columns: LISTING → SHOWING → APPLICATION → SCREENING → APPROVED →
              LEASE_SIGNED → MOVE_IN → STABILIZED
     """
-    from datetime import date
-
     from core.models import LeasingPipelineProperty
+    from datetime import date
 
     qs = LeasingPipelineProperty.objects.filter(
         user=request.user, status=LeasingPipelineProperty.Status.ACTIVE
@@ -3288,61 +3298,6 @@ def export_pdf(request, pk: int) -> HttpResponse:
     return response
 
 
-US_STATES = [
-    ("AL", "Alabama"),
-    ("AK", "Alaska"),
-    ("AZ", "Arizona"),
-    ("AR", "Arkansas"),
-    ("CA", "California"),
-    ("CO", "Colorado"),
-    ("CT", "Connecticut"),
-    ("DE", "Delaware"),
-    ("DC", "District of Columbia"),
-    ("FL", "Florida"),
-    ("GA", "Georgia"),
-    ("HI", "Hawaii"),
-    ("ID", "Idaho"),
-    ("IL", "Illinois"),
-    ("IN", "Indiana"),
-    ("IA", "Iowa"),
-    ("KS", "Kansas"),
-    ("KY", "Kentucky"),
-    ("LA", "Louisiana"),
-    ("ME", "Maine"),
-    ("MD", "Maryland"),
-    ("MA", "Massachusetts"),
-    ("MI", "Michigan"),
-    ("MN", "Minnesota"),
-    ("MS", "Mississippi"),
-    ("MO", "Missouri"),
-    ("MT", "Montana"),
-    ("NE", "Nebraska"),
-    ("NV", "Nevada"),
-    ("NH", "New Hampshire"),
-    ("NJ", "New Jersey"),
-    ("NM", "New Mexico"),
-    ("NY", "New York"),
-    ("NC", "North Carolina"),
-    ("ND", "North Dakota"),
-    ("OH", "Ohio"),
-    ("OK", "Oklahoma"),
-    ("OR", "Oregon"),
-    ("PA", "Pennsylvania"),
-    ("RI", "Rhode Island"),
-    ("SC", "South Carolina"),
-    ("SD", "South Dakota"),
-    ("TN", "Tennessee"),
-    ("TX", "Texas"),
-    ("UT", "Utah"),
-    ("VT", "Vermont"),
-    ("VA", "Virginia"),
-    ("WA", "Washington"),
-    ("WV", "West Virginia"),
-    ("WI", "Wisconsin"),
-    ("WY", "Wyoming"),
-]
-
-
 @login_required
 def vrm_properties_list(request: HttpRequest) -> HttpResponse:
     """List VRM properties with state/zip filtering and pipeline integration."""
@@ -3419,165 +3374,6 @@ def vrm_properties_list(request: HttpRequest) -> HttpResponse:
             "pipeline_entries": user_pipeline_entries,
         },
     )
-
-
-@login_required
-def investment_targets_edit(request: HttpRequest) -> HttpResponse:
-    """Edit the current user's investment targets and screening preferences."""
-    targets, _created = UserInvestmentTargets.objects.get_or_create(user=request.user)
-    prefs, _ = UserScreeningPreferences.objects.get_or_create(user=request.user)
-
-    if request.method == "POST":
-        form = InvestmentTargetsForm(request.POST, instance=targets)
-        if form.is_valid():
-            form.save()
-            # Save screening preferences
-            prefs.min_gross_yield = Decimal(request.POST.get("min_gross_yield", "0.07"))
-            prefs.max_price_to_rent_ratio = Decimal(
-                request.POST.get("max_price_to_rent_ratio", "15.00")
-            )
-            prefs.min_beds = int(request.POST.get("min_beds", 1))
-            prefs.min_baths = int(request.POST.get("min_baths", 1))
-            prefs.save()
-            return redirect("investment_targets_edit")
-    else:
-        form = InvestmentTargetsForm(instance=targets)
-
-    return render(
-        request,
-        "investment_targets/edit.html",
-        {"form": form, "targets": targets, "prefs": prefs},
-    )
-
-
-class MarketRefreshView(LoginRequiredMixin, View):
-    """Secure market data refresh — only queries the authenticated user's ZIPs."""
-
-    def post(self, request):
-        user_zips = list(
-            Property.objects.filter(user=request.user)
-            .values_list("zip_code", flat=True)
-            .distinct()
-        )
-        from django.core import management
-
-        for zip_code in user_zips:
-            management.call_command(
-                "refresh_market_data", zip=zip_code, stdout=io.StringIO()
-            )
-        messages.success(
-            request, f"Market data refreshed for {len(user_zips)} ZIP code(s)."
-        )
-        return redirect("markets_list")
-
-    def get(self, request):
-        # GET not allowed — redirect silently
-        return redirect("markets_list")
-
-
-@login_required
-def markets_list(request: HttpRequest) -> HttpResponse:
-    """List markets (ZIPs) for the authenticated user's properties."""
-    from core.services.market_scoring import score_market_by_zip
-
-    # Get distinct ZIP codes that have at least one of the user's properties
-    zip_counts = (
-        Property.objects.filter(user=request.user)
-        .values("zip_code")
-        .annotate(property_count=Count("id"))
-        .exclude(zip_code="")
-        .order_by("zip_code")
-    )
-
-    markets = []
-    for entry in zip_counts:
-        zip_code = entry["zip_code"]
-        market_data = score_market_by_zip(zip_code)
-        market_data["property_count"] = entry["property_count"]
-        # Add MSA name from MarketSnapshot if available
-        try:
-            from core.models import MarketSnapshot
-
-            snapshot = (
-                MarketSnapshot.objects.filter(zip_code=zip_code, area_type="zip")
-                .order_by("-fetched_at")
-                .first()
-            )
-            market_data["msa_name"] = snapshot.msa_name if snapshot else ""
-        except Exception:
-            market_data["msa_name"] = ""
-        markets.append(market_data)
-
-    has_market_data = len(markets) > 0
-
-    return render(
-        request,
-        "markets/list.html",
-        {"markets": markets, "has_market_data": has_market_data},
-    )
-
-
-@login_required
-def brrrr_calculator(request: HttpRequest) -> HttpResponse:
-    """Standalone BRRRR calculator page — no login required.
-
-    Accepts POST with deal inputs and renders the BRRRRAnalysis result.
-    GET renders an empty form.
-    """
-    from decimal import Decimal, InvalidOperation
-
-    from core.services.brrrr import calculate_brrrr
-
-    result = None
-    form_data: dict[str, str] = {}
-
-    if request.method == "POST":
-        # Collect form values
-        form_data = {
-            "purchase_price": request.POST.get("purchase_price", ""),
-            "rehab_cost": request.POST.get("rehab_cost", ""),
-            "arv": request.POST.get("arv", ""),
-            "monthly_rent_post_rehab": request.POST.get("monthly_rent_post_rehab", ""),
-            "annual_operating_expenses": request.POST.get(
-                "annual_operating_expenses", ""
-            ),
-            "refi_ltv_pct": request.POST.get("refi_ltv_pct", "75"),
-            "refi_interest_rate": request.POST.get("refi_interest_rate", "7"),
-            "refi_term_years": request.POST.get("refi_term_years", "30"),
-            "closing_costs_pct": request.POST.get("closing_costs_pct", "2"),
-        }
-
-        try:
-            result = calculate_brrrr(
-                purchase_price=Decimal(form_data["purchase_price"]),
-                rehab_cost=Decimal(form_data["rehab_cost"]),
-                arv=Decimal(form_data["arv"]),
-                monthly_rent_post_rehab=Decimal(form_data["monthly_rent_post_rehab"]),
-                annual_operating_expenses=Decimal(
-                    form_data["annual_operating_expenses"]
-                ),
-                refi_ltv_pct=Decimal(form_data["refi_ltv_pct"]) / Decimal("100"),
-                refi_interest_rate=Decimal(form_data["refi_interest_rate"])
-                / Decimal("100"),
-                refi_term_years=int(form_data["refi_term_years"]),
-                closing_costs_pct=Decimal(form_data["closing_costs_pct"])
-                / Decimal("100"),
-            )
-        except InvalidOperation, ValueError, ZeroDivisionError:
-            # Invalid input — render form with no result
-            result = None
-
-    return render(
-        request,
-        "brrrr_calculator.html",
-        {"result": result, "form_data": form_data},
-    )
-
-
-@login_required
-def sell_index(request: HttpRequest) -> HttpResponse:
-    """Sell/Disposition stub page — placeholder for future disposition tools."""
-    return render(request, "sell_index.html")
 
 
 def property_discovery(request: HttpRequest) -> HttpResponse:
@@ -3762,11 +3558,9 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         hud_count = HudProperty.objects.count()
         if hud_count == 0:
             try:
-                import time
-
-                from django.db import OperationalError
-
                 from core.services.ingestion import ingest_hud_reo
+                import time
+                from django.db import OperationalError
 
                 for attempt in range(3):
                     try:
@@ -3790,11 +3584,9 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         usda_count = UsdaProperty.objects.count()
         if usda_count == 0:
             try:
-                import time as _t
-
-                from django.db import OperationalError as _oe
-
                 from core.services.ingestion import ingest_usda_reo
+                import time as _t
+                from django.db import OperationalError as _oe
 
                 for _a in range(3):
                     try:
