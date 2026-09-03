@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.5](https://github.com/paruff/prei/compare/v0.4.4...v0.4.5) (2026-09-03)
+
+
+### Fixed
+
+* **tests:** restore SQLite WAL and busy_timeout in test settings ([#419](https://github.com/paruff/prei/issues/419)) ([875086b](https://github.com/paruff/prei/commit/875086b2e29fb85f3ed8e6fbc6a42119ce3b92ef))
+
 ## [0.4.4](https://github.com/paruff/prei/compare/v0.4.3...v0.4.4) (2026-09-02)
 
 
