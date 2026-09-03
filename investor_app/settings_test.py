@@ -17,6 +17,21 @@ DATABASES = {
         "TEST": {
             "NAME": str(BASE_DIR / "test_db.sqlite3"),
         },
+        # settings.py applies these PRAGMAs to prevent "database is locked"
+        # from background threads, but this module replaces DATABASES
+        # wholesale, so that hardening does not carry over — and this is the
+        # one config that actually runs a second thread against the same file.
+        # Without WAL a writer blocks every reader, and without busy_timeout a
+        # contended connection raises immediately instead of waiting, which
+        # surfaced as OperationalError at live_server test teardown.
+        "OPTIONS": {
+            "init_command": (
+                "PRAGMA journal_mode=WAL;"
+                "PRAGMA busy_timeout=5000;"
+                "PRAGMA synchronous=NORMAL;"
+            ),
+        },
+        "timeout": 20,
     }
 }
 
