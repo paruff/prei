@@ -117,6 +117,14 @@ if not DEBUG:
 
 X_FRAME_OPTIONS = "DENY"
 
+# Explicitly set HttpOnly on session cookie (ZAP 10010: Cookie No HttpOnly Flag).
+# Django defaults this to True, but ZAP flags it when not explicitly set.
+SESSION_COOKIE_HTTPONLY = True
+
+# Suppress Server header version leak (ZAP 10036: Server Leaks Version Information).
+# True = generic header without version; False = remove entirely.
+SECURE_SERVER_HEADER = True
+
 # Session security — sessions expire on browser close and have a maximum age.
 # 1209600 seconds = 14 days.  The DB-backed session engine (default) persists
 # sessions beyond browser close — SESSION_EXPIRE_AT_BROWSER_CLOSE forces a fresh

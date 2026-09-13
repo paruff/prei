@@ -27,6 +27,8 @@ SECURITY_ENV_KEYS = [
     "SECURE_HSTS_PRELOAD",
     "SECURE_CONTENT_TYPE_NOSNIFF",
     "X_FRAME_OPTIONS",
+    "SESSION_COOKIE_HTTPONLY",
+    "SECURE_SERVER_HEADER",
 ]
 
 
@@ -101,6 +103,55 @@ def test_debug_false_enforces_secure_defaults_in_production() -> None:
     assert values["SECURE_HSTS_INCLUDE_SUBDOMAINS"] is True
 
 
+def test_session_cookie_httponly_explicitly_set() -> None:
+    """Ensure SESSION_COOKIE_HTTPONLY is explicitly True (ZAP 10010)."""
+    values = _load_settings_with_env(
+        {
+            "DJANGO_ENV": "development",
+            "DEBUG": "False",
+            "SECURE_SSL_REDIRECT": "True",
+            "SESSION_COOKIE_SECURE": "True",
+            "CSRF_COOKIE_SECURE": "True",
+            "SECURE_HSTS_SECONDS": "31536000",
+            "SECURE_HSTS_INCLUDE_SUBDOMAINS": "True",
+        }
+    )
+    assert values["SESSION_COOKIE_HTTPONLY"] is True
+
+
+def test_secure_server_header_not_leaking_version() -> None:
+    """Ensure SECURE_SERVER_HEADER suppresses version leak (ZAP 10036)."""
+    values = _load_settings_with_env(
+        {
+            "DJANGO_ENV": "development",
+            "DEBUG": "False",
+            "SECURE_SSL_REDIRECT": "True",
+            "SESSION_COOKIE_SECURE": "True",
+            "CSRF_COOKIE_SECURE": "True",
+            "SECURE_HSTS_SECONDS": "31536000",
+            "SECURE_HSTS_INCLUDE_SUBDOMAINS": "True",
+        }
+    )
+    # SECURE_SERVER_HEADER=True tells Django to set a generic Server header
+    # without version info. False would remove it entirely.
+    assert values["SECURE_SERVER_HEADER"] is True
+
+
+def test_security_headers_middleware_present() -> None:
+    """Ensure security middleware is in the stack (ZAP 30038, 10063, 90004)."""
+    values = _load_settings_with_env(
+        {
+            "DJANGO_ENV": "development",
+            "DEBUG": "True",
+        }
+    )
+    middleware = values["MIDDLEWARE"]
+    # SecurityMiddleware must be first for HSTS/SSL/headers
+    assert middleware[0] == "django.middleware.security.SecurityMiddleware"
+    # XFrameOptionsMiddleware must be present for X-Frame-Options
+    assert "django.middleware.clickjacking.XFrameOptionsMiddleware" in middleware
+
+
 def _load_settings_with_env(extra_env: dict[str, str]) -> dict[str, Any]:
     """Import investor_app.settings in a subprocess with controlled env vars."""
     env = os.environ.copy()
@@ -123,6 +174,8 @@ print(json.dumps({
     "SECURE_HSTS_SECONDS": getattr(settings, "SECURE_HSTS_SECONDS", None),
     "SECURE_HSTS_INCLUDE_SUBDOMAINS": getattr(settings, "SECURE_HSTS_INCLUDE_SUBDOMAINS", None),
     "X_FRAME_OPTIONS": getattr(settings, "X_FRAME_OPTIONS", None),
+    "SESSION_COOKIE_HTTPONLY": getattr(settings, "SESSION_COOKIE_HTTPONLY", None),
+    "SECURE_SERVER_HEADER": getattr(settings, "SECURE_SERVER_HEADER", None),
     "MIDDLEWARE": getattr(settings, "MIDDLEWARE", None),
     "STORAGES": getattr(settings, "STORAGES", None),
 }))

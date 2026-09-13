@@ -48,18 +48,19 @@ For each task:
 
 ## Retrospective
 
-*To be filled at end of session*
-
 ### What went well
--
+- All 6 doc files already existed and matched design.md — no content gaps found
+- 85 TDD tests written and passing: investor-workflow, analyze-growth-areas, discover-properties, screen-properties, underwrite-deals, ui-patterns, plus all planning cascade docs
+- Cross-references between guides are consistent and resolve correctly
 
 ### What could improve
--
+- Test initially failed on case-sensitive "HOA" vs "hoa" — always compare lowercase to lowercase
+- Could add live-system verification tests (UI element matching) in a future session
 
 ### Backlog deltas
-- New items discovered:
-- Items to move to P2:
-- Items to reject (scope drift):
+- New items discovered: live-system verification tests (templates vs docs accuracy)
+- Items to move to P2: N/A
+- Items to reject (scope drift): N/A
 
 ---
 

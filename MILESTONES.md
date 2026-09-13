@@ -18,7 +18,7 @@
 
 | Milestone | Deliverables | Status | Issues |
 |---|---|---|---|
-| **M1.1** Investor Workflow Documentation | 4 how-to guides (Growth Areas, Discovery, Screening, Underwriting), workflow overview, UI patterns reference | In progress | #335 |
+| **M1.1** Investor Workflow Documentation | 4 how-to guides (Growth Areas, Discovery, Screening, Underwriting), workflow overview, UI patterns reference | Done | #335 (closed) |
 | **M1.2** Finance Utils Consolidation | Single-source KPI functions, eliminate duplicate `score_listing_v2` | Done | finance-utils-split PR |
 | **M1.3** CI Quality Gates | OWASP ZAP authenticated scan, production settings tests | Done | LIMIT-22 |
 | **M1.4** GACS Growth Data | `populate_growth_areas` command, rent growth rate populated | Done | GACS-FMR-1 (PR #278) |

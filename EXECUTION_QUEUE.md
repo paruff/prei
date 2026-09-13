@@ -18,12 +18,12 @@
 
 | Item | Status | Depends On | Notes |
 |---|---|---|---|
-| Investor Workflow Documentation | In progress | — | #335: 4 how-to guides + workflow overview |
-| Growth Areas How-To Guide | Not started | Workflow Overview | `docs/how-to-guides/analyze-growth-areas.md` |
-| Discovery How-To Guide | Not started | Growth Areas Guide | `docs/how-to-guides/discover-properties.md` |
-| Screening How-To Guide | Not started | Discovery Guide | `docs/how-to-guides/screen-properties.md` |
-| Underwriting How-To Guide | Not started | Screening Guide | `docs/how-to-guides/underwrite-deals.md` |
-| UI Patterns Reference | Not started | — | `docs/reference/ui-patterns.md` |
+| Investor Workflow Documentation | Done | — | #335 (closed), PR #433, 85 tests passing |
+| Growth Areas How-To Guide | Done | — | `docs/how-to-guides/analyze-growth-areas.md` (138 lines) |
+| Discovery How-To Guide | Done | — | `docs/how-to-guides/discover-properties.md` (105 lines) |
+| Screening How-To Guide | Done | — | `docs/how-to-guides/screen-properties.md` (134 lines) |
+| Underwriting How-To Guide | Done | — | `docs/how-to-guides/underwrite-deals.md` (113 lines) |
+| UI Patterns Reference | Done | — | `docs/reference/ui-patterns.md` (100 lines) |
 
 ### P2 — Next Sprint
 
