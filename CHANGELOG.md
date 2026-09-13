@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.6](https://github.com/paruff/prei/compare/v0.4.5...v0.4.6) (2026-09-03)
+
+
+### Changed
+
+* **views:** split core/views/__init__.py into 11 domain modules (H6) ([#423](https://github.com/paruff/prei/issues/423)) ([692ffdf](https://github.com/paruff/prei/commit/692ffdfc410ed04eae31f2bc81d1638e27d2aaf4))
+
 ## [0.4.5](https://github.com/paruff/prei/compare/v0.4.4...v0.4.5) (2026-09-03)
 
 
