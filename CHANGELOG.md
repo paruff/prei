@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.8](https://github.com/paruff/prei/compare/v0.4.7...v0.4.8) (2026-09-13)
+
+
+### Docs
+
+* add 4-tier planning cascade and product discovery docs ([#433](https://github.com/paruff/prei/issues/433)) ([c5b745a](https://github.com/paruff/prei/commit/c5b745a70987077fac96aebc70ad2f5ab8641494))
+* mark M1.1/P1 complete; harden security settings (LIMIT-23) ([1446199](https://github.com/paruff/prei/commit/14461991107d9e43b10dd699960c1956275e885b))
+
 ## [0.4.7](https://github.com/paruff/prei/compare/v0.4.6...v0.4.7) (2026-09-13)
 
 
