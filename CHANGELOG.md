@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.7](https://github.com/paruff/prei/compare/v0.4.6...v0.4.7) (2026-09-13)
+
+
+### Chores
+
+* **deps:** bump anomalyco/opencode/github from 1.18.25 to 1.18.29 ([#430](https://github.com/paruff/prei/issues/430)) ([cf3d31f](https://github.com/paruff/prei/commit/cf3d31f4a14759260f860ad95b4a5ff9128794fc))
+* **deps:** bump djlint from 1.42.1 to 1.45.2 ([#429](https://github.com/paruff/prei/issues/429)) ([81f5935](https://github.com/paruff/prei/commit/81f5935767290ed5b6950a9265457683042d2a78))
+* **deps:** bump googleapis/release-please-action from 4.4.1 to 5.0.0 ([#431](https://github.com/paruff/prei/issues/431)) ([9ef66e8](https://github.com/paruff/prei/commit/9ef66e8bc83f4a5fbff6d09e9699d22503bde299))
+* **deps:** bump gunicorn from 26.0.0 to 26.2.0 ([#426](https://github.com/paruff/prei/issues/426)) ([be01c5c](https://github.com/paruff/prei/commit/be01c5ce6ad7a6c0b450e8a3feb9ace58a7276e4))
+* **deps:** bump msgpack from 1.2.1 to 1.2.2 ([#427](https://github.com/paruff/prei/issues/427)) ([6e4bed2](https://github.com/paruff/prei/commit/6e4bed2639effcd9059bf6188e7955f723203d71))
+* **deps:** bump pydantic from 2.13.4 to 2.13.5 ([#425](https://github.com/paruff/prei/issues/425)) ([a430eef](https://github.com/paruff/prei/commit/a430eef8ae4cf09b599c457d62539b63a4f8f5a0))
+* **deps:** bump pypdf from 6.16.1 to 6.17.0 ([#428](https://github.com/paruff/prei/issues/428)) ([b3c4469](https://github.com/paruff/prei/commit/b3c4469ba8ff848a0724a827e4da377b5bb46bf0))
+
 ## [0.4.6](https://github.com/paruff/prei/compare/v0.4.5...v0.4.6) (2026-09-03)
 
 
