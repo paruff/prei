@@ -1,43 +1,28 @@
-# Specification: Comprehensive Documentation Review & Revision
+# Specification: Data Layer & Infrastructure Upgrades for Beta Readiness
 
-**Feature**: Documentation overhaul for Growth Areas, Discovery, Screening, and Underwriting workflows
-**Issue**: #335
+**Feature**: Core product upgrades addressing top-0.1% feedback
 **Status**: Draft
+**Related**: M2 milestones (Beta Readiness)
 
 ---
 
 ## User Intent
 
-The user wants a comprehensive review and revision of documentation covering four core investor workflows:
-1. **Growth Areas** — Market analysis and growth area identification
-2. **Discovery** — Property sourcing from multiple data sources
-3. **Screening** — Automated property evaluation against criteria
-4. **Underwriting** — Financial analysis and deal evaluation
-
-The documentation should be current, accurate, and improve the user experience (UX/UI perspective) for buy-and-hold real estate investors.
+A pro investor needs: (1) rent estimates for every property source to enable yield/PTR screening, (2) validated GACS weights backed by backtesting, (3) real crime data not dummies, (4) async background tasks so screening doesn't block, (5) shared pipeline with partners, (6) Postgres for production parity.
 
 ---
 
 ## Current State Assessment
 
-### Existing Documentation Files
-
-| Domain | Current Docs | Quality Notes |
-|--------|--------------|---------------|
-| **Growth Areas** | `docs/implementation-summary-growth-areas.md` (API spec), `docs/explanation/GACS_GUIDE.md` (conceptual guide), `docs/how-to-guides/` (missing growth areas guide) | API spec is detailed but implementation-focused; GACS guide is good but lacks UI flow context |
-| **Discovery** | `docs/how-to-guides/import-data.md` (generic), `templates/property_discovery.html` (UI), view logic in `core/views/__init__.py:3450` | No dedicated discovery guide; UI flow not documented |
-| **Screening** | `core/services/screening.py` (code has docstrings), `templates/pipeline/screener.html` (UI), view logic in `core/views/__init__.py:1898` | No user-facing documentation; complex logic not explained |
-| **Underwriting** | `core/services/underwriting.py` (code has docstrings), `templates/brrrr_calculator.html` (UI) | No user-facing documentation; BRRRR calc is separate from pipeline underwriting |
-
-### Gaps Identified
-
-1. **No unified workflow documentation** — Users don't understand the end-to-end flow: Growth Areas → Discovery → Screening → Underwriting
-2. **Missing how-to guides** for Growth Areas, Discovery, Screening, Underwriting
-3. **UI/UX not documented** — Template structure, user journeys, navigation patterns
-4. **API vs UI disconnect** — Implementation summary is API-focused, not user-journey focused
-5. **Screening criteria configuration** — Not documented for users
-5. **Underwriting solver usage** — Not explained in user terms (BRRRR vs pipeline underwriting)
-6. **Data confidence & limitations** — Not prominently surfaced in UI docs
+| Gap | Current | Blocker |
+|---|---|---|
+| **Rent data** | VRM only has rent; HUD/USDA/ATTOM/County skip yield/PTR | Rentcast key missing; ATTOM rent fields untested |
+| **GACS validation** | Experimental weights, no backtest | County→state employment fallback, school quality unwired, supply constraint hardcoded |
+| **Crime data** | State dummies (TX=2.5, CA=3.5, other=3.0) | FBI CDE SPIKE failed; no viable path found |
+| **Background tasks** | Sync re-screen on criteria change; VRM scrape in thread | No Celery; Gunicorn 30s timeout |
+| **Multi-user** | PipelineProperty FK to User only | No team model, no sharing |
+| **Database** | SQLite dev, Postgres prod (not parity) | LIMIT-05 |
+| **CSP/Headers** | 8 ZAP WARN findings remain | LIMIT-23 |
 
 ---
 
@@ -46,68 +31,68 @@ The documentation should be current, accurate, and improve the user experience (
 ### Functional Requirements
 
 | ID | Requirement | Priority | Description |
-|----|-------------|----------|-------------|
-| REQ-1 | **Workflow Overview Document** | High | Create a unified guide explaining the 4-stage investor workflow: Growth Areas → Discovery → Screening → Underwriting |
-| REQ-2 | **Growth Areas Documentation** | High | Update/replace implementation summary with user-facing guide covering: GACS scoring, Growth Explorer UI, interpreting results, data confidence |
-| REQ-3 | **Discovery Documentation** | High | Create how-to guide for property discovery: source selection, running discovery, understanding results, screening integration |
-| REQ-4 | **Screening Documentation** | High | Create how-to guide for screening: criteria configuration, hard vs soft criteria, understanding pass/fail, re-screening |
-| REQ-5 | **Underwriting Documentation** | High | Create how-to guide for underwriting: BRRRR calculator vs pipeline underwriting, input fields, interpreting metrics (NOI, Cap Rate, CoC, MAO), DSCR requirements |
-| REQ-6 | **UX/UI Documentation** | Medium | Document template patterns, navigation flow, component library usage, accessibility considerations |
-| REQ-7 | **Cross-references & Navigation** | Medium | Ensure all docs cross-link correctly; add to main index/README |
-| REQ-8 | **Accuracy Review** | High | Verify all documented features match current implementation (code, templates, views) |
+|---|---|---|---|
+| FR-1 | **Rentcast Integration** | Critical | Add Rentcast adapter; wire into screening rent fallback chain (VRM → Rentcast → HUD FMR) |
+| FR-2 | **ATTOM Rent Fields** | High | Test if ATTOM Property API returns rent estimates; if yes, add as fallback |
+| FR-3 | **GACS Backtest & Validation** | Critical | Backtest GACS composite against FHFA/Zillow historical appreciation; publish weight sensitivity; expose "confidence bands" |
+| FR-4 | **GACS Signal Completion** | High | Wire school quality (GreatSchools); compute supply constraint from permit data; fix employment fallback to use county QCEW where available |
+| FR-5 | **Real Crime Data** | High | Retry FBI CDE with correct endpoint/params; if blocked, evaluate SpotCrime/CityProtect/local PD APIs |
+| FR-6 | **Postgres Migration** | Critical | Local dev via docker-compose; remove SQLite LIMIT-05; parity with prod |
+| FR-7 | **Celery + Redis** | Critical | Async screening re-runs, VRM scrape, discovery; remove Gunicorn thread hacks |
+| FR-8 | **Team/Shared Pipeline** | High | Team model; PipelineProperty FK to Team; shared visibility (owner/member/viewer) |
+| FR-9 | **CSP & Security Headers** | High | Add django-csp middleware; CSP, Permissions-Policy, Cross-Origin-Resource-Policy; SRI on external scripts |
 
 ### Non-Functional Requirements
 
 | ID | Requirement | Priority | Description |
-|----|-------------|----------|-------------|
-| NFR-1 | **Audience-appropriate tone** | High | Written for buy-and-hold investors (not developers); avoid implementation details unless relevant |
-| NFR-2 | **Visual clarity** | Medium | Use tables, code blocks, callouts consistently; match existing design system |
-| NFR-3 | **Accuracy** | Critical | All documented behavior must match actual code/templates |
-| NFR-4 | **Discoverability** | Medium | Linked from main docs index, README, and in-app help where possible |
-| NFR-5 | **Maintainability** | Medium | Separate conceptual guides from implementation details; use consistent structure |
+|---|---|---|---|
+| NFR-1 | **Rent coverage ≥ 90%** | Critical | Post-integration, ≥90% of discovered properties have rent estimate for screening |
+| NFR-2 | **GACS predictive validity** | Critical | Backtest R² ≥ 0.4 vs 12-month price appreciation; publish methodology |
+| NFR-3 | **Crime data granularity** | High | ZIP or census-tract level, not state-level |
+| NFR-4 | **Async task latency < 5s** | High | Screening re-run, discovery completions under 5s user-visible |
+| NFR-5 | **Team invite flow** | Medium | Invite by email; role-based access (owner/member/viewer) |
+| NFR-6 | **Zero-downtime deploy** | Medium | Postgres + Celery supports blue/green or canary |
 
 ---
 
 ## Acceptance Criteria
 
 | ID | Criterion | Test Type | Reasoning |
-|----|-----------|-----------|-----------|
-| AC-1 | Workflow overview document exists and links to all 4 domain guides | unit (file exists) | Verifies structural completeness |
-| AC-2 | Growth Areas guide explains GACS, Growth Explorer, data confidence, and links to API spec | live-system | Must verify UI matches documented behavior |
-| AC-3 | Discovery guide covers source selection, running discovery, results interpretation, screening integration | live-system | End-to-end user flow verification |
-| AC-4 | Screening guide covers criteria setup, hard/soft criteria, kill reasons, pass/fail logic, re-screen | live-system | Complex business logic verification |
-| AC-5 | Underwriting guide distinguishes BRRRR calc from pipeline underwriting; explains all metrics | live-system | Financial accuracy critical |
-| AC-6 | All documented UI elements (buttons, tables, chips, forms) match actual templates | live-system | UI accuracy verification |
-| AC-7 | All cross-references resolve (no broken links) | unit | Link validation |
-| AC-8 | No documented feature that doesn't exist in code | unit | Accuracy check against implementation |
-| AC-9 | Data confidence/warnings prominently displayed in relevant guides | unit | Risk communication requirement |
+|---|---|---|---|
+| AC-1 | Rentcast adapter returns rent for test ZIPs | live-system | Verify API contract |
+| AC-2 | Screening runs yield/PTR for HUD property via Rentcast fallback | live-system | End-to-end blind spot fixed |
+| AC-3 | GACS backtest report published (methodology + R²) | unit (file exists) | Validated weights |
+| AC-4 | Crime adapter returns real data for test ZIP | live-system | No more dummies |
+| AC-5 | `docker-compose up` brings up Postgres + Redis + app | live-system | Dev parity |
+| AC-6 | Celery worker processes screening re-run async | live-system | No HTTP block |
+| AC-7 | User can invite teammate to view pipeline | live-system | Shared pipeline works |
+| AC-8 | CSP header present on all responses | live-system | ZAP WARN reduced |
+| AC-9 | SRI attributes on all external scripts | unit | ZAP 90003 resolved |
 
 ---
 
 ## Constraints
 
-1. **Stack**: Django templates, vanilla CSS (custom properties), no Bootstrap
-2. **Design System**: Uses `tokens.css` + `base.css` — document component patterns
-3. **Accuracy First**: If code and docs disagree, code wins — update docs to match
-3. **No New Features**: This is documentation-only; no code changes unless fixing bugs found during review
-4. **Governance**: Follow existing doc structure in `docs/` (how-to-guides/, explanation/, reference/, tutorials/)
-5. **Links**: Use relative paths; ensure they work in GitHub Pages deployment
-
----
-
-## Governance Alignment
-
-- **Documentation Standards**: Follows `docs/FEATURE_SPEC_GUIDE.md` and `docs/DOCS_AUDIT.md`
-- **Design System**: Uses existing CSS custom properties; no inline styles
-- **Security**: No secrets in docs; no PII
-- **Accessibility**: Document semantic HTML patterns used in templates
+1. **Decimal money** — all rent/currency stays Decimal
+2. **Service-layer boundaries** — new adapters in `core/integrations/sources/`
+3. **No Bootstrap** — custom design system only
+4. **GitOps** — Docker image is artifact; manifests in git
+5. **Spike first** — Rentcast and Crime API need feasibility before commit
 
 ---
 
 ## Out of Scope
 
-- API reference documentation (covered by `API_SURFACE.md`)
-- Deployment/ops guides (covered by `DEPLOYMENT_STRATEGY.md`, `DEVEX_LOG.md`)
-- Code architecture docs (covered by `ARCHITECTURE.md`)
-- Developer onboarding (covered by `DEVEX_LOG.md`)
-- Testing guides (covered by `TEST_PYRAMID_PLAN.md`)
+- Mobile app / PWA enhancements
+- MLS/RESO integration
+- Tax strategy module
+- 1031 exchange tracking
+- Lender/agent deal sharing
+
+---
+
+## Governance Alignment
+
+- **CHANGE_IMPACT_MAP.md** — update for new models (Team, Celery config), services (rent adapters, crime adapter)
+- **KNOWN_LIMITATIONS.md** — resolve LIMIT-03, LIMIT-05, LIMIT-08, LIMIT-11, LIMIT-15, LIMIT-16, LIMIT-23
+- **DEPLOYMENT_STRATEGY.md** — Postgres + Celery enables canary

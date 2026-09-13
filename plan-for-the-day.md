@@ -1,4 +1,4 @@
-# plan-for-the-day.md (today) — prei
+# plan-for-today.md (today) — prei
 
 **Horizon**: Today | **Owner**: Dev lead (Phil) | **Review**: End of session
 
@@ -6,7 +6,7 @@
 
 ## Single Primary Goal
 
-Complete the investor workflow documentation for issue #335: create all 4 how-to guides, the workflow overview, and UI patterns reference.
+Execute Rentcast spike + FBI CDE retry + docker-compose Postgres — the three P0 parallel spikes.
 
 ---
 
@@ -14,53 +14,89 @@ Complete the investor workflow documentation for issue #335: create all 4 how-to
 
 | Issue | Title | Priority | Status |
 |---|---|---|---|
-| #335 | Comprehensive Documentation Review & Revision | P1 | In progress |
+| NEW | Rentcast API spike | P0 | Not started |
+| NEW | FBI CDE retry (correct endpoint) | P0 | Not started |
+| NEW | docker-compose Postgres + Redis | P0 | Not started |
 
 ### Tasks for today
 
-1. **Create workflow overview** — `docs/explanation/investor-workflow.md` (TASK-001)
-2. **Create Growth Areas how-to** — `docs/how-to-guides/analyze-growth-areas.md` (TASK-003)
-3. **Create Discovery how-to** — `docs/how-to-guides/discover-properties.md` (TASK-004)
-4. **Create Screening how-to** — `docs/how-to-guides/screen-properties.md` (TASK-005)
-5. **Create Underwriting how-to** — `docs/how-to-guides/underwrite-deals.md` (TASK-006)
-6. **Create UI Patterns reference** — `docs/reference/ui-patterns.md` (TASK-007)
+1. **Rentcast spike** — sign up, test API key, verify coverage for TX/FL/TN ZIPs, measure latency
+2. **FBI CDE retry** — test correct endpoint with DEMO_KEY: `api.usa.gov/crime/fbi/cde/summary/agencies?state_abbr=TX&year=2023`
+3. **docker-compose.yml** — add `db` (Postgres 16) + `redis` services; verify `docker-compose up` healthy
+4. **Update settings.py** — `DATABASE_URL` from env, `CELERY_BROKER_URL` from env
 
 ---
 
 ## TDD Execution Protocol
 
-For each task:
+For each spike:
 
-1. **Red** — Write a failing test that checks the doc file exists and contains expected sections
-2. **Green** — Create the doc file with the required content
-3. **Refactor** — Review against `design.md`, fix cross-references, ensure accuracy
+1. **Red** — Write a one-off script that fails without the thing working
+2. **Green** — Run the script; iterate until it passes
+3. **Document** — Record findings in spike report (success/fail, latency, coverage, blockers)
 
-### Test checklist (per doc)
+### Spike 1: Rentcast
 
-- [ ] File exists at expected path
-- [ ] Contains required sections per `design.md`
-- [ ] All cross-references resolve
-- [ ] No broken links
-- [ ] Tone is investor-appropriate (not developer-focused)
-- [ ] Data confidence/warnings included where relevant
+```bash
+# test_rentcast.py
+import os, requests
+key = os.environ["RENTO_METER_API_KEY"]
+r = requests.get("https://api.rentcast.io/v1/avm/rent/long-term",
+    params={"address": "123 Main St, Austin, TX 78701"},
+    headers={"X-Api-Key": key})
+print(r.status_code, r.json())
+```
+
+**Pass criteria**: 200 OK, `rent` field present, latency < 500ms, coverage for 5 test ZIPs in TX/FL/TN.
+
+### Spike 2: FBI CDE
+
+```bash
+# test_fbi_cde.py
+import requests
+r = requests.get("https://api.usa.gov/crime/fbi/cde/summary/agencies",
+    params={"state_abbr": "TX", "year": "2023"}, headers={"X-Api-Key": "DEMO_KEY"})
+print(r.status_code, r.json()[:2])
+```
+
+**Pass criteria**: 200 OK, returns agency data with offense counts. If 404/403 → document and move to SpotCrime.
+
+### Spike 3: docker-compose
+
+```yaml
+# docker-compose.yml (add to existing)
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: prei
+      POSTGRES_USER: prei
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+```
+
+**Pass criteria**: `docker-compose up -d && docker-compose exec db pg_isready` → healthy; app connects with `DATABASE_URL=postgresql://prei:...@localhost:5432/prei`.
 
 ---
 
 ## Retrospective
 
+*To be filled at end of session*
+
 ### What went well
-- All 6 doc files already existed and matched design.md — no content gaps found
-- 85 TDD tests written and passing: investor-workflow, analyze-growth-areas, discover-properties, screen-properties, underwrite-deals, ui-patterns, plus all planning cascade docs
-- Cross-references between guides are consistent and resolve correctly
+-
 
 ### What could improve
-- Test initially failed on case-sensitive "HOA" vs "hoa" — always compare lowercase to lowercase
-- Could add live-system verification tests (UI element matching) in a future session
+-
 
 ### Backlog deltas
-- New items discovered: live-system verification tests (templates vs docs accuracy)
-- Items to move to P2: N/A
-- Items to reject (scope drift): N/A
+- New items discovered:
+- Items to move to P2:
+- Items to reject (scope drift):
 
 ---
 
@@ -69,5 +105,6 @@ For each task:
 | Doc | What it answers | Reference |
 |---|---|---|
 | `EXECUTION_QUEUE.md` | What are the weekly priorities? | ↗ links up |
-| `VISION.md` | Why are we building this? | ↗ links up |
-| `tasks.json` | What are the detailed task dependencies? | parallel |
+| `MILESTONES.md` | What milestones are we targeting? | ↗ links up |
+| `specification.md` | What are the detailed requirements? | parallel |
+| `design.md` | How are components designed? | parallel |

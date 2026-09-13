@@ -6,42 +6,48 @@
 
 ## Priority Tiers
 
-### P0 — Blocks Release
+### P0 — Blocks Beta Release
 
 | Item | Status | Depends On | Notes |
 |---|---|---|---|
-| Finance utils consolidation | Done | — | Single-source KPI functions (finance-utils-split PR) |
-| CI quality gates (ZAP scan) | Done | — | LIMIT-22 resolved |
-| Known limitations triage | Done | — | All active limitations documented |
+| Rentcast spike (API key, coverage test) | Not started | — | **Do first** — unblocks M2.2 |
+| Postgres + Redis docker-compose | Not started | — | **Do in parallel** — foundation for Celery |
+| FBI CDE retry | Not started | — | Try correct endpoint before fallbacks |
 
-### P1 — This Sprint
-
-| Item | Status | Depends On | Notes |
-|---|---|---|---|
-| Investor Workflow Documentation | Done | — | #335 (closed), PR #433, 85 tests passing |
-| Growth Areas How-To Guide | Done | — | `docs/how-to-guides/analyze-growth-areas.md` (138 lines) |
-| Discovery How-To Guide | Done | — | `docs/how-to-guides/discover-properties.md` (105 lines) |
-| Screening How-To Guide | Done | — | `docs/how-to-guides/screen-properties.md` (134 lines) |
-| Underwriting How-To Guide | Done | — | `docs/how-to-guides/underwrite-deals.md` (113 lines) |
-| UI Patterns Reference | Done | — | `docs/reference/ui-patterns.md` (100 lines) |
-
-### P2 — Next Sprint
+### P1 — This Sprint (H2A)
 
 | Item | Status | Depends On | Notes |
 |---|---|---|---|
-| Auth hardening (CSP, SRI, cookies) | Not started | — | LIMIT-23 |
-| Sanitized logging helper | Not started | — | LIMIT-03, LIMIT-09 |
-| Growth Area consistency fix | Not started | — | LIMIT-08 |
+| Rentcast adapter + fallback chain | Not started | Rentcast spike | `core/integrations/sources/rentcast_adapter.py` |
+| ATTOM rent probe | Not started | — | Extend `attom_adapter.py` |
+| GACS backtest script | Not started | — | `scripts/backtest_gacs.py`; FHFA/Zillow data |
+| GACS signal completion (schools, supply, employment) | Not started | — | GreatSchools key; Census permits |
 
-### P3 — Backlog
+### P2 — Next Sprint (H2B)
 
 | Item | Status | Depends On | Notes |
 |---|---|---|---|
-| Postgres migration | Not started | — | LIMIT-05 |
-| Rentcast adapter | Not started | — | LIMIT-11 |
-| Celery background tasks | Not started | — | LIMIT-15 |
-| Multi-user support | Not started | — | LIMIT-16 |
-| Auction alert wiring | Not started | — | LIMIT-13 |
+| Crime adapter (FBI retry → SpotCrime) | Not started | FBI CDE retry | `core/integrations/market/crime.py` |
+| Postgres migration + docker-compose | Not started | — | Remove LIMIT-05 |
+| Celery + Redis | Not started | Postgres/Redis | Async screening, discovery, VRM |
+| Team model + shared pipeline | Not started | Postgres | Team, TeamMembership, PipelineProperty.team |
+
+### P3 — Following Sprint (H2C)
+
+| Item | Status | Depends On | Notes |
+|---|---|---|---|
+| django-csp + CSP headers | Not started | — | CSP, Permissions-Policy, CORP |
+| SRI on external scripts | Not started | — | `base.html` integrity attrs |
+| ZAP clean pass | Not started | CSP headers | Authenticated scan: 0 FAIL, 0 WARN |
+
+### P4 — Backlog (H3)
+
+| Item | Status | Depends On | Notes |
+|---|---|---|---|
+| Portfolio analytics | Not started | — | LIMIT-14 |
+| Leasing pipeline | Not started | — | LIMIT-14 |
+| Advanced market intelligence | Not started | GACS validated | Rent trends, absorption |
+| Partner API surface | Not started | Multi-user | Read-only deal sharing |
 
 ---
 
@@ -54,10 +60,12 @@
 - Real-time auction bidding → NOT in scope
 - Property management (maintenance, tenant portals) → NOT in scope
 - Legal/tax advice → NOT in scope
-- Kubernetes / canary deployments → NOT in scope (alpha)
+- Kubernetes / canary deployments → NOT in scope (post-beta only)
 - API reference documentation → NOT in scope (separate surface)
+- MLS/RESO integration → NOT in scope
+- 1031 exchange tracking → NOT in scope
 
-If a request doesn't pass the non-goals check, it's rejected or deferred to post-alpha.
+If a request doesn't pass the non-goals check, it's rejected or deferred to post-beta.
 
 ---
 
