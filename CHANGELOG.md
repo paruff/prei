@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.9](https://github.com/paruff/prei/compare/v0.4.8...v0.4.9) (2026-09-13)
+
+
+### Added
+
+* **spec:** upgrade spec/design/milestones for beta readiness ([2edb55d](https://github.com/paruff/prei/commit/2edb55d32ccb309183ecc58cbc7a40f0a8eeab88))
+
 ## [0.4.8](https://github.com/paruff/prei/compare/v0.4.7...v0.4.8) (2026-09-13)
 
 
