@@ -3,7 +3,7 @@
 # Upper bounds (<NEXT) are set where known incompatibilities exist.
 Django==6.0.7
 djangorestframework==3.18.0
-psycopg2-binary==2.9.12
+psycopg2-binary==2.9.13
 numpy==2.5.1
 numpy-financial==1.0.0
 django-environ==0.14.0
