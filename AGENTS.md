@@ -29,6 +29,10 @@
 9. Use uppercase in PR title description — the first word after `type(scope):` must be lowercase (see `docs/PR_STANDARD.md`).
 10. Swallow an exception in a check, validator, or test assertion without logging what broke — a silently-caught exception makes a check that never ran indistinguishable from one that ran and found nothing.
 
+## Before You Start
+- UI changes: read DESIGN.md first (tokens, components, do and don't)
+- Reviewing a PR: apply REVIEW.md (what is Important, verification, validation, security)
+
 ## GitOps Principles
 See `gitops-principles` skill — load before touching workflows, deployment config, or the GitOps manifest repo.
 
