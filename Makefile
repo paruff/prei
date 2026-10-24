@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate gitops-hook-install smoke build up down restart logs clean docker-dev test-live
+.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev test-live
 
 # Prefer the local venv; fall back to `python` (containers, bare environments).
 # Avoids the Apple /usr/bin/python3 shim that triggers the xcode-select prompt.
@@ -44,7 +44,6 @@ help:
 	@echo "  make clean              Remove all images, containers, volumes"
 	@echo "  ── GitOps ──"
 	@echo "  make gitops-validate    Run GitOps best-practice validation"
-	@echo "  make gitops-hook-install Install GitOps pre-commit hook"
 
 ensure-env:
 	@if [[ ! -f $(ENV_FILE) ]]; then \
@@ -155,10 +154,6 @@ smoke:
 
 gitops-validate:
 	@./scripts/gitops-validate.sh
-
-gitops-hook-install:
-	@git config core.hooksPath .githooks
-	@echo "GitOps pre-commit hook installed (core.hooksPath = .githooks)"
 
 # ── Docker workflow (build image locally, no CI needed) ──────────────────
 
