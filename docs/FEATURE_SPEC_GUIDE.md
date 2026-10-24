@@ -1,6 +1,6 @@
 # Feature Spec Writing Guide
 
-> How to write specification.md, design.md, and tasks.json for the feature-flow process.
+> How to write intent.md, spec.md and plan.md (the AI-native SDLC artifact chain). Each is approved at a gate by merging the PR that changes it; work status lives only on the [project board](https://github.com/users/paruff/projects/3) (see `AGENTS.md`).
 
 ---
 
@@ -8,18 +8,39 @@
 
 | Document | Purpose | Audience |
 |---|---|---|
-| `specification.md` | WHAT we're building and WHY | PM, stakeholder, reviewer |
-| `design.md` | HOW we're building it | Developer, architect |
-| `tasks.json` | Ordered work items with acceptance criteria | AI agent, implementer |
+| `intent.md` | The problem, outcome and constraints (gate: intent) | Product owner |
+| `spec.md` | WHAT we decided to build (gate: spec) | PM, stakeholder, reviewer |
+| `plan.md` | HOW and in what order, by release milestone (gate: plan) | Developer, AI agent |
 
 ---
 
-## specification.md
+## intent.md
+
+```markdown
+# Intent: <title>
+**Author:** <name> · **Status:** draft | accepted · **Date:** <YYYY-MM-DD>
+
+## Problem
+## Proposed outcome
+## Affected users and systems
+## Constraints
+## Open questions
+```
+
+### Rules
+- No solution design: that belongs in `spec.md` and `plan.md`
+- Check against `VISION.md` non-goals before writing
+- Intent changes go in their own `docs(intent):` PR
+
+---
+
+## spec.md
 
 Answer these questions:
 
 ```markdown
 # Specification: <Feature Name>
+# From: intent.md
 # Written: <date> session with <author>
 
 ## 0. Executive Summary
@@ -46,78 +67,34 @@ What we are explicitly NOT building in this feature.
 
 ---
 
-## design.md
-
-Answer these questions:
+## plan.md
 
 ```markdown
-# Design: <Feature Name>
-# Written: <date>
+# Plan: <title>
+**From:** intent.md and spec.md, <date> · **Status:** draft | approved
 
-## 1. Architecture Overview
-ASCII diagram or numbered flow showing new/modified components.
+## Release milestones
+One `###` per release (= GitHub milestone). Table: Row | Work | Spec IDs | Issue (or `no issue yet`).
+No status column: status lives on the board.
 
-## 2. Component Design
-For each new/modified component: purpose, location, interface, edge cases.
-
-## 3. Workflow/CI Changes
-If this touches GitHub Actions, show the before/after job graph.
-
-## 4. File Changes
-Table: file, change type (new/modified), purpose.
-
-## 5. Constraints & Risks
-Table: risk, mitigation.
+## Files that change
+## Order of work
+## Risks
+## Proof
 ```
 
 ### Rules
-- Must reference ARCHITECTURE.md for layer constraints
-- New files should follow existing directory conventions
-- CI changes must include a YAML parse check
-- Every new endpoint/service function must be documented
-
----
-
-## tasks.json
-
-```json
-{
-  "meta": {
-    "project": "prei",
-    "session": "<slug>-<date>",
-    "date": "<YYYY-MM-DD>",
-    "feature": "<Feature Name>",
-    "spec": "specification.md",
-    "design": "design.md"
-  },
-  "tasks": [
-    {
-      "id": "T-01",
-      "summary": "<one-line description>",
-      "description": "<detailed description of what to build>",
-      "depends_on": ["T-00"],
-      "acceptance_criteria": [
-        {"id": "AC-01-01", "description": "<criterion>", "test_type": "unit"},
-        {"id": "AC-01-02", "description": "<criterion>", "test_type": "live-system"}
-      ]
-    }
-  ]
-}
-```
-
-### Rules
-- Task IDs are `T-<letter><number>` (e.g., T-A1, T-01, T-G3)
-- Acceptance criteria IDs are `AC-<task>-<number>` (e.g., AC-A1-01)
-- `test_type` must be one of: `unit`, `integration`, `live-system`
-- Tasks must be ordered by dependency (independents first)
-- Maximum 6 tasks per feature (prefix each additional task with "─ subtask")
+- Every row cites spec IDs (FR-n, AC-n) and maps to one issue in that release's milestone
+- Must respect `docs/ARCHITECTURE.md` layer constraints
+- Rows that share files run in sequence, not in parallel
+- When implementation departs from the plan, update `plan.md` in the same PR
 
 ---
 
 ## After Implementation
 
-1. Archive to `features/<slug>/specification.md`, `design.md`, `tasks.json`
-2. Update `specification.md` at root to point to archived version
+1. After the release ships, archive to `features/<slug>/intent.md`, `spec.md`, `plan.md`
+2. Start the next release's `intent.md` at root
 3. Update `docs/planning/PRODUCT_STRATEGY.md` if feature affects product strategy
 4. Run `docs/ARCHITECTURE.md` if feature changes layer boundaries
 

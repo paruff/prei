@@ -2,13 +2,14 @@
 
 **Feature**: Core product upgrades addressing top-0.1% feedback
 **Status**: Draft
-**Related**: M2 milestones (Beta Readiness)
+**From**: [intent.md](intent.md) · **Plan**: [plan.md](plan.md) (Beta A/B/C)
+**Decisions 2026-10-24**: single-user for now; SQLite for local runs, Postgres in production; Django 6.0. FR-6, FR-8, NFR-5, AC-5 and AC-7 removed; IDs are not reused.
 
 ---
 
 ## User Intent
 
-A pro investor needs: (1) rent estimates for every property source to enable yield/PTR screening, (2) validated GACS weights backed by backtesting, (3) real crime data not dummies, (4) async background tasks so screening doesn't block, (5) shared pipeline with partners, (6) Postgres for production parity.
+See [intent.md](intent.md). In short: rent estimates for every property source, validated GACS weights, real crime data, screening that never blocks, and clean security headers.
 
 ---
 
@@ -20,8 +21,6 @@ A pro investor needs: (1) rent estimates for every property source to enable yie
 | **GACS validation** | Experimental weights, no backtest | County→state employment fallback, school quality unwired, supply constraint hardcoded |
 | **Crime data** | State dummies (TX=2.5, CA=3.5, other=3.0) | FBI CDE SPIKE failed; no viable path found |
 | **Background tasks** | Sync re-screen on criteria change; VRM scrape in thread | No Celery; Gunicorn 30s timeout |
-| **Multi-user** | PipelineProperty FK to User only | No team model, no sharing |
-| **Database** | SQLite dev, Postgres prod (not parity) | LIMIT-05 |
 | **CSP/Headers** | 8 ZAP WARN findings remain | LIMIT-23 |
 
 ---
@@ -37,9 +36,7 @@ A pro investor needs: (1) rent estimates for every property source to enable yie
 | FR-3 | **GACS Backtest & Validation** | Critical | Backtest GACS composite against FHFA/Zillow historical appreciation; publish weight sensitivity; expose "confidence bands" |
 | FR-4 | **GACS Signal Completion** | High | Wire school quality (GreatSchools); compute supply constraint from permit data; fix employment fallback to use county QCEW where available |
 | FR-5 | **Real Crime Data** | High | Retry FBI CDE with correct endpoint/params; if blocked, evaluate SpotCrime/CityProtect/local PD APIs |
-| FR-6 | **Postgres Migration** | Critical | Local dev via docker-compose; remove SQLite LIMIT-05; parity with prod |
-| FR-7 | **Celery + Redis** | Critical | Async screening re-runs, VRM scrape, discovery; remove Gunicorn thread hacks |
-| FR-8 | **Team/Shared Pipeline** | High | Team model; PipelineProperty FK to Team; shared visibility (owner/member/viewer) |
+| FR-7 | **Celery + Redis** | Critical | Async screening re-runs, VRM scrape, discovery; remove Gunicorn thread hacks (open: Celery vs lighter option, see intent.md open question 3) |
 | FR-9 | **CSP & Security Headers** | High | Add django-csp middleware; CSP, Permissions-Policy, Cross-Origin-Resource-Policy; SRI on external scripts |
 
 ### Non-Functional Requirements
@@ -50,8 +47,7 @@ A pro investor needs: (1) rent estimates for every property source to enable yie
 | NFR-2 | **GACS predictive validity** | Critical | Backtest R² ≥ 0.4 vs 12-month price appreciation; publish methodology |
 | NFR-3 | **Crime data granularity** | High | ZIP or census-tract level, not state-level |
 | NFR-4 | **Async task latency < 5s** | High | Screening re-run, discovery completions under 5s user-visible |
-| NFR-5 | **Team invite flow** | Medium | Invite by email; role-based access (owner/member/viewer) |
-| NFR-6 | **Zero-downtime deploy** | Medium | Postgres + Celery supports blue/green or canary |
+| NFR-6 | **Zero-downtime deploy** | Medium | Postgres + Celery supports blue/green or canary (open: canary is a VISION non-goal; see intent.md open question 5) |
 
 ---
 
@@ -63,9 +59,7 @@ A pro investor needs: (1) rent estimates for every property source to enable yie
 | AC-2 | Screening runs yield/PTR for HUD property via Rentcast fallback | live-system | End-to-end blind spot fixed |
 | AC-3 | GACS backtest report published (methodology + R²) | unit (file exists) | Validated weights |
 | AC-4 | Crime adapter returns real data for test ZIP | live-system | No more dummies |
-| AC-5 | `docker-compose up` brings up Postgres + Redis + app | live-system | Dev parity |
 | AC-6 | Celery worker processes screening re-run async | live-system | No HTTP block |
-| AC-7 | User can invite teammate to view pipeline | live-system | Shared pipeline works |
 | AC-8 | CSP header present on all responses | live-system | ZAP WARN reduced |
 | AC-9 | SRI attributes on all external scripts | unit | ZAP 90003 resolved |
 
@@ -78,6 +72,8 @@ A pro investor needs: (1) rent estimates for every property source to enable yie
 3. **No Bootstrap** — custom design system only
 4. **GitOps** — Docker image is artifact; manifests in git
 5. **Spike first** — Rentcast and Crime API need feasibility before commit
+6. **Single-user** — no teams or sharing
+7. **SQLite locally** — Postgres in production only
 
 ---
 
@@ -88,11 +84,13 @@ A pro investor needs: (1) rent estimates for every property source to enable yie
 - Tax strategy module
 - 1031 exchange tracking
 - Lender/agent deal sharing
+- Team/shared pipelines (single-user for now)
+- Postgres for local development
 
 ---
 
 ## Governance Alignment
 
-- **CHANGE_IMPACT_MAP.md** — update for new models (Team, Celery config), services (rent adapters, crime adapter)
-- **KNOWN_LIMITATIONS.md** — resolve LIMIT-03, LIMIT-05, LIMIT-08, LIMIT-11, LIMIT-15, LIMIT-16, LIMIT-23
+- **CHANGE_IMPACT_MAP.md** — update for Celery config and new services (rent adapters, crime adapter)
+- **KNOWN_LIMITATIONS.md** — resolve LIMIT-03, LIMIT-08, LIMIT-11, LIMIT-15, LIMIT-23
 - **DEPLOYMENT_STRATEGY.md** — Postgres + Celery enables canary

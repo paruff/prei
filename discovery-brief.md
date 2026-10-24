@@ -137,7 +137,7 @@ performance in my portfolio, and eventually lease it out — all in one system."
 ## 6. Current Feature Status
 
 See `features/` directory for archived per-feature specs, designs, and tasks.
-Active feature work is at `specification.md`, `design.md`, `tasks.json` at repo root.
+Active feature work is at `intent.md`, `spec.md`, `plan.md` at repo root; status is on the [project board](https://github.com/users/paruff/projects/3).
 
 ## 7. Related Docs
 

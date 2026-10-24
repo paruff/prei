@@ -13,7 +13,7 @@
 
 ## Project Identity
 - prei: passive real estate investment analytics for buy-and-hold investors.
-- Stack: see requirements.txt/pyproject.toml. Postgres is reserved for post-MVP production — see docker-compose.yml.
+- Stack: Django 6.0, see requirements.txt/pyproject.toml. SQLite for local runs; Postgres in production (render.yaml). Single-user for now.
 - Constraints: Decimal money; service-layer boundaries; no Bootstrap.
 - Design: custom design system with CSS custom properties (tokens.css + base.css).
 
@@ -41,7 +41,7 @@ See `gitops-principles` skill — load before touching workflows, deployment con
 | `docs/CHANGE_IMPACT_MAP.md` | co-change map |
 | `docs/KNOWN_LIMITATIONS.md` | active known issues |
 | `docs/PR_STANDARD.md` | PR naming rules |
-| `docs/FEATURE_SPEC_GUIDE.md` | how to write spec/design/tasks |
+| `docs/FEATURE_SPEC_GUIDE.md` | how to write intent/spec/plan |
 | `docs/DEPLOYMENT_STRATEGY.md` | canary + progressive delivery plan |
 | `docs/archive/TEST_PYRAMID_PLAN.md` | testing gates and phases |
 | `docs/archive/TOP_01_PLAN.md` | top 0.1% quality roadmap |
@@ -50,11 +50,11 @@ See `gitops-principles` skill — load before touching workflows, deployment con
 ## Project File Structure
 
 ```
-specification.md      ← ACTIVE feature spec (ephemeral, overwritten per feature)
-design.md             ← ACTIVE feature design
-tasks.json            ← ACTIVE feature tasks
+intent.md             ← ACTIVE intent: problem, outcome, constraints (gate: intent)
+spec.md               ← ACTIVE spec: requirements + acceptance criteria (gate: spec)
+plan.md               ← ACTIVE plan: release milestones, files, order, risks, proof (gate: plan)
 discovery-brief.md    ← PRODUCT-LEVEL vision, users, journeys (permanent)
-features/<slug>/      ← ARCHIVED feature specs (permanent record after merge)
+features/<slug>/      ← ARCHIVED intent/spec/plan (permanent record after release)
 docs/                 ← LASTING documentation (architecture, API, standards)
 docs/assessments/     ← one-off audit/assessment reports
 docs/planning/        ← roadmap, strategy, policy documents

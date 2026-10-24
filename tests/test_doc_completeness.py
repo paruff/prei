@@ -1,8 +1,8 @@
-"""Tests verifying documentation completeness per design.md.
+"""Tests verifying documentation completeness per docs/product/spec.md and docs/FEATURE_SPEC_GUIDE.md.
 
 These tests validate that each investor-workflow doc file:
 1. Exists at the expected path
-2. Contains all required sections per design.md
+2. Contains all required sections per docs/product/spec.md
 3. Has cross-references that resolve
 """
 
@@ -366,9 +366,9 @@ class TestUIPatterns:
 # ---------------------------------------------------------------------------
 
 VISION = pathlib.Path(__file__).resolve().parent.parent / "VISION.md"
-MILESTONES = pathlib.Path(__file__).resolve().parent.parent / "MILESTONES.md"
-EXEC_QUEUE = pathlib.Path(__file__).resolve().parent.parent / "EXECUTION_QUEUE.md"
-PLAN_TODAY = pathlib.Path(__file__).resolve().parent.parent / "plan-for-the-day.md"
+INTENT = pathlib.Path(__file__).resolve().parent.parent / "intent.md"
+SPEC = pathlib.Path(__file__).resolve().parent.parent / "spec.md"
+PLAN = pathlib.Path(__file__).resolve().parent.parent / "plan.md"
 DISCOVERY_DRAFT = DOCS / "product" / "discovery-draft.md"
 PRODUCT_SPEC = DOCS / "product" / "spec.md"
 
@@ -398,55 +398,53 @@ class TestVision:
         assert "How This Connects" in content
 
 
-class TestMilestones:
+class TestIntent:
     def test_file_exists(self):
-        assert MILESTONES.exists()
+        assert INTENT.exists()
 
-    def test_has_horizon_map(self):
-        content = _read(MILESTONES)
-        assert "Horizon Map" in content
+    def test_has_playbook_sections(self):
+        content = _read(INTENT)
+        for section in (
+            "## Problem",
+            "## Proposed outcome",
+            "## Affected users and systems",
+            "## Constraints",
+            "## Open questions",
+        ):
+            assert section in content, section
 
-    def test_has_release_gates(self):
-        content = _read(MILESTONES)
-        assert "Release Gates" in content
 
-    def test_has_traceability(self):
-        content = _read(MILESTONES)
-        assert "Traceability" in content
-
-
-class TestExecutionQueue:
+class TestSpec:
     def test_file_exists(self):
-        assert EXEC_QUEUE.exists()
+        assert SPEC.exists()
 
-    def test_has_priority_tiers(self):
-        content = _read(EXEC_QUEUE)
-        assert "P0" in content and "P1" in content
+    def test_has_numbered_requirements(self):
+        content = _read(SPEC)
+        assert "FR-1" in content
 
-    def test_has_scope_drift_protection(self):
-        content = _read(EXEC_QUEUE)
-        assert "Scope Drift" in content or "scope drift" in content.lower()
-
-    def test_has_bottom_up_feedback(self):
-        content = _read(EXEC_QUEUE)
-        assert "Bottom-Up" in content or "bottom-up" in content.lower()
+    def test_has_acceptance_criteria(self):
+        content = _read(SPEC)
+        assert "Acceptance Criteria" in content
 
 
-class TestPlanForToday:
+class TestPlan:
     def test_file_exists(self):
-        assert PLAN_TODAY.exists()
+        assert PLAN.exists()
 
-    def test_has_primary_goal(self):
-        content = _read(PLAN_TODAY)
-        assert "Primary Goal" in content
+    def test_has_playbook_sections(self):
+        content = _read(PLAN)
+        for section in (
+            "## Release milestones",
+            "## Files that change",
+            "## Order of work",
+            "## Risks",
+            "## Proof",
+        ):
+            assert section in content, section
 
-    def test_has_tdd_protocol(self):
-        content = _read(PLAN_TODAY)
-        assert "TDD" in content or "Red" in content
-
-    def test_has_retrospective(self):
-        content = _read(PLAN_TODAY)
-        assert "Retrospective" in content
+    def test_links_to_intent(self):
+        content = _read(PLAN)
+        assert "intent.md" in content
 
 
 class TestDiscoveryDraft:
