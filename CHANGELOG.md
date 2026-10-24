@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.10](https://github.com/paruff/prei/compare/v0.4.9...v0.4.10) (2026-10-24)
+
+
+### Chores
+
+* **deps:** bump mkdocs-material from 9.7.6 to 9.7.7 ([#438](https://github.com/paruff/prei/issues/438)) ([15b771c](https://github.com/paruff/prei/commit/15b771c1ff24ece5cf8d52ea6b6384995dced1dc))
+* **deps:** bump psycopg2-binary from 2.9.12 to 2.9.13 ([#436](https://github.com/paruff/prei/issues/436)) ([c26eae1](https://github.com/paruff/prei/commit/c26eae145a8d36cccddbda7a232d157cdaa78bf1))
+
 ## [0.4.9](https://github.com/paruff/prei/compare/v0.4.8...v0.4.9) (2026-09-13)
 
 
