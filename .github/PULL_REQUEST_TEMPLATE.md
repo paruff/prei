@@ -4,13 +4,13 @@
 
 ## Closes
 
-<!-- Issue number(s): Closes #N -->
+<!-- Issue number(s): Closes #N. Spec IDs (FR-n, AC-n) and plan.md row come from the issue. -->
 
 -----
 
 ## AI-Assisted Review Block
 
-<!-- REQUIRED. Complete before requesting review. Use Copilot or @review-agent to help fill this in. -->
+<!-- REQUIRED. Complete before requesting review. Review guidance: REVIEW.md. -->
 
 <!-- DORA 2025 (REVIEW-01): Structured review blocks reduce review time by making context explicit. -->
 
@@ -33,7 +33,7 @@
 - [ ] No financial math directly in views or models (all in `investor_app/finance/utils.py` or `core/services/`)
 - [ ] No external API calls in views (all in `core/integrations/`)
 - [ ] No `float` used for currency — Decimal throughout
-- [ ] No `any` type in new code
+- [ ] UI change: cites the `DESIGN.md` section it follows (or updates `DESIGN.md`)
 
 **What I was NOT sure about (flag for human review):**
 
