@@ -1,6 +1,6 @@
 ---
 name: submit-pr-workflow
-description: Use when finishing work and opening a pull request — run pre-commit, create a feature branch, commit with a conventional message, push, and open the PR. Also covers keeping the graphify knowledge graph in sync via the post-commit hook.
+description: Use when finishing work and opening a pull request — run pre-commit, create a feature branch, commit with a conventional message, push, and open the PR.
 ---
 
 # Submit PR Workflow
@@ -62,12 +62,6 @@ EOF
 )"
 ```
 PR title first word (after `type(scope):`) must be lowercase.
-
-### 6. Knowledge graph sync (graphify)
-A `post-commit` hook (installed via `graphify hook install`) auto-rebuilds
-`graphify-out/graph.json` on every commit — no action needed. To build the
-graph for the first time or after doc changes, run the graphify skill on the
-`core/` tree (code-only, free AST extraction). `graphify-out/` is gitignored.
 
 ## Common Mistakes
 - Committing on `main` → branch first.
