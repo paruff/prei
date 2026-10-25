@@ -93,7 +93,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
   var inputIds = ['b-purchase','b-rehab','b-arv','b-rent','b-ltv','b-rate','b-closing','b-expenses'];
   function el(id) { return document.getElementById(id); }

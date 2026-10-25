@@ -1,4 +1,4 @@
 <div class="score-num">{{ score }}</div>
 <div class="score-bar-track" role="progressbar" aria-valuenow="{{ score }}" aria-valuemin="0" aria-valuemax="100" aria-label="Underwriting score {{ score }} out of 100">
-  <div class="score-bar-fill-{{ verdict|lower }}" style="width:{{ score }}%;"></div>
+  <div class="score-bar-fill-{{ verdict|lower }}" data-width="{{ score }}"></div>
 </div>

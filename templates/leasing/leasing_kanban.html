@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
   var cards = document.querySelectorAll('.kanban-card');
   var columns = document.querySelectorAll('.kanban-cards');

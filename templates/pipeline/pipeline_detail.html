@@ -121,7 +121,7 @@
          <span class="btn btn-primary btn-placeholder">Advance Stage</span>
        {% endif %}
        {% if prop.status == 'ACTIVE' %}
-       <span class="btn btn-danger" onclick="document.getElementById('kill-modal').style.display='block'">Kill</span>
+       <span class="btn btn-danger" data-kill-modal="block">Kill</span>
        <span class="btn btn-outline btn-placeholder">Hold</span>
        {% endif %}
        {% if prop.status == 'KILLED' or prop.status == 'ON_HOLD' %}
@@ -146,10 +146,20 @@
         {% endfor %}
       </datalist>
       <div class="pipeline-modal-actions">
-        <button type="button" class="btn btn-outline" onclick="document.getElementById('kill-modal').style.display='none'">Cancel</button>
-        <button type="button" class="btn btn-danger" onclick="document.getElementById('kill-modal').style.display='none'">Kill (not wired)</button>
+        <button type="button" class="btn btn-outline" data-kill-modal="none">Cancel</button>
+        <button type="button" class="btn btn-danger" data-kill-modal="none">Kill (not wired)</button>
       </div>
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ csp_nonce }}">
+  document.querySelectorAll('[data-kill-modal]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      document.getElementById('kill-modal').style.display = el.dataset.killModal;
+    });
+  });
+</script>
 {% endblock %}

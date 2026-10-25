@@ -16,9 +16,6 @@
   <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.svg' %}">
   <meta name="description" content="Passive real estate investment analytics for buy-and-hold investors">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <link rel="manifest" href="{% static 'manifest.json' %}">
   <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'css/base.css' %}">
@@ -118,7 +115,11 @@
     {% if build_date %} · {{ build_date }}+sha-{{ git_commit|default:"unknown" }}{% endif %}</span>
 </footer>
 
-<script>
+<script nonce="{{ csp_nonce }}">
+// Score bars: widths come from data-width (inline style attributes are blocked by CSP).
+document.querySelectorAll('[data-width]').forEach(function(el) {
+  el.style.width = el.dataset.width + '%';
+});
 (function() {
   var toggle = document.getElementById('nav-toggle');
   var links  = document.getElementById('nav-links');
@@ -151,7 +152,7 @@
 {% block extra_js %}{% endblock %}
 
   <!-- Service Worker Registration -->
-  <script>
+  <script nonce="{{ csp_nonce }}">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('/static/sw.js')

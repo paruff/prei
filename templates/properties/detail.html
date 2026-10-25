@@ -19,7 +19,7 @@
     <form method="post" action="{% url 'property_delete' property.pk %}" class="inline-form">
       {% csrf_token %}
       <button type="submit" class="btn btn-danger"
-              onclick="return confirm('Delete this property? This cannot be undone.')">Delete</button>
+              data-confirm="Delete this property? This cannot be undone.">Delete</button>
     </form>
   </div>
 </div>
@@ -192,8 +192,15 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
+  // ── Confirm before submit (replaces inline onclick) ──────────
+  document.querySelectorAll('[data-confirm]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      if (!confirm(btn.dataset.confirm)) e.preventDefault();
+    });
+  });
+
   // ── Tab switching ────────────────────────────────────────────
   var tabs   = document.querySelectorAll('.tab-btn');
   var panels = document.querySelectorAll('.tab-panel');

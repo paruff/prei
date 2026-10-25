@@ -38,8 +38,7 @@
         <button type="submit" class="btn btn-primary w-100">Filter</button>
       </div>
       <div class="col-md-3">
-        <button type="button" class="btn btn-outline-success w-100" id="scrape-btn"
-                onclick="triggerScrape()">
+        <button type="button" class="btn btn-outline-success w-100" id="scrape-btn">
           Scrape Selected State
         </button>
       </div>
@@ -60,8 +59,7 @@
         <input type="file" id="json-file-input" class="form-control" accept=".json,application/json">
       </div>
       <div class="col-md-3">
-        <button type="button" class="btn btn-primary w-100" id="import-btn"
-                onclick="triggerImport()">
+        <button type="button" class="btn btn-primary w-100" id="import-btn">
           Import JSON
         </button>
       </div>
@@ -159,7 +157,7 @@
 </div>
 {% endif %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function triggerImport() {
   var fileInput = document.getElementById('json-file-input');
   var btn = document.getElementById('import-btn');
@@ -250,5 +248,8 @@ function triggerScrape() {
     btn.textContent = 'Scrape Selected State';
   });
 }
+
+document.getElementById('import-btn').addEventListener('click', triggerImport);
+document.getElementById('scrape-btn').addEventListener('click', triggerScrape);
 </script>
 {% endblock %}

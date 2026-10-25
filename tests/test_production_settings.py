@@ -71,7 +71,12 @@ def test_whitenoise_and_static_storage_are_configured() -> None:
 
     assert values["ALLOWED_HOSTS"] == ["example.com", "api.example.com"]
     assert values["MIDDLEWARE"][0] == "django.middleware.security.SecurityMiddleware"
-    assert values["MIDDLEWARE"][1] == "whitenoise.middleware.WhiteNoiseMiddleware"
+    middleware = values["MIDDLEWARE"]
+    assert "whitenoise.middleware.WhiteNoiseMiddleware" in middleware
+    # FR9: CSP/security-header middleware wraps WhiteNoise so static responses carry them.
+    assert middleware.index(
+        "django.middleware.csp.ContentSecurityPolicyMiddleware"
+    ) < middleware.index("whitenoise.middleware.WhiteNoiseMiddleware")
     assert (
         values["STORAGES"]["staticfiles"]["BACKEND"]
         == "whitenoise.storage.CompressedManifestStaticFilesStorage"

@@ -70,7 +70,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
   var rows   = Array.from(document.querySelectorAll('#deal-table tbody tr'));
   var chips  = document.querySelectorAll('.chip[data-filter]');
