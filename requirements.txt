@@ -1,8 +1,8 @@
 # Pinned dependencies for reproducible builds.
 # Generated from uv.lock on 2026-07-10. Run `uv lock` to refresh.
 # Upper bounds (<NEXT) are set where known incompatibilities exist.
-Django==6.0.7
-djangorestframework==3.18.0
+Django==6.0.8
+djangorestframework==3.18.2
 psycopg2-binary==2.9.13
 numpy==2.5.1
 numpy-financial==1.0.0
@@ -28,22 +28,22 @@ types-defusedxml==0.7.0.20260504
 commitizen==4.17.0     # rev: v4.16.4
 djlint==1.45.2         # rev: v1.40.3
 requests==2.34.2
-aiohttp==3.14.3
+aiohttp==3.14.4
 beautifulsoup4==4.15.0
 defusedxml==0.7.1  # XXE-hardened XML parsing for county RSS feeds (S314)
 playwright==1.62.0
 cffi==2.1.0
-pypdf==6.17.0
+pypdf==6.21.2
 reportlab==5.0.1
 svglib==2.2.0
 matplotlib==3.11.1
-pillow==12.3.0
+pillow==13.0.0
 pydantic==2.13.5
 httpx==0.28.1
 structlog==26.1.0  # direct dep — imported by settings.py and core/middleware.py
 django-structlog==10.1.0  # structured JSON logging (Phase D)
 python-json-logger==4.2.0  # JSON formatter for structlog
-opentelemetry-api==1.44.0  # OTEL traces for uFawkesObs
+opentelemetry-api==1.45.1  # OTEL traces for uFawkesObs
 opentelemetry-sdk==1.44.0
 opentelemetry-exporter-otlp==1.44.0
 cryptography==50.0.0  # Fix GHSA-537c-gmf6-5ccf
