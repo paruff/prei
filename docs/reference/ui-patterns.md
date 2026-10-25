@@ -1,6 +1,7 @@
 # UI Patterns Reference
 
 > The components and design-system conventions used across prei's templates.
+> Token values, component rules and do's and don'ts live in [DESIGN.md](https://github.com/paruff/prei/blob/main/DESIGN.md); this page shows where they appear in the UI.
 
 ---
 

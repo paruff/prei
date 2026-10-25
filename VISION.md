@@ -42,9 +42,10 @@
 
 | Doc | What it answers | Reference |
 |---|---|---|
-| `MILESTONES.md` | What milestones are we targeting over the next 3–6 months? | months |
-| `EXECUTION_QUEUE.md` | What is the weekly priority queue? | weeks |
-| `plan-for-the-day.md` | What are we doing today? | today |
+| `intent.md` | What problem are we solving now, for whom, and within which constraints? | current release |
+| `spec.md` | What did we decide to build (requirements, acceptance criteria)? | current release |
+| `plan.md` | Release milestones, files that change, order of work, risks, proof | current release |
+| [Project board](https://github.com/users/paruff/projects/3) | What's next for an agent? What waits on a human? (status lives only here) | today |
 | `docs/ARCHITECTURE.md` | Layer rules and dependency diagram | years |
 | `docs/KNOWN_LIMITATIONS.md` | Active known issues and workarounds | years |
 | `docs/CHANGE_IMPACT_MAP.md` | Co-change map for models, services, finance utils | years |

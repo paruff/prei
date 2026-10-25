@@ -4,7 +4,6 @@ about: "A defect to be investigated and fixed by a Copilot agent"
 title: "[BUG] "
 labels:
   - bug
-  - effort-small
 assignees: []
 ---
 

@@ -44,6 +44,8 @@ jobs:
         run: ruff check .
       - name: Ruff format
         run: ruff format --check .
+      - name: DESIGN.md lint
+        run: npx --yes @google/design.md@0.4.0 lint --format text DESIGN.md
 
   secrets:
     name: "🔑 Secrets"

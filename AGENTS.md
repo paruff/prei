@@ -13,7 +13,7 @@
 
 ## Project Identity
 - prei: passive real estate investment analytics for buy-and-hold investors.
-- Stack: see requirements.txt/pyproject.toml. Postgres is reserved for post-MVP production — see docker-compose.yml.
+- Stack: Django 6.0, see requirements.txt/pyproject.toml. SQLite for local runs; Postgres in production (render.yaml). Single-user for now.
 - Constraints: Decimal money; service-layer boundaries; no Bootstrap.
 - Design: custom design system with CSS custom properties (tokens.css + base.css).
 
@@ -29,6 +29,48 @@
 9. Use uppercase in PR title description — the first word after `type(scope):` must be lowercase (see `docs/PR_STANDARD.md`).
 10. Swallow an exception in a check, validator, or test assertion without logging what broke — a silently-caught exception makes a check that never ran indistinguishable from one that ran and found nothing.
 
+## Before You Start
+- UI changes: read DESIGN.md first (tokens, components, do and don't)
+- Reviewing a PR: apply REVIEW.md (what is Important, verification, validation, security)
+
+## Workflow
+"What's next for an agent?" and "what waits on a human?" are answered by the
+[Real Estate Investor board](https://github.com/users/paruff/projects/3) only. Its **Status** field is the
+only place status lives (no status labels, no status in docs). Release = GitHub milestone; order and spec
+links are in `plan.md`.
+
+| Status | Means |
+|---|---|
+| Backlog | Not ready, or its release isn't planned yet |
+| Ready for agent | Has a plan row, spec IDs and an Exit criterion |
+| In progress | Claimed. Move it here **before** starting |
+| Needs human decision | Waiting on a person; the **Gate** field says which decision |
+| Blocked | Waiting on something named in an issue comment |
+| Done | Closed (set automatically) |
+
+Gate (set only with Needs human decision): `intent` · `spec` · `plan` · `PR review` · `merge/release`.
+Gates are approved by merging the PR that changes that file; a question only a human can answer is an
+issue labelled `question` (template "Question for a human").
+
+```bash
+# 1. Next item for an agent (earliest release, then lowest issue number)
+gh project item-list 3 --owner paruff --limit 200 --query 'status:"Ready for agent" is:open' --format json \
+  --jq '.items | sort_by(.milestone.title // "~", .content.number) | .[0] | "#\(.content.number) \(.title)"'
+
+# 2. Waiting on a human, and which decision
+gh project item-list 3 --owner paruff --limit 200 --query 'status:"Needs human decision" is:open' --format json \
+  --jq '.items[] | "\(.gate // "-")\t#\(.content.number) \(.title)"'
+gh pr list --state open --draft=false   # every open non-draft PR waits on a human merge decision
+
+# Move an item
+gh project item-edit 3 --owner paruff --url <issue-or-PR-url> --field Status --value "In progress"
+```
+
+Lifecycle: pick (command 1) → In progress → branch → PR with `Closes #n` → self-review with REVIEW.md →
+post findings as one PR comment (`gh pr review <pr> --comment`, never `--approve`) → Needs human decision,
+Gate `PR review` → human merges → Done. Changes requested → back to In progress. New issues: the
+`.github/ISSUE_TEMPLATE/` headings, a milestone, and `--project "Real Estate Investor"`.
+
 ## GitOps Principles
 See `gitops-principles` skill — load before touching workflows, deployment config, or the GitOps manifest repo.
 
@@ -41,7 +83,7 @@ See `gitops-principles` skill — load before touching workflows, deployment con
 | `docs/CHANGE_IMPACT_MAP.md` | co-change map |
 | `docs/KNOWN_LIMITATIONS.md` | active known issues |
 | `docs/PR_STANDARD.md` | PR naming rules |
-| `docs/FEATURE_SPEC_GUIDE.md` | how to write spec/design/tasks |
+| `docs/FEATURE_SPEC_GUIDE.md` | how to write intent/spec/plan |
 | `docs/DEPLOYMENT_STRATEGY.md` | canary + progressive delivery plan |
 | `docs/archive/TEST_PYRAMID_PLAN.md` | testing gates and phases |
 | `docs/archive/TOP_01_PLAN.md` | top 0.1% quality roadmap |
@@ -50,11 +92,11 @@ See `gitops-principles` skill — load before touching workflows, deployment con
 ## Project File Structure
 
 ```
-specification.md      ← ACTIVE feature spec (ephemeral, overwritten per feature)
-design.md             ← ACTIVE feature design
-tasks.json            ← ACTIVE feature tasks
+intent.md             ← ACTIVE intent: problem, outcome, constraints (gate: intent)
+spec.md               ← ACTIVE spec: requirements + acceptance criteria (gate: spec)
+plan.md               ← ACTIVE plan: release milestones, files, order, risks, proof (gate: plan)
 discovery-brief.md    ← PRODUCT-LEVEL vision, users, journeys (permanent)
-features/<slug>/      ← ARCHIVED feature specs (permanent record after merge)
+features/<slug>/      ← ARCHIVED intent/spec/plan (permanent record after release)
 docs/                 ← LASTING documentation (architecture, API, standards)
 docs/assessments/     ← one-off audit/assessment reports
 docs/planning/        ← roadmap, strategy, policy documents

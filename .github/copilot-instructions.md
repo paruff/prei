@@ -8,11 +8,15 @@ Keep this file minimal to control token spend. Load details from `.agents/skills
 3. If request touches auth, workflows, migrations, or dependencies, ask for human approval before editing.
 
 ## Core project rules
-- Django 4.2 LTS patterns only for framework-specific changes.
+- Django 6.0 patterns for framework-specific changes.
 - Financial math lives in `investor_app/finance/utils.py` or `core/services/`, not views/models/templates.
 - External API calls live in `core/integrations/` and are consumed via services.
 - Persist currency as `Decimal`; avoid float persistence.
 - Human review is mandatory before merge.
+
+## Reviews and UI
+- Reviewing a PR: apply `REVIEW.md`.
+- UI changes: follow `DESIGN.md`.
 
 ## Load on-demand skills
 - Architecture: `.agents/skills/architecture/SKILL.md`
