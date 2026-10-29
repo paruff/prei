@@ -434,11 +434,12 @@ class TestPlan:
     def test_has_playbook_sections(self):
         content = _read(PLAN)
         for section in (
-            "## Release milestones",
-            "## Files that change",
-            "## Order of work",
+            "## How this plan works",
+            "## G0:",
+            "**Proof:**",
+            "## Later",
             "## Risks",
-            "## Proof",
+            "## Proof summary",
         ):
             assert section in content, section
 

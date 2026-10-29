@@ -10,7 +10,7 @@
 |---|---|---|
 | `intent.md` | The problem, outcome and constraints (gate: intent) | Product owner |
 | `spec.md` | WHAT we decided to build (gate: spec) | PM, stakeholder, reviewer |
-| `plan.md` | HOW and in what order, by release milestone (gate: plan) | Developer, AI agent |
+| `plan.md` | Goals in order, each with an outcome, a proof and its rows (gate: plan) | Developer, AI agent |
 
 ---
 
@@ -73,18 +73,21 @@ What we are explicitly NOT building in this feature.
 # Plan: <title>
 **From:** intent.md and spec.md, <date> · **Status:** draft | approved
 
-## Release milestones
-One `###` per release (= GitHub milestone). Table: Row | Work | Spec IDs | Issue (or `no issue yet`).
-No status column: status lives on the board.
-
-## Files that change
-## Order of work
+## How this plan works
+## G0: <goal>
+**Outcome:** <what the user can do>  **Proof:** <the test that shows it>
+Table: Row | Work | Spec | Files | Issue (or `no issue yet`). No status column: status lives on the board.
+## G1: <goal> …
+## Later (no milestone)
 ## Risks
-## Proof
+## Proof summary
 ```
 
 ### Rules
-- Every row cites spec IDs (FR-n, AC-n) and maps to one issue in that release's milestone
+- One goal = one GitHub milestone with the same name; work one goal at a time, in order
+- A goal's first row writes its failing proof; later rows fix what that proof finds
+- Every row cites spec IDs (FR-n, AC-n) and maps to one issue in its goal's milestone
+- Work not needed for a goal goes to "Later"
 - Must respect `docs/ARCHITECTURE.md` layer constraints
 - Rows that share files run in sequence, not in parallel
 - When implementation departs from the plan, update `plan.md` in the same PR
@@ -95,15 +98,15 @@ No status column: status lives on the board.
 
 1. After the release ships, archive to `features/<slug>/intent.md`, `spec.md`, `plan.md`
 2. Start the next release's `intent.md` at root
-3. Update `docs/planning/PRODUCT_STRATEGY.md` if feature affects product strategy
+3. Update [VISION.md](../VISION.md) if the release changes the journey, principles or non-goals
 4. Run `docs/ARCHITECTURE.md` if feature changes layer boundaries
 
 ---
 
 ## Before Starting a New Feature
 
-1. Read `discovery-brief.md` — understand the product vision
-2. Read `docs/planning/PRODUCT_STRATEGY.md` — understand what's built vs planned
+1. Read [VISION.md](../VISION.md) — users, the investor journey, principles and non-goals
+2. Read [plan.md](../plan.md) — the current goals
 3. Read `docs/ARCHITECTURE.md` — know the layer constraints
 4. Read `docs/KNOWN_LIMITATIONS.md` — don't make listed issues worse
 5. Read `docs/CHANGE_IMPACT_MAP.md` — know what files co-change

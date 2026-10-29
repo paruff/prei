@@ -6,6 +6,32 @@
 
 ---
 
+## Users
+
+One investor per account (single-user for now).
+
+- **Buy-and-hold SFR investor (primary):** buys 1–2 properties a year in landlord-friendly states (TX, FL, TN), screens with the 1% rule, cap rate and cash-on-cash, and looks at 100+ properties to find one deal.
+- **BRRRR investor:** scales from 1 to 10+ properties by refinancing; needs ARV, rehab budget, refinance projection, IRR and hold-period analysis.
+- **Data-driven sourcer:** runs discovery pipelines (VRM, foreclosures, county auctions) and batch screening, and uses market data to find emerging ZIPs.
+
+## The investor journey
+
+The product is this journey. Each step names the [plan.md](plan.md) goal that proves it works.
+
+| Step | The investor… | Goal |
+|---|---|---|
+| 1. Identify | ranks growth areas in a state by composite score (GACS: employment, population, housing demand) | G1 |
+| 2. Discover | browses listings in those areas: VRM, foreclosures, sheriff sales, HUD/USDA REO, county records | G1 |
+| 3. Screen | kills ~90% of properties cheaply with the 1% rule, GRM, cap rate and cash-on-cash | G1 |
+| 4. Underwrite | runs full KPIs (NOI, cap rate, CoC, DSCR) against market cap rates and scores the deal | G1 |
+| 5. Offer | computes the maximum allowable offer from ARV, rehab budget and equity target | G2 |
+| 6. Acquire | moves the deal through offer, due diligence and closing to acquired | G2 |
+| 7. Own | tracks the property in the portfolio: rent, expenses, monthly actuals vs pro forma | G2 |
+| 8. Grow | runs BRRRR on equity-rich properties to plan the next purchase | G3 |
+| 9. Lease | takes the property from listed through tenant screening to a signed lease | G3 |
+
+---
+
 ## Core Principles (4–8, specific to this product)
 
 1. **Decimal-first money** — All currency uses `Decimal`; never float. Financial NFI (Net Financial Index) calculations are precise to the penny.
@@ -44,7 +70,7 @@
 |---|---|---|
 | `intent.md` | What problem are we solving now, for whom, and within which constraints? | current release |
 | `spec.md` | What did we decide to build (requirements, acceptance criteria)? | current release |
-| `plan.md` | Release milestones, files that change, order of work, risks, proof | current release |
+| `plan.md` | Goals (one GitHub milestone each), their proof, the issues under them, risks | current release |
 | [Project board](https://github.com/users/paruff/projects/3) | What's next for an agent? What waits on a human? (status lives only here) | today |
 | `docs/ARCHITECTURE.md` | Layer rules and dependency diagram | years |
 | `docs/KNOWN_LIMITATIONS.md` | Active known issues and workarounds | years |

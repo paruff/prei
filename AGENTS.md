@@ -36,8 +36,9 @@
 ## Workflow
 "What's next for an agent?" and "what waits on a human?" are answered by the
 [Real Estate Investor board](https://github.com/users/paruff/projects/3) only. Its **Status** field is the
-only place status lives (no status labels, no status in docs). Release = GitHub milestone; order and spec
-links are in `plan.md`.
+only place status lives (no status labels, no status in docs). Goal = GitHub milestone (`G0: …`, `G1: …`);
+work one goal at a time, in order. Outcome, proof and rows are in `plan.md`. AI-DLC (`.claude/`, `aidlc/`)
+may run the stages inside one issue; the board decides what is next. If they disagree, the board wins.
 
 | Status | Means |
 |---|---|
@@ -53,7 +54,7 @@ Gates are approved by merging the PR that changes that file; a question only a h
 issue labelled `question` (template "Question for a human").
 
 ```bash
-# 1. Next item for an agent (earliest release, then lowest issue number)
+# 1. Next item for an agent (earliest goal, then lowest issue number)
 gh project item-list 3 --owner paruff --limit 200 --query 'status:"Ready for agent" is:open' --format json \
   --jq '.items | sort_by(.milestone.title // "~", .content.number) | .[0] | "#\(.content.number) \(.title)"'
 
@@ -77,7 +78,7 @@ See `gitops-principles` skill — load before touching workflows, deployment con
 ## Context Files
 | File | Why |
 |---|---|
-| `discovery-brief.md` | product vision, users, core journeys |
+| `VISION.md` | users, investor journey, principles, non-goals |
 | `core/models/` | model rules |
 | `docs/ARCHITECTURE.md` | layer rules |
 | `docs/CHANGE_IMPACT_MAP.md` | co-change map |
@@ -85,20 +86,18 @@ See `gitops-principles` skill — load before touching workflows, deployment con
 | `docs/PR_STANDARD.md` | PR naming rules |
 | `docs/FEATURE_SPEC_GUIDE.md` | how to write intent/spec/plan |
 | `docs/DEPLOYMENT_STRATEGY.md` | canary + progressive delivery plan |
-| `docs/archive/TEST_PYRAMID_PLAN.md` | testing gates and phases |
-| `docs/archive/TOP_01_PLAN.md` | top 0.1% quality roadmap |
-| `docs/archive/DOCS_AUDIT.md` | documentation audit and alignment |
 
 ## Project File Structure
 
 ```
 intent.md             ← ACTIVE intent: problem, outcome, constraints (gate: intent)
 spec.md               ← ACTIVE spec: requirements + acceptance criteria (gate: spec)
-plan.md               ← ACTIVE plan: release milestones, files, order, risks, proof (gate: plan)
-discovery-brief.md    ← PRODUCT-LEVEL vision, users, journeys (permanent)
+plan.md               ← ACTIVE plan: goals (milestones), proof, rows, risks (gate: plan)
+VISION.md             ← PRODUCT-LEVEL users, journey, principles, non-goals (permanent)
 features/<slug>/      ← ARCHIVED intent/spec/plan (permanent record after release)
 docs/                 ← LASTING documentation (architecture, API, standards)
 docs/assessments/     ← one-off audit/assessment reports
-docs/planning/        ← roadmap, strategy, policy documents
+docs/planning/        ← policy documents (AI_POLICY.md)
+docs/archive/         ← superseded plans and strategy (read-only)
 tests/                ← test suites
 ```
