@@ -29,7 +29,7 @@ Each release is a GitHub milestone, and each row is one issue in that milestone.
 
 | Row | Work | Spec | Issue |
 |---|---|---|---|
-| C1 | django-csp: CSP, Permissions-Policy and CORP headers | FR-9, AC-8 | no issue yet |
+| C1 | Django 6 built-in CSP, Permissions-Policy and CORP headers (#458) | FR-9, AC-8 | no issue yet |
 | C2 | SRI on external scripts in `base.html` | FR-9, AC-9 | no issue yet |
 | C3 | Authenticated ZAP scan: 0 FAIL, 0 WARN | FR-9 | no issue yet |
 
@@ -45,7 +45,7 @@ Portfolio analytics, leasing pipeline completion, advanced market intelligence, 
 | A4–A5 | `scripts/backtest_gacs.py` (new), `core/services/market_scoring.py`, `core/integrations/market/schools.py`, `core/integrations/market/supply.py` (new) |
 | B1–B2 | `core/integrations/market/crime.py`. Keep the interface `get_crime_score(zip) -> (score, confidence, source)`. |
 | B3 | Depends on open question 3 in intent.md. If Celery: `core/celery.py`, `core/tasks.py`, `docker-compose.yml` (Redis), `render.yaml` (worker). |
-| C1–C2 | `settings.py`, `core/middleware/security_headers.py`, `templates/base.html`, `requirements.txt` (django-csp; needs dependency approval) |
+| C1–C2 | `investor_app/settings.py`, `core/middleware.py`, `templates/`, `static/fonts/` (self-hosted Inter); no new dependency |
 | All | `docs/CHANGE_IMPACT_MAP.md`, `docs/KNOWN_LIMITATIONS.md` (resolve LIMIT-01, -02, -11, -15, -17, -23) |
 
 ## Order of work

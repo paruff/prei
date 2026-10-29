@@ -37,7 +37,7 @@ See [intent.md](intent.md). In short: rent estimates for every property source, 
 | FR-4 | **GACS Signal Completion** | High | Wire school quality (GreatSchools); compute supply constraint from permit data; fix employment fallback to use county QCEW where available |
 | FR-5 | **Real Crime Data** | High | Retry FBI CDE with correct endpoint/params; if blocked, evaluate SpotCrime/CityProtect/local PD APIs |
 | FR-7 | **Celery + Redis** | Critical | Async screening re-runs, VRM scrape, discovery; remove Gunicorn thread hacks (open: Celery vs lighter option, see intent.md open question 3) |
-| FR-9 | **CSP & Security Headers** | High | Add django-csp middleware; CSP, Permissions-Policy, Cross-Origin-Resource-Policy; SRI on external scripts |
+| FR-9 | **CSP & Security Headers** | High | Django 6 built-in `ContentSecurityPolicyMiddleware` (nonce-based); CSP, Permissions-Policy, Cross-Origin-Resource-Policy; SRI on external scripts |
 
 ### Non-Functional Requirements
 

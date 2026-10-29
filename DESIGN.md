@@ -204,7 +204,7 @@ Metric colour classes (`num-good`, `num-warn`, `num-bad`) come from Python (`Und
 
 ## Typography
 
-One family, **Inter**, loaded from Google Fonts at weights 400 and 500 only. Seven-step scale: 11 / 13 / 15 / 18 / 22 px.
+One family, **Inter**, self-hosted from `static/fonts/` (declared in `tokens.css`) at weights 400 and 500 only. Seven-step scale: 11 / 13 / 15 / 18 / 22 px.
 
 - **Page title (`headline-lg`):** 22px medium, tight line height. Section headings (`headline-md`): 18px medium.
 - **Body (`body-md`):** 15px regular, line height 1.6. Card titles (`title-md`): 15px medium.
