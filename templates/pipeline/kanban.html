@@ -63,7 +63,7 @@
 
     {% if col.stage == 'DISCOVERED' %}
     <button class="btn btn-primary kanban-discover-btn"
-            onclick="openDiscoveryModal()">+ Discover</button>
+            data-open-discovery>+ Discover</button>
     {% endif %}
   </div>
   {% endfor %}
@@ -74,14 +74,14 @@
   <div class="kanban-modal">
     <div class="kanban-modal-header">
       <h2>Discover Properties</h2>
-      <button class="btn" onclick="closeDiscoveryModal()">✕</button>
+      <button class="btn" data-close-discovery>✕</button>
     </div>
     <div class="kanban-modal-body" id="discovery-body">
       <p class="page-sub">Choose a growth area to discover properties from.</p>
       <div id="discovery-market-list">
         {% for ga in user_growth_areas %}
         <button class="kanban-market-btn"
-                onclick="selectMarket('{{ ga.pk }}', '{{ ga.city_name|escapejs }}')">
+                data-select-market data-id="{{ ga.pk }}" data-name="{{ ga.city_name }}">
           <strong>{{ ga.city_name }}</strong>, {{ ga.state }}
           <span class="chip chip-default">GACS {{ ga.composite_score|floatformat:1 }}</span>
         </button>
@@ -108,11 +108,11 @@
           <input type="checkbox" name="sources" value="county"> County Notices
         </label>
         <div class="form-actions kanban-form-actions">
-          <button class="btn btn-primary" id="discovery-run-btn" onclick="runDiscovery()"
+          <button class="btn btn-primary" id="discovery-run-btn"
                   data-url="{% url 'property_discovery' %}">
             Discover Properties
           </button>
-          <button class="btn" onclick="closeDiscoveryModal()">Cancel</button>
+          <button class="btn" data-close-discovery>Cancel</button>
         </div>
         <div id="discovery-status" class="message message-info kanban-hidden kanban-status"></div>
       </div>
@@ -122,7 +122,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 // ── Drag and Drop ───────────────────────────────────────────────────
 (function() {
   var cards = document.querySelectorAll('.kanban-card');
@@ -331,7 +331,10 @@ function runDiscovery() {
     return r.text();
   }).then(function(html) {
     if (html) {
-      status.innerHTML = '<p>Discovery complete. <a href="javascript:window.location.reload()">Refresh</a> to see results.</p>';
+      status.innerHTML = '<p>Discovery complete. <button type="button" class="btn" id="discovery-refresh">Refresh</button> to see results.</p>';
+      document.getElementById('discovery-refresh').addEventListener('click', function() {
+        window.location.reload();
+      });
       status.className = 'message message-success';
     }
   }).catch(function(err) {
@@ -342,5 +345,17 @@ function runDiscovery() {
     btn.textContent = 'Discover Properties';
   });
 }
+
+// ── Discovery handlers (CSP forbids inline on* attributes) ──────────
+document.querySelectorAll('[data-open-discovery]').forEach(function(el) {
+  el.addEventListener('click', openDiscoveryModal);
+});
+document.querySelectorAll('[data-close-discovery]').forEach(function(el) {
+  el.addEventListener('click', closeDiscoveryModal);
+});
+document.querySelectorAll('[data-select-market]').forEach(function(el) {
+  el.addEventListener('click', function() { selectMarket(el.dataset.id, el.dataset.name); });
+});
+document.getElementById('discovery-run-btn').addEventListener('click', runDiscovery);
 </script>
 {% endblock %}

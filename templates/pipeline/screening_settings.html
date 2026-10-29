@@ -28,7 +28,7 @@
         </label>
         <input type="range" name="min_price_slider" min="0" max="2000000" step="10000"
                value="{{ criteria.min_price|default:0 }}" class="slider-input"
-               oninput="updateLabel('min_price','min-price-label','$','intcomma')">
+               data-update-label="min_price|min-price-label|$|intcomma">
         <input type="hidden" name="min_price" value="{{ criteria.min_price|default:'' }}">
       </div>
       <div class="form-field-group">
@@ -37,7 +37,7 @@
         </label>
         <input type="range" name="max_price_slider" min="0" max="2000000" step="10000"
                value="{{ criteria.max_price|default:2000000 }}" class="slider-input"
-               oninput="updateLabel('max_price','max-price-label','$','intcomma')">
+               data-update-label="max_price|max-price-label|$|intcomma">
         <input type="hidden" name="max_price" value="{{ criteria.max_price|default:'' }}">
       </div>
     </div>
@@ -56,7 +56,7 @@
         </label>
         <input type="range" name="min_gross_yield_pct_slider" min="0" max="20" step="0.5"
                value="{{ criteria.min_gross_yield_pct|default:7 }}" class="slider-input"
-               oninput="updateLabel('min_gross_yield_pct','yield-label','','%')">
+               data-update-label="min_gross_yield_pct|yield-label||%">
         <input type="hidden" name="min_gross_yield_pct" value="{{ criteria.min_gross_yield_pct|default:7 }}">
       </div>
       <div class="form-field-group">
@@ -65,7 +65,7 @@
         </label>
         <input type="range" name="max_price_to_rent_ratio_slider" min="1" max="50" step="1"
                value="{{ criteria.max_price_to_rent_ratio|default:15 }}" class="slider-input"
-               oninput="updateLabel('max_price_to_rent_ratio','ptr-label','','')">
+               data-update-label="max_price_to_rent_ratio|ptr-label||">
         <input type="hidden" name="max_price_to_rent_ratio" value="{{ criteria.max_price_to_rent_ratio|default:15 }}">
       </div>
     </div>
@@ -81,7 +81,7 @@
         </label>
         <input type="range" name="min_beds_slider" min="1" max="10" step="1"
                value="{{ criteria.min_beds|default:1 }}" class="slider-input"
-               oninput="updateLabel('min_beds','beds-label','','')">
+               data-update-label="min_beds|beds-label||">
         <input type="hidden" name="min_beds" value="{{ criteria.min_beds|default:1 }}">
       </div>
       <div class="form-field-group">
@@ -90,7 +90,7 @@
         </label>
         <input type="range" name="min_gacs_score_slider" min="0" max="100" step="1"
                value="{{ criteria.min_gacs_score|default:0 }}" class="slider-input"
-               oninput="updateLabel('min_gacs_score','gacs-label','','')">
+               data-update-label="min_gacs_score|gacs-label||">
         <input type="hidden" name="min_gacs_score" value="{{ criteria.min_gacs_score|default:'' }}">
       </div>
     </div>
@@ -145,7 +145,14 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
+  document.querySelectorAll('[data-update-label]').forEach(function(slider) {
+    var args = slider.dataset.updateLabel.split('|');
+    slider.addEventListener('input', function() {
+      updateLabel(args[0], args[1], args[2], args[3]);
+    });
+  });
+
   function updateLabel(fieldName, labelId, prefix, suffix) {
     var slider = document.querySelector('[name="' + fieldName + '_slider"]');
     var hidden = document.querySelector('[name="' + fieldName + '"]');

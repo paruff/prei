@@ -83,7 +83,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 .market-summary {
   margin-bottom: 2rem;
 }

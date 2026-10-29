@@ -92,7 +92,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 .financing-comparison {
   margin-top: 1.5rem;
 }

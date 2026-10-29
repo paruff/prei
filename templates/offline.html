@@ -4,7 +4,7 @@
 {% block title %}Offline - PREI{% endblock %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
   .offline-container {
     display: flex;
     flex-direction: column;
@@ -114,7 +114,7 @@
   </p>
 
   <div class="offline-actions">
-    <button class="btn btn-primary retry-btn" onclick="window.location.reload()">
+    <button class="btn btn-primary retry-btn" id="retry-btn">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M23 4v6h-6"></path>
         <path d="M1 20v-6h6"></path>
@@ -152,4 +152,12 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ csp_nonce }}">
+  document.getElementById('retry-btn').addEventListener('click', function() {
+    window.location.reload();
+  });
+</script>
 {% endblock %}

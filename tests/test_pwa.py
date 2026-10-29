@@ -87,7 +87,7 @@ class TestServiceWorker:
         content = base_path.read_text()
 
         match = re.search(
-            r"<!-- Service Worker Registration -->\s*<script>(.*?)</script>",
+            r"<!-- Service Worker Registration -->\s*<script(?: nonce=\"[^\"]*\")?>(.*?)</script>",
             content,
             re.S,
         )

@@ -54,7 +54,7 @@
 <div class="filter-bar">
   <!-- Growth area chooser -->
   <form method="get" class="form-inline">
-    <select name="growth_area_id" onchange="this.form.submit()" class="form-input">
+    <select name="growth_area_id" data-autosubmit class="form-input">
       <option value="">All Markets</option>
       {% for ga in user_growth_areas %}
         <option value="{{ ga.pk }}"
@@ -245,8 +245,12 @@
 </div>
 {% endif %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
+  document.querySelectorAll('[data-autosubmit]').forEach(function(el) {
+    el.addEventListener('change', function() { el.form.submit(); });
+  });
+
   var debounceTimer = null;
 
   function buildFilterUrl() {

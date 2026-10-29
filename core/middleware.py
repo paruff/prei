@@ -75,3 +75,24 @@ class RequestTimingMiddleware:
                 request_id=request.request_id,
             )
         return response
+
+
+class SecurityHeadersMiddleware:
+    """Add Permissions-Policy and Cross-Origin-Resource-Policy (FR9).
+
+    Values a view already set are left alone.
+    """
+
+    HEADERS = {
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+        "Cross-Origin-Resource-Policy": "same-origin",
+    }
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        for name, value in self.HEADERS.items():
+            response.headers.setdefault(name, value)
+        return response

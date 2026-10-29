@@ -252,6 +252,8 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 **Workaround:** `-I` (`--ignore-warn`) added to the scan's `cmd_options` so the job only fails on FAIL-level alerts; WARN findings still appear in the job's ZAP log/report for visibility, they just don't block merges.
 
+**Progress (FR9):** CSP Header Not Set [10038], Permissions Policy Header Not Set [10063], Cross-Origin-Resource-Policy [90004] and Sub Resource Integrity Attribute Missing [90003] are addressed in code: Django's built-in `ContentSecurityPolicyMiddleware` (nonce-only `script-src`/`style-src`, `CSP_REPORT_ONLY` env flag), `core.middleware.SecurityHeadersMiddleware` (Permissions-Policy, CORP), inline handlers moved to nonce'd scripts, and Inter self-hosted so no external stylesheet remains. ZAP re-scan pending: close these alerts only after the CI authenticated scan confirms them.
+
 **Fix tracked in:** Not yet filed. Recommended as a dedicated hardening PR: Django `SECURE_*` settings + `django-csp`/`django-permissions-policy` middleware for the header findings, `SESSION_COOKIE_HTTPONLY`/`SESSION_COOKIE_SECURE` for the cookie/session findings, `integrity` attributes on external `<script>`/`<link>` tags for SRI, and removing/gating the PUT method where unintended.
 
 ---

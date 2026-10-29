@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import environ
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 
 try:
     import structlog
@@ -182,6 +183,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # CSP + security headers sit before WhiteNoise so static responses carry them too.
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
+    "core.middleware.SecurityHeadersMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -206,10 +210,30 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.version",
+                "django.template.context_processors.csp",
             ],
         },
     },
 ]
+
+# Content-Security-Policy (FR9). Nonce-only script/style: no 'unsafe-inline'.
+# Set CSP_REPORT_ONLY=true to observe violations without enforcing.
+_CSP_POLICY = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE],
+    "style-src": [CSP.SELF, CSP.NONCE],
+    "img-src": [CSP.SELF, "data:"],
+    "font-src": [CSP.SELF],
+    "connect-src": [CSP.SELF],
+    "object-src": [CSP.NONE],
+    "base-uri": [CSP.SELF],
+    "form-action": [CSP.SELF],
+    "frame-ancestors": [CSP.NONE],
+}
+if os.environ.get("CSP_REPORT_ONLY", "").strip().lower() in ("1", "true", "yes", "on"):
+    SECURE_CSP_REPORT_ONLY = _CSP_POLICY
+else:
+    SECURE_CSP = _CSP_POLICY
 
 WSGI_APPLICATION = "investor_app.wsgi.application"
 
