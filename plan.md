@@ -1,78 +1,91 @@
-# Plan: beta readiness
+# Plan: a functioning prei
 
-**From:** [intent.md](intent.md) and [spec.md](spec.md), 2026-10-24 · **Status:** draft
+**From:** [intent.md](intent.md) and [spec.md](spec.md), 2026-10-29 · **Status:** proposed (approved by merging the PR that changes this file)
 **Status of work lives on the board, never here:** [Real Estate Investor project](https://github.com/users/paruff/projects/3) (how it works: [AGENTS.md](AGENTS.md) "Workflow"). Update this file in the same PR when implementation departs from it.
 
-## Release milestones
+## How this plan works
 
-Each release is a GitHub milestone, and each row is one issue in that milestone. A row with no issue yet says `no issue yet`.
+- **One goal at a time.** Each goal is a GitHub milestone with the same name. A goal is done when its **Proof** passes. The next goal starts after that, not before.
+- **The proof comes first.** Every goal's first row writes the failing test that is its proof. Further rows fix what that test shows is broken; add them to this file when the test finds them, not in advance.
+- **Each row is one issue** in its goal's milestone. A row with no issue yet says `no issue yet`.
+- **Anything not needed for a goal goes to [Later](#later-no-milestone).**
 
-### Beta A: rent data and GACS
+## G0: runs in Docker, tested end to end
 
-| Row | Work | Spec | Issue |
-|---|---|---|---|
-| A1 | Rentcast spike: key, TX/FL/TN coverage, latency < 500ms | FR-1, AC-1 | no issue yet |
-| A2 | Rentcast adapter and rent fallback chain VRM → Rentcast → ATTOM → HUD FMR | FR-1, AC-2, NFR-1 | no issue yet |
-| A3 | ATTOM rent probe; add it to the chain if the field exists | FR-2 | no issue yet |
-| A4 | GACS backtest script and published report | FR-3, AC-3, NFR-2 | no issue yet |
-| A5 | GACS signal completion: schools, supply constraint, county employment | FR-4 | no issue yet |
+**Outcome:** on a clean checkout, `docker compose up` and one seed command give a running prei with one market's data (default Dallas, TX).
+**Proof:** `tests/acceptance/` passes with `BASE_URL` pointing at the container (AC-10, AC-11).
 
-### Beta B: crime data and background work
+| Row | Work | Spec | Files | Issue |
+|---|---|---|---|---|
+| G0.1 | `make docker-accept`: build, up, seed, run `tests/acceptance/` against the container, down. Fails today. | FR-10, AC-11 | `Makefile` | no issue yet |
+| G0.2 | Compose starts without the external `observability-lab` network (make OTEL optional) | FR-10, AC-10 | `docker-compose.yml` | no issue yet |
+| G0.3 | One seed command for one market: `seed_markets` + `populate_growth_areas` + properties, inside the container; fix `make docker-dev` (`web` vs the `preiweb` service) | FR-11, AC-10 | `Makefile`, `core/management/commands/` | no issue yet |
 
-| Row | Work | Spec | Issue |
-|---|---|---|---|
-| B1 | FBI CDE retry with the correct endpoint | FR-5 | no issue yet |
-| B2 | Crime adapter fallback (SpotCrime, CityProtect) if B1 fails | FR-5, AC-4, NFR-3 | no issue yet |
-| B3 | Async re-screen, discovery batch and VRM scrape | FR-7, AC-6, NFR-4 | no issue yet |
+## G1: find and decide (journey steps 1–4)
 
-### Beta C: security headers
+**Outcome:** on the seeded market, the investor ranks growth areas, discovers properties, screens them with yield and price-to-rent, and underwrites the best one.
+**Proof:** a journey scenario for steps 1–4 passes against the container (AC-12), and the rent report is committed (AC-13).
 
-| Row | Work | Spec | Issue |
-|---|---|---|---|
-| C1 | Django 6 built-in CSP, Permissions-Policy and CORP headers (#458) | FR-9, AC-8 | no issue yet |
-| C2 | SRI on external scripts in `base.html` | FR-9, AC-9 | no issue yet |
-| C3 | Authenticated ZAP scan: 0 FAIL, 0 WARN | FR-9 | no issue yet |
+| Row | Work | Spec | Files | Issue |
+|---|---|---|---|---|
+| G1.1 | Journey scenario, steps 1–4, against the container. Fails until it passes. | FR-12, AC-12 | `tests_bdd/features/journey.feature` (new), `tests_bdd/steps/` | no issue yet |
+| G1.2 | Rent report: coverage by source (VRM, Rentometer, HUD FMR) on the seeded market; HUD FMR vs Rentcast quality for Rentcast's fee; recommendation on FR-1 | NFR-7, NFR-1, AC-13 | `docs/assessments/rent-coverage.md` (new), `scripts/` | no issue yet |
 
-### Later (no milestone)
+Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here only if a step times out.
 
-Portfolio analytics, leasing pipeline completion, advanced market intelligence, partner API. Deferred by the 2026-10-24 decisions: team pipeline sharing (#371, #372; single-user for now) and local Postgres (SQLite stays local).
+## G2: buy and own (journey steps 5–7)
 
-## Files that change
+**Outcome:** a screened property goes from offer through due diligence and closing to acquired, and appears in the portfolio with complete data and monthly actuals.
+**Proof:** a journey scenario for steps 5–7 passes against the container (AC-14).
 
-| Row | Files |
-|---|---|
-| A1–A3 | `core/integrations/sources/rentcast_adapter.py` (new), `core/integrations/sources/attom_adapter.py`, `core/services/screening.py` (`_get_rent_estimate` fallback chain), `core/integrations/health_monitor.py` |
-| A4–A5 | `scripts/backtest_gacs.py` (new), `core/services/market_scoring.py`, `core/integrations/market/schools.py`, `core/integrations/market/supply.py` (new) |
-| B1–B2 | `core/integrations/market/crime.py`. Keep the interface `get_crime_score(zip) -> (score, confidence, source)`. |
-| B3 | Depends on open question 3 in intent.md. If Celery: `core/celery.py`, `core/tasks.py`, `docker-compose.yml` (Redis), `render.yaml` (worker). |
-| C1–C2 | `investor_app/settings.py`, `core/middleware.py`, `templates/`, `static/fonts/` (self-hosted Inter); no new dependency |
-| All | `docs/CHANGE_IMPACT_MAP.md`, `docs/KNOWN_LIMITATIONS.md` (resolve LIMIT-01, -02, -11, -15, -17, -23) |
+| Row | Work | Spec | Files | Issue |
+|---|---|---|---|---|
+| G2.1 | Journey scenario, steps 5–7, against the container | FR-13, AC-14 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | no issue yet |
+| G2.2 | Acquired property is complete at creation (LIMIT-12) | FR-13 | `core/services/` pipeline acquisition | no issue yet |
 
-## Order of work
+## G3: grow (journey steps 8–9)
 
-1. In parallel: A1, A4 and B1 (spikes and scripts; no shared files).
-2. A2 after A1. A3 any time, then fold it into A2's chain.
-3. A5 after A4 shows which signals matter.
-4. B2 only if B1 fails. B3 after the spec gate answers open question 3.
-5. C1 and C2 in parallel, then C3.
+**Outcome:** BRRRR and leasing work on a property acquired in G2.
+**Proof:** scenarios for steps 8 and 9 pass against the container (AC-15).
 
-A2, A3 and B3 all touch `core/services/screening.py`, so run them in sequence, not as parallel worktrees.
+| Row | Work | Spec | Files | Issue |
+|---|---|---|---|---|
+| G3.1 | Journey scenarios, steps 8–9, against the container | FR-14, AC-15 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | no issue yet |
+
+## In flight (not a goal)
+
+- **#457:** dependency security bumps (Django 6.0.8, Pillow 13, DRF 3.18.2, aiohttp 3.14.4). Main CI is red on the Trivy scan until it merges. Needs dependency approval.
+- **#458:** CSP, Permissions-Policy and CORP headers (FR-9, AC-8). Merge after #457.
+
+## Later (no milestone)
+
+Kept from the superseded beta-readiness plan; spec IDs unchanged. None of these has an issue yet.
+
+| Row | Work | Spec |
+|---|---|---|
+| L1 | Rentcast adapter, only if G1.2 recommends it | FR-1, AC-1, AC-2 |
+| L2 | ATTOM rent probe | FR-2 |
+| L3 | GACS backtest script and report | FR-3, AC-3, NFR-2 |
+| L4 | GACS signal completion: schools, supply, county employment | FR-4 |
+| L5 | Real crime data (FBI CDE, then fallback) | FR-5, AC-4, NFR-3 |
+| L6 | SRI on external scripts; authenticated ZAP 0 FAIL / 0 WARN | FR-9, AC-9 |
+| L7 | Hosted deploy (Render or other) with Postgres | NFR-6 |
+| L8 | Design-system drift ([DESIGN.md](DESIGN.md) "Do's and Don'ts") | — |
+
+Also later: portfolio analytics, saved searches, partner API. Deferred by decision: team sharing (#371, #372).
 
 ## Risks
 
-- **Rentcast cost or coverage is too low.** A2 falls back to ATTOM and HUD FMR, and NFR-1 may slip.
-- **The backtest fails R² ≥ 0.4.** Publish the result with confidence bands; don't tune until it passes.
-- **No viable crime source.** Keep the placeholder, labelled low-confidence in the UI (VISION principle 7).
-- **CSP breaks inline scripts.** Use report-only mode first.
+- **Seeding needs free keys** (Census, BLS, HUD) in `.env`. If a key or API is unavailable, G0.3 commits a small fixture dataset for the market instead.
+- **The journey scenario finds a lot broken.** That is the point: fix in journey order and keep each fix row small.
+- **HUD FMR is too coarse for screening.** G1.2 says so with numbers, and L1 (Rentcast) moves into G1.
 
-## Proof
+## Proof summary
 
-A release is done when its rows are closed and these hold:
-
-| Gate | How verified |
-|---|---|
-| Tests, lint and types green | CI `ci-quality.yml` |
-| Rent coverage ≥ 90% (Beta A) | Sample discovered properties on the live system |
-| GACS backtest report published (Beta A) | `scripts/backtest_gacs.py` output committed |
-| ZAP 0 FAIL / 0 WARN (Beta C) | CI `zap-authenticated-scan` |
-| Release tagged and deployed | release-please PR merged; post-deployment pipeline green |
+| Goal | Proof | Command |
+|---|---|---|
+| G0 | Acceptance suite green against the container | `make docker-accept` |
+| G1 | Steps 1–4 scenario green; rent report committed | `make docker-accept` (runs the journey feature too) |
+| G2 | Steps 5–7 scenario green | same |
+| G3 | Steps 8–9 scenarios green | same |
+| Always | Tests, lint and types green | CI `ci-quality.yml` |
