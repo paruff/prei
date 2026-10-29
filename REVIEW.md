@@ -74,7 +74,7 @@ A red CI job is Important unless `flaky_report.py` lists it as a known flaky tes
 
 - **Issue:** the change meets the linked issue's **Exit criterion**, no more.
 - **Spec:** it satisfies the `spec.md` requirement and acceptance-criterion IDs the issue cites (e.g. FR-1, AC-2). If behaviour changed, `spec.md` changes in the same PR.
-- **Plan:** it follows `plan.md` "Files that change" and "Order of work". Where it departs, `plan.md` is updated in the same PR.
+- **Plan:** it belongs to the current goal in `plan.md` (or is a bug fix) and touches the row's Files. Work for a later goal waits. Where it departs, `plan.md` is updated in the same PR.
 - **Intent and scope:** nothing conflicts with `intent.md` or a [VISION.md](VISION.md) non-goal (single-user, SQLite for local, no MLS/RESO, no 1031, no canary or Kubernetes).
 - **Design (UI):** cite the `DESIGN.md` section the change follows, or update `DESIGN.md` in the same PR. Use tokens, not raw values, and existing classes and partials.
 - **Docs:** user-facing behaviour changes update `docs/`. `CHANGELOG.md` comes from release-please, never by hand.

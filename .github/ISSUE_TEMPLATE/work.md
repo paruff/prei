@@ -13,7 +13,7 @@ assignees: []
 
 ## Plan row
 
-<!-- plan.md row ID, e.g. "A2", or "n/a: bug/polish" -->
+<!-- plan.md row ID, e.g. "G0.2" (its goal is the milestone), or "n/a: bug/polish" -->
 
 ## Spec
 
