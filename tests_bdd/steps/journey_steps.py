@@ -78,12 +78,15 @@ def open_growth_areas(ctx: JourneyCtx) -> None:
 
 @then("Dallas, TX is ranked with a composite score")
 def dallas_ranked(ctx: JourneyCtx) -> None:
-    text = _text(ctx.page)
-    assert re.search(rf"\b{CITY}\s+{STATE}\b.*?\d+\.\d{{2}}", text), text[:500]
-    discover = re.search(r'href="[^"]*discovery/\?growth_area_id=(\d+)"', ctx.page)
-    ids = re.findall(r"growth_area_id=(\d+)", ctx.page)
-    assert discover or ids, "no discovery link for the ranked area"
-    ctx.growth_area_id = discover.group(1) if discover else ids[0]
+    rows = re.findall(r"<tr[^>]*>.*?</tr>", ctx.page, flags=re.S)
+    dallas = [r for r in rows if f"<td>{CITY}</td>" in r and f"<td>{STATE}</td>" in r]
+    assert dallas, f"no {CITY}, {STATE} row: {_text(ctx.page)[:500]}"
+    score = re.search(r'score-num[^"]*">\s*([\d.]+)\s*<', dallas[0])
+    assert score, f"no composite score in the Dallas row: {_text(dallas[0])}"
+    assert 0 <= Decimal(score.group(1)) <= 100, score.group(1)
+    link = re.search(r'discovery/\?growth_area_id=(\d+)"', dallas[0])
+    assert link, "no discovery link in the Dallas row"
+    ctx.growth_area_id = link.group(1)
 
 
 @when("I discover VRM properties in Dallas, TX")
@@ -107,6 +110,20 @@ def screener_lists(ctx: JourneyCtx, first: str, second: str) -> None:
     ctx.screener = resp.text
     for address in (first, second):
         assert address in resp.text, f"{address} missing from screener"
+
+
+def _screener_row(html: str, address: str) -> str:
+    rows = re.findall(r"<tr[^>]*>.*?</tr>", html, flags=re.S)
+    mine = [r for r in rows if address in r]
+    assert mine, f"{address} missing from screener"
+    return _text(mine[0])
+
+
+@then(parsers.parse('"{address}" is screened {verdict}'))
+def screened_verdict(ctx: JourneyCtx, address: str, verdict: str) -> None:
+    chip = {"Passed": "✓ Passed", "Failed": "✗ Failed"}[verdict]
+    row = _screener_row(ctx.screener, address)
+    assert chip in row, f"{address} is not {chip}: {row}"
 
 
 @when(parsers.parse('I open "{address}" from the screener'))
