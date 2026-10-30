@@ -10,6 +10,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Tuple
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -618,6 +619,22 @@ def convert_to_property_record(
     closing = closing_date or now
 
     source_record = get_source_record(pipeline_property)
+    closing_record = getattr(pipeline_property, "closing_record", None)
+    defaults = settings.FINANCE_DEFAULTS
+
+    price = (
+        closing_record.final_purchase_price
+        if closing_record
+        else pipeline_property.price or Decimal("0")
+    )
+    down_payment_pct = Decimal(str(defaults["down_payment_rate"]))
+    if closing_record and closing_record.down_payment is not None and price:
+        down_payment_pct = (closing_record.down_payment / price).quantize(
+            Decimal("0.0001")
+        )
+    # Same underwriting assumptions as the pipeline listing estimates
+    tax_rate_pct = Decimal(str(getattr(settings, "TAX_RATE_PCT", 1.2)))
+    insurance = Decimal(str(getattr(settings, "INSURANCE_ANNUAL", 1200)))
 
     with transaction.atomic():
         prop = PropertyModel.objects.create(
@@ -626,12 +643,19 @@ def convert_to_property_record(
             city=getattr(source_record, "city", "") or "",
             state=getattr(source_record, "state", "") or "",
             zip_code=getattr(source_record, "zip_code", "") or "",
-            purchase_price=pipeline_property.price or Decimal("0"),
+            purchase_price=price,
             purchase_date=closing if hasattr(closing, "strftime") else now,
             bedrooms=pipeline_property.beds or 0,
             sqft=int(pipeline_property.sqft) if pipeline_property.sqft else 0,
             property_type="SFR",
             monthly_rent_gross=pipeline_property.estimated_rent or Decimal("0"),
+            property_taxes_annual=(price * tax_rate_pct / 100).quantize(
+                Decimal("0.01")
+            ),
+            insurance_annual=insurance,
+            down_payment_pct=down_payment_pct,
+            interest_rate=Decimal(str(defaults["loan_interest_rate_pct"])) / 100,
+            loan_term_years=int(str(defaults["loan_term_years"])),
         )
 
         pipeline_property.property_record = prop
