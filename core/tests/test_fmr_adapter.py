@@ -15,6 +15,7 @@ from unittest.mock import patch
 import pytest
 
 from core.integrations.market.fmr_adapter import fetch_fmr_data, fetch_fmr_entity_id
+from core.integrations.market.hud_fmr import get_rent_estimate
 
 
 # ── Entity ID lookup ─────────────────────────────────────────────────
@@ -93,6 +94,55 @@ def _mock_prior() -> dict:
         "county_name": "Dallas County",
         "year": "2025",
         "two_bedroom": Decimal("1460"),
+    }
+
+
+def _small_area_current() -> dict:
+    return {
+        "data": {
+            "county_name": "Dallas County",
+            "metro_name": "Dallas, TX HUD Metro FMR Area",
+            "basicdata": [
+                {
+                    "ZIP Code": "75201",
+                    "year": "2026",
+                    "Efficiency": "1200",
+                    "One-Bedroom": "1450",
+                    "Two-Bedroom": "1700",
+                    "Three-Bedroom": "2150",
+                    "Four-Bedroom": "2500",
+                },
+                {
+                    "ZIP Code": "MSA level",
+                    "year": "2026",
+                    "Efficiency": "1000",
+                    "One-Bedroom": "1250",
+                    "Two-Bedroom": "1500",
+                    "Three-Bedroom": "1900",
+                    "Four-Bedroom": "2250",
+                },
+            ],
+        }
+    }
+
+
+def _small_area_prior() -> dict:
+    return {
+        "data": {
+            "county_name": "Dallas County",
+            "metro_name": "Dallas, TX HUD Metro FMR Area",
+            "basicdata": [
+                {
+                    "ZIP Code": "MSA level",
+                    "year": "2025",
+                    "Efficiency": "950",
+                    "One-Bedroom": "1175",
+                    "Two-Bedroom": "1400",
+                    "Three-Bedroom": "1775",
+                    "Four-Bedroom": "2100",
+                }
+            ],
+        }
     }
 
 
@@ -193,3 +243,36 @@ def test_fetch_fmr_data_no_city_name() -> None:
         mock_settings.HUD_API_KEY = "test-key"
         result = fetch_fmr_data("TX", "48113")
         assert result is None
+
+
+@pytest.mark.django_db
+def test_fetch_fmr_data_small_area_uses_msa_row() -> None:
+    """Small Area basicdata lists should fall back to MSA-level row."""
+    with (
+        patch("core.integrations.market.fmr_adapter.settings") as mock_settings,
+        patch("core.integrations.market.hud_fmr.FMRClient._get") as mock_get,
+    ):
+        mock_settings.HUD_API_KEY = "test-key"
+        mock_get.side_effect = [_small_area_current(), _small_area_prior()]
+
+        result = fetch_fmr_data("TX", "48113", entity_id="4811399999")
+
+    assert result is not None
+    assert result["fmr_2br"] == Decimal("1500")
+    assert result["fmr_year"] == 2026
+    assert result["rent_growth_rate"] == Decimal("0.07")
+
+
+def test_get_rent_estimate_small_area_uses_zip_and_entity_id() -> None:
+    """5-digit FIPS should map to HUD entity id and select the ZIP row."""
+    with (
+        patch("core.integrations.market.hud_fmr.settings") as mock_settings,
+        patch("core.integrations.market.hud_fmr.FMRClient._get") as mock_get,
+    ):
+        mock_settings.HUD_API_KEY = "test-key"
+        mock_get.return_value = _small_area_current()
+
+        rent = get_rent_estimate(zip_code="75201", fips_code="48113", bedrooms=2)
+
+    assert rent == Decimal("1700")
+    assert mock_get.call_args.args[0] == "data/4811399999"

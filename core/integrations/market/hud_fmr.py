@@ -79,7 +79,10 @@ class FMRClient:
         return cast(list[dict[str, str]], data.get("data", []))
 
     def get_county_data(
-        self, fips_code: str, year: int | None = None
+        self,
+        fips_code: str,
+        year: int | None = None,
+        zip_code: str | None = None,
     ) -> dict[str, Any] | None:
         """Get FMR data for a specific county by FIPS code.
 
@@ -93,7 +96,7 @@ class FMRClient:
             return None
 
         result = data.get("data", {})
-        basic = result.get("basicdata", {})
+        basic = _select_basicdata_row(result.get("basicdata"), zip_code)
         if not basic:
             return None
 
@@ -101,12 +104,12 @@ class FMRClient:
             "fips_code": fips_code,
             "county_name": result.get("county_name", ""),
             "metro_name": result.get("metro_name", ""),
-            "year": basic.get("year", str(year or "latest")),
-            "efficiency": _parse_fmr(basic.get("Efficiency")),
-            "one_bedroom": _parse_fmr(basic.get("One-Bedroom")),
-            "two_bedroom": _parse_fmr(basic.get("Two-Bedroom")),
-            "three_bedroom": _parse_fmr(basic.get("Three-Bedroom")),
-            "four_bedroom": _parse_fmr(basic.get("Four-Bedroom")),
+            "year": _field_value(basic, "year") or str(year or "latest"),
+            "efficiency": _parse_fmr(_field_value(basic, "Efficiency")),
+            "one_bedroom": _parse_fmr(_field_value(basic, "One-Bedroom")),
+            "two_bedroom": _parse_fmr(_field_value(basic, "Two-Bedroom")),
+            "three_bedroom": _parse_fmr(_field_value(basic, "Three-Bedroom")),
+            "four_bedroom": _parse_fmr(_field_value(basic, "Four-Bedroom")),
         }
 
     def get_state_data(self, state_code: str) -> list[dict[str, Any]]:
@@ -127,6 +130,91 @@ def _parse_fmr(value: Any) -> Decimal | None:
         return cast(Decimal, Decimal(str(value)))
     except Exception:
         return None
+
+
+def _normalize_field_name(value: str) -> str:
+    return "".join(ch for ch in value.lower() if ch.isalnum())
+
+
+def _field_value(row: dict[str, Any], *candidates: str) -> Any:
+    for key in candidates:
+        if key in row:
+            return row[key]
+
+    normalized_candidates = {_normalize_field_name(key) for key in candidates}
+    for key, value in row.items():
+        if _normalize_field_name(str(key)) in normalized_candidates:
+            return value
+    return None
+
+
+def _zip5(value: str | None) -> str | None:
+    if not value:
+        return None
+    digits = "".join(ch for ch in value if ch.isdigit())
+    if len(digits) < 5:
+        return None
+    return digits[:5]
+
+
+def _select_basicdata_row(
+    basicdata: Any, zip_code: str | None = None
+) -> dict[str, Any] | None:
+    if isinstance(basicdata, dict):
+        return basicdata
+    if not isinstance(basicdata, list):
+        return None
+
+    rows = [row for row in basicdata if isinstance(row, dict)]
+    if not rows:
+        return None
+
+    if zip_code:
+        target_zip = _zip5(zip_code)
+        if target_zip:
+            for row in rows:
+                row_zip = _zip5(
+                    str(
+                        _field_value(
+                            row,
+                            "zip",
+                            "zip_code",
+                            "zip-code",
+                            "zipcode",
+                            "ZIP Code",
+                        )
+                        or ""
+                    )
+                )
+                if row_zip == target_zip:
+                    return row
+
+    for row in rows:
+        marker = str(
+            _field_value(
+                row,
+                "zip",
+                "zip_code",
+                "zip-code",
+                "zipcode",
+                "ZIP Code",
+            )
+            or ""
+        ).strip()
+        if marker.lower() == "msa level":
+            return row
+
+    return rows[0]
+
+
+def _to_hud_entity_id(fips_code: str) -> str:
+    stripped = fips_code.strip()
+    digits = "".join(ch for ch in stripped if ch.isdigit())
+    if len(digits) == 5:
+        return f"{digits}99999"
+    if len(digits) == 10:
+        return digits
+    return stripped
 
 
 def get_rent_estimate(
@@ -163,7 +251,8 @@ def get_rent_estimate(
     key = bed_key.get(bedrooms, "two_bedroom")
 
     if fips_code:
-        data = client.get_county_data(fips_code)
+        entity_id = _to_hud_entity_id(fips_code)
+        data = client.get_county_data(entity_id, zip_code=zip_code)
         if data and data.get(key) is not None:
             return cast(Decimal | None, data[key])
 
