@@ -230,9 +230,7 @@ def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
         "-composite_score"
     )[:10]
 
-    # Properties that actuals can be entered against, with their latest month
-    from core.models import MonthlyActuals
-
+    # Acquired properties that actuals can be entered against
     actuals_properties = [
         p.property_record
         for p in qs.select_related("property_record")

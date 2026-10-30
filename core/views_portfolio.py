@@ -17,7 +17,7 @@ class MonthlyActualsForm(forms.ModelForm):
     # <input type="month"> submits "YYYY-MM", which DateField rejects by default.
     month = forms.DateField(
         input_formats=["%Y-%m-%d", "%Y-%m"],
-        widget=forms.DateInput(attrs={"type": "month", "class": "form-control"}),
+        widget=forms.DateInput(attrs={"type": "month", "class": "form-input"}),
     )
 
     class Meta:
@@ -32,18 +32,18 @@ class MonthlyActualsForm(forms.ModelForm):
         ]
         widgets = {
             "actual_rent_collected": forms.NumberInput(
-                attrs={"step": "0.01", "class": "form-control"}
+                attrs={"step": "0.01", "class": "form-input"}
             ),
             "actual_vacancy_days": forms.NumberInput(
-                attrs={"class": "form-control", "min": "0", "max": "31"}
+                attrs={"class": "form-input", "min": "0", "max": "31"}
             ),
             "actual_expenses": forms.NumberInput(
-                attrs={"step": "0.01", "class": "form-control"}
+                attrs={"step": "0.01", "class": "form-input"}
             ),
             "actual_maintenance": forms.NumberInput(
-                attrs={"step": "0.01", "class": "form-control"}
+                attrs={"step": "0.01", "class": "form-input"}
             ),
-            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
+            "notes": forms.Textarea(attrs={"class": "form-input", "rows": 2}),
         }
 
 

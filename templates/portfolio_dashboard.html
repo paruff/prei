@@ -87,7 +87,7 @@
   <div class="card-title">Monthly Actuals</div>
   <div class="card-body">
     {% if actuals_properties %}
-    <form method="post" action="{% url 'portfolio_actuals_add' %}" class="mt-section">
+    <form method="post" action="{% url 'portfolio_actuals_add' %}" >
       {% csrf_token %}
       <div class="form-grid-2">
         <div class="form-group">
