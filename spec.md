@@ -1,7 +1,7 @@
 # Specification: a functioning prei
 
 **Status**: proposed (approved by merging the PR that changes this file)
-**From**: [intent.md](intent.md) · **Plan**: [plan.md](plan.md) (goals G0–G3)
+**From**: [intent.md](intent.md) · **Plan**: [plan.md](plan.md) (goals G0–G7)
 **Decisions**: 2026-10-24: single-user; SQLite local, Postgres for hosted; Django 6.0. 2026-10-29: Docker first, Render later; HUD FMR rent first, Rentcast after measurement.
 **IDs**: FR-1 to FR-9 come from the superseded beta-readiness spec. FR-6, FR-8, NFR-5, AC-5 and AC-7 were removed. IDs are never reused.
 
@@ -32,6 +32,10 @@
 | FR-12 | **Journey acceptance, steps 1–4** | Critical | G1 | Identify, discover, screen and underwrite on the seeded market |
 | FR-13 | **Journey acceptance, steps 5–7** | Critical | G2 | Offer, acquire and own: an acquired deal appears in the portfolio with complete data |
 | FR-14 | **Journey acceptance, steps 8–9** | High | G3 | BRRRR and leasing on an acquired property |
+| FR-15 | **Trustworthy figures** | Critical | G4 | Every page loads; an acquired property's equity, cash flow, purchase price and verdict are correct; money, percentages and scores are formatted one way everywhere ([UX audit](docs/assessments/ux-ui-audit-2026-10-30.md) §1) |
+| FR-16 | **DESIGN.md enforced** | High | G5 | A check rejects undefined tokens, off-palette colours, template `<style>` blocks and Bootstrap classes; text and primary buttons meet WCAG AA; keyboard focus is visible (audit §2–3) |
+| FR-17 | **Legacy screens on the design system** | High | G6 | Every screen uses DESIGN.md classes and partials; no horizontal scroll at 390px; every input is labelled (audit §2–4) |
+| FR-18 | **One journey through the nav** | High | G7 | The nav follows the journey (markets, pipeline, portfolio, leasing); an acquired property links to its next steps; no raw enum labels (audit §5) |
 | FR-1 | **Rentcast Integration** | Later | Later | Add a Rentcast adapter to the rent chain, only if G1's measurement shows HUD FMR is not good enough |
 | FR-2 | **ATTOM Rent Fields** | Later | Later | Test whether ATTOM returns rent estimates; if yes, add as a fallback |
 | FR-3 | **GACS Backtest & Validation** | Later | Later | Backtest GACS against FHFA/Zillow appreciation; publish weight sensitivity and confidence bands |
@@ -63,6 +67,10 @@
 | AC-13 | Rent measurement report committed, with coverage by source and a Rentcast recommendation | file exists | G1 |
 | AC-14 | A journey scenario for steps 5–7 passes against the container | acceptance | G2 |
 | AC-15 | Scenarios for BRRRR and leasing on an acquired property pass against the container | acceptance | G3 |
+| AC-16 | Every named GET route returns non-5xx for the demo user, and the journey asserts the acquired property's equity, cash flow, purchase price and verdict, against the container | acceptance | G4 |
+| AC-17 | `pre-commit run design-lint --all-files` passes with no allow-list entries for tokens, colours or `<style>`; `--color-primary` fills and text tokens meet 4.5:1 | static check | G5 |
+| AC-18 | `make ui-check` passes: every named page returns 200, no horizontal scroll at 390px, no unlabelled inputs, no AA contrast failures; the design-lint allow-list is empty | live-system (container) | G6 |
+| AC-19 | The journey scenario reaches every step through nav and page links only (no typed URLs), against the container | acceptance | G7 |
 | AC-8 | CSP header present on all responses | live-system | In flight (#458) |
 | AC-1, AC-2, AC-3, AC-4, AC-6, AC-9 | Rentcast, HUD fallback, GACS backtest, crime, async, SRI (unchanged from the superseded spec) | as before | Later |
 
