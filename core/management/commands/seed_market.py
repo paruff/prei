@@ -8,12 +8,13 @@ Usage:
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from core.models import GrowthArea
+from core.models import GrowthArea, VrmProperty
 
 # Fallback when Census/FRED/HUD are unreachable or keys are missing (plan.md risk).
 # PLACEHOLDER values, not sourced data: for demo/CI only, never for decisions.
@@ -30,6 +31,27 @@ FIXTURE_GROWTH_AREAS = {
         county_fips="48113",
     ),
 }
+
+# Discoverable listings for the seeded market (VRM rows; discovery reads the DB,
+# never the network). PLACEHOLDER values: one passes default screening, one fails.
+FIXTURE_VRM_LISTINGS: tuple[dict[str, Any], ...] = (
+    dict(
+        vrm_property_id=900001,
+        address="1200 Seed Pass Ln",
+        zip_code="75201",
+        list_price=Decimal("180000.00"),
+        projected_monthly_rent=Decimal("1800.00"),
+        bedrooms=3,
+    ),
+    dict(
+        vrm_property_id=900002,
+        address="3400 Seed Fail Ct",
+        zip_code="75204",
+        list_price=Decimal("450000.00"),
+        projected_monthly_rent=Decimal("2200.00"),
+        bedrooms=3,
+    ),
+)
 
 
 class Command(BaseCommand):
@@ -62,6 +84,21 @@ class Command(BaseCommand):
 
         call_command("seed_markets")
         call_command("seed_data")
+        now = timezone.now()
+        for listing in FIXTURE_VRM_LISTINGS:
+            VrmProperty.objects.update_or_create(
+                vrm_property_id=listing["vrm_property_id"],
+                defaults={
+                    **listing,
+                    "vrm_listing_url": f"https://example.com/vrm/{listing['vrm_property_id']}",
+                    "city": city,
+                    "state": state,
+                    "property_type": "single-family",
+                    "status": VrmProperty.Status.FOR_SALE,
+                    "scraped_at": now,
+                    "last_seen_at": now,
+                },
+            )
         area = GrowthArea.objects.get(state=state, city_name=city)
         self.stdout.write(
             self.style.SUCCESS(

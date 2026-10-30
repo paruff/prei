@@ -61,6 +61,20 @@
       </table>
     </div>
 
+    {% if underwriting %}
+    <div class="pipeline-detail-section full-width">
+      <h2>Screening &amp; Underwriting</h2>
+      <table class="pipeline-detail-table">
+        <tr><td>Gross Yield</td><td data-metric="gross-yield">{{ underwriting.gross_yield_pct|floatformat:1 }}%</td></tr>
+        <tr><td>Price-to-Rent</td><td data-metric="price-to-rent">{{ underwriting.price_to_rent|floatformat:2 }}</td></tr>
+        <tr><td>NOI (annual)</td><td data-metric="noi">${{ underwriting.noi|floatformat:2|intcomma }}</td></tr>
+        <tr><td>Cap Rate</td><td data-metric="cap-rate">{{ underwriting.cap_rate_pct|floatformat:2 }}%</td></tr>
+        <tr><td>Cash-on-Cash</td><td data-metric="cash-on-cash">{{ underwriting.cash_on_cash_pct|floatformat:2 }}%</td></tr>
+        <tr><td>DSCR</td><td data-metric="dscr">{{ underwriting.dscr|floatformat:2 }}</td></tr>
+      </table>
+    </div>
+    {% endif %}
+
     {# Stage history (full width) #}
     <div class="pipeline-detail-section full-width">
       <h2>Stage History</h2>

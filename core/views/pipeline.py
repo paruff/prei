@@ -412,7 +412,7 @@ def pipeline_detail(request: HttpRequest, pk: int) -> HttpResponse:
     and action buttons. 404 if not the user's property.
     """
     from core.models import PipelineProperty
-    from core.services.pipeline import get_source_record
+    from core.services.pipeline import get_source_record, underwriting_summary
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
@@ -463,6 +463,7 @@ def pipeline_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "stage_history": stage_history,
             "days_in_pipeline": days_in_pipeline,
             "kill_reasons": kill_reasons,
+            "underwriting": underwriting_summary(prop),
         },
     )
 

@@ -76,6 +76,18 @@ def estimate_listing_kpis(
     if price <= 0:
         return zero_kpis
 
+    if market_snapshot and market_snapshot.rent_index > 0:
+        monthly_rent = Decimal(str(market_snapshot.rent_index))
+    else:
+        monthly_rent = price * Decimal("0.01")
+    return estimate_kpis(price, monthly_rent)
+
+
+def estimate_kpis(price: Decimal, monthly_rent: Decimal) -> dict[str, Decimal]:
+    """Cap rate, cash-on-cash, DSCR and NOI for a price and monthly rent.
+
+    Uses ``settings.FINANCE_DEFAULTS`` for vacancy, expense and loan rates.
+    """
     defaults = settings.FINANCE_DEFAULTS
     vacancy_rate = Decimal(str(defaults["vacancy_rate"]))
     management_fee_rate = Decimal(str(defaults["management_fee_rate"]))
@@ -83,11 +95,6 @@ def estimate_listing_kpis(
     down_payment_rate = Decimal(str(defaults["down_payment_rate"]))
     loan_interest_rate_pct = Decimal(str(defaults["loan_interest_rate_pct"]))
     loan_term_years = int(str(defaults["loan_term_years"]))
-
-    if market_snapshot and market_snapshot.rent_index > 0:
-        monthly_rent = Decimal(str(market_snapshot.rent_index))
-    else:
-        monthly_rent = price * Decimal("0.01")
 
     effective_monthly_income = monthly_rent * (Decimal("1") - vacancy_rate)
     monthly_expenses = monthly_rent * (management_fee_rate + capex_reserve_rate)
