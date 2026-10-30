@@ -47,14 +47,12 @@ def fetch_school_rating(
 
     url = f"{GREATSCHOOLS_API_BASE}?zip={zip_code}&key={api_key}"
 
-    masked_zip = f"{zip_code[:3]}**" if zip_code else "[redacted]"
-
     try:
         resp = requests.get(url, headers={"Accept": "application/json"}, timeout=10)
         resp.raise_for_status()
         schools = resp.json()
     except requests.RequestException, json.JSONDecodeError, TypeError:
-        logger.warning("GreatSchools API error for zip=%s", masked_zip)
+        logger.warning("GreatSchools API error")
         return None
 
     if not isinstance(schools, list) or len(schools) == 0:
