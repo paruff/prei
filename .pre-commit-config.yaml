@@ -12,9 +12,9 @@
 
 repos:
   # --- ruff: fast Python linter & formatter ---
-  # Version must match pip-resolved version from requirements.txt (ruff>=0.15.15)
+  # Version must match the ruff== pin in requirements.txt
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.20
+    rev: v0.16.5  # Must match ruff== in requirements.txt
     hooks:
       - id: ruff
         args: [--fix, --show-fixes]
