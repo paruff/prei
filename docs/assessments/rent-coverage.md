@@ -17,7 +17,7 @@ No paired samples: set RENTCAST_API_KEY and re-run.
 ## Why HUD and Rentcast are not measured (2026-10-30)
 
 - **HUD FMR**: the configured token is rejected for FMR (`listCounties` and `fmr/data` return nothing). The HUD message says the token was created without the FAIR MARKET RENT dataset selected. A new token with that dataset is needed.
-- **Rentcast**: no `RENTCAST_API_KEY` in `.env`. The free tier (100 calls/day) is enough for a 25-property sample.
+- **Rentcast**: no `RENTCAST_API_KEY` in `.env`. The free tier (50 requests a month) is enough for a 10-property sample.
 - **Rentometer**: no adapter exists; out of scope until the other two are measured.
 - The seeded Dallas market holds two fixture VRM rows. VRM coverage of 100% is real but trivially small; run on a market seeded from live VRM data for a meaningful NFR-1 number.
 
