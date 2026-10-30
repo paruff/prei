@@ -74,7 +74,7 @@ def rentcast_zip(zip_code: str, key: str) -> tuple[dict[int, Decimal], str | Non
         )
         if not resp.ok:
             return {}, f"{resp.status_code} {resp.json().get('error', resp.text[:80])}"
-        rows = resp.json().get("rentalData", {}).get("detailedByBedrooms") or []
+        rows = resp.json().get("rentalData", {}).get("dataByBedrooms") or []
         out = {
             int(r["bedrooms"]): Decimal(str(r.get("medianRent") or r["averageRent"]))
             for r in rows
