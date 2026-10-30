@@ -181,7 +181,7 @@ class DataSourceHealthMonitor:
                 "rateLimitReset": rate_limit_reset,
             }
 
-        except requests.exceptions.Timeout:
+        except (requests.exceptions.Timeout):
             return {
                 "healthy": False,
                 "error": "Request timeout",
@@ -224,7 +224,7 @@ class DataSourceHealthMonitor:
                 "lastCheck": datetime.now().isoformat(),
             }
 
-        except requests.exceptions.Timeout:
+        except (requests.exceptions.Timeout):
             return {
                 "healthy": False,
                 "error": "Request timeout",

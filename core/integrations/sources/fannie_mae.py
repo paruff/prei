@@ -192,7 +192,7 @@ class FannieMaeHomePathClient:
                     price_text = price_text.replace("$", "").replace(",", "")
                     try:
                         price = Decimal(price_text)
-                    except Exception:
+                    except (Exception):
                         price = Decimal("0")
 
                 beds = 0

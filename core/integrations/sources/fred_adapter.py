@@ -147,7 +147,7 @@ class FREDAdapter:
                         )
                         # Return empty result instead of raising for not-found series
                         return {"seriess": [], "observations": []}
-                except ValueError:
+                except (ValueError):
                     pass  # Not JSON, fall through to generic error
 
             if exc.response is not None and exc.response.status_code == 401:

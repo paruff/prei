@@ -52,7 +52,7 @@ def _get_stage_index(stage: str) -> int:
     """Get the index of a stage in STAGE_ORDER."""
     try:
         return STAGE_ORDER.index(stage)
-    except ValueError:
+    except (ValueError):
         raise ValueError(f"Unknown stage: {stage}")
 
 
@@ -193,7 +193,7 @@ def get_source_record(pipeline_property: Any) -> Any | None:
     if source_type == "foreclosure":
         try:
             return ForeclosureProperty.objects.get(property_id=source_id)
-        except ForeclosureProperty.DoesNotExist:
+        except (ForeclosureProperty.DoesNotExist):
             return None
 
     if source_type == "listing":

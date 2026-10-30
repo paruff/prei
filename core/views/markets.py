@@ -107,7 +107,7 @@ def markets_list(request: HttpRequest) -> HttpResponse:
                 .first()
             )
             market_data["msa_name"] = snapshot.msa_name if snapshot else ""
-        except Exception:
+        except (Exception):
             market_data["msa_name"] = ""
         markets.append(market_data)
 

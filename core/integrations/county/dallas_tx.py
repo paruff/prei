@@ -356,7 +356,7 @@ def _parse_sale_date(raw: str) -> date | None:
     for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%B %d, %Y", "%b %d, %Y"):
         try:
             return dt.strptime(raw_clean, fmt).date()
-        except ValueError:
+        except (ValueError):
             continue
 
     return None
@@ -373,7 +373,7 @@ def _parse_opening_bid(raw: str) -> Decimal | None:
     cleaned = raw.replace("$", "").replace(",", "").strip()
     try:
         return Decimal(cleaned)
-    except Exception:
+    except (Exception):
         return None
 
 

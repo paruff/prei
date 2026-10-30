@@ -93,7 +93,7 @@ def _parse_usda_txt(raw_text: str) -> list[dict[str, Any]]:
         bid_str = bid_match.group(1).replace(",", "")
         try:
             continuation_bids["_next"] = Decimal(bid_str)
-        except Exception:
+        except (Exception):
             pass
 
     # Second pass: extract property lines
@@ -114,7 +114,7 @@ def _parse_usda_txt(raw_text: str) -> list[dict[str, Any]]:
             bid_str = bid_line_match.group(1).replace(",", "")
             try:
                 current_bid = Decimal(bid_str)
-            except Exception:
+            except (Exception):
                 current_bid = None
             continue
 

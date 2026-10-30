@@ -79,7 +79,7 @@ def _rank_listings(listings: list[Listing]) -> list[RankedListing]:
         ranked = _normalize_ranked_results(rank_listings(listings))
         if ranked:
             return ranked
-    except Exception:
+    except (Exception):
         logger.exception(
             "recommend_listings: rank_listings unavailable, using fallback"
         )

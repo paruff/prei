@@ -256,7 +256,7 @@ def _read_current_tag(git_dir: Path) -> str | None:
                             return tag_file.name
                     except (FileNotFoundError, OSError):
                         continue
-        except OSError:
+        except (OSError):
             pass
 
     # 2. Packed refs
@@ -293,7 +293,7 @@ def _is_dirty(git_dir: Path) -> bool:
 
     try:
         ref_mtime = head_ref.stat().st_mtime
-    except OSError:
+    except (OSError):
         return False
 
     project_root = git_dir.parent
@@ -306,7 +306,7 @@ def _is_dirty(git_dir: Path) -> bool:
             for entry in path.rglob("*.py"):
                 if entry.stat().st_mtime > ref_mtime + 1:
                     return True
-        except OSError:
+        except (OSError):
             continue
     return False
 

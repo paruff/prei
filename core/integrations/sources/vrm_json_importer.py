@@ -32,7 +32,7 @@ def _normalize_lot_size_sf(lot_size: Any, lot_size_source: str) -> int | None:
         return None
     try:
         value = Decimal(str(lot_size))
-    except InvalidOperation:
+    except (InvalidOperation):
         return None
 
     source = (lot_size_source or "").strip().lower()
@@ -50,7 +50,7 @@ def _to_decimal(raw: Any) -> Decimal | None:
         return None
     try:
         return Decimal(str(raw))
-    except InvalidOperation:
+    except (InvalidOperation):
         return None
 
 

@@ -66,10 +66,10 @@ def fetch_attom_preforeclosure(
 
     try:
         raw = adapter.fetch_foreclosure_data(postalcode=zip_code, radius=radius)
-    except ATTOMAuthenticationError:
+    except (ATTOMAuthenticationError):
         logger.warning("ATTOM: API key missing or invalid")
         return []
-    except ATTOMRateLimitError:
+    except (ATTOMRateLimitError):
         logger.warning("ATTOM: rate limit exceeded")
         return []
     except ATTOMAPIError as exc:
@@ -240,7 +240,7 @@ def _parse_attom_date(date_val: Any) -> str | None:
             from datetime import datetime as dt
 
             return dt.strptime(date_str[:10], "%Y-%m-%d").date().isoformat()
-        except ValueError:
+        except (ValueError):
             pass
 
     # Try other common formats
@@ -249,7 +249,7 @@ def _parse_attom_date(date_val: Any) -> str | None:
             from datetime import datetime as dt
 
             return dt.strptime(date_str, fmt).date().isoformat()
-        except ValueError:
+        except (ValueError):
             continue
 
     return date_str[:10] if len(date_str) >= 10 else date_str

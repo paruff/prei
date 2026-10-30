@@ -89,7 +89,7 @@ class FMRClient:
         params = {"year": str(year)} if year else {}
         try:
             data = self._get(f"data/{fips_code}", params=params)
-        except FMRError:
+        except (FMRError):
             return None
 
         result = data.get("data", {})
@@ -125,7 +125,7 @@ def _parse_fmr(value: Any) -> Decimal | None:
         return None
     try:
         return cast(Decimal, Decimal(str(value)))
-    except Exception:
+    except (Exception):
         return None
 
 

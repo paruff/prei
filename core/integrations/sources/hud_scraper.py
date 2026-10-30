@@ -505,11 +505,11 @@ class HUDHomeScraper:
                 try:
                     parsed_date = dt.strptime(date_text, fmt)
                     return parsed_date.date().isoformat()
-                except ValueError:
+                except (ValueError):
                     continue
 
             return None
-        except Exception:
+        except (Exception):
             return None
 
     def _map_property_type(self, prop_type: str) -> str:
@@ -582,6 +582,6 @@ def fetch(state_code: Optional[str] = None) -> List[Dict[str, Any]]:
             return []
         else:
             return loop.run_until_complete(scraper.scrape_state(state_code))
-    except RuntimeError:
+    except (RuntimeError):
         # No event loop, create one
         return asyncio.run(scraper.scrape_state(state_code))

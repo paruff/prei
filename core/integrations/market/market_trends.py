@@ -231,7 +231,7 @@ def get_latest_indicators(metro_area: str) -> Dict[str, Any]:
         ).first()
         if snapshot and snapshot.median_household_income:
             median_income = snapshot.median_household_income
-    except Exception:
+    except (Exception):
         logger.warning(
             "get_latest_indicators: MarketSnapshot median-income lookup failed "
             "for %s; classifying without income context",
@@ -324,7 +324,7 @@ def update_market_indicators(metro_area: str = "") -> Dict[str, Any]:
                     created += 1
                 else:
                     updated += 1
-        except Exception:
+        except (Exception):
             errors += 1
             # Log error in production
             pass

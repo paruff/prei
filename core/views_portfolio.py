@@ -80,7 +80,7 @@ def portfolio_actuals_add(request):
     property_id = request.POST.get("property_id")
     try:
         property_obj = Property.objects.get(pk=property_id, user=request.user)
-    except Property.DoesNotExist:
+    except (Property.DoesNotExist):
         return redirect("portfolio_dashboard")
 
     form = MonthlyActualsForm(request.POST)

@@ -63,7 +63,7 @@ def get_acs_vintages() -> tuple[str, str]:
                 v["prior"],
             )
             return v["current"], v["prior"]
-    except Exception:
+    except (Exception):
         logger.exception("Failed to auto-detect ACS vintages; using fallback defaults")
 
     # Fallback

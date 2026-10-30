@@ -463,7 +463,7 @@ def foreclosures_list(request):
                 try:
                     state_code = validate_state_code(single_value)
                     queryset = queryset.filter(state=state_code)
-                except serializers.ValidationError:
+                except (serializers.ValidationError):
                     # Not a valid state code, treat as county
                     queryset = queryset.filter(
                         Q(county__icontains=single_value)
@@ -480,7 +480,7 @@ def foreclosures_list(request):
             try:
                 state_code = validate_state_code(state_code)
                 queryset = queryset.filter(city__icontains=city_name, state=state_code)
-            except serializers.ValidationError:
+            except (serializers.ValidationError):
                 # Invalid state code in city, state format
                 return Response(
                     {
@@ -1308,7 +1308,7 @@ def watchlist_view(request):
 
         try:
             property_obj = ForeclosureProperty.objects.get(id=property_id)
-        except ForeclosureProperty.DoesNotExist:
+        except (ForeclosureProperty.DoesNotExist):
             return Response(
                 {"error": "Property not found", "code": "NOT_FOUND"},
                 status=status.HTTP_404_NOT_FOUND,
@@ -1348,7 +1348,7 @@ def watchlist_item_delete(request, item_id):
         watchlist_item = UserWatchlist.objects.get(id=item_id, user=request.user)
         watchlist_item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    except UserWatchlist.DoesNotExist:
+    except (UserWatchlist.DoesNotExist):
         return Response(
             {"error": "Watchlist item not found", "code": "NOT_FOUND"},
             status=status.HTTP_404_NOT_FOUND,
@@ -1403,7 +1403,7 @@ def alert_detail(request, alert_id):
 
     try:
         alert = AuctionAlert.objects.get(id=alert_id, user=request.user)
-    except AuctionAlert.DoesNotExist:
+    except (AuctionAlert.DoesNotExist):
         return Response(
             {"error": "Alert not found", "code": "NOT_FOUND"},
             status=status.HTTP_404_NOT_FOUND,
@@ -1478,7 +1478,7 @@ def notification_mark_read(request, notification_id):
         notification.mark_read()
         serializer = NotificationSerializer(notification)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    except Notification.DoesNotExist:
+    except (Notification.DoesNotExist):
         return Response(
             {"error": "Notification not found", "code": "NOT_FOUND"},
             status=status.HTTP_404_NOT_FOUND,
@@ -1500,7 +1500,7 @@ def notification_dismiss(request, notification_id):
         notification.dismiss()
         serializer = NotificationSerializer(notification)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    except Notification.DoesNotExist:
+    except (Notification.DoesNotExist):
         return Response(
             {"error": "Notification not found", "code": "NOT_FOUND"},
             status=status.HTTP_404_NOT_FOUND,
@@ -1852,7 +1852,7 @@ def export_property_deal_pack(request, property_id: int):
 
     try:
         property_obj = Property.objects.get(id=property_id)
-    except Property.DoesNotExist:
+    except (Property.DoesNotExist):
         return Response(
             {"error": "Property not found", "code": "NOT_FOUND"},
             status=status.HTTP_404_NOT_FOUND,
@@ -2461,7 +2461,7 @@ class VrmPropertyImportAPI(APIView):
 
         try:
             created, updated, errors = upsert_vrm_records(data)
-        except Exception:
+        except (Exception):
             logger.exception("VRM JSON import failed unexpectedly")
             return Response(
                 {"error": "Import failed due to an internal error."},
