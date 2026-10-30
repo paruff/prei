@@ -10,7 +10,7 @@ from django.utils.csp import CSP
 
 try:
     import structlog
-except (ImportError):
+except ImportError:
     structlog = None  # type: ignore[assignment]
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -302,7 +302,7 @@ if otel_endpoint:
         exporter = OTLPSpanExporter(endpoint=otel_endpoint)
         provider.add_span_processor(BatchSpanProcessor(exporter))
         trace.set_tracer_provider(provider)
-    except (Exception):
+    except Exception:
         pass  # OTEL optional — graceful degradation if collector unreachable
 
 LOGGING = {

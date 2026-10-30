@@ -107,7 +107,7 @@ def markets_list(request: HttpRequest) -> HttpResponse:
                 .first()
             )
             market_data["msa_name"] = snapshot.msa_name if snapshot else ""
-        except (Exception):
+        except Exception:
             market_data["msa_name"] = ""
         markets.append(market_data)
 
@@ -166,7 +166,7 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
                 closing_costs_pct=Decimal(form_data["closing_costs_pct"])
                 / Decimal("100"),
             )
-        except (InvalidOperation, ValueError, ZeroDivisionError):
+        except InvalidOperation, ValueError, ZeroDivisionError:
             # Invalid input — render form with no result
             result = None
 

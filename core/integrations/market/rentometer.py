@@ -51,7 +51,7 @@ class RentometerClient:
                 raise RentometerError(f"No data found: {path}")
             resp.raise_for_status()
             data = resp.json()
-        except (RentometerError):
+        except RentometerError:
             raise
         except requests.RequestException as exc:
             # Timeouts, connection errors, and other non-2xx status codes
@@ -84,7 +84,7 @@ class RentometerClient:
         }
         try:
             data = self._get("rent", params=params)
-        except (RentometerError):
+        except RentometerError:
             return None
 
         result = data.get("data", data)
@@ -107,7 +107,7 @@ def _parse_rent(value: Any) -> Decimal | None:
         return None
     try:
         dec = Decimal(str(value)).quantize(Decimal("0.01"))
-    except (InvalidOperation, ValueError, TypeError):
+    except InvalidOperation, ValueError, TypeError:
         return None
     if dec <= 0:
         return None

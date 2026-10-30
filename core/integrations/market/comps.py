@@ -80,7 +80,7 @@ def fetch_comps_for_listing(
     except (ATTOMAPIError, ATTOMRateLimitError) as exc:
         logger.warning("comps: ATTOM sales history error for %s: %s", address1, exc)
         return []
-    except (Exception):
+    except Exception:
         logger.exception(
             "comps: unexpected error fetching sales history for %s", address1
         )

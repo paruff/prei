@@ -61,7 +61,7 @@ def property_list(request):
 
     try:
         targets = UserInvestmentTargets.objects.get(user=request.user)
-    except (UserInvestmentTargets.DoesNotExist):
+    except UserInvestmentTargets.DoesNotExist:
         targets = None
 
     for property_obj in properties:
@@ -77,7 +77,7 @@ def property_list(request):
                 property_obj.underwriting_score = score_listing_v2(
                     property_obj, targets
                 )
-            except (Exception):
+            except Exception:
                 pass
 
     return render(
@@ -109,7 +109,7 @@ def _parse_compare_ids(raw_ids: list[str]) -> tuple[list[int], str | None]:
                 continue
             try:
                 parsed_id = int(stripped)
-            except (ValueError):
+            except ValueError:
                 return [], "Property IDs must be integers."
             if parsed_id > 0:
                 parsed_ids.append(parsed_id)
@@ -286,7 +286,7 @@ def property_detail(request, pk: int):
     try:
         targets, _ = UserInvestmentTargets.objects.get_or_create(user=property_obj.user)
         score = score_listing_v2(property_obj, targets)
-    except (Exception):
+    except Exception:
         pass
 
     # Compute 10-year projections for the detail view
@@ -296,7 +296,7 @@ def property_detail(request, pk: int):
         from core.services.projections import project_hold_period
 
         projections, exit_analysis = project_hold_period(property_obj, hold_years=10)
-    except (Exception):
+    except Exception:
         # Projections are optional; don't break the page if they fail
         pass
 

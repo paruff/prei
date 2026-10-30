@@ -265,7 +265,7 @@ def project_hold_period(
             annualized_irr = Decimal("0")
         else:
             annualized_irr = to_decimal(irr_value)
-    except (Exception):
+    except Exception:
         logger.warning("IRR computation failed; returning 0", exc_info=True)
         annualized_irr = Decimal("0")
 

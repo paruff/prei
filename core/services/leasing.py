@@ -34,7 +34,7 @@ def advance_stage(entry: Any) -> Any:
     current_stage = entry.stage
     try:
         current_idx = LEASING_STAGE_ORDER.index(current_stage)
-    except (ValueError):
+    except ValueError:
         raise ValueError(f"Unknown stage: {current_stage}")
 
     if current_stage == "STABILIZED":

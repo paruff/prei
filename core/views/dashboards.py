@@ -32,7 +32,7 @@ def dashboard(request):
 
     try:
         targets = UserInvestmentTargets.objects.get(user=request.user)
-    except (UserInvestmentTargets.DoesNotExist):
+    except UserInvestmentTargets.DoesNotExist:
         targets = None
 
     properties_qs = (
@@ -63,7 +63,7 @@ def dashboard(request):
 
         try:
             score = score_listing_v2(prop, targets)
-        except (Exception):
+        except Exception:
             continue
 
         verdict_code, verdict_label = VERDICT_MAP.get(score.verdict, ("C", "Pass"))
@@ -139,13 +139,13 @@ def onboard(request: HttpRequest) -> HttpResponse:
         if min_price:
             try:
                 criteria.min_price = Decimal(min_price)
-            except (Exception):
+            except Exception:
                 pass
         max_price = request.POST.get("max_price", "").strip()
         if max_price:
             try:
                 criteria.max_price = Decimal(max_price)
-            except (Exception):
+            except Exception:
                 pass
         criteria.save()
 
