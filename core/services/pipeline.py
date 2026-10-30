@@ -625,12 +625,13 @@ def convert_to_property_record(
     price = (
         closing_record.final_purchase_price
         if closing_record
-        else pipeline_property.price or Decimal("0")
+        else (pipeline_property.price or Decimal("0"))
     )
     down_payment_pct = Decimal(str(defaults["down_payment_rate"]))
     if closing_record and closing_record.down_payment is not None and price:
-        down_payment_pct = (closing_record.down_payment / price).quantize(
-            Decimal("0.0001")
+        down_payment_pct = min(
+            Decimal("1"),
+            (closing_record.down_payment / price).quantize(Decimal("0.0001")),
         )
     # Same underwriting assumptions as the pipeline listing estimates
     tax_rate_pct = Decimal(str(getattr(settings, "TAX_RATE_PCT", 1.2)))

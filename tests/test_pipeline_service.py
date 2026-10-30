@@ -510,3 +510,12 @@ class TestConvertCompleteness:
         assert prop.vacancy_rate == Decimal("0.05")
         assert prop.mgmt_fee_pct == Decimal("0.08")
         assert prop.capex_monthly == Decimal("100.00")
+
+    def test_expenses_set_without_closing_record(self, db, user, vrm_property):
+        pp, _ = create_from_vrm(vrm_property, user)
+
+        prop = convert_to_property_record(pp)
+
+        assert prop.purchase_price == Decimal("250000")
+        assert prop.property_taxes_annual == Decimal("3000.00")
+        assert prop.down_payment_pct == Decimal("0.20")
