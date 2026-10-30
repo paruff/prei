@@ -153,7 +153,8 @@ def fetch_county_employment_growth(
     try:
         current = int(annual_obs[0]["value"])
         prior = int(annual_obs[1]["value"])
-    except ((ValueError, TypeError, KeyError)): return None
+    except ValueError, TypeError, KeyError:
+        return None
 
     if prior == 0:
         return None

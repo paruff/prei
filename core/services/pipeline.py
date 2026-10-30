@@ -187,7 +187,8 @@ def get_source_record(pipeline_property: Any) -> Any | None:
     if source_type == "vrm":
         try:
             return VrmProperty.objects.get(vrm_property_id=int(source_id))
-        except (VrmProperty.DoesNotExist, ValueError): return None
+        except VrmProperty.DoesNotExist, ValueError:
+            return None
 
     if source_type == "foreclosure":
         try:
@@ -200,7 +201,8 @@ def get_source_record(pipeline_property: Any) -> Any | None:
 
         try:
             return Listing.objects.get(pk=int(source_id))
-        except (Listing.DoesNotExist, ValueError): return None
+        except Listing.DoesNotExist, ValueError:
+            return None
 
     return None
 

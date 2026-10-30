@@ -77,7 +77,8 @@ def fetch_comps_for_listing(
 
     try:
         sales_data = adapter.fetch_sales_history(full_address)
-    except ((ATTOMAPIError, ATTOMRateLimitError) as exc): logger.warning("comps: ATTOM sales history error for %s: %s", address1, exc)
+    except (ATTOMAPIError, ATTOMRateLimitError) as exc:
+        logger.warning("comps: ATTOM sales history error for %s: %s", address1, exc)
         return []
     except Exception:
         logger.exception(
@@ -148,7 +149,8 @@ def fetch_comps_for_listing(
                     "ppsf": ppsf,
                 }
             )
-        except (((ValueError, TypeError, InvalidOperation) as exc)): logger.warning("comps: skipped malformed sale entry: %s", exc)
+        except (ValueError, TypeError, InvalidOperation) as exc:
+            logger.warning("comps: skipped malformed sale entry: %s", exc)
             continue
 
     return comps

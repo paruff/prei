@@ -166,7 +166,8 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
                 closing_costs_pct=Decimal(form_data["closing_costs_pct"])
                 / Decimal("100"),
             )
-        except ((InvalidOperation, ValueError, ZeroDivisionError)): # Invalid input — render form with no result
+        except InvalidOperation, ValueError, ZeroDivisionError:
+            # Invalid input — render form with no result
             result = None
 
     return render(

@@ -73,7 +73,8 @@ def fetch_county_employment_growth(
                 try:
                     # Value is a percentage (e.g. "2.3" = 2.3%)
                     return Decimal(pct_chg) / Decimal("100")
-                except (ValueError, TypeError): return None
+                except ValueError, TypeError:
+                    return None
 
     logger.info(
         "QCEW: no matching row for FIPS %s year %d",

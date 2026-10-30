@@ -451,7 +451,8 @@ class ATTOMAdapter:
             return None
         try:
             return Decimal(str(value))
-        except (ValueError, TypeError): return None
+        except ValueError, TypeError:
+            return None
 
     def _parse_date(self, date_str: Optional[str]) -> Optional[str]:
         """

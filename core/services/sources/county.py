@@ -375,7 +375,8 @@ class TexasCountyForeclosureSource(DiscoverySource):
         )
         try:
             price = float(price_raw.replace("$", "").replace(",", ""))
-        except (ValueError, TypeError): price = None
+        except ValueError, TypeError:
+            price = None
 
         return {
             "id": row.get(

@@ -528,7 +528,8 @@ class ListingSerializer(serializers.ModelSerializer):
             return score_by_listing_id[obj.id]
         try:
             return score_listing(obj)
-        except (((ArithmeticError, ValueError, TypeError, AttributeError))): logger.exception("Failed to score listing id=%s", getattr(obj, "id", None))
+        except ArithmeticError, ValueError, TypeError, AttributeError:
+            logger.exception("Failed to score listing id=%s", getattr(obj, "id", None))
             return None
 
 

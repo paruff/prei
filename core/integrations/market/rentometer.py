@@ -107,7 +107,8 @@ def _parse_rent(value: Any) -> Decimal | None:
         return None
     try:
         dec = Decimal(str(value)).quantize(Decimal("0.01"))
-    except ((InvalidOperation, ValueError, TypeError)): return None
+    except InvalidOperation, ValueError, TypeError:
+        return None
     if dec <= 0:
         return None
     return dec

@@ -69,7 +69,8 @@ def _docker_available() -> bool:
     try:
         subprocess.run(["docker", "info"], capture_output=True, check=True)
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError): return False
+    except subprocess.CalledProcessError, FileNotFoundError:
+        return False
 
 
 def _compose(*args: str) -> None:

@@ -88,7 +88,8 @@ def _fetch_latest_acs_vintages() -> dict[str, str] | None:
     except requests.RequestException as exc:
         logger.warning("Census /data.json request failed [15s timeout]: %s", exc)
         return None
-    except ((ValueError, TypeError) as exc): logger.warning("Census /data.json parse error: %s", exc)
+    except (ValueError, TypeError) as exc:
+        logger.warning("Census /data.json parse error: %s", exc)
         return None
 
     datasets = catalog.get("dataset", []) if isinstance(catalog, dict) else []
@@ -120,7 +121,8 @@ def _fetch_latest_acs_vintages() -> dict[str, str] | None:
 
         try:
             v = int(vintage_str)
-        except (ValueError, TypeError): continue
+        except ValueError, TypeError:
+            continue
         acs_vintages.add(v)
 
     if not acs_vintages:
@@ -247,7 +249,8 @@ def fetch_zip_demographics(zip_code: str, api_key: str) -> dict | None:
 
     try:
         data = resp.json()
-    except ((ValueError, TypeError) as exc): logger.error("Census API returned invalid JSON for zip=%s: %s", zip_code, exc)
+    except (ValueError, TypeError) as exc:
+        logger.error("Census API returned invalid JSON for zip=%s: %s", zip_code, exc)
         return None
 
     # Response format: [[var1, var2, ...], [val1, val2, ...], ...]
@@ -279,7 +282,8 @@ def fetch_zip_demographics(zip_code: str, api_key: str) -> dict | None:
     try:
         population = int(raw_population)
         median_income = Decimal(raw_income)
-    except (((InvalidOperation, ValueError, TypeError) as exc)): logger.error("Census API parse error for zip=%s: %s", zip_code, exc)
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        logger.error("Census API parse error for zip=%s: %s", zip_code, exc)
         return None
 
     # Population growth requires a second request for 5-year-ago data
@@ -369,7 +373,8 @@ def _fetch_acs_data(
 
     try:
         data = resp.json()
-    except ((ValueError, TypeError) as exc): logger.error(
+    except (ValueError, TypeError) as exc:
+        logger.error(
             "Census API returned invalid JSON for geography=%s: %s", geography, exc
         )
         return None
@@ -519,7 +524,8 @@ def fetch_place_growth_metrics(
         prior_pop = int(prior_parsed["B01001_001E"])
         prior_income = Decimal(prior_parsed["B19013_001E"])
         prior_units = int(prior_parsed.get("B25001_001E", 0) or 0)
-    except (((InvalidOperation, ValueError, TypeError) as exc)): logger.error("Census API parse error for place=%s: %s", place_code, exc)
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        logger.error("Census API parse error for place=%s: %s", place_code, exc)
         return None
 
     # Compute growth rates (handle zero prior values)
@@ -636,7 +642,8 @@ def discover_places_in_state(
 
     try:
         data = resp.json()
-    except ((ValueError, TypeError) as exc): logger.error(
+    except (ValueError, TypeError) as exc:
+        logger.error(
             "Census API returned invalid JSON for places in state=%s: %s",
             state_code,
             exc,
@@ -675,7 +682,8 @@ def discover_places_in_state(
 
         try:
             population = int(raw_pop)
-        except (ValueError, TypeError): continue
+        except ValueError, TypeError:
+            continue
 
         # NAME format: "Los Angeles city, California" — extract place name only
         place_name = raw_name.split(",")[0].strip() if raw_name else ""
@@ -778,7 +786,8 @@ def fetch_housing_demand_index(
     try:
         total_units = int(parsed["B25002_001E"])
         vacant_units = int(parsed["B25002_003E"])
-    except ((ValueError, TypeError) as exc): logger.error("Housing demand parse error for place=%s: %s", place_code, exc)
+    except (ValueError, TypeError) as exc:
+        logger.error("Housing demand parse error for place=%s: %s", place_code, exc)
         return None
 
     if total_units <= 0:

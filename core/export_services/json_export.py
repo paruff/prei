@@ -75,7 +75,8 @@ class JSONExportService:
             # Check required fields
             required = ["metadata", "data"]
             return all(field in obj for field in required)
-        except (json.JSONDecodeError, TypeError): return False
+        except json.JSONDecodeError, TypeError:
+            return False
 
     def generate_filename(
         self,

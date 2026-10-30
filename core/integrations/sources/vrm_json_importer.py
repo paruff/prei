@@ -41,7 +41,8 @@ def _normalize_lot_size_sf(lot_size: Any, lot_size_source: str) -> int | None:
     # "SF", "sf", or anything else: treat as square feet already
     try:
         return int(value)
-    except (ValueError, ArithmeticError): return None
+    except ValueError, ArithmeticError:
+        return None
 
 
 def _to_decimal(raw: Any) -> Decimal | None:
@@ -58,7 +59,8 @@ def _to_int(raw: Any) -> int | None:
         return None
     try:
         return int(raw)
-    except (TypeError, ValueError): return None
+    except TypeError, ValueError:
+        return None
 
 
 def parse_vrm_json_record(record: dict[str, Any]) -> dict[str, Any]:

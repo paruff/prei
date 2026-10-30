@@ -144,7 +144,8 @@ class FannieMaeSource(DiscoverySource):
 
         try:
             data = resp.json()
-        except (ValueError, TypeError): logger.warning("Fannie Mae: invalid JSON response")
+        except ValueError, TypeError:
+            logger.warning("Fannie Mae: invalid JSON response")
             return []
 
         results = (
@@ -215,7 +216,8 @@ class HUDHomestoreSource(DiscoverySource):
 
         try:
             data = resp.json()
-        except (ValueError, TypeError): return []
+        except ValueError, TypeError:
+            return []
 
         results = (
             data.get("results") or data.get("data") or data.get("properties") or []
@@ -274,7 +276,8 @@ class VAForeclosuresSource(DiscoverySource):
 
         try:
             data = resp.json()
-        except (ValueError, TypeError): return []
+        except ValueError, TypeError:
+            return []
 
         results = (
             data.get("data") or data.get("properties") or data.get("results") or []
@@ -330,7 +333,8 @@ class USDAForeclosuresSource(DiscoverySource):
 
         try:
             data = resp.json()
-        except (ValueError, TypeError): return []
+        except ValueError, TypeError:
+            return []
 
         results = (
             data.get("properties") or data.get("results") or data.get("data") or []
