@@ -20,6 +20,7 @@ class JourneyCtx:
         self.growth_area_id: str | None = None
         self.page: str = ""
         self.screener: str = ""
+        self.detail_path: str = ""
 
 
 @pytest.fixture
@@ -112,6 +113,7 @@ def open_from_screener(ctx: JourneyCtx, address: str) -> None:
     assert row, f"no detail link for {address} in the screener"
     resp = ctx.client.get(row.group(1))
     assert resp.status_code == 200
+    ctx.detail_path = row.group(1)
     ctx.page = resp.text
 
 
@@ -127,3 +129,144 @@ def yield_and_ptr(ctx: JourneyCtx, yield_pct: str, ptr: str) -> None:
 def shows_kpis(ctx: JourneyCtx) -> None:
     for name in ("noi", "cap-rate", "cash-on-cash", "dscr"):
         assert _metric(ctx.page, name)
+
+
+# ── Steps 5-7: offer, due diligence, closing, own ────────────────────────────
+
+
+def _post(ctx: JourneyCtx, path: str, data: dict):
+    """POST with the session's CSRF token (the cookie set at login)."""
+    token = ctx.client.cookies.get("csrftoken")
+    assert token, "no csrftoken cookie: sign in first"
+    return ctx.client.post(path, data={**data, "csrfmiddlewaretoken": token})
+
+
+def _stage(html: str) -> str:
+    match = re.search(r'badge-stage">([^<]+)<', html)
+    assert match, "no stage badge on the detail page"
+    return match.group(1).strip().upper().replace(" ", "_")
+
+
+def _advance_to(ctx: JourneyCtx, stage: str) -> None:
+    for _ in range(8):
+        page = ctx.client.get(ctx.detail_path).text
+        if _stage(page) == stage:
+            ctx.page = page
+            return
+        resp = _post(
+            ctx,
+            f"{ctx.detail_path}advance-stage/",
+            {"action": "advance", "next": ctx.detail_path},
+        )
+        assert resp.status_code == 200, resp.status_code
+    pytest.fail(f"never reached {stage}; at {_stage(page)}")
+
+
+@when("I discover VRM properties in the seeded market")
+def discover_seeded_market(ctx: JourneyCtx) -> None:
+    dallas_ranked(ctx)
+    discover_vrm(ctx)
+    screener_lists(ctx, "1200 Seed Pass Ln", "3400 Seed Fail Ct")
+
+
+@when("I advance it to the Offer stage")
+def advance_to_offer(ctx: JourneyCtx) -> None:
+    _advance_to(ctx, "OFFER")
+
+
+@when("I advance it to the Due Diligence stage")
+def advance_to_dd(ctx: JourneyCtx) -> None:
+    _advance_to(ctx, "DUE_DILIGENCE")
+
+
+@when("I advance it to the Closing stage")
+def advance_to_closing(ctx: JourneyCtx) -> None:
+    _advance_to(ctx, "CLOSING")
+
+
+@when(parsers.parse("I record an offer of {price:d}"))
+def record_offer(ctx: JourneyCtx, price: int) -> None:
+    resp = _post(ctx, f"{ctx.detail_path}offer/", {"offer_price": str(price)})
+    assert resp.status_code == 200
+    ctx.page = resp.text
+
+
+@then("the offer is listed for the property")
+def offer_listed(ctx: JourneyCtx) -> None:
+    assert "175,000.00" in ctx.page, _text(ctx.page)[:500]
+
+
+@when("I mark due diligence go")
+def dd_go(ctx: JourneyCtx) -> None:
+    resp = _post(
+        ctx,
+        f"{ctx.detail_path}dd/",
+        {
+            "inspection_completed": "on",
+            "title_clear": "on",
+            "insurance_quoted": "on",
+            "go_no_go": "go",
+        },
+    )
+    assert resp.status_code == 200
+    assert "Due diligence checklist saved" in resp.text
+
+
+@when(parsers.parse("I close the deal at {price:d}"))
+def close_deal(ctx: JourneyCtx, price: int) -> None:
+    resp = _post(
+        ctx,
+        f"{ctx.detail_path}closing/",
+        {
+            "final_purchase_price": str(price),
+            "closing_date": "2026-10-01",
+            "closing_costs": "3500",
+            "loan_amount": "131250",
+            "down_payment": "43750",
+            "lender": "Seed Bank",
+        },
+    )
+    assert resp.status_code == 200
+    ctx.page = resp.text
+    assert "/portfolio" in str(resp.url), f"closing ended at {resp.url}"
+
+
+def _portfolio_row(html: str) -> str:
+    rows = re.findall(r"<tr[^>]*>.*?</tr>", html, flags=re.S)
+    mine = [r for r in rows if "1200 Seed Pass Ln" in r]
+    assert mine, f"1200 Seed Pass Ln not in the portfolio: {_text(html)[:500]}"
+    return mine[0]
+
+
+@then("it is in the portfolio")
+def in_portfolio(ctx: JourneyCtx) -> None:
+    resp = ctx.client.get("/portfolio/")
+    assert resp.status_code == 200
+    ctx.page = resp.text
+    assert "No data" in _portfolio_row(ctx.page), "fresh acquisition has no actuals"
+
+
+@when("I enter monthly actuals for it")
+def enter_actuals(ctx: JourneyCtx) -> None:
+    row = _portfolio_row(ctx.page)
+    prop_id = re.search(r'data-property-id="(\d+)"', row)
+    assert prop_id, "no property id in the portfolio row"
+    resp = _post(
+        ctx,
+        "/portfolio/actuals/add/",
+        {
+            "property_id": prop_id.group(1),
+            "month": "2026-10",  # what <input type="month"> submits
+            "actual_rent_collected": "1800.00",
+            "actual_vacancy_days": "0",
+            "actual_expenses": "400.00",
+            "actual_maintenance": "100.00",
+        },
+    )
+    assert resp.status_code == 200
+    ctx.page = resp.text
+
+
+@then("the portfolio shows its actuals")
+def shows_actuals(ctx: JourneyCtx) -> None:
+    assert _metric(_portfolio_row(ctx.page), "latest-actuals") == "$1,800 (Oct 2026)"
