@@ -166,7 +166,7 @@ class TestFullAcquisitionFlow:
         prop = convert_to_property_record(pp)
         assert prop is not None
         assert prop.address == vrm_property.address
-        assert prop.purchase_price == vrm_property.list_price
+        assert prop.purchase_price == Decimal("245000")
         assert prop.monthly_rent_gross == vrm_property.projected_monthly_rent
         pp.refresh_from_db()
         assert pp.property_record == prop

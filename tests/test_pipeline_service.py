@@ -483,3 +483,53 @@ class TestConvertToPropertyRecord:
         closing = datetime.date(2026, 7, 15)
         prop = convert_to_property_record(pp, closing)
         assert prop.purchase_date == closing
+
+
+class TestConvertCompleteness:
+    def test_property_is_complete_from_closing_record(self, db, user, vrm_property):
+        """LIMIT-12: price, rent, expenses and loan terms are set at creation."""
+        from core.models import ClosingRecord
+
+        pp, _ = create_from_vrm(vrm_property, user)
+        ClosingRecord.objects.create(
+            pipeline_property=pp,
+            final_purchase_price=Decimal("240000"),
+            closing_date=timezone.now().date(),
+            down_payment=Decimal("48000"),
+        )
+        pp.refresh_from_db()
+
+        prop = convert_to_property_record(pp)
+
+        assert prop.purchase_price == Decimal("240000")
+        assert prop.monthly_rent_gross == Decimal("2000")
+        assert prop.property_taxes_annual == Decimal("3000.00")
+        assert prop.insurance_annual > 0
+        assert prop.down_payment_pct == Decimal("0.2000")
+        assert prop.interest_rate > 0
+        assert prop.vacancy_rate == Decimal("0.05")
+        assert prop.mgmt_fee_pct == Decimal("0.08")
+        assert prop.capex_monthly == Decimal("100.00")
+
+    def test_expenses_set_without_closing_record(self, db, user, vrm_property):
+        pp, _ = create_from_vrm(vrm_property, user)
+
+        prop = convert_to_property_record(pp)
+
+        assert prop.purchase_price == Decimal("250000")
+        assert prop.property_taxes_annual == Decimal("3000.00")
+        assert prop.down_payment_pct == Decimal("0.20")
+
+    def test_expenses_come_from_pipeline_record(self, db, user, vrm_property):
+        pp, _ = create_from_vrm(vrm_property, user)
+        assert pp.estimated_taxes_annual == Decimal("3000.00")
+        assert pp.estimated_insurance_annual > 0
+
+        pp.estimated_taxes_annual = Decimal("4321.00")
+        pp.estimated_insurance_annual = Decimal("999.00")
+        pp.save()
+
+        prop = convert_to_property_record(pp)
+
+        assert prop.property_taxes_annual == Decimal("4321.00")
+        assert prop.insurance_annual == Decimal("999.00")

@@ -10,6 +10,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Tuple
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -249,6 +250,7 @@ def create_from_vrm(
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": vrm_property.list_price,
+            **expense_estimates(vrm_property.list_price),
             "estimated_rent": vrm_property.projected_monthly_rent,
             "beds": vrm_property.bedrooms,
             "year_built": vrm_property.year_built,
@@ -397,6 +399,7 @@ def create_from_hud(
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": price,
+            **expense_estimates(price),
             "estimated_rent": None,
             "beds": hud_property.bedrooms,
             "year_built": None,
@@ -472,6 +475,7 @@ def create_from_usda(
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": usda_property.list_price,
+            **expense_estimates(usda_property.list_price),
             "estimated_rent": None,
             "beds": usda_property.bedrooms,
             "year_built": None,
@@ -548,6 +552,7 @@ def create_from_county_notice(
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": county_notice.unpaid_balance,
+            **expense_estimates(county_notice.unpaid_balance),
             "estimated_rent": None,
             "beds": None,
             "year_built": None,
@@ -580,6 +585,22 @@ def create_from_county_notice(
         _notify_if_growth_area_match(pp, user, None)
 
     return pp, True
+
+
+def expense_estimates(price: Any) -> dict[str, Decimal | None]:
+    """Annual tax and insurance estimates for a price (same assumptions as
+    the pipeline listing estimates); None values when the price is unknown."""
+    if not price:
+        return {"estimated_taxes_annual": None, "estimated_insurance_annual": None}
+    tax_rate_pct = Decimal(str(getattr(settings, "TAX_RATE_PCT", 1.2)))
+    return {
+        "estimated_taxes_annual": (Decimal(price) * tax_rate_pct / 100).quantize(
+            Decimal("0.01")
+        ),
+        "estimated_insurance_annual": Decimal(
+            str(getattr(settings, "INSURANCE_ANNUAL", 1200))
+        ),
+    }
 
 
 # ── Conversion to Property record ──────────────────────────────────────────────
@@ -618,6 +639,29 @@ def convert_to_property_record(
     closing = closing_date or now
 
     source_record = get_source_record(pipeline_property)
+    closing_record = getattr(pipeline_property, "closing_record", None)
+    defaults = settings.FINANCE_DEFAULTS
+
+    price = (
+        closing_record.final_purchase_price
+        if closing_record
+        else (pipeline_property.price or Decimal("0"))
+    )
+    down_payment_pct = Decimal(str(defaults["down_payment_rate"]))
+    if closing_record and closing_record.down_payment is not None and price:
+        down_payment_pct = min(
+            Decimal("1"),
+            (closing_record.down_payment / price).quantize(Decimal("0.0001")),
+        )
+    # Expenses come from the pipeline record; rows created before those
+    # fields existed fall back to the same estimate, on the closing price.
+    estimates = expense_estimates(price)
+    taxes = pipeline_property.estimated_taxes_annual
+    insurance = pipeline_property.estimated_insurance_annual
+    if taxes is None:
+        taxes = estimates["estimated_taxes_annual"] or Decimal("0")
+    if insurance is None:
+        insurance = estimates["estimated_insurance_annual"] or Decimal("0")
 
     with transaction.atomic():
         prop = PropertyModel.objects.create(
@@ -626,12 +670,23 @@ def convert_to_property_record(
             city=getattr(source_record, "city", "") or "",
             state=getattr(source_record, "state", "") or "",
             zip_code=getattr(source_record, "zip_code", "") or "",
-            purchase_price=pipeline_property.price or Decimal("0"),
+            purchase_price=price,
             purchase_date=closing if hasattr(closing, "strftime") else now,
             bedrooms=pipeline_property.beds or 0,
             sqft=int(pipeline_property.sqft) if pipeline_property.sqft else 0,
             property_type="SFR",
             monthly_rent_gross=pipeline_property.estimated_rent or Decimal("0"),
+            property_taxes_annual=taxes,
+            insurance_annual=insurance,
+            vacancy_rate=Decimal(str(defaults["vacancy_rate"])),
+            mgmt_fee_pct=Decimal(str(defaults["management_fee_rate"])),
+            capex_monthly=(
+                (pipeline_property.estimated_rent or Decimal("0"))
+                * Decimal(str(defaults["capex_reserve_rate"]))
+            ).quantize(Decimal("0.01")),
+            down_payment_pct=down_payment_pct,
+            interest_rate=Decimal(str(defaults["loan_interest_rate_pct"])) / 100,
+            loan_term_years=int(str(defaults["loan_term_years"])),
         )
 
         pipeline_property.property_record = prop

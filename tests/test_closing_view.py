@@ -110,7 +110,7 @@ class TestClosingView:
         # Property created
         prop = PropertyModel.objects.get(user=pipeline_property.user)
         assert prop.address == "456 Close Deal Dr, Austin TX 78701"
-        assert prop.purchase_price == Decimal("250000")
+        assert prop.purchase_price == Decimal("245000")
 
         # PipelineProperty updated
         pipeline_property.refresh_from_db()

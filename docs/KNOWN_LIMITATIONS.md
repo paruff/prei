@@ -130,15 +130,15 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-12] 🟡 HIGH — Newly acquired Property records are incomplete at creation
+### [LIMIT-12] 🟡 HIGH — Newly acquired Property records are incomplete at creation (resolved)
 
 **Location:** `core/services/pipeline.py` — `convert_to_property_record()`
 
-**Impact:** When a PipelineProperty is converted to a Property record via the closing view, the Property is created with minimal fields (address, purchase_price). Fields like sqft, monthly_rent_gross, loan details, and property_type are either defaulted or empty. Financial analysis will be invalid until the user completes the record in Portfolio.
+**Impact:** None. The Property is created with the closing price, estimated rent, annual taxes and insurance (stored on the pipeline record as `estimated_taxes_annual` and `estimated_insurance_annual`, from `TAX_RATE_PCT` and `INSURANCE_ANNUAL`), and loan terms (down payment from the closing record, rate and term from `FINANCE_DEFAULTS`).
 
-**Workaround:** After acquisition, users should navigate to Portfolio and edit the new Property record to fill in sqft, rent, loan terms, etc. The portfolio dashboard shows an "awaiting completion" banner for incomplete properties.
+**Workaround:** None needed. Bedrooms and sqft come from the pipeline record; property type defaults to SFR.
 
-**Fix tracked in:** Post-MVP — could pre-fill more fields from pipeline/underwriting data.
+**Fix tracked in:** Resolved by G2.2 (#472).
 
 ---
 
