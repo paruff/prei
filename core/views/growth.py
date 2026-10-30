@@ -44,8 +44,7 @@ def growth_areas(request):
     page = request.GET.get("page", 1)
     try:
         page = int(page)
-    except ValueError, TypeError:
-        page = 1
+    except (ValueError, TypeError): page = 1
 
     growth_areas_qs = GrowthArea.objects.all().order_by("-composite_score")
 

@@ -296,6 +296,9 @@ class TestScreenPropertyFull:
             property_type = None
             foreclosure_status = None
 
+        criteria.max_price_to_rent_ratio = Decimal("200")
+        criteria.save()
+
         result = screen_property(pipeline_prop, criteria, source_record=MockSource())
         assert result.passed is True
         assert result.score > Decimal("0")

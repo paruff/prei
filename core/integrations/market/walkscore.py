@@ -47,8 +47,7 @@ def fetch_walk_score(
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         data = resp.json()
-    except (requests.RequestException, json.JSONDecodeError, TypeError) as exc:
-        logger.warning("Walk Score API error for address=%s: %s", address, exc)
+    except (((requests.RequestException, json.JSONDecodeError, TypeError) as exc)): logger.warning("Walk Score API error for address=%s: %s", address, exc)
         return None
 
     if "walkscore" not in data:

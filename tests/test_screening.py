@@ -220,6 +220,7 @@ class TestHardKillStateFilter:
         )
         pp.save()
         configured_criteria.allowed_states = ["TX"]
+        configured_criteria.max_price_to_rent_ratio = Decimal("200")
         configured_criteria.save()
 
         result = screen_property(pp, configured_criteria, vrm_property)
@@ -291,6 +292,8 @@ class TestHardKillPropertyType:
             year_built=2015,
         )
         pp.save()
+        configured_criteria.max_price_to_rent_ratio = Decimal("200")
+        configured_criteria.save()
 
         result = screen_property(pp, configured_criteria, vrm_property)
         assert result.passed
@@ -598,6 +601,46 @@ class TestSoftPriceToRentRatio:
 
         result = screen_property(pp, configured_criteria)
         assert "no rent estimate available" in str(result.passes)
+
+    def test_bad_yield_and_ptr_fail_even_if_score_stays_above_50(
+        self, db, configured_criteria, user
+    ):
+        """Bad yield/PTR are hard enough to fail the final verdict."""
+        configured_criteria.allowed_states = ["TX"]
+        configured_criteria.allowed_property_types = ["single-family"]
+        configured_criteria.allowed_foreclosure_statuses = []
+        configured_criteria.min_gacs_score = None
+        configured_criteria.max_year_built = 2050
+        configured_criteria.min_beds = 1
+        configured_criteria.min_gross_yield_pct = Decimal("7.00")
+        configured_criteria.max_price_to_rent_ratio = Decimal("15.00")
+        configured_criteria.save()
+
+        from core.models import PipelineProperty
+
+        pp = PipelineProperty(
+            user=user,
+            source_type="vrm",
+            source_id="vrm-fail-yield-ptr",
+            address="3400 Seed Fail Ct, Dallas, TX",
+            address_hash="seed-fail",
+            price=Decimal("450000"),
+            estimated_rent=Decimal("2200"),
+            beds=3,
+            year_built=2010,
+        )
+        pp.save()
+
+        class MockSource:
+            state = "TX"
+            property_type = "single-family"
+            foreclosure_status = "preforeclosure"
+
+        result = screen_property(pp, configured_criteria, source_record=MockSource())
+        assert result.score >= Decimal("50")
+        assert result.passed is False
+        assert any("below minimum" in msg for msg in result.soft_failures)
+        assert any("above maximum" in msg for msg in result.soft_failures)
 
 
 class TestSoftYearBuilt:

@@ -354,8 +354,7 @@ class FREDAdapter:
                 if first_val == 0:
                     return None
                 return (last_val - first_val) / first_val
-            except InvalidOperation, KeyError, ValueError:
-                return None
+            except ((InvalidOperation, KeyError, ValueError)): return None
 
         return {
             "state": state_code,
@@ -453,8 +452,7 @@ class FREDAdapter:
             year = date[:4]
             try:
                 decimal_val = Decimal(value)
-            except InvalidOperation, ValueError:
-                continue
+            except (InvalidOperation, ValueError): continue
             if year not in annual_averages:
                 annual_averages[year] = []
             annual_averages[year].append(decimal_val)

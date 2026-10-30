@@ -144,8 +144,7 @@ def fetch_county_unemployment(
     latest = observations[0]
     try:
         rate = Decimal(latest["value"])
-    except ValueError, TypeError, KeyError:
-        return None
+    except ((ValueError, TypeError, KeyError)): return None
 
     return {
         "rate": rate,
@@ -205,8 +204,7 @@ def fetch_county_employment(
     latest = observations[0]
     try:
         level = int(latest["value"])
-    except ValueError, TypeError, KeyError:
-        return None
+    except ((ValueError, TypeError, KeyError)): return None
 
     return {
         "level": level,

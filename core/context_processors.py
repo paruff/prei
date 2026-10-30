@@ -41,8 +41,7 @@ def _read_version() -> str:
         text = Path("/app/.meta/version").read_text().strip()
         if text:
             return text
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError): pass
 
     # 2. Environment variable (injected by Docker build)
     env_version = getenv("PREI_VERSION")
@@ -72,8 +71,7 @@ def _read_build_date() -> str:
         text = Path("/app/.meta/build-date").read_text().strip()
         if text:
             return text
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError): pass
 
     env_date = getenv("BUILD_DATE")
     if env_date:
@@ -107,8 +105,7 @@ def _read_branch() -> str:
         text = Path("/app/.meta/branch").read_text().strip()
         if text:
             return text
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError): pass
 
     env_branch = getenv("BRANCH")
     if env_branch:
@@ -124,8 +121,7 @@ def _read_branch() -> str:
                 return head_content[16:]  # strip "ref: refs/heads/"
             if head_content.startswith("ref: "):
                 return head_content[5:]
-        except FileNotFoundError, OSError:
-            pass
+        except (FileNotFoundError, OSError): pass
 
     return ""
 
@@ -144,8 +140,7 @@ def _read_git_commit() -> str:
         text = Path("/app/.meta/commit").read_text().strip()
         if text:
             return text[:_SHORT_SHA_LENGTH]
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError): pass
 
     # 2. Environment variable (injected by Docker build)
     env_commit = getenv("PREI_COMMIT")
@@ -186,8 +181,7 @@ def _find_git_dir() -> Path | None:
                 gitdir_path = Path(text[8:].strip())
                 if gitdir_path.is_dir():
                     return gitdir_path
-        except FileNotFoundError, OSError:
-            pass
+        except (FileNotFoundError, OSError): pass
     return None
 
 
@@ -196,8 +190,7 @@ def _resolve_head(git_dir: Path) -> str | None:
     head_file = git_dir / "HEAD"
     try:
         head_content = head_file.read_text().strip()
-    except FileNotFoundError, OSError:
-        return None
+    except (FileNotFoundError, OSError): return None
 
     if not head_content:
         return None
@@ -208,8 +201,7 @@ def _resolve_head(git_dir: Path) -> str | None:
         ref_file = git_dir / ref_path
         try:
             return ref_file.read_text().strip()
-        except FileNotFoundError, OSError:
-            # Packed ref — attempt to look up in packed-refs
+        except (FileNotFoundError, OSError): # Packed ref — attempt to look up in packed-refs
             return _resolve_packed_ref(git_dir, ref_path)
 
     # Detached HEAD — the SHA is directly in the file
@@ -229,8 +221,7 @@ def _resolve_packed_ref(git_dir: Path, ref_path: str) -> str | None:
             parts = line.split(" ", 1)
             if len(parts) == 2 and parts[1] == ref_path:
                 return parts[0]
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError): pass
     return None
 
 
@@ -254,8 +245,7 @@ def _read_current_tag(git_dir: Path) -> str | None:
                     try:
                         if tag_file.read_text().strip() == sha:
                             return tag_file.name
-                    except FileNotFoundError, OSError:
-                        continue
+                    except (FileNotFoundError, OSError): continue
         except OSError:
             pass
 
@@ -274,8 +264,7 @@ def _read_current_tag(git_dir: Path) -> str | None:
                     and parts[1].startswith("refs/tags/")
                 ):
                     return parts[1].removeprefix("refs/tags/")
-        except FileNotFoundError, OSError:
-            pass
+        except (FileNotFoundError, OSError): pass
 
     return None
 
@@ -316,8 +305,7 @@ def _head_ref_file(git_dir: Path) -> Path | None:
     head_file = git_dir / "HEAD"
     try:
         content = head_file.read_text().strip()
-    except FileNotFoundError, OSError:
-        return None
+    except (FileNotFoundError, OSError): return None
 
     if content.startswith("ref: "):
         ref_path = content[5:].strip()

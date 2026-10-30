@@ -235,8 +235,7 @@ class VrmScraper:
             return None
         try:
             return int(value)
-        except TypeError, ValueError:
-            return None
+        except (TypeError, ValueError): return None
 
     @staticmethod
     def _json_decimal(value: Any) -> Decimal | None:
@@ -245,8 +244,7 @@ class VrmScraper:
             return None
         try:
             return Decimal(str(value))
-        except TypeError, ValueError:
-            return None
+        except (TypeError, ValueError): return None
 
     @staticmethod
     def _normalize_json_status(status_str: str) -> str:

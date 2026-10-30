@@ -153,8 +153,7 @@ class ListingListView(generics.ListAPIView):
         if min_price:
             try:
                 queryset = queryset.filter(price__gte=Decimal(min_price))
-            except (InvalidOperation, ValueError, TypeError) as exc:
-                raise serializers.ValidationError(
+            except (((InvalidOperation, ValueError, TypeError) as exc)): raise serializers.ValidationError(
                     {"min_price": "min_price must be a valid decimal number."}
                 ) from exc
 
@@ -162,8 +161,7 @@ class ListingListView(generics.ListAPIView):
         if max_price:
             try:
                 queryset = queryset.filter(price__lte=Decimal(max_price))
-            except (InvalidOperation, ValueError, TypeError) as exc:
-                raise serializers.ValidationError(
+            except (((InvalidOperation, ValueError, TypeError) as exc)): raise serializers.ValidationError(
                     {"max_price": "max_price must be a valid decimal number."}
                 ) from exc
 
@@ -171,8 +169,7 @@ class ListingListView(generics.ListAPIView):
         if beds:
             try:
                 queryset = queryset.filter(beds=int(beds))
-            except (ValueError, TypeError) as exc:
-                raise serializers.ValidationError(
+            except ((ValueError, TypeError) as exc): raise serializers.ValidationError(
                     {"beds": "beds must be a valid integer."}
                 ) from exc
 
@@ -185,8 +182,7 @@ class ListingListView(generics.ListAPIView):
         for listing in queryset:
             try:
                 score = score_listing(listing)
-            except ArithmeticError, ValueError, TypeError, AttributeError:
-                score = None
+            except (((ArithmeticError, ValueError, TypeError, AttributeError))): score = None
                 logger.exception("Failed to score listing id=%s", listing.id)
             score_by_listing_id[listing.id] = score
             scored.append((listing, score))
@@ -607,8 +603,7 @@ def foreclosures_list(request):
                 page = 1
             if limit < 1 or limit > 100:
                 limit = 20
-        except ValueError, TypeError:
-            page = 1
+        except (ValueError, TypeError): page = 1
             limit = 20
 
         total_results = queryset.count()
@@ -1946,8 +1941,7 @@ def export_property_deal_pack(request, property_id: int):
             },
             status=status.HTTP_200_OK,
         )
-    except (RuntimeError, ValueError) as e:
-        logger.error(
+    except ((RuntimeError, ValueError) as e): logger.error(
             f"Deal-pack analysis error for property_id={property_id}: {str(e)}"
         )
         return _service_unavailable_response()
@@ -2327,8 +2321,7 @@ class VrmPropertyListAPI(APIView):
         try:
             page = max(1, int(page))
             page_size = min(100, max(1, int(page_size)))
-        except ValueError, TypeError:
-            page = 1
+        except (ValueError, TypeError): page = 1
             page_size = 25
 
         offset = (page - 1) * page_size
@@ -2433,8 +2426,7 @@ class VrmPropertyImportAPI(APIView):
             uploaded = request.FILES["file"]
             try:
                 data = json.load(uploaded)
-            except json.JSONDecodeError, ValueError:
-                logger.warning("VRM import: failed to parse uploaded file")
+            except (json.JSONDecodeError, ValueError): logger.warning("VRM import: failed to parse uploaded file")
                 return Response(
                     {
                         "error": "Could not parse uploaded file. Ensure it is valid JSON."

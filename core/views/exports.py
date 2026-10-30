@@ -49,8 +49,7 @@ def _format_financing_value(
     try:
         number = Decimal(str(value))
         return f"{prefix}{number:,.2f}{suffix}"
-    except InvalidOperation, TypeError, ValueError:
-        return f"{prefix}{value}{suffix}"
+    except ((InvalidOperation, TypeError, ValueError)): return f"{prefix}{value}{suffix}"
 
 
 def _generate_pdf(html: str) -> bytes:

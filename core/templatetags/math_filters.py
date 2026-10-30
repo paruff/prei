@@ -21,8 +21,7 @@ def mul(value, arg):
     """Multiply the value by the argument."""
     try:
         return Decimal(str(value)) * Decimal(str(arg))
-    except ValueError, TypeError, InvalidOperation:
-        return value
+    except ((ValueError, TypeError, InvalidOperation)): return value
 
 
 @register.filter
@@ -30,8 +29,7 @@ def sub(value, arg):
     """Subtract arg from value. Usage: {{ value|sub:arg }}."""
     try:
         return Decimal(str(value)) - Decimal(str(arg))
-    except ValueError, TypeError, InvalidOperation:
-        return value
+    except ((ValueError, TypeError, InvalidOperation)): return value
 
 
 @register.filter
@@ -39,8 +37,7 @@ def get_item(dictionary, key):
     """Look up a dictionary value by key. Usage: {{ dict|get_item:key }}."""
     try:
         return dictionary.get(key)
-    except AttributeError, TypeError:
-        return None
+    except (AttributeError, TypeError): return None
 
 
 @register.filter
@@ -56,5 +53,4 @@ def sum_attr(queryset, attr_name):
             if val is not None:
                 total += Decimal(str(val))
         return total
-    except ValueError, TypeError, InvalidOperation, AttributeError:
-        return Decimal("0")
+    except (((ValueError, TypeError, InvalidOperation, AttributeError))): return Decimal("0")
