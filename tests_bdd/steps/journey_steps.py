@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from html.parser import HTMLParser
 
 import httpx
 import pytest
@@ -246,40 +247,53 @@ def in_portfolio(ctx: JourneyCtx) -> None:
     assert "No data" in _portfolio_row(ctx.page), "fresh acquisition has no actuals"
 
 
+class _FormParser(HTMLParser):
+    """Collect the action and default field values of the form posting to `action`."""
+
+    def __init__(self, action: str) -> None:
+        super().__init__()
+        self.target, self.action, self.fields, self.options = action, None, {}, {}
+        self._in, self._select = False, None
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "form" and a.get("action") == self.target:
+            self._in, self.action = True, a["action"]
+        elif self._in and tag == "select":
+            self._select = a["name"]
+            self.options[self._select] = []
+        elif self._in and tag == "option" and self._select:
+            self.options[self._select].append(a.get("value", ""))
+        elif self._in and tag == "input" and a.get("name"):
+            self.fields[a["name"]] = a.get("value", "")
+
+    def handle_endtag(self, tag):
+        if tag == "form":
+            self._in = False
+        elif tag == "select":
+            self._select = None
+
+
 @when("I enter monthly actuals for it")
 def enter_actuals(ctx: JourneyCtx) -> None:
-    """Fill in the dashboard's actuals form (the property option and fields come from the page)."""
-    row = _portfolio_row(ctx.page)
-    prop_id = re.search(r'data-property-id="(\d+)"', row)
+    """Fill in and submit the actuals form on the portfolio dashboard."""
+    prop_id = re.search(r'data-property-id="(\d+)"', _portfolio_row(ctx.page))
     assert prop_id, "no property id in the portfolio row"
-    form = re.search(
-        r'<form[^>]*action="/portfolio/actuals/add/".*?</form>', ctx.page, re.S
-    )
-    assert form, "no actuals form on the portfolio dashboard"
-    assert f'<option value="{prop_id.group(1)}"' in form.group(0), (
-        "property not offered by the form"
-    )
-    fields = set(re.findall(r'name="(actual_\w+|month|property_id)"', form.group(0)))
-    assert fields >= {
-        "property_id",
-        "month",
-        "actual_rent_collected",
-        "actual_vacancy_days",
-        "actual_expenses",
-        "actual_maintenance",
-    }, fields
-    resp = _post(
-        ctx,
-        "/portfolio/actuals/add/",
-        {
-            "property_id": prop_id.group(1),
-            "month": "2026-10",  # what <input type="month"> submits
-            "actual_rent_collected": "1800.00",
-            "actual_vacancy_days": "0",
-            "actual_expenses": "400.00",
-            "actual_maintenance": "100.00",
-        },
-    )
+    form = _FormParser("/portfolio/actuals/add/")
+    form.feed(ctx.page)
+    assert form.action, "no actuals form on the portfolio dashboard"
+    assert prop_id.group(1) in form.options["property_id"], "property not in the form"
+    entered = {
+        "property_id": prop_id.group(1),  # chosen from the form's select
+        "month": "2026-10",  # what <input type="month"> submits
+        "actual_rent_collected": "1800.00",
+        "actual_vacancy_days": "0",
+        "actual_expenses": "400.00",
+        "actual_maintenance": "100.00",
+    }
+    missing = set(entered) - {"property_id"} - set(form.fields)
+    assert not missing, f"form has no input for {missing}"
+    resp = _post(ctx, form.action, {**form.fields, **entered})
     assert resp.status_code == 200
     ctx.page = resp.text
 
