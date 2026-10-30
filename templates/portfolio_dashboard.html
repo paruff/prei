@@ -97,24 +97,24 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" for="actual_month">Month</label>
-          <input class="form-input" type="month" id="actual_month" name="month" required>
+          <label class="form-label" for="{{ actuals_form.month.id_for_label }}">Month</label>
+          {{ actuals_form.month }}
         </div>
         <div class="form-group">
-          <label class="form-label" for="actual_rent_collected">Rent Collected ($)</label>
-          <input class="form-input" type="number" step="0.01" min="0" id="actual_rent_collected" name="actual_rent_collected" required>
+          <label class="form-label" for="{{ actuals_form.actual_rent_collected.id_for_label }}">Rent Collected ($)</label>
+          {{ actuals_form.actual_rent_collected }}
         </div>
         <div class="form-group">
-          <label class="form-label" for="actual_vacancy_days">Vacancy Days</label>
-          <input class="form-input" type="number" min="0" max="31" id="actual_vacancy_days" name="actual_vacancy_days" value="0">
+          <label class="form-label" for="{{ actuals_form.actual_vacancy_days.id_for_label }}">Vacancy Days</label>
+          {{ actuals_form.actual_vacancy_days }}
         </div>
         <div class="form-group">
-          <label class="form-label" for="actual_expenses">Operating Expenses ($)</label>
-          <input class="form-input" type="number" step="0.01" min="0" id="actual_expenses" name="actual_expenses" required>
+          <label class="form-label" for="{{ actuals_form.actual_expenses.id_for_label }}">Operating Expenses ($)</label>
+          {{ actuals_form.actual_expenses }}
         </div>
         <div class="form-group">
-          <label class="form-label" for="actual_maintenance">Maintenance ($)</label>
-          <input class="form-input" type="number" step="0.01" min="0" id="actual_maintenance" name="actual_maintenance" required>
+          <label class="form-label" for="{{ actuals_form.actual_maintenance.id_for_label }}">Maintenance ($)</label>
+          {{ actuals_form.actual_maintenance }}
         </div>
       </div>
       <div class="form-actions"><button type="submit" class="btn btn-primary">Save Actuals</button></div>

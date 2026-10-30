@@ -32,7 +32,7 @@ class MonthlyActualsForm(forms.ModelForm):
         ]
         widgets = {
             "actual_rent_collected": forms.NumberInput(
-                attrs={"step": "0.01", "class": "form-input"}
+                attrs={"step": "0.01", "min": "0", "class": "form-input"}
             ),
             "actual_vacancy_days": forms.NumberInput(
                 attrs={"class": "form-input", "min": "0", "max": "31"}
