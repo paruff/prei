@@ -36,7 +36,7 @@ help:
 	@echo "  ── Docker (build image locally, no CI needed) ──"
 	@echo "  make docker-dev         Build + start Docker stack (migrate + seed)"
 	@echo "  make docker-seed        Seed one market (default Dallas, TX) in the container"
-	@echo "  make docker-accept      Build, start, seed, run tests/acceptance/ against the container, stop"
+	@echo "  make docker-accept      Build, start, seed, run tests/acceptance/ + the journey feature against the container, stop"
 	@echo "  make test-live          Start Docker + run live acceptance tests"
 	@echo "  make build              Build Docker image"
 	@echo "  make up                 Build + start daemon + smoke test"
@@ -206,7 +206,7 @@ docker-accept: ensure-env build
 		docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_market || rc=$$?; \
 	fi; \
 	if [ $$rc -eq 0 ]; then \
-		BASE_URL=$(ACCEPT_URL) $(PYTHON) -m pytest tests/acceptance/ -m acceptance -v --tb=short || rc=$$?; \
+		BASE_URL=$(ACCEPT_URL) $(PYTHON) -m pytest tests/acceptance/ tests_bdd/test_journey.py -m acceptance -v --tb=short || rc=$$?; \
 	fi; \
 	docker compose down; \
 	exit $$rc

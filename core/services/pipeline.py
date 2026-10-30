@@ -671,3 +671,27 @@ def _notify_if_growth_area_match(
         logging.getLogger("prei.pipeline").warning(
             "Failed to send pipeline notification: %s", exc
         )
+
+
+def underwriting_summary(pipeline_property: Any) -> dict[str, Any] | None:
+    """Screening metrics and underwriting KPIs from price and estimated rent.
+
+    Returns None when either is missing. Yield and price-to-rent are the
+    screening numbers; the rest are NOI, cap rate, cash-on-cash (percent) and DSCR.
+    """
+    from core.services.cma import estimate_kpis
+
+    price = pipeline_property.price
+    rent = pipeline_property.estimated_rent
+    if not price or not rent or price <= 0 or rent <= 0:
+        return None
+    annual_rent = Decimal(rent) * 12
+    kpis = estimate_kpis(Decimal(price), Decimal(rent))
+    return {
+        "gross_yield_pct": annual_rent / Decimal(price) * 100,
+        "price_to_rent": Decimal(price) / annual_rent,
+        "noi": kpis["noi"],
+        "cap_rate_pct": kpis["cap_rate"] * 100,
+        "cash_on_cash_pct": kpis["cash_on_cash"] * 100,
+        "dscr": kpis["dscr"],
+    }
