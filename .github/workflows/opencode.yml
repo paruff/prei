@@ -89,7 +89,7 @@ jobs:
           echo "model=$PROVIDER/$FALLBACK" >> "$GITHUB_OUTPUT"
 
       - name: Run OpenCode
-        uses: anomalyco/opencode/github@843a6c514e606b436a7fe713422ace0a93ad3d61  # v2.0.32
+        uses: anomalyco/opencode/github@1097e2668b1e08ad63bdf0b1c4860b9bc01e420c  # v2.2.0
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
