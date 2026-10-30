@@ -138,13 +138,13 @@ def pipeline_kanban(request: HttpRequest) -> HttpResponse:
             )
         try:
             pp = PipelineProperty.objects.get(pk=pp_id, user=request.user)
-        except PipelineProperty.DoesNotExist:
+        except (PipelineProperty.DoesNotExist):
             return JsonResponse({"error": "Property not found"}, status=404)
         # Validate stage order — only allow forward advancement
         try:
             current_idx = STAGE_ORDER.index(pp.stage)
             new_idx = STAGE_ORDER.index(new_stage)
-        except ValueError:
+        except (ValueError):
             return JsonResponse({"error": f"Unknown stage: {new_stage}"}, status=400)
         if new_idx <= current_idx:
             return JsonResponse(
@@ -302,7 +302,7 @@ def pipeline_advance_stage(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     action = request.POST.get("action", "")
@@ -342,7 +342,7 @@ def pipeline_advance(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     try:
@@ -362,7 +362,7 @@ def pipeline_kill(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     reason = request.POST.get("reason", "No reason provided")
@@ -380,7 +380,7 @@ def pipeline_hold(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     reason = request.POST.get("reason", "")
@@ -398,7 +398,7 @@ def pipeline_reactivate(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     reactivate_property(prop)
@@ -416,7 +416,7 @@ def pipeline_detail(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     source_record = get_source_record(prop)
@@ -495,7 +495,7 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
     if source_type == "vrm":
         try:
             vrm = VrmProperty.objects.get(vrm_property_id=int(source_id))
-        except VrmProperty.DoesNotExist, ValueError, TypeError:
+        except (VrmProperty.DoesNotExist, ValueError, TypeError):
             messages.error(request, "VRM property not found")
             return redirect(next_url)
 
@@ -517,7 +517,7 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
 
         try:
             hud = HudProperty.objects.get(hud_case_number=source_id)
-        except HudProperty.DoesNotExist:
+        except (HudProperty.DoesNotExist):
             messages.error(request, "HUD property not found")
             return redirect(next_url)
 
@@ -539,7 +539,7 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
 
         try:
             usda = UsdaProperty.objects.get(usda_case_number=source_id)
-        except UsdaProperty.DoesNotExist:
+        except (UsdaProperty.DoesNotExist):
             messages.error(request, "USDA property not found")
             return redirect(next_url)
 
@@ -592,7 +592,7 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
             # county: source_id is a CountyForeclosureNotice pk
             try:
                 cn = CountyForeclosureNotice.objects.get(pk=int(source_id))
-            except CountyForeclosureNotice.DoesNotExist, ValueError, TypeError:
+            except (CountyForeclosureNotice.DoesNotExist, ValueError, TypeError):
                 messages.error(request, "County notice not found")
                 return redirect(next_url)
 
@@ -616,7 +616,7 @@ def pipeline_offer_create(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     existing_offers = OfferRecord.objects.filter(pipeline_property=prop).order_by(
@@ -665,7 +665,7 @@ def pipeline_dd_checklist(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     dd, created = DueDiligenceChecklist.objects.get_or_create(
@@ -722,7 +722,7 @@ def pipeline_renovation(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     renovation, created = RenovationRecord.objects.get_or_create(
@@ -773,7 +773,7 @@ def pipeline_closing_create(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         prop = PipelineProperty.objects.get(pk=pk, user=request.user)
-    except PipelineProperty.DoesNotExist:
+    except (PipelineProperty.DoesNotExist):
         raise Http404
 
     # Check for existing closing record

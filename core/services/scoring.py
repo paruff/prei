@@ -187,7 +187,7 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
     try:
         user_profile = UserProfile.objects.get(user=property_obj.user)
         land_pct = user_profile.land_value_pct
-    except UserProfile.DoesNotExist:
+    except (UserProfile.DoesNotExist):
         land_pct = Decimal("0.20")
     deprec = calculate_annual_depreciation(pp, land_value_pct=land_pct)
     pre_tax_cf = annual_cash_flow
@@ -214,7 +214,7 @@ def score_listing_v2(property_obj, targets) -> UnderwritingScore:
             projected_irr = ((1 + monthly_irr) ** 12) - 1
         else:
             projected_irr = monthly_irr
-    except Exception:
+    except (Exception):
         projected_irr = Decimal("0")
 
     # ── Scoring ───────────────────────────────────────────────────────────────

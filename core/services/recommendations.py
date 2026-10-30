@@ -64,7 +64,7 @@ def _normalize_ranked_results(ranked: Any) -> list[RankedListing]:
         else:
             try:
                 score = Decimal(str(raw_score))
-            except InvalidOperation, ValueError, TypeError:
+            except (InvalidOperation, ValueError, TypeError):
                 score = score_listing(listing)
 
         normalized.append({"obj": listing, "score": score})
@@ -79,7 +79,7 @@ def _rank_listings(listings: list[Listing]) -> list[RankedListing]:
         ranked = _normalize_ranked_results(rank_listings(listings))
         if ranked:
             return ranked
-    except Exception:
+    except (Exception):
         logger.exception(
             "recommend_listings: rank_listings unavailable, using fallback"
         )
@@ -98,7 +98,7 @@ def recommend_listings(user: AbstractBaseUser, limit: int = 10) -> list[Recommen
 
     try:
         safe_limit = int(limit)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         safe_limit = 0
     if safe_limit <= 0:
         return []

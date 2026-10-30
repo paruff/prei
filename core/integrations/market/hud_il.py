@@ -64,7 +64,7 @@ class ILClient:
         """Get Income Limits data for a county/metro area by entity ID."""
         try:
             data = self._get(f"data/{entity_id}")
-        except ILError:
+        except (ILError):
             return None
 
         result = data.get("data", {})
@@ -96,7 +96,7 @@ def _parse_il(value: Any) -> Decimal | None:
         return None
     try:
         return cast(Decimal, Decimal(str(value)))
-    except Exception:
+    except (Exception):
         return None
 
 

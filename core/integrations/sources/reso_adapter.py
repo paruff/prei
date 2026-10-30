@@ -254,7 +254,7 @@ class RESOAdapter:
                 result: Dict[str, Any] = response.json()
                 return result
 
-            except requests.exceptions.Timeout:
+            except (requests.exceptions.Timeout):
                 if attempt == self.MAX_RETRIES - 1:
                     raise RESOAPIError("Request timeout")
                 time.sleep(2**attempt)  # Exponential backoff

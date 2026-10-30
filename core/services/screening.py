@@ -356,7 +356,7 @@ def _eval_gacs_score(
             growth_area = GrowthArea.objects.filter(
                 state=state, city_name__iexact=city
             ).first()
-        except Exception:
+        except (Exception):
             # Broad catch: DB connection failure, import error, etc.
             # Non-critical — screening continues without GACS deduction
             growth_area = None
@@ -588,7 +588,7 @@ def _get_monthly_rent(
             )
             if rent is not None and rent > 0:
                 return _cache_rent(pipeline_property, rent, cache_rent)
-        except Exception:
+        except (Exception):
             logger.warning(
                 "Rentometer lookup failed for pipeline_property pk=%s",
                 getattr(pipeline_property, "pk", None),
@@ -607,7 +607,7 @@ def _get_monthly_rent(
             )
             if rent is not None and rent > 0:
                 return _cache_rent(pipeline_property, rent, cache_rent)
-        except Exception:
+        except (Exception):
             logger.warning(
                 "HUD FMR lookup failed for pipeline_property pk=%s",
                 getattr(pipeline_property, "pk", None),

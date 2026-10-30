@@ -63,7 +63,7 @@ def search_listings(request):
             max_price = max_price or (
                 str(s.max_price) if s.max_price is not None else None
             )
-        except SavedSearch.DoesNotExist, ValueError:
+        except (SavedSearch.DoesNotExist, ValueError):
             pass
 
     qs = Listing.objects.all()
@@ -77,12 +77,12 @@ def search_listings(request):
     if min_price:
         try:
             qs = qs.filter(price__gte=min_price)
-        except Exception:
+        except (Exception):
             pass
     if max_price:
         try:
             qs = qs.filter(price__lte=max_price)
-        except Exception:
+        except (Exception):
             pass
 
     items = [{"obj": lst, "score": score_listing(lst)} for lst in qs[:200]]
@@ -133,7 +133,7 @@ def analyze_property(request, property_id: int):
 
     try:
         prop = Property.objects.get(id=property_id)
-    except Property.DoesNotExist:
+    except (Property.DoesNotExist):
         return render(
             request,
             "analyze_property.html",
@@ -147,7 +147,7 @@ def analyze_property(request, property_id: int):
     def num(name: str, default: str = "0") -> Decimal:
         try:
             return Decimal(str(request.POST.get(name, default)))
-        except Exception:
+        except (Exception):
             return Decimal("0")
 
     taxes = num("taxes")
@@ -185,7 +185,7 @@ def analyze_property(request, property_id: int):
 def report_listing(request, listing_id: int):
     try:
         lst = Listing.objects.get(id=listing_id)
-    except Listing.DoesNotExist:
+    except (Listing.DoesNotExist):
         return render(
             request, "property_report.html", {"error": "Listing not found."}, status=404
         )
@@ -196,7 +196,7 @@ def report_listing(request, listing_id: int):
 
     try:
         kpis: dict[str, Decimal] = estimate_listing_kpis(lst, market_snapshot)
-    except Exception:
+    except (Exception):
         logger.exception(
             "report_listing: KPI computation failed for listing_id=%s", listing_id
         )
@@ -223,7 +223,7 @@ def report_listing(request, listing_id: int):
 def report_property(request, property_id: int):
     try:
         prop = Property.objects.get(id=property_id)
-    except Property.DoesNotExist:
+    except (Property.DoesNotExist):
         return render(
             request,
             "property_report.html",
@@ -560,7 +560,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
     # Get or create user screening criteria for auto-screening
     try:
         criteria = ScreeningCriteria.objects.get(user=request.user)
-    except ScreeningCriteria.DoesNotExist:
+    except (ScreeningCriteria.DoesNotExist):
         criteria = None
 
     results = {

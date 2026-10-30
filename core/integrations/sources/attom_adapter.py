@@ -209,7 +209,7 @@ class ATTOMAdapter:
             cache.set(cache_key, data, self.CACHE_DURATION)
             data["_from_cache"] = False
             return data
-        except ATTOMRateLimitError:
+        except (ATTOMRateLimitError):
             # If rate limited and no cache available, raise error
             logger.error(f"Rate limit exceeded and no cached data for {address1}")
             raise
@@ -253,10 +253,10 @@ class ATTOMAdapter:
             result: Dict[str, Any] = response.json()
             return result
 
-        except requests.exceptions.Timeout:
+        except (requests.exceptions.Timeout):
             logger.error("ATTOM API request timeout for %s", log_context)
             raise ATTOMAPIError("Request timeout")
-        except requests.exceptions.RequestException:
+        except (requests.exceptions.RequestException):
             logger.error("ATTOM API request error for %s", log_context)
             raise ATTOMAPIError("Request failed")
 
@@ -451,7 +451,7 @@ class ATTOMAdapter:
             return None
         try:
             return Decimal(str(value))
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             return None
 
     def _parse_date(self, date_str: Optional[str]) -> Optional[str]:
@@ -473,12 +473,12 @@ class ATTOMAdapter:
                 try:
                     parsed_date = datetime.strptime(date_str, fmt)
                     return parsed_date.date().isoformat()
-                except ValueError:
+                except (ValueError):
                     continue
 
             # If no format matches, return as-is
             return date_str
-        except Exception:
+        except (Exception):
             return None
 
     def get_usage_stats(self, days: int = 1) -> Dict[str, Any]:
@@ -550,7 +550,7 @@ def fetch(location: Optional[str] = None) -> List[Dict[str, Any]]:
         foreclosure_data = adapter.fetch_foreclosure_data(
             geoid=location, radius=default_radius
         )
-    except ATTOMAPIError:
+    except (ATTOMAPIError):
         logger.exception(
             "Failed to fetch ATTOM foreclosure data for location=%s", location
         )
@@ -568,7 +568,7 @@ def fetch(location: Optional[str] = None) -> List[Dict[str, Any]]:
             continue
         try:
             normalized_properties.append(adapter.normalize_property(property_data))
-        except Exception:
+        except (Exception):
             logger.exception(
                 "Failed to normalize ATTOM property for location=%s", location
             )

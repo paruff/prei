@@ -55,7 +55,7 @@ def _fetch_via_playwright(url: str) -> str | None:
     """Fetch page HTML via Playwright headless Chromium."""
     try:
         from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
-    except ImportError:
+    except (ImportError):
         logger.warning("playwright not installed")
         return None
 
@@ -185,7 +185,7 @@ def _parse_date(raw: str) -> str | None:
     for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%B %d, %Y", "%b %d, %Y"):
         try:
             return dt.strptime(raw.strip(), fmt).date().isoformat()
-        except ValueError:
+        except (ValueError):
             continue
     return None
 
@@ -197,5 +197,5 @@ def _parse_bid(raw: str) -> Decimal | None:
     cleaned = raw.replace("$", "").replace(",", "").strip()
     try:
         return Decimal(cleaned)
-    except Exception:
+    except (Exception):
         return None

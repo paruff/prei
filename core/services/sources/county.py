@@ -375,7 +375,7 @@ class TexasCountyForeclosureSource(DiscoverySource):
         )
         try:
             price = float(price_raw.replace("$", "").replace(",", ""))
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             price = None
 
         return {
@@ -470,7 +470,7 @@ def _fetch_via_playwright(url: str) -> str | None:
     """
     try:
         from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
-    except ImportError:
+    except (ImportError):
         logger.warning("playwright not installed — cannot render county pages")
         return None
 

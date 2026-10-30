@@ -42,7 +42,7 @@ def _get_market_score_weights() -> dict[str, Decimal]:
         if key in configured:
             try:
                 result[key] = Decimal(str(configured[key]))
-            except Exception:
+            except (Exception):
                 pass  # fall back to default
     return result
 
@@ -271,7 +271,7 @@ def score_market_by_zip(zip_code: str) -> dict:
             .order_by("-fetched_at")
             .first()
         )
-    except MarketSnapshot.DoesNotExist:
+    except (MarketSnapshot.DoesNotExist):
         snapshot = None
 
     if snapshot is None:

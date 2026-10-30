@@ -44,7 +44,7 @@ def growth_areas(request):
     page = request.GET.get("page", 1)
     try:
         page = int(page)
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         page = 1
 
     growth_areas_qs = GrowthArea.objects.all().order_by("-composite_score")
@@ -53,7 +53,7 @@ def growth_areas(request):
         paginator = Paginator(growth_areas_qs, 25)
         try:
             growth_page = paginator.page(page)
-        except EmptyPage:
+        except (EmptyPage):
             growth_page = paginator.page(paginator.num_pages)
         data_source = "growtharea"
     else:
@@ -286,7 +286,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
             from core.integrations.market.city_zip_map import lookup_city_zip
 
             zip_code = lookup_city_zip(state, data["place_name"])
-        except Exception:
+        except (Exception):
             pass
         if zip_code and data.get("run_school_api", False):
             try:
@@ -296,7 +296,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
 
                 gs_key = getattr(settings, "GREATSCHOOLS_API_KEY", "")
                 school_score = fetch_school_rating(zip_code, gs_key)
-            except Exception:
+            except (Exception):
                 pass
 
         # Compute net migration from population data
@@ -330,7 +330,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                 else:
                     emp_rate = safe_emp_growth
                     county_fips_to_store = city_county_fips
-            except Exception:
+            except (Exception):
                 emp_rate = safe_emp_growth
                 county_fips_to_store = city_county_fips
         else:
@@ -355,7 +355,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                     fmr_2br = fmr_result.get("fmr_2br")
                 else:
                     rent_growth = fmr_year = fmr_2br = None
-            except Exception:
+            except (Exception):
                 rent_growth = fmr_year = fmr_2br = None
         else:
             rent_growth = fmr_year = fmr_2br = None
@@ -441,7 +441,7 @@ def growth_explorer(request: HttpRequest) -> HttpResponse:
                     max_ptr = prefs.max_price_to_rent_ratio
                     min_beds = prefs.min_beds
                     min_baths = prefs.min_baths
-                except UserScreeningPreferences.DoesNotExist:
+                except (UserScreeningPreferences.DoesNotExist):
                     pass
 
             thresholds = ScreeningThresholds(

@@ -398,6 +398,6 @@ class Command(BaseCommand):
                         continue
                     state, city, place_code = parts
                     targets.append((state.upper(), city.title(), place_code))
-        except FileNotFoundError:
+        except (FileNotFoundError):
             raise CommandError(f"File not found: {file_path}")
         return targets

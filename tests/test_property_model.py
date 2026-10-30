@@ -201,7 +201,7 @@ class PropertyValidationTest(TestCase):
         try:
             p.full_clean()
             # If it passes model validation, it would fail at DB save
-        except ValidationError:
+        except (ValidationError):
             pass  # Some Django versions do validate
 
     def test_bathrooms_must_be_non_negative(self):

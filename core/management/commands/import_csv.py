@@ -40,7 +40,7 @@ class Command(BaseCommand):
         email = options["user_email"]
         try:
             user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        except (User.DoesNotExist):
             raise CommandError(
                 f"User with email {email} does not exist. Create the user first."
             )
@@ -99,7 +99,7 @@ class Command(BaseCommand):
                         ) from exc
                     try:
                         prop = Property.objects.get(id=property_id)
-                    except Property.DoesNotExist:
+                    except (Property.DoesNotExist):
                         self.stdout.write(
                             self.style.WARNING(
                                 f"Skipping rent: property_id {property_id} not found"
@@ -130,7 +130,7 @@ class Command(BaseCommand):
                         ) from exc
                     try:
                         prop = Property.objects.get(id=property_id)
-                    except Property.DoesNotExist:
+                    except (Property.DoesNotExist):
                         self.stdout.write(
                             self.style.WARNING(
                                 f"Skipping expense: property_id {property_id} not found"

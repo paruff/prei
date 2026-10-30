@@ -102,7 +102,7 @@ def compute_noi_for_user(user) -> dict[str, Decimal]:
             annual = compute_noi(prop)
             total += annual
             count += 1
-        except ValueError:
+        except (ValueError):
             logger.warning("Skipping property %s — insufficient data for NOI", prop.id)
 
     average = total / Decimal(count) if count else Decimal("0")

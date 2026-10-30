@@ -128,7 +128,7 @@ def irr(cashflows: list[Decimal]) -> Decimal:
             )
             return Decimal("0")
         return to_decimal(value)
-    except Exception:
+    except (Exception):
         logger.warning("irr: numpy_financial.irr raised; returning 0", exc_info=True)
         return Decimal("0")
 
