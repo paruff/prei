@@ -250,6 +250,7 @@ else:
 **Implementation:**
 ```python
 import environ
+
 env = environ.Env()
 DEBUG = env.bool("DEBUG", default=False)
 SECRET_KEY = env("SECRET_KEY")

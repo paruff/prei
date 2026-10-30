@@ -27,14 +27,14 @@ Prei needs to fetch pre-foreclosure notices (NOD, NTS, Lis Pendens) for target m
 ### AC-1: Fetch returns list (empty is valid)
 ```python
 def test_attom_preforeclosure_fetch_returns_notices(mock_attom_response):
-    notices = fetch_attom_preforeclosure(zip_code='75201')
+    notices = fetch_attom_preforeclosure(zip_code="75201")
     assert len(notices) >= 0  # 0 is valid if no active notices
 ```
 
 ### AC-2: Each notice validates against CountyForeclosureNotice model
 ```python
 def test_attom_notice_normalizes_to_county_notice_model(mock_attom_response):
-    notices = fetch_attom_preforeclosure(zip_code='75201')
+    notices = fetch_attom_preforeclosure(zip_code="75201")
     for n in notices:
         obj = CountyForeclosureNotice(**n)
         obj.full_clean()  # validates model constraints

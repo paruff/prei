@@ -70,6 +70,7 @@ def calculate_cap_rate(noi: Decimal, purchase_price: Decimal) -> Decimal:
         raise ValueError(f"purchase_price must be > 0, got {purchase_price}")
     return noi / purchase_price
 
+
 # ❌ Wrong — financial math in a view
 class PropertyDetailView(APIView):
     def get(self, request, pk):

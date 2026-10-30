@@ -52,10 +52,14 @@
 """E2E tests for pipeline kanban action endpoints."""
 
 import pytest
+
 pytestmark = pytest.mark.django_db(transaction=True)
 
+
 class TestKanbanAdvanceEndpoint:
-    def test_advance_endpoint_not_yet_implemented(self, page, e2e_login, kanban_property):
+    def test_advance_endpoint_not_yet_implemented(
+        self, page, e2e_login, kanban_property
+    ):
         # This test will fail until view is added
         page.goto(f"/pipeline/{kanban_property.pk}/advance/")
         assert page.url.endswith("/404/")  # 404 before view exists
@@ -71,6 +75,7 @@ class TestKanbanAdvanceEndpoint:
 
 ```python
 # core/views/__init__.py (append after pipeline_advance_stage)
+
 
 @login_required
 def pipeline_advance(request: HttpRequest, pk: int) -> HttpResponse:
@@ -381,20 +386,32 @@ class TestKanbanAdvanceEndpoint:
     def test_advance_forbidden_other_user(self, page, e2e_login, growth_area) -> None:
         """Other user's property returns 404."""
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         other = User.objects.create_user("other", "o@o.com", "pass")
         prop = PipelineProperty.objects.create(
-            user=other, source_type=PipelineProperty.SourceType.HUD,
-            source_id="OTHER-001", address="300 Other St", city="Austin", state="TX",
-            zip_code="78701", county="Travis", growth_area=growth_area,
-            stage=PipelineProperty.Stage.SCREENING, status=PipelineProperty.Status.ACTIVE,
-            screening_passed=True, price=90000, beds=2
+            user=other,
+            source_type=PipelineProperty.SourceType.HUD,
+            source_id="OTHER-001",
+            address="300 Other St",
+            city="Austin",
+            state="TX",
+            zip_code="78701",
+            county="Travis",
+            growth_area=growth_area,
+            stage=PipelineProperty.Stage.SCREENING,
+            status=PipelineProperty.Status.ACTIVE,
+            screening_passed=True,
+            price=90000,
+            beds=2,
         )
         page.goto(f"/pipeline/{prop.pk}/advance/")
         # Should 404 (not found for this user)
         assert "/404" in page.url or page.locator("text=Not Found").is_visible()
 
-    def test_advance_boundary_stabilized(self, page, e2e_login, kanban_property) -> None:
+    def test_advance_boundary_stabilized(
+        self, page, e2e_login, kanban_property
+    ) -> None:
         """Cannot advance past STABILIZED."""
         kanban_property.stage = PipelineProperty.Stage.STABILIZED
         kanban_property.save(update_fields=["stage"])
@@ -479,22 +496,40 @@ pytestmark = pytest.mark.django_db(transaction=True)
 @pytest.fixture()
 def killable_property(db, e2e_login, growth_area) -> PipelineProperty:
     return PipelineProperty.objects.create(
-        user=e2e_login, source_type=PipelineProperty.SourceType.HUD,
-        source_id="KILL-001", address="100 Kill St", city="Austin", state="TX",
-        zip_code="78701", county="Travis", growth_area=growth_area,
-        stage=PipelineProperty.Stage.UNDERWRITING, status=PipelineProperty.Status.ACTIVE,
-        screening_passed=True, price=90000, beds=3
+        user=e2e_login,
+        source_type=PipelineProperty.SourceType.HUD,
+        source_id="KILL-001",
+        address="100 Kill St",
+        city="Austin",
+        state="TX",
+        zip_code="78701",
+        county="Travis",
+        growth_area=growth_area,
+        stage=PipelineProperty.Stage.UNDERWRITING,
+        status=PipelineProperty.Status.ACTIVE,
+        screening_passed=True,
+        price=90000,
+        beds=3,
     )
 
 
 @pytest.fixture()
 def held_property(db, e2e_login, growth_area) -> PipelineProperty:
     prop = PipelineProperty.objects.create(
-        user=e2e_login, source_type=PipelineProperty.SourceType.HUD,
-        source_id="HOLD-001", address="200 Hold St", city="Austin", state="TX",
-        zip_code="78701", county="Travis", growth_area=growth_area,
-        stage=PipelineProperty.Stage.OFFER, status=PipelineProperty.Status.ON_HOLD,
-        screening_passed=True, price=95000, beds=3
+        user=e2e_login,
+        source_type=PipelineProperty.SourceType.HUD,
+        source_id="HOLD-001",
+        address="200 Hold St",
+        city="Austin",
+        state="TX",
+        zip_code="78701",
+        county="Travis",
+        growth_area=growth_area,
+        stage=PipelineProperty.Stage.OFFER,
+        status=PipelineProperty.Status.ON_HOLD,
+        screening_passed=True,
+        price=95000,
+        beds=3,
     )
     return prop
 
@@ -502,11 +537,20 @@ def held_property(db, e2e_login, growth_area) -> PipelineProperty:
 @pytest.fixture()
 def killed_property(db, e2e_login, growth_area) -> PipelineProperty:
     prop = PipelineProperty.objects.create(
-        user=e2e_login, source_type=PipelineProperty.SourceType.HUD,
-        source_id="KILLED-001", address="300 Killed St", city="Austin", state="TX",
-        zip_code="78701", county="Travis", growth_area=growth_area,
-        stage=PipelineProperty.Stage.DUE_DILIGENCE, status=PipelineProperty.Status.KILLED,
-        screening_passed=True, price=100000, beds=3
+        user=e2e_login,
+        source_type=PipelineProperty.SourceType.HUD,
+        source_id="KILLED-001",
+        address="300 Killed St",
+        city="Austin",
+        state="TX",
+        zip_code="78701",
+        county="Travis",
+        growth_area=growth_area,
+        stage=PipelineProperty.Stage.DUE_DILIGENCE,
+        status=PipelineProperty.Status.KILLED,
+        screening_passed=True,
+        price=100000,
+        beds=3,
     )
     return prop
 
@@ -623,11 +667,20 @@ pytestmark = pytest.mark.django_db(transaction=True)
 @pytest.fixture()
 def ui_test_property(db, e2e_login, growth_area) -> PipelineProperty:
     return PipelineProperty.objects.create(
-        user=e2e_login, source_type=PipelineProperty.SourceType.HUD,
-        source_id="UI-TEST-001", address="400 UI Test St", city="Austin", state="TX",
-        zip_code="78701", county="Travis", growth_area=growth_area,
-        stage=PipelineProperty.Stage.SCREENING, status=PipelineProperty.Status.ACTIVE,
-        screening_passed=True, price=90000, beds=3
+        user=e2e_login,
+        source_type=PipelineProperty.SourceType.HUD,
+        source_id="UI-TEST-001",
+        address="400 UI Test St",
+        city="Austin",
+        state="TX",
+        zip_code="78701",
+        county="Travis",
+        growth_area=growth_area,
+        stage=PipelineProperty.Stage.SCREENING,
+        status=PipelineProperty.Status.ACTIVE,
+        screening_passed=True,
+        price=90000,
+        beds=3,
     )
 
 
@@ -638,7 +691,7 @@ class TestKanbanUIActions:
         assert card.is_visible()
 
         # Open dropdown
-        card.locator('.kanban-action-trigger').click()
+        card.locator(".kanban-action-trigger").click()
         # Click Kill
         page.locator('.kanban-action-item[data-action="kill"]').click()
         # Handle confirm dialog (Playwright auto-accepts confirm by default in some contexts, may need page.on('dialog'))
@@ -652,7 +705,7 @@ class TestKanbanUIActions:
     def test_hold_via_dropdown(self, page, e2e_login, ui_test_property) -> None:
         page.goto("/pipeline/kanban/")
         card = page.locator(f'.kanban-card[data-id="{ui_test_property.pk}"]')
-        card.locator('.kanban-action-trigger').click()
+        card.locator(".kanban-action-trigger").click()
         page.locator('.kanban-action-item[data-action="hold"]').click()
         page.wait_for_timeout(500)
         assert card.count() == 0
@@ -663,15 +716,24 @@ class TestKanbanUIActions:
     def test_reactivate_shows_when_killed(self, page, e2e_login, growth_area) -> None:
         """Reactivate option only visible for KILLED/ON_HOLD."""
         prop = PipelineProperty.objects.create(
-            user=e2e_login, source_type=PipelineProperty.SourceType.HUD,
-            source_id="UI-TEST-002", address="500 Reactivate St", city="Austin", state="TX",
-            zip_code="78701", county="Travis", growth_area=growth_area,
-            stage=PipelineProperty.Stage.SCREENING, status=PipelineProperty.Status.KILLED,
-            screening_passed=True, price=90000, beds=3
+            user=e2e_login,
+            source_type=PipelineProperty.SourceType.HUD,
+            source_id="UI-TEST-002",
+            address="500 Reactivate St",
+            city="Austin",
+            state="TX",
+            zip_code="78701",
+            county="Travis",
+            growth_area=growth_area,
+            stage=PipelineProperty.Stage.SCREENING,
+            status=PipelineProperty.Status.KILLED,
+            screening_passed=True,
+            price=90000,
+            beds=3,
         )
         page.goto("/pipeline/kanban/")
         card = page.locator(f'.kanban-card[data-id="{prop.pk}"]')
-        card.locator('.kanban-action-trigger').click()
+        card.locator(".kanban-action-trigger").click()
         reactivate = page.locator('.kanban-action-item[data-action="reactivate"]')
         assert reactivate.is_visible()
         assert not reactivate.is_hidden()

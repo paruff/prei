@@ -68,7 +68,9 @@ class TestHarness:
 
     def test_login_redirects_to_dashboard(self, page, e2e_login) -> None:
         page.goto("/dashboard/")
-        assert page.locator("text=Dashboard").count() >= 1 or page.url.endswith("/dashboard/")
+        assert page.locator("text=Dashboard").count() >= 1 or page.url.endswith(
+            "/dashboard/"
+        )
 ```
 
 - [ ] **Step 3: Run the harness smoke test to verify failure**
@@ -294,7 +296,9 @@ class TestWorkflowJourney:
         page.goto("/pipeline/screener/")
         assert page.url.endswith("/accounts/login/")
 
-    def test_full_workflow_journey(self, page, e2e_login, growth_area, discovery_sources) -> None:
+    def test_full_workflow_journey(
+        self, page, e2e_login, growth_area, discovery_sources
+    ) -> None:
         # ── Growth Explorer renders ────────────────────────────────────
         page.goto("/growth-explorer/")
         assert page.locator("h1", has_text="Growth Area Explorer").is_visible()
@@ -307,7 +311,9 @@ class TestWorkflowJourney:
         assert page.locator("label", has_text="VRM (VA REO)").is_visible()
 
         page.click("#discover-btn")
-        page.locator("#results-section:not([hidden])").wait_for(state="visible", timeout=30000)
+        page.locator("#results-section:not([hidden])").wait_for(
+            state="visible", timeout=30000
+        )
 
         results_text = page.locator("#results-section").inner_text()
         assert "Discovered" in results_text
@@ -322,11 +328,15 @@ class TestWorkflowJourney:
         assert row.locator(".chip-success", has_text="Passed").is_visible()
 
         # ── Advance to Underwriting via the screener action ────────────
-        row.locator('button', has_text="Underwriting").click()
+        row.locator("button", has_text="Underwriting").click()
         assert page.locator(".message", has_text="moved to Underwriting").is_visible()
 
         # Extract the pipeline property pk from the address detail link.
-        href = page.locator('tr', has_text="100 Prime St").locator('a[href*="/pipeline/"]').first.get_attribute("href")
+        href = (
+            page.locator("tr", has_text="100 Prime St")
+            .locator('a[href*="/pipeline/"]')
+            .first.get_attribute("href")
+        )
         pk = re.search(r"/pipeline/(\d+)/", href).group(1)
 
         # ── Offer: record an offer on the property ─────────────────────
@@ -416,9 +426,13 @@ def kanban_property(db, e2e_login, growth_area) -> PipelineProperty:
 
 
 class TestKanban:
-    def test_board_renders_stage_columns(self, page, e2e_login, kanban_property) -> None:
+    def test_board_renders_stage_columns(
+        self, page, e2e_login, kanban_property
+    ) -> None:
         page.goto("/pipeline/kanban/")
-        assert page.locator('#col-SCREENING .kanban-card[data-id="%d"]' % kanban_property.pk).is_visible()
+        assert page.locator(
+            '#col-SCREENING .kanban-card[data-id="%d"]' % kanban_property.pk
+        ).is_visible()
         assert page.locator(".kanban-column", has_text="Underwriting").is_visible()
 
     def test_drag_advances_stage(self, page, e2e_login, kanban_property) -> None:
@@ -427,7 +441,9 @@ class TestKanban:
         assert page.locator(card_sel).is_visible()
 
         # Synthetic HTML5 Drag-and-Drop against the column's drop target.
-        with page.expect_response(lambda r: r.url.endswith("/pipeline/kanban/") and r.request.method == "POST"):
+        with page.expect_response(
+            lambda r: r.url.endswith("/pipeline/kanban/") and r.request.method == "POST"
+        ):
             page.evaluate(
                 """({cardSel, targetSel}) => {
                     const card = document.querySelector(cardSel);
@@ -443,8 +459,15 @@ class TestKanban:
 
         # Reload to prove the stage persisted, not just the DOM move.
         page.reload()
-        assert page.locator('#col-UNDERWRITING .kanban-card[data-id="%d"]' % kanban_property.pk).is_visible()
-        assert page.locator('#col-SCREENING .kanban-card[data-id="%d"]' % kanban_property.pk).count() == 0
+        assert page.locator(
+            '#col-UNDERWRITING .kanban-card[data-id="%d"]' % kanban_property.pk
+        ).is_visible()
+        assert (
+            page.locator(
+                '#col-SCREENING .kanban-card[data-id="%d"]' % kanban_property.pk
+            ).count()
+            == 0
+        )
 
         kanban_property.refresh_from_db()
         assert kanban_property.stage == PipelineProperty.Stage.UNDERWRITING

@@ -495,7 +495,7 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
     if source_type == "vrm":
         try:
             vrm = VrmProperty.objects.get(vrm_property_id=int(source_id))
-        except VrmProperty.DoesNotExist, ValueError, TypeError:
+        except (VrmProperty.DoesNotExist, ValueError, TypeError):
             messages.error(request, "VRM property not found")
             return redirect(next_url)
 
@@ -592,7 +592,7 @@ def pipeline_add_from_source(request: HttpRequest) -> HttpResponse:
             # county: source_id is a CountyForeclosureNotice pk
             try:
                 cn = CountyForeclosureNotice.objects.get(pk=int(source_id))
-            except CountyForeclosureNotice.DoesNotExist, ValueError, TypeError:
+            except (CountyForeclosureNotice.DoesNotExist, ValueError, TypeError):
                 messages.error(request, "County notice not found")
                 return redirect(next_url)
 

@@ -62,6 +62,7 @@ consecutive_errors = models.IntegerField(default=0)
 ```python
 # core/models/pipeline.py — add after ScreeningCriteria class
 
+
 class ScreeningCriteriaVersion(models.Model):
     """Snapshot of ScreeningCriteria at a point in time."""
 
@@ -119,15 +120,21 @@ git commit -m "feat(models): add consecutive_errors to DataSourceHealth and Scre
 
 CIRCUIT_BREAKER_THRESHOLD = 3
 
+
 def check_circuit(self, source_name: str) -> bool:
     """Check if source circuit is open (should skip)."""
     from core.models import DataSourceHealth
 
     health, _ = DataSourceHealth.objects.get_or_create(source_name=source_name)
     if health.consecutive_errors >= self.CIRCUIT_BREAKER_THRESHOLD:
-        logger.warning("Circuit open for %s (%d consecutive errors)", source_name, health.consecutive_errors)
+        logger.warning(
+            "Circuit open for %s (%d consecutive errors)",
+            source_name,
+            health.consecutive_errors,
+        )
         return True
     return False
+
 
 def record_success(self, source_name: str, record_count: int = 0) -> None:
     """Record successful source run."""
@@ -139,7 +146,16 @@ def record_success(self, source_name: str, record_count: int = 0) -> None:
     health.last_run = timezone.now()
     health.record_count = record_count
     health.error_message = ""
-    health.save(update_fields=["consecutive_errors", "status", "last_run", "record_count", "error_message"])
+    health.save(
+        update_fields=[
+            "consecutive_errors",
+            "status",
+            "last_run",
+            "record_count",
+            "error_message",
+        ]
+    )
+
 
 def record_failure(self, source_name: str, error: Exception) -> None:
     """Record failed source run and increment circuit counter."""
@@ -150,7 +166,9 @@ def record_failure(self, source_name: str, error: Exception) -> None:
     health.status = "error"
     health.last_run = timezone.now()
     health.error_message = str(error)[:500]
-    health.save(update_fields=["consecutive_errors", "status", "last_run", "error_message"])
+    health.save(
+        update_fields=["consecutive_errors", "status", "last_run", "error_message"]
+    )
 ```
 
 - [ ] **Step 2: Add retry decorator**
@@ -161,8 +179,12 @@ def record_failure(self, source_name: str, error: Exception) -> None:
 import time
 from functools import wraps
 
-def retry_with_backoff(max_retries: int = 1, base_delay: float = 2.0, timeout: float = 30.0):
+
+def retry_with_backoff(
+    max_retries: int = 1, base_delay: float = 2.0, timeout: float = 30.0
+):
     """Decorator: retry on failure with exponential backoff."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -173,11 +195,20 @@ def retry_with_backoff(max_retries: int = 1, base_delay: float = 2.0, timeout: f
                 except Exception as exc:
                     last_exc = exc
                     if attempt < max_retries:
-                        delay = base_delay * (2 ** attempt)
-                        logger.warning("Retry %d/%d for %s after %.1fs: %s", attempt + 1, max_retries, func.__name__, delay, exc)
+                        delay = base_delay * (2**attempt)
+                        logger.warning(
+                            "Retry %d/%d for %s after %.1fs: %s",
+                            attempt + 1,
+                            max_retries,
+                            func.__name__,
+                            delay,
+                            exc,
+                        )
                         time.sleep(delay)
             raise last_exc
+
         return wrapper
+
     return decorator
 ```
 
@@ -186,31 +217,41 @@ def retry_with_backoff(max_retries: int = 1, base_delay: float = 2.0, timeout: f
 ```python
 # tests/test_health_monitor.py — add to TestDataSourceHealthMonitor class
 
+
 def test_check_circuit_open(self, monitor):
     """Circuit opens after 3+ consecutive errors."""
     from core.models import DataSourceHealth
+
     health = DataSourceHealth.objects.create(source_name="test", consecutive_errors=3)
     assert monitor.check_circuit("test") is True
+
 
 def test_check_circuit_closed(self, monitor):
     """Circuit closed when errors below threshold."""
     from core.models import DataSourceHealth
+
     health = DataSourceHealth.objects.create(source_name="test", consecutive_errors=2)
     assert monitor.check_circuit("test") is False
+
 
 def test_record_success_resets_counter(self, monitor):
     """Successful run resets consecutive_errors to 0."""
     from core.models import DataSourceHealth
-    health = DataSourceHealth.objects.create(source_name="test", consecutive_errors=3, status="error")
+
+    health = DataSourceHealth.objects.create(
+        source_name="test", consecutive_errors=3, status="error"
+    )
     monitor.record_success("test", record_count=10)
     health.refresh_from_db()
     assert health.consecutive_errors == 0
     assert health.status == "ok"
     assert health.record_count == 10
 
+
 def test_record_failure_increments_counter(self, monitor):
     """Failed run increments consecutive_errors."""
     from core.models import DataSourceHealth
+
     health = DataSourceHealth.objects.create(source_name="test", consecutive_errors=0)
     monitor.record_failure("test", Exception("test error"))
     health.refresh_from_db()
@@ -249,6 +290,7 @@ git commit -m "feat(health): add circuit breaker logic with retry decorator"
 ```python
 # core/views/__init__.py — add after system_status view
 
+
 @login_required
 def refresh_all_sources(request: HttpRequest) -> HttpResponse:
     """Trigger all data source refreshes in background threads."""
@@ -266,16 +308,33 @@ def refresh_all_sources(request: HttpRequest) -> HttpResponse:
             logger.error("%s ingestion failed: %s", name, e)
 
     tasks = [
-        ("HUD", lambda: __import__("core.services.ingestion", fromlist=["ingest_hud_reo"]).ingest_hud_reo()),
-        ("USDA", lambda: __import__("core.services.ingestion", fromlist=["ingest_usda_reo"]).ingest_usda_reo()),
-        ("Counties", lambda: __import__("core.services.ingestion", fromlist=["ingest_tx_counties"]).ingest_tx_counties()),
+        (
+            "HUD",
+            lambda: __import__(
+                "core.services.ingestion", fromlist=["ingest_hud_reo"]
+            ).ingest_hud_reo(),
+        ),
+        (
+            "USDA",
+            lambda: __import__(
+                "core.services.ingestion", fromlist=["ingest_usda_reo"]
+            ).ingest_usda_reo(),
+        ),
+        (
+            "Counties",
+            lambda: __import__(
+                "core.services.ingestion", fromlist=["ingest_tx_counties"]
+            ).ingest_tx_counties(),
+        ),
     ]
 
     for name, func in tasks:
         t = threading.Thread(target=_run_ingestion, args=(name, func), daemon=True)
         t.start()
 
-    messages.success(request, "Refresh started for all data sources. Page will update automatically.")
+    messages.success(
+        request, "Refresh started for all data sources. Page will update automatically."
+    )
     return redirect("system_status")
 ```
 
@@ -284,12 +343,17 @@ def refresh_all_sources(request: HttpRequest) -> HttpResponse:
 ```python
 # core/views/__init__.py — add after refresh_all_sources
 
+
 @login_required
 def health_json(request: HttpRequest) -> HttpResponse:
     """Return data source health as JSON for polling."""
     from core.models import DataSourceHealth
 
-    health = list(DataSourceHealth.objects.values("source_name", "last_run", "record_count", "status", "consecutive_errors"))
+    health = list(
+        DataSourceHealth.objects.values(
+            "source_name", "last_run", "record_count", "status", "consecutive_errors"
+        )
+    )
     return JsonResponse(health, safe=False)
 ```
 
@@ -298,8 +362,8 @@ def health_json(request: HttpRequest) -> HttpResponse:
 ```python
 # core/urls.py — add after system_status path
 
-path("system/refresh-all/", views.refresh_all_sources, name="refresh_all_sources"),
-path("system/health-json/", views.health_json, name="health_json"),
+(path("system/refresh-all/", views.refresh_all_sources, name="refresh_all_sources"),)
+(path("system/health-json/", views.health_json, name="health_json"),)
 ```
 
 - [ ] **Step 4: Write unit tests**
@@ -313,6 +377,7 @@ from django.contrib.auth import get_user_model
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
+
 @pytest.fixture
 def logged_in_client():
     User = get_user_model()
@@ -321,15 +386,18 @@ def logged_in_client():
     client.force_login(user)
     return client
 
+
 def test_refresh_all_sources_returns_redirect(logged_in_client):
     response = logged_in_client.post("/system/refresh-all/")
     assert response.status_code == 302
+
 
 def test_health_json_returns_list(logged_in_client):
     response = logged_in_client.get("/system/health-json/")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
+
 
 def test_refresh_all_sources_rejects_get(logged_in_client):
     response = logged_in_client.get("/system/refresh-all/")
@@ -487,6 +555,7 @@ git commit -m "feat(ui): add Refresh All Sources button with live polling to sys
 ```python
 # core/views/__init__.py — add after pipeline_screener view
 
+
 @login_required
 def screener_filter(request: HttpRequest) -> HttpResponse:
     """Filter screener results via AJAX. Returns HTML fragment."""
@@ -521,7 +590,9 @@ def screener_filter(request: HttpRequest) -> HttpResponse:
     if prop_type:
         qs = qs.filter(property_type=prop_type)
 
-    return render(request, "pipeline/screener_results_fragment.html", {"properties": qs[:50]})
+    return render(
+        request, "pipeline/screener_results_fragment.html", {"properties": qs[:50]}
+    )
 ```
 
 - [ ] **Step 2: Create results fragment template**
@@ -558,7 +629,7 @@ def screener_filter(request: HttpRequest) -> HttpResponse:
 ```python
 # core/urls.py — add after pipeline_screener path
 
-path("pipeline/screener/filter/", views.screener_filter, name="screener_filter"),
+(path("pipeline/screener/filter/", views.screener_filter, name="screener_filter"),)
 ```
 
 - [ ] **Step 4: Add filter bar to screener template**
@@ -666,6 +737,7 @@ git commit -m "feat(screener): add filter bar with vanilla JS AJAX filtering"
 ```python
 # core/views/__init__.py — add after pipeline_screening_settings view
 
+
 @login_required
 def screening_preview(request: HttpRequest) -> HttpResponse:
     """Preview how many properties pass current criteria without saving."""
@@ -707,7 +779,11 @@ def screening_preview(request: HttpRequest) -> HttpResponse:
 ```python
 # core/urls.py — add after pipeline_screening_settings path
 
-path("pipeline/screening/preview/", views.screening_preview, name="screening_preview"),
+(
+    path(
+        "pipeline/screening/preview/", views.screening_preview, name="screening_preview"
+    ),
+)
 ```
 
 - [ ] **Step 3: Add Preview Impact button to settings template**
@@ -779,20 +855,27 @@ git commit -m "feat(screening): add Preview Impact button to screening settings"
 
 # Create version snapshot
 from core.models import ScreeningCriteriaVersion
+
 ScreeningCriteriaVersion.objects.create(
     criteria=criteria,
     snapshot={
         "min_price": str(criteria.min_price) if criteria.min_price else None,
         "max_price": str(criteria.max_price) if criteria.max_price else None,
-        "min_gross_yield_pct": str(criteria.min_gross_yield_pct) if criteria.min_gross_yield_pct else None,
-        "max_price_to_rent_ratio": str(criteria.max_price_to_rent_ratio) if criteria.max_price_to_rent_ratio else None,
+        "min_gross_yield_pct": str(criteria.min_gross_yield_pct)
+        if criteria.min_gross_yield_pct
+        else None,
+        "max_price_to_rent_ratio": str(criteria.max_price_to_rent_ratio)
+        if criteria.max_price_to_rent_ratio
+        else None,
         "min_beds": criteria.min_beds,
         "max_beds": criteria.max_beds,
         "min_sqft": criteria.min_sqft,
         "max_year_built": criteria.max_year_built,
         "allowed_property_types": criteria.allowed_property_types,
         "allowed_states": criteria.allowed_states,
-        "min_gacs_score": str(criteria.min_gacs_score) if criteria.min_gacs_score else None,
+        "min_gacs_score": str(criteria.min_gacs_score)
+        if criteria.min_gacs_score
+        else None,
     },
 )
 ```
