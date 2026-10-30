@@ -51,7 +51,7 @@ def parse_and_filter_location(
             try:
                 state_code = validate_state_code(single_value)
                 queryset = queryset.filter(state=state_code)
-            except (serializers.ValidationError):
+            except serializers.ValidationError:
                 # Not a valid state code, treat as county
                 queryset = queryset.filter(
                     Q(county__icontains=single_value) | Q(city__icontains=single_value)
@@ -67,7 +67,7 @@ def parse_and_filter_location(
         try:
             state_code = validate_state_code(state_code)
             queryset = queryset.filter(city__icontains=city_name, state=state_code)
-        except (serializers.ValidationError):
+        except serializers.ValidationError:
             raise serializers.ValidationError(
                 "Invalid geographic area. Please provide a valid city, county, ZIP code, or state."
             )

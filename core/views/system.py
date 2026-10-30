@@ -41,7 +41,7 @@ def health_check(request: HttpRequest) -> JsonResponse:
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-    except (Exception):
+    except Exception:
         return JsonResponse(
             {"status": "error", "detail": "database unreachable"}, status=503
         )

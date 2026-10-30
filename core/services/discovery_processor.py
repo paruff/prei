@@ -74,7 +74,7 @@ def process_discovery_batch(
                 continue
             new_payloads.append(canonical)
             hashes.add(canonical.address_hash)
-        except (Exception):
+        except Exception:
             errors_count += 1
             continue
 

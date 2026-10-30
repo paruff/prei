@@ -73,7 +73,7 @@ class Command(BaseCommand):
                         f"'{req.source.source_type}', not 'fannie'."
                     )
                 targets.append((req.location, req))
-            except (DiscoveryRequest.DoesNotExist):
+            except DiscoveryRequest.DoesNotExist:
                 raise CommandError(
                     f"DiscoveryRequest with id={options['request_id']} not found."
                 )

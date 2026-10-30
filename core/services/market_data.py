@@ -87,7 +87,7 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
             "(no live crime API available per DECISION-2 Option C)",
             zip_code,
         )
-    except (Exception):
+    except Exception:
         logger.error(
             "market_data: get_crime_score failed for zip_code=%s",
             zip_code,
@@ -115,7 +115,7 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
                 zip_code,
             )
             school_rating = get_school_rating(zip_code=zip_code)
-    except (Exception):
+    except Exception:
         logger.error(
             "market_data: school_rating adapter failed for zip=%s",
             zip_code,
@@ -151,7 +151,7 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
                     listing.address,
                 )
                 rent_index = get_rent_estimate_for_listing(listing)
-        except (Exception):
+        except Exception:
             logger.error(
                 "market_data: rent adapter failed for zip=%s",
                 zip_code,
@@ -169,14 +169,14 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
                 comps = get_comps_for_listing(listing)
             else:
                 source_flags.append("attom")
-        except (Exception):
+        except Exception:
             logger.error(
                 "market_data: fetch_comps_for_listing failed for zip=%s",
                 zip_code,
             )
             try:
                 comps = get_comps_for_listing(listing)
-            except (Exception):
+            except Exception:
                 logger.error(
                     "market_data: get_comps_for_listing fallback also failed for zip=%s",
                     zip_code,
@@ -191,7 +191,7 @@ def refresh_market_snapshot(zip_code: str) -> MarketSnapshot:
                     price_trend = (
                         (avg_comp_price - listing_price) / listing_price
                     ).quantize(Decimal("0.0001"))
-            except (Exception):
+            except Exception:
                 logger.error(
                     "market_data: price_trend calculation failed for zip=%s",
                     zip_code,
