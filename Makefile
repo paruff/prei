@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev docker-accept test-live
+.PHONY: help docker-seed ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev docker-accept test-live
 
 # Prefer the local venv; fall back to `python` (containers, bare environments).
 # Avoids the Apple /usr/bin/python3 shim that triggers the xcode-select prompt.
@@ -35,6 +35,7 @@ help:
 	@echo "  make smoke              Smoke test localhost:8000 health + APIs"
 	@echo "  ── Docker (build image locally, no CI needed) ──"
 	@echo "  make docker-dev         Build + start Docker stack (migrate + seed)"
+	@echo "  make docker-seed        Seed one market (default Dallas, TX) in the container"
 	@echo "  make docker-accept      Build, start, seed, run tests/acceptance/ against the container, stop"
 	@echo "  make test-live          Start Docker + run live acceptance tests"
 	@echo "  make build              Build Docker image"
@@ -61,6 +62,10 @@ dev: ensure-env
 seed: ensure-env
 	$(call ensure_django)
 	@$(PYTHON) manage.py seed_data
+
+# One market (default Dallas, TX) seeded in the container; SEED_ARGS="--city Austin --state TX" to change.
+docker-seed:
+	@docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_market $(SEED_ARGS)
 
 superuser: ensure-env
 	$(call ensure_django)
@@ -120,8 +125,8 @@ deploy-dev: ensure-env
 		exit 1; \
 	fi
 	@docker compose up -d
-	@docker compose exec web $(CONTAINER_PY) manage.py migrate
-	@docker compose exec web $(CONTAINER_PY) manage.py seed_data
+	@docker compose exec preiweb $(CONTAINER_PY) manage.py migrate
+	@docker compose exec preiweb $(CONTAINER_PY) manage.py seed_data
 	@echo "Docker stack is running on port 8000"
 
 deploy-local: ensure-env
@@ -181,8 +186,8 @@ clean:
 
 docker-dev: ensure-env build up
 	$(call ensure_django)
-	@docker compose exec web $(CONTAINER_PY) manage.py migrate
-	@docker compose exec web $(CONTAINER_PY) manage.py seed_data
+	@docker compose exec preiweb $(CONTAINER_PY) manage.py migrate
+	@docker compose exec preiweb $(CONTAINER_PY) manage.py seed_market
 	@echo ""
 	@echo "Docker dev stack running on http://localhost:8000"
 	@echo "  make logs     — tail container logs"
@@ -198,7 +203,7 @@ docker-accept: ensure-env build
 	for i in $$(seq 1 60); do curl -sf -o /dev/null $(ACCEPT_URL)/api/health/ && break; sleep 3; done; \
 	curl -sf -o /dev/null $(ACCEPT_URL)/api/health/ || { echo "❌ container never became healthy"; rc=1; }; \
 	if [ $$rc -eq 0 ]; then \
-		docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_data || rc=$$?; \
+		docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_market || rc=$$?; \
 	fi; \
 	if [ $$rc -eq 0 ]; then \
 		BASE_URL=$(ACCEPT_URL) $(PYTHON) -m pytest tests/acceptance/ -m acceptance -v --tb=short || rc=$$?; \
