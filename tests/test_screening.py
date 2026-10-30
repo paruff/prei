@@ -879,7 +879,7 @@ class TestIntegration:
         self, db, configured_criteria, user, vrm_property, growth_area
     ):
         """VrmProperty's projected_monthly_rent is preferred over PP estimated_rent."""
-        configured_criteria.max_price_to_rent_ratio = Decimal("100.00")
+        configured_criteria.max_price_to_rent_ratio = Decimal("20.00")
         configured_criteria.allowed_states = ["TX"]
         configured_criteria.save()
         from core.models import GrowthArea
@@ -906,6 +906,6 @@ class TestIntegration:
 
         # vrm_property has projected_monthly_rent=2200
         result = screen_property(pp, configured_criteria, vrm_property)
-        # PTR = 250000/2200 ≈ 113.6 → above 100 → should deduct
-        # If PP.estimated_rent (500) was used, PTR = 250000/500 = 500 → even worse
-        assert any("above maximum" in f for f in result.soft_failures)
+        # PTR = 250000 / (2200 * 12) ≈ 9.47 <= 20 → no PTR failure.
+        # If PP.estimated_rent (500) was used, PTR ≈ 41.7 → would fail.
+        assert not any("Price-to-rent" in f for f in result.soft_failures)

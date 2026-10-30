@@ -489,7 +489,7 @@ def _eval_price_to_rent_ratio(
             None,
         )
 
-    ptr = price / monthly_rent
+    ptr = price / (monthly_rent * Decimal("12"))  # price / annual rent
     max_ratio = criteria.max_price_to_rent_ratio
 
     if ptr <= max_ratio:
