@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help docker-seed ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev docker-accept test-live
+.PHONY: help docker-seed docker-rent-report ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev docker-accept test-live
 
 # Prefer the local venv; fall back to `python` (containers, bare environments).
 # Avoids the Apple /usr/bin/python3 shim that triggers the xcode-select prompt.
@@ -66,6 +66,10 @@ seed: ensure-env
 # One market (default Dallas, TX) seeded in the container; SEED_ARGS="--city Austin --state TX" to change.
 docker-seed:
 	@docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_market $(SEED_ARGS)
+
+# Rent coverage report for the seeded market (NFR-7); redirect stdout into docs/assessments/rent-coverage.md.
+docker-rent-report:
+	@docker compose exec -T preiweb $(CONTAINER_PY) - $(SEED_ARGS) < scripts/rent_coverage.py
 
 superuser: ensure-env
 	$(call ensure_django)
