@@ -5,21 +5,26 @@ Properties measured: 2 (VrmProperty rows for the market)
 | Source | Properties with a rent | Notes |
 |---|---|---|
 | VRM projected rent | 2/2 (100%) | stored on the row at scrape time |
-| HUD FMR (county, by bedrooms) | 0/2 (0%) | rent floor (40th percentile), not market rent |
-| Rentcast | not measured | RENTCAST_API_KEY not set |
+| HUD FMR | 2/2 (100%) | FY2026; 2 at ZIP level (Small Area FMR), rest metro level; 40th percentile floor |
+| Rentcast | not measured | 75201: 403 billing/subscription-inactive; 75204: 403 billing/subscription-inactive |
 | Rentometer | not measured | no adapter in the codebase |
 | Any source (VRM or HUD) | 2/2 (100%) | NFR-1 target: 90% |
 
 ## HUD FMR vs Rentcast
 
-No paired samples: set RENTCAST_API_KEY and re-run.
+| ZIP | Beds | HUD FMR | Level | Rentcast median | HUD below Rentcast |
+|---|---|---|---|---|---|
+| 75201 | 3 | 3650 | 75201 | n/a | n/a |
+| 75204 | 3 | 3490 | 75204 | n/a | n/a |
 
-## Why HUD and Rentcast are not measured (2026-10-30)
+No paired samples (see the Rentcast row above).
 
-- **HUD FMR**: the configured token is rejected for FMR (`listCounties` and `fmr/data` return nothing). The HUD message says the token was created without the FAIR MARKET RENT dataset selected. A new token with that dataset is needed.
-- **Rentcast**: no `RENTCAST_API_KEY` in `.env`. The free tier (50 requests a month) is enough for a 10-property sample.
-- **Rentometer**: no adapter exists; out of scope until the other two are measured.
-- The seeded Dallas market holds two fixture VRM rows. VRM coverage of 100% is real but trivially small; run on a market seeded from live VRM data for a meaningful NFR-1 number.
+## Findings (2026-10-30)
+
+- **HUD FMR works for Dallas and is ZIP-level.** Dallas is a HUD Small Area FMR market: the FY2026 response carries 261 rows, one per ZIP plus a metro row (3BR metro $2,431; 3BR 75201 $3,650, 75204 $3,490). So the "county-level floor is too coarse" worry does not hold for this market. It may for markets HUD publishes only at metro or county level.
+- **The existing HUD client breaks on Small Area markets.** `FMRClient.get_county_data` assumes `basicdata` is a dict; for Dallas it is a list, so `fetch_fmr_data` raises `AttributeError`. It also looks up by 5-digit FIPS (HTTP 400); HUD wants the entity id (`4811399999`). `scripts/rent_coverage.py` works around both; the client needs its own fix (a G1.3-style row).
+- **Rentcast is not measured.** The key is valid but its API subscription is inactive (`403 billing/subscription-inactive`). Activate the free Developer plan at https://app.rentcast.io/app/api, then re-run. The per-address estimate endpoint 404s on the fixture rows (fake addresses), so the script compares against Rentcast ZIP market statistics instead; the response shape (`rentalData.detailedByBedrooms`) is taken from Rentcast's docs and is unverified until the subscription is active.
+- The seeded market holds two fixture VRM rows; VRM coverage of 100% is trivially small. Their projected rents are placeholders and are not compared with HUD.
 
 ## Fee (Rentcast, third-party listing, verify on the pricing page)
 
@@ -29,12 +34,8 @@ No paired samples: set RENTCAST_API_KEY and re-run.
 | Foundation | $74 | 1,000 | $0.06 |
 | Growth | $199 | 5,000 | $0.03 |
 
-Source: [Rentcast billing and pricing](https://developers.rentcast.io/reference/billing-and-pricing) confirms the plan structure and the 50-request free tier; the tier prices above come from a third-party listing. `core/integrations/market/rents.py` assumes 100 calls a day on the free tier (`RENTCAST_DAILY_BUDGET`); that looks wrong and should be fixed in L1.
-
-## HUD FMR quality (by definition, not measured here)
-
-HUD FMR is the 40th percentile of gross rents for standard units, set at county or metro level. It is a floor, so it understates market rent by design. `get_rent_estimate` also does not use ZIP-level Small Area FMRs yet.
+[Rentcast billing and pricing](https://developers.rentcast.io/reference/billing-and-pricing) confirms the plan structure and the 50-request free tier; tier prices come from a third-party listing. `core/integrations/market/rents.py` assumes 100 calls a day on the free tier (`RENTCAST_DAILY_BUDGET`); that looks wrong and should be fixed in L1.
 
 ## Recommendation on FR-1 (Rentcast adapter)
 
-**Build L1, as an optional adapter behind the key, with HUD FMR kept as the fallback.** For a single investor screening a few properties a month, the fee is $0 to $74 a month. A 40th-percentile county floor will bias yield and price-to-rent low for every screen. This is reasoning from fee and HUD's definition, **not a measurement**: the HUD-vs-Rentcast gap (median and range) is still unmeasured because of the credentials above. Once they are set, re-run `make docker-rent-report` and confirm. If HUD FMR turns out to sit within about 15% of Rentcast at the median and HUD plus VRM covers 90% or more, drop L1. The 15% threshold is a proposal for the human to confirm.
+**Still undecided; the HUD-vs-Rentcast gap is the number that decides it, and it needs the Rentcast subscription.** What is known: HUD FMR covers 100% of the seeded Dallas properties at ZIP level for $0, and is a 40th-percentile floor by definition, so it understates market rent. Rentcast would cost $0 to $74 a month. Decision rule: build L1 if HUD sits more than ~15% below Rentcast at the median, or if HUD plus VRM covers under 90% of properties in a market without Small Area FMR; otherwise defer FR-1. The 15% threshold is a proposal for the human to confirm.
