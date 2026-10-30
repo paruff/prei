@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from decimal import Decimal
 from html.parser import HTMLParser
 
 import httpx
@@ -22,6 +23,8 @@ class JourneyCtx:
         self.page: str = ""
         self.screener: str = ""
         self.detail_path: str = ""
+        self.offer: int = 0
+        self.leasing_path: str = ""
 
 
 @pytest.fixture
@@ -165,6 +168,7 @@ def _advance_to(ctx: JourneyCtx, stage: str) -> None:
 
 @when("I discover VRM properties in the seeded market")
 def discover_seeded_market(ctx: JourneyCtx) -> None:
+    open_growth_areas(ctx)
     dallas_ranked(ctx)
     discover_vrm(ctx)
     screener_lists(ctx, "1200 Seed Pass Ln", "3400 Seed Fail Ct")
@@ -189,12 +193,13 @@ def advance_to_closing(ctx: JourneyCtx) -> None:
 def record_offer(ctx: JourneyCtx, price: int) -> None:
     resp = _post(ctx, f"{ctx.detail_path}offer/", {"offer_price": str(price)})
     assert resp.status_code == 200
+    ctx.offer = price
     ctx.page = resp.text
 
 
 @then("the offer is listed for the property")
 def offer_listed(ctx: JourneyCtx) -> None:
-    assert "175,000.00" in ctx.page, _text(ctx.page)[:500]
+    assert f"{ctx.offer:,}.00" in ctx.page, _text(ctx.page)[:500]
 
 
 @when("I mark due diligence go")
@@ -301,3 +306,74 @@ def enter_actuals(ctx: JourneyCtx) -> None:
 @then("the portfolio shows its actuals")
 def shows_actuals(ctx: JourneyCtx) -> None:
     assert _metric(_portfolio_row(ctx.page), "latest-actuals") == "$1,800 (Oct 2026)"
+
+
+# ── Steps 8-9: BRRRR and leasing on the acquired property ────────────────────
+
+
+@when(parsers.parse("I run the BRRRR calculator with rehab {rehab:d} and ARV {arv:d}"))
+def run_brrrr(ctx: JourneyCtx, rehab: int, arv: int) -> None:
+    resp = _post(
+        ctx,
+        "/brrrr/",
+        {
+            "purchase_price": str(ctx.offer),
+            "rehab_cost": str(rehab),
+            "arv": str(arv),
+            "monthly_rent_post_rehab": "1800",
+            "annual_operating_expenses": "4200",
+        },
+    )
+    assert resp.status_code == 200
+    ctx.page = resp.text
+
+
+@then(parsers.parse('the BRRRR verdict is "{verdict}"'))
+def brrrr_verdict(ctx: JourneyCtx, verdict: str) -> None:
+    assert _metric(ctx.page, "brrrr-verdict") == verdict
+    assert Decimal(_metric(ctx.page, "brrrr-cash-left")) < 0
+
+
+@when("I add it to the leasing pipeline")
+def add_to_leasing(ctx: JourneyCtx) -> None:
+    portfolio = ctx.client.get("/portfolio/").text
+    prop_id = re.search(r'data-property-id="(\d+)"', _portfolio_row(portfolio))
+    assert prop_id, "acquired property not in the portfolio"
+    resp = _post(
+        ctx,
+        "/leasing/add/",
+        {"property_record": prop_id.group(1), "asking_rent": "1800"},
+    )
+    assert resp.status_code == 200
+    link = re.search(r'href="(/leasing/\d+/)"', resp.text)
+    assert link, f"no leasing entry listed: {_text(resp.text)[:300]}"
+    ctx.leasing_path = link.group(1)
+
+
+@when(parsers.parse('I lease it to "{tenant}" at {rent:d} a month'))
+def lease_it(ctx: JourneyCtx, tenant: str, rent: int) -> None:
+    steps = [
+        ("showing/", {}),
+        ("application/", {"applicant_name": tenant, "application_date": "2026-10-05"}),
+        ("screening/", {"screening_passed": "true"}),
+        (
+            "lease/",
+            {
+                "lease_start_date": "2026-11-01",
+                "lease_end_date": "2027-10-31",
+                "monthly_rent": str(rent),
+            },
+        ),
+        ("move-in/", {"move_in_date": "2026-11-01"}),
+        ("stabilize/", {"stabilized_date": "2026-12-01"}),
+    ]
+    for suffix, data in steps:
+        resp = _post(ctx, f"{ctx.leasing_path}{suffix}", data)
+        assert resp.status_code == 200, f"{suffix} -> {resp.status_code}"
+        ctx.page = resp.text
+
+
+@then("it is stabilized in leasing")
+def leasing_stabilized(ctx: JourneyCtx) -> None:
+    assert _stage(ctx.page) == "STABILIZED"
+    assert "Filled" in ctx.page
