@@ -64,6 +64,8 @@
 
     <div class="card">
       <h2 class="card-title">Results</h2>
+      {% if result %}<p data-metric="brrrr-verdict">{{ result.verdict }}</p>
+      <p data-metric="brrrr-cash-left">{{ result.cash_left_in_deal }}</p>{% endif %}
       <table class="data-table" id="results-table">
         <tr><td>Total project cost</td>           <td class="col-right num" id="r-total">--</td></tr>
         <tr><td>Max refi loan (at LTV)</td>        <td class="col-right num" id="r-loan">--</td></tr>
