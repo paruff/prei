@@ -589,7 +589,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 if created:
                     results["discovered"] += 1
                     results["properties"].append(pp)
-                    if criteria and pp.screening_passed is not None:
+                    if pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
@@ -616,7 +616,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 if created:
                     results["discovered"] += 1
                     results["properties"].append(pp)
-                    if criteria and pp.screening_passed is not None:
+                    if pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
@@ -643,7 +643,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 if created:
                     results["discovered"] += 1
                     results["properties"].append(pp)
-                    if criteria and pp.screening_passed is not None:
+                    if pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
@@ -669,7 +669,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 if created:
                     results["discovered"] += 1
                     results["properties"].append(pp)
-                    if criteria and pp.screening_passed is not None:
+                    if pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
