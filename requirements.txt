@@ -20,7 +20,7 @@ pytest-reportlog==1.0.0  # flaky test detection report log (Phase C)
 ruff==0.16.5  # Must match .pre-commit-config.yaml rev: v0.15.20
 mypy==2.3.1
 django-stubs==6.0.7
-djangorestframework-stubs==3.17.0
+djangorestframework-stubs==3.18.1
 types-psycopg2==2.9.21.20260724
 types-reportlab==5.0.0.20260911
 types-defusedxml==0.7.0.20260504
