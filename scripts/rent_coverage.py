@@ -28,7 +28,7 @@ from core.integrations.market.hud_fmr import get_rent_estimate  # noqa: E402
 from core.integrations.market.rents import fetch_rent_estimate  # noqa: E402
 from core.models import GrowthArea, VrmProperty  # noqa: E402
 
-RENTCAST_SAMPLE = 25  # free tier is 100 calls/day; keep a margin
+RENTCAST_SAMPLE = 10  # free tier is 50 requests/month; keep the sample small
 
 
 def pct(n: int, total: int) -> str:
