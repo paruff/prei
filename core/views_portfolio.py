@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib import messages
 from django.shortcuts import redirect, render
 
 from core.models import MonthlyActuals, Property
@@ -90,8 +91,17 @@ def portfolio_actuals_add(request):
 
     form = MonthlyActualsForm(request.POST)
     if form.is_valid():
-        actuals = form.save(commit=False)
-        actuals.prop = property_obj
-        actuals.save()
+        data = form.cleaned_data
+        month = data.pop("month")
+        MonthlyActuals.objects.update_or_create(
+            prop=property_obj, month=month, defaults=data
+        )
+        messages.success(request, f"Saved actuals for {month:%b %Y}.")
+    else:
+        messages.error(
+            request,
+            "Could not save actuals: "
+            + "; ".join(str(e) for errs in form.errors.values() for e in errs),
+        )
 
     return redirect("portfolio_dashboard")

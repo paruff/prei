@@ -83,6 +83,48 @@
   </div>
 </div>
 
+<div class="card mt-section" id="enter-actuals">
+  <div class="card-title">Monthly Actuals</div>
+  <div class="card-body">
+    {% if actuals_properties %}
+    <form method="post" action="{% url 'portfolio_actuals_add' %}" class="mt-section">
+      {% csrf_token %}
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="actual_property">Property</label>
+          <select class="form-input" id="actual_property" name="property_id" required>
+            {% for prop in actuals_properties %}<option value="{{ prop.pk }}">{{ prop.address }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="actual_month">Month</label>
+          <input class="form-input" type="month" id="actual_month" name="month" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="actual_rent_collected">Rent Collected ($)</label>
+          <input class="form-input" type="number" step="0.01" min="0" id="actual_rent_collected" name="actual_rent_collected" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="actual_vacancy_days">Vacancy Days</label>
+          <input class="form-input" type="number" min="0" max="31" id="actual_vacancy_days" name="actual_vacancy_days" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="actual_expenses">Operating Expenses ($)</label>
+          <input class="form-input" type="number" step="0.01" min="0" id="actual_expenses" name="actual_expenses" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="actual_maintenance">Maintenance ($)</label>
+          <input class="form-input" type="number" step="0.01" min="0" id="actual_maintenance" name="actual_maintenance" required>
+        </div>
+      </div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">Save Actuals</button></div>
+    </form>
+    {% else %}
+    <p class="page-sub">Actuals can be entered once an acquired property has a property record.</p>
+    {% endif %}
+  </div>
+</div>
+
 <div class="card mt-section">
   <div class="card-title">Matching Growth Areas</div>
   <div class="card-body">

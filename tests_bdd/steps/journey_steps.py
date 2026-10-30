@@ -248,9 +248,26 @@ def in_portfolio(ctx: JourneyCtx) -> None:
 
 @when("I enter monthly actuals for it")
 def enter_actuals(ctx: JourneyCtx) -> None:
+    """Fill in the dashboard's actuals form (the property option and fields come from the page)."""
     row = _portfolio_row(ctx.page)
     prop_id = re.search(r'data-property-id="(\d+)"', row)
     assert prop_id, "no property id in the portfolio row"
+    form = re.search(
+        r'<form[^>]*action="/portfolio/actuals/add/".*?</form>', ctx.page, re.S
+    )
+    assert form, "no actuals form on the portfolio dashboard"
+    assert f'<option value="{prop_id.group(1)}"' in form.group(0), (
+        "property not offered by the form"
+    )
+    fields = set(re.findall(r'name="(actual_\w+|month|property_id)"', form.group(0)))
+    assert fields >= {
+        "property_id",
+        "month",
+        "actual_rent_collected",
+        "actual_vacancy_days",
+        "actual_expenses",
+        "actual_maintenance",
+    }, fields
     resp = _post(
         ctx,
         "/portfolio/actuals/add/",
