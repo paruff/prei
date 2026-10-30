@@ -32,7 +32,10 @@ jobs:
           pip install httpx pydantic -q
       # Makefile's ensure-env uses [[ ]], which /bin/sh (dash) lacks.
       - name: Create .env
-        run: cp -n .env.example .env
+        run: |
+          cp .env.example .env
+          # .env.example is production-shaped; the journey talks plain HTTP.
+          sed -i -e 's/^DJANGO_ENV=.*/DJANGO_ENV=development/' -e 's/^DEBUG=.*/DEBUG=True/' -e 's/^SECURE_SSL_REDIRECT=.*/SECURE_SSL_REDIRECT=False/' .env
       - name: Build, start, seed, run journey, stop
         timeout-minutes: 12
         run: make docker-accept
