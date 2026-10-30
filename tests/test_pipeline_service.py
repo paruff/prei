@@ -533,3 +533,20 @@ class TestConvertCompleteness:
 
         assert prop.property_taxes_annual == Decimal("4321.00")
         assert prop.insurance_annual == Decimal("999.00")
+
+    def test_underwriting_rates_come_from_pipeline_record(self, db, user, vrm_property):
+        pp, _ = create_from_vrm(vrm_property, user)
+        assert pp.estimated_vacancy_rate == Decimal("0.05")
+        assert pp.estimated_mgmt_fee_pct == Decimal("0.08")
+        assert pp.estimated_capex_reserve_rate == Decimal("0.05")
+
+        pp.estimated_vacancy_rate = Decimal("0.10")
+        pp.estimated_mgmt_fee_pct = Decimal("0.12")
+        pp.estimated_capex_reserve_rate = Decimal("0.10")
+        pp.save()
+
+        prop = convert_to_property_record(pp)
+
+        assert prop.vacancy_rate == Decimal("0.10")
+        assert prop.mgmt_fee_pct == Decimal("0.12")
+        assert prop.capex_monthly == Decimal("200.00")

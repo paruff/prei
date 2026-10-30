@@ -588,19 +588,28 @@ def create_from_county_notice(
 
 
 def expense_estimates(price: Any) -> dict[str, Decimal | None]:
-    """Annual tax and insurance estimates for a price (same assumptions as
-    the pipeline listing estimates); None values when the price is unknown."""
-    if not price:
-        return {"estimated_taxes_annual": None, "estimated_insurance_annual": None}
-    tax_rate_pct = Decimal(str(getattr(settings, "TAX_RATE_PCT", 1.2)))
-    return {
-        "estimated_taxes_annual": (Decimal(price) * tax_rate_pct / 100).quantize(
-            Decimal("0.01")
-        ),
-        "estimated_insurance_annual": Decimal(
-            str(getattr(settings, "INSURANCE_ANNUAL", 1200))
-        ),
+    """Expense and underwriting-rate estimates stored on a new pipeline record.
+
+    Tax and insurance need a price (None when unknown); the vacancy,
+    management fee and capex reserve rates are the ``FINANCE_DEFAULTS``.
+    """
+    defaults = settings.FINANCE_DEFAULTS
+    estimates: dict[str, Decimal | None] = {
+        "estimated_taxes_annual": None,
+        "estimated_insurance_annual": None,
+        "estimated_vacancy_rate": Decimal(str(defaults["vacancy_rate"])),
+        "estimated_mgmt_fee_pct": Decimal(str(defaults["management_fee_rate"])),
+        "estimated_capex_reserve_rate": Decimal(str(defaults["capex_reserve_rate"])),
     }
+    if price:
+        tax_rate_pct = Decimal(str(getattr(settings, "TAX_RATE_PCT", 1.2)))
+        estimates["estimated_taxes_annual"] = (
+            Decimal(price) * tax_rate_pct / 100
+        ).quantize(Decimal("0.01"))
+        estimates["estimated_insurance_annual"] = Decimal(
+            str(getattr(settings, "INSURANCE_ANNUAL", 1200))
+        )
+    return estimates
 
 
 # ── Conversion to Property record ──────────────────────────────────────────────
@@ -656,12 +665,14 @@ def convert_to_property_record(
     # Expenses come from the pipeline record; rows created before those
     # fields existed fall back to the same estimate, on the closing price.
     estimates = expense_estimates(price)
-    taxes = pipeline_property.estimated_taxes_annual
-    insurance = pipeline_property.estimated_insurance_annual
-    if taxes is None:
-        taxes = estimates["estimated_taxes_annual"] or Decimal("0")
-    if insurance is None:
-        insurance = estimates["estimated_insurance_annual"] or Decimal("0")
+
+    def from_record(field: str) -> Decimal:
+        value = getattr(pipeline_property, field)
+        return value if value is not None else estimates[field] or Decimal("0")
+
+    taxes = from_record("estimated_taxes_annual")
+    insurance = from_record("estimated_insurance_annual")
+    capex_rate = from_record("estimated_capex_reserve_rate")
 
     with transaction.atomic():
         prop = PropertyModel.objects.create(
@@ -678,11 +689,10 @@ def convert_to_property_record(
             monthly_rent_gross=pipeline_property.estimated_rent or Decimal("0"),
             property_taxes_annual=taxes,
             insurance_annual=insurance,
-            vacancy_rate=Decimal(str(defaults["vacancy_rate"])),
-            mgmt_fee_pct=Decimal(str(defaults["management_fee_rate"])),
+            vacancy_rate=from_record("estimated_vacancy_rate"),
+            mgmt_fee_pct=from_record("estimated_mgmt_fee_pct"),
             capex_monthly=(
-                (pipeline_property.estimated_rent or Decimal("0"))
-                * Decimal(str(defaults["capex_reserve_rate"]))
+                (pipeline_property.estimated_rent or Decimal("0")) * capex_rate
             ).quantize(Decimal("0.01")),
             down_payment_pct=down_payment_pct,
             interest_rate=Decimal(str(defaults["loan_interest_rate_pct"])) / 100,
