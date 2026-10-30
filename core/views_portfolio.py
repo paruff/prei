@@ -13,6 +13,12 @@ from core.services.portfolio import (
 class MonthlyActualsForm(forms.ModelForm):
     """Form for entering monthly actuals."""
 
+    # <input type="month"> submits "YYYY-MM", which DateField rejects by default.
+    month = forms.DateField(
+        input_formats=["%Y-%m-%d", "%Y-%m"],
+        widget=forms.DateInput(attrs={"type": "month", "class": "form-control"}),
+    )
+
     class Meta:
         model = MonthlyActuals
         fields = [
@@ -24,7 +30,6 @@ class MonthlyActualsForm(forms.ModelForm):
             "notes",
         ]
         widgets = {
-            "month": forms.DateInput(attrs={"type": "month", "class": "form-control"}),
             "actual_rent_collected": forms.NumberInput(
                 attrs={"step": "0.01", "class": "form-control"}
             ),
