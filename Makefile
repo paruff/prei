@@ -210,7 +210,7 @@ docker-accept: ensure-env build
 		docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_market || rc=$$?; \
 	fi; \
 	if [ $$rc -eq 0 ]; then \
-		BASE_URL=$(ACCEPT_URL) $(PYTHON) -m pytest tests/acceptance/ tests_bdd/test_journey.py -m acceptance -v --tb=short || rc=$$?; \
+		BASE_URL=$(ACCEPT_URL) $(PYTHON) -m pytest tests/acceptance/ tests_bdd/test_journey.py -m acceptance --reruns 0 -v --tb=short || rc=$$?; \
 	fi; \
 	docker compose down; \
 	exit $$rc

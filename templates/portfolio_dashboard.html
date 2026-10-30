@@ -60,17 +60,19 @@
             <th>Price</th>
             <th>Est. Rent</th>
             <th>Monthly CF</th>
+            <th>Latest Actuals</th>
             <th>Market Score</th>
             <th>Acquired</th>
           </tr>
         </thead>
         <tbody>
           {% for prop in properties %}
-          <tr>
+          <tr data-property-id="{{ prop.property_record_id }}">
             <td>{{ prop.address|truncatechars:40 }}</td>
             <td class="col-right num">${{ prop.price|floatformat:0|intcomma }}</td>
             <td class="col-right num">{% if prop.estimated_rent %}${{ prop.estimated_rent|floatformat:0|intcomma }}/mo{% else %}—{% endif %}</td>
             <td class="col-right num">{% if prop.estimated_rent and prop.price %}${{ prop.estimated_rent|floatformat:0|intcomma }}{% else %}—{% endif %}</td>
+            <td class="col-right num" data-metric="latest-actuals">{% if prop.latest_actual %}${{ prop.latest_actual.actual_rent_collected|floatformat:0|intcomma }} ({{ prop.latest_actual.month|date:"M Y" }}){% else %}No data{% endif %}</td>
             <td class="col-right num">{% if prop.gacs_score %}{{ prop.gacs_score|floatformat:1 }}{% else %}—{% endif %}</td>
             <td>{{ prop.acquired_at|date:"M Y"|default:"—" }}</td>
           </tr>

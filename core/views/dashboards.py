@@ -205,13 +205,19 @@ def pipeline_dashboard(request: HttpRequest) -> HttpResponse:
 @login_required
 def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
     """Portfolio dashboard — shows acquired properties and matching growth areas."""
-    from core.models import PipelineProperty
+    from core.models import MonthlyActuals, PipelineProperty
 
     # Get acquired properties
     qs = PipelineProperty.objects.filter(
         user=request.user,
         status=PipelineProperty.Status.ACQUIRED,
     ).order_by("-acquired_at")
+    for p in qs:
+        p.latest_actual = (
+            MonthlyActuals.objects.filter(prop_id=p.property_record_id)
+            .order_by("-month")
+            .first()
+        )
 
     total = qs.count()
     total_equity = sum((p.price or 0) for p in qs)
