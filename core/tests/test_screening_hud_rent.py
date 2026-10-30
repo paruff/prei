@@ -77,3 +77,14 @@ def test_hud_small_area_fmr_reaches_screening(dallas_listing: PipelineProperty) 
 
     assert rent == Decimal("1200")  # studio ZIP row, not the 2BR default
     assert get.call_args.args[0] == "data/4811399999"
+
+
+def test_no_growth_area_means_no_hud_rent(dallas_listing: PipelineProperty) -> None:
+    GrowthArea.objects.all().delete()
+    with (
+        patch("core.integrations.market.hud_fmr.settings") as s,
+        patch("core.integrations.market.hud_fmr.FMRClient._get") as get,
+    ):
+        s.HUD_API_KEY = "k"
+        assert _get_monthly_rent(dallas_listing, None, cache_rent=False) is None
+    get.assert_not_called()

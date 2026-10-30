@@ -75,6 +75,8 @@ def main() -> int:
         )
         return 1
 
+    hud_errs: set[str] = set()
+
     def hud_rent(p: VrmProperty) -> tuple[Decimal | None, str]:
         # The screening rent chain's HUD step, so coverage matches what screening gets.
         try:
@@ -83,8 +85,6 @@ def main() -> int:
             hud_errs.add(str(exc))
             return None, ""
         return (rent, "screening") if rent else (None, "")
-
-    hud_errs: set[str] = set()
 
     key = getattr(settings, "RENTCAST_API_KEY", "") or os.environ.get(
         "RENTCAST_API_KEY", ""
@@ -104,7 +104,11 @@ def main() -> int:
     any_n = sum(
         1 for p, (h, _) in zip(props, hud_hits) if p.projected_monthly_rent or h
     )
-    rc_n = sum(1 for p in props if rc.get(p.zip_code, {}).get(p.bedrooms or 2))
+    rc_n = sum(
+        1
+        for p in props
+        if rc.get(p.zip_code, {}).get(2 if p.bedrooms is None else p.bedrooms)
+    )
 
     print(f"# Rent coverage: {city}, {state} (county FIPS {area.county_fips})\n")
     print(f"Properties measured: {n} (VrmProperty rows for the market)\n")
@@ -136,8 +140,8 @@ def main() -> int:
         "| ZIP | Beds | HUD FMR | Via | Rentcast median | HUD below Rentcast |\n|---|---|---|---|---|---|"
     )
     diffs: list[Decimal] = []
-    for p, (h, lvl) in zip(props, hud_hits):
-        beds = p.bedrooms or 2
+    for p, (h, via) in zip(props, hud_hits):
+        beds = 2 if p.bedrooms is None else p.bedrooms
         r = rc.get(p.zip_code, {}).get(beds)
         gap = ""
         if h and r:
@@ -145,7 +149,7 @@ def main() -> int:
             diffs.append(d)
             gap = f"{d:.1f}%"
         print(
-            f"| {p.zip_code} | {beds} | {h or 'n/a'} | {lvl or 'n/a'} | {r or 'n/a'} | {gap or 'n/a'} |"
+            f"| {p.zip_code} | {beds} | {h or 'n/a'} | {via or 'n/a'} | {r or 'n/a'} | {gap or 'n/a'} |"
         )
     if diffs:
         print(

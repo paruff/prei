@@ -631,6 +631,10 @@ def hud_fmr_rent(
             .first()
             or ""
         )
+    if not fips:
+        logger.info(
+            "No GrowthArea county FIPS for %s, %s; HUD FMR skipped", city, state
+        )
     return get_rent_estimate(
         zip_code=zip_code,
         fips_code=fips or None,
