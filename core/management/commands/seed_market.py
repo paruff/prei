@@ -15,7 +15,8 @@ from django.utils import timezone
 
 from core.models import GrowthArea
 
-# Used when Census/FRED/HUD are unreachable or keys are missing (plan.md risk).
+# Fallback when Census/FRED/HUD are unreachable or keys are missing (plan.md risk).
+# PLACEHOLDER values, not sourced data: for demo/CI only, never for decisions.
 FIXTURE_GROWTH_AREAS = {
     ("TX", "Dallas"): dict(
         metro_area="Dallas-Fort Worth-Arlington, TX",
