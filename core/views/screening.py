@@ -99,7 +99,7 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
     # --- Get or create screening criteria ---
     try:
         criteria = ScreeningCriteria.objects.get(user=request.user)
-    except (ScreeningCriteria.DoesNotExist):
+    except ScreeningCriteria.DoesNotExist:
         criteria = None
 
     # --- Re-screen if user POSTs "rescreen" action ---
@@ -136,7 +136,7 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
             pp.underwriting_at = timezone.now()
             pp.save(update_fields=["stage", "underwriting_at", "updated_at"])
             messages.success(request, f"{pp.address[:40]} moved to Underwriting.")
-        except (PipelineProperty.DoesNotExist):
+        except PipelineProperty.DoesNotExist:
             pass
         return redirect(request.get_full_path())
 
@@ -149,7 +149,7 @@ def pipeline_screener(request: HttpRequest) -> HttpResponse:
             pp.status = PipelineProperty.Status.KILLED
             pp.kill_reason = kill_reason
             pp.save(update_fields=["status", "kill_reason", "updated_at"])
-        except (PipelineProperty.DoesNotExist):
+        except PipelineProperty.DoesNotExist:
             pass
         return redirect(request.get_full_path())
 

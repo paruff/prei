@@ -235,7 +235,7 @@ class VrmScraper:
             return None
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     @staticmethod
@@ -245,7 +245,7 @@ class VrmScraper:
             return None
         try:
             return Decimal(str(value))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     @staticmethod
@@ -301,7 +301,7 @@ class VrmScraper:
                 "latitude": Decimal(latitude_text.strip()),
                 "longitude": Decimal(longitude_text.strip()),
             }
-        except (Exception):
+        except Exception:
             return {"latitude": None, "longitude": None}
 
     def _extract_house_facts(self, soup: BeautifulSoup) -> dict[str, Any]:

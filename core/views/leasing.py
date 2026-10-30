@@ -97,12 +97,12 @@ def leasing_kanban(request: HttpRequest) -> HttpResponse:
             )
         try:
             lp = LeasingPipelineProperty.objects.get(pk=pp_id, user=request.user)
-        except (LeasingPipelineProperty.DoesNotExist):
+        except LeasingPipelineProperty.DoesNotExist:
             return JsonResponse({"error": "Property not found"}, status=404)
         try:
             new_idx = LEASING_STAGES.index(new_stage)
             current_idx = LEASING_STAGES.index(lp.stage)
-        except (ValueError):
+        except ValueError:
             return JsonResponse({"error": f"Unknown stage: {new_stage}"}, status=400)
         if new_idx <= current_idx:
             return JsonResponse(
@@ -164,7 +164,7 @@ def leasing_add(request: HttpRequest) -> HttpResponse:
                 pk=prefill_property_id,
                 user=request.user,
             )
-        except (Property.DoesNotExist):
+        except Property.DoesNotExist:
             pass
 
     if request.method == "POST":
@@ -179,7 +179,7 @@ def leasing_add(request: HttpRequest) -> HttpResponse:
 
         try:
             prop = Property.objects.get(pk=prop_id, user=request.user)
-        except (Property.DoesNotExist):
+        except Property.DoesNotExist:
             messages.error(request, "Property not found.")
             return redirect("leasing_add")
 
@@ -210,7 +210,7 @@ def leasing_detail(request: HttpRequest, pk: int) -> HttpResponse:
 
     try:
         entry = LeasingPipelineProperty.objects.get(pk=pk, user=request.user)
-    except (LeasingPipelineProperty.DoesNotExist):
+    except LeasingPipelineProperty.DoesNotExist:
         raise Http404
 
     # Stage history: chronological from stage based on created_at/updated_at
@@ -316,7 +316,7 @@ def leasing_screening(request: HttpRequest, pk: int) -> HttpResponse:
                 from core.services.leasing import advance_stage
 
                 advance_stage(entry)
-            except (ValueError):
+            except ValueError:
                 pass
         messages.success(request, "Screening result saved.")
         return redirect("leasing_detail", pk=pk)

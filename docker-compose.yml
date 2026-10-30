@@ -4,15 +4,17 @@ services:
       context: .
       dockerfile: Dockerfile
     image: ghcr.io/paruff/prei:latest
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
       HOME: /app/.runtime
       MPLCONFIGDIR: /app/.runtime/matplotlib
       ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
       DATABASE_URL: sqlite:////app/.runtime/db.sqlite3
-      # OTEL — sends traces to uFawkesObs collector
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
+      # OTEL is optional: unset = no export. Set the endpoint and add docker-compose.observability.yml to join the lab network.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: prei
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
     ports: ["8000:8000"]
@@ -23,11 +25,3 @@ services:
       retries: 5
       start_period: 90s
     restart: unless-stopped
-    networks:
-      - default
-      - observability-lab
-
-networks:
-  observability-lab:
-    external: true
-    name: observability-lab

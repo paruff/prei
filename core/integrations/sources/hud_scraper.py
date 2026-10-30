@@ -428,7 +428,7 @@ class HUDHomeScraper:
             # Remove $ and commas
             clean_price = price_text.replace("$", "").replace(",", "").strip()
             return Decimal(clean_price)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     def _parse_integer(self, text: str) -> int:
@@ -449,7 +449,7 @@ class HUDHomeScraper:
             match = re.search(r"\d+", text)
             if match:
                 return int(match.group())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
 
         return 0
@@ -472,7 +472,7 @@ class HUDHomeScraper:
             match = re.search(r"\d+\.?\d*", text)
             if match:
                 return Decimal(match.group())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
 
         return Decimal("0")
@@ -505,11 +505,11 @@ class HUDHomeScraper:
                 try:
                     parsed_date = dt.strptime(date_text, fmt)
                     return parsed_date.date().isoformat()
-                except (ValueError):
+                except ValueError:
                     continue
 
             return None
-        except (Exception):
+        except Exception:
             return None
 
     def _map_property_type(self, prop_type: str) -> str:
@@ -582,6 +582,6 @@ def fetch(state_code: Optional[str] = None) -> List[Dict[str, Any]]:
             return []
         else:
             return loop.run_until_complete(scraper.scrape_state(state_code))
-    except (RuntimeError):
+    except RuntimeError:
         # No event loop, create one
         return asyncio.run(scraper.scrape_state(state_code))

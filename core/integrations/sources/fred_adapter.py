@@ -147,7 +147,7 @@ class FREDAdapter:
                         )
                         # Return empty result instead of raising for not-found series
                         return {"seriess": [], "observations": []}
-                except (ValueError):
+                except ValueError:
                     pass  # Not JSON, fall through to generic error
 
             if exc.response is not None and exc.response.status_code == 401:
@@ -354,7 +354,7 @@ class FREDAdapter:
                 if first_val == 0:
                     return None
                 return (last_val - first_val) / first_val
-            except (InvalidOperation, KeyError, ValueError):
+            except InvalidOperation, KeyError, ValueError:
                 return None
 
         return {
@@ -453,7 +453,7 @@ class FREDAdapter:
             year = date[:4]
             try:
                 decimal_val = Decimal(value)
-            except (InvalidOperation, ValueError):
+            except InvalidOperation, ValueError:
                 continue
             if year not in annual_averages:
                 annual_averages[year] = []

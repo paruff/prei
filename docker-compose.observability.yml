@@ -1,0 +1,12 @@
+# Opt-in: docker compose -f docker-compose.yml -f docker-compose.observability.yml up
+# Requires the external observability-lab network and OTEL_EXPORTER_OTLP_ENDPOINT (e.g. http://otel-collector:4317).
+services:
+  preiweb:
+    networks:
+      - default
+      - observability-lab
+
+networks:
+  observability-lab:
+    external: true
+    name: observability-lab
