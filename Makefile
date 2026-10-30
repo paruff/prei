@@ -129,7 +129,7 @@ deploy-local: ensure-env
 	@$(PYTHON) manage.py migrate --noinput
 	@echo "Starting Django on http://localhost:8000 ..."
 	@$(PYTHON) manage.py runserver 0.0.0.0:8000 &
-	@sleep 3
+	@for i in $$(seq 1 60); do curl -sf -o /dev/null http://localhost:8000/api/health/ && break; sleep 3; done
 	@$(MAKE) smoke
 	@echo "Server running. Press Ctrl+C to stop."
 
@@ -164,7 +164,7 @@ build:
 
 up: build
 	@docker compose up -d
-	@sleep 3
+	@for i in $$(seq 1 60); do curl -sf -o /dev/null http://localhost:8000/api/health/ && break; sleep 3; done
 	@$(MAKE) smoke
 
 down:
