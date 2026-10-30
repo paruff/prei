@@ -20,6 +20,7 @@
 | G0.1 | `make docker-accept`: build, up, seed, run `tests/acceptance/` against the container, down. Fails today. | FR-10, AC-11 | `Makefile` | [#466](https://github.com/paruff/prei/issues/466) |
 | G0.2 | Compose starts without the external `observability-lab` network (make OTEL optional) | FR-10, AC-10 | `docker-compose.yml` | [#467](https://github.com/paruff/prei/issues/467) |
 | G0.3 | One seed command for one market: `seed_markets` + `populate_growth_areas` + properties, inside the container; fix `make docker-dev` (`web` vs the `preiweb` service) | FR-11, AC-10 | `Makefile`, `core/management/commands/` | [#468](https://github.com/paruff/prei/issues/468) |
+| G0.4 | CI runs the journey proof against the container, so template changes can't break it unnoticed | FR-10, AC-11 | `.github/workflows/`, `Makefile` | [#524](https://github.com/paruff/prei/issues/524) |
 
 ## G1: find and decide (journey steps 1–4)
 
@@ -30,6 +31,14 @@
 |---|---|---|---|---|
 | G1.1 | Journey scenario, steps 1–4, against the container. Fails until it passes. | FR-12, AC-12 | `tests_bdd/features/journey.feature` (new), `tests_bdd/steps/` | [#469](https://github.com/paruff/prei/issues/469) |
 | G1.2 | Rent report: coverage by source (VRM, Rentometer, HUD FMR) on the seeded market; HUD FMR vs Rentcast quality for Rentcast's fee; recommendation on FR-1 | NFR-7, NFR-1, AC-13 | `docs/assessments/rent-coverage.md` (new), `scripts/` | [#470](https://github.com/paruff/prei/issues/470) |
+| G1.3 | Low-yield and high price-to-rent listings fail even above the score cutoff; PTR against annual rent | FR-12 | `core/services/screening.py` | [#486](https://github.com/paruff/prei/issues/486) |
+| G1.4 | Discovery banner counts verdicts without screening criteria | FR-12 | `core/views/discovery.py` | [#487](https://github.com/paruff/prei/issues/487) |
+| G1.5 | HUD Small Area FMR responses and county FIPS → HUD entity id | NFR-1, AC-13 | `core/integrations/market/hud_fmr.py` | [#490](https://github.com/paruff/prei/issues/490) |
+| G1.6 | Dallas fallback growth rates as fractions; GACS range guard | FR-11 | `core/management/commands/seed_market.py` | [#491](https://github.com/paruff/prei/issues/491) |
+| G1.7 | Journey asserts the screening verdicts and the Dallas row's score | FR-12, AC-12 | `tests_bdd/` | [#525](https://github.com/paruff/prei/issues/525) |
+| G1.8 | HUD ZIP-level rent reaches the screening fallback; rent report measured through screening | NFR-1, AC-13 | `core/services/screening.py`, `core/integrations/market/hud_fmr.py`, `scripts/rent_coverage.py` | [#526](https://github.com/paruff/prei/issues/526) |
+| G1.9 | Seed fixture refreshed by the next live run; listing fixtures keyed by market | FR-11 | `core/management/commands/seed_market.py` | [#527](https://github.com/paruff/prei/issues/527) |
+| G1.10 | Critical screening failures flagged by the evaluator, not message text; re-screen rows from before G1.3 | FR-12 | `core/services/screening.py` | [#528](https://github.com/paruff/prei/issues/528) |
 
 Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here only if a step times out.
 
@@ -42,6 +51,10 @@ Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here o
 |---|---|---|---|---|
 | G2.1 | Journey scenario, steps 5–7, against the container | FR-13, AC-14 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | [#471](https://github.com/paruff/prei/issues/471) |
 | G2.2 | Acquired property is complete at creation (LIMIT-12) | FR-13 | `core/services/` pipeline acquisition | [#472](https://github.com/paruff/prei/issues/472) |
+| G2.3 | Monthly actuals form on the portfolio dashboard | FR-13, AC-14 | `core/views_portfolio.py`, `templates/portfolio_dashboard.html` | [#497](https://github.com/paruff/prei/issues/497) |
+| G2.4 | Journey closing data consistent (loan + down payment = price) and asserted on the portfolio | FR-13, AC-14 | `tests_bdd/` | [#529](https://github.com/paruff/prei/issues/529) |
+| G2.5 | Acquired property honours the closing's loan amount and taxes the closing price; LIMIT-12 removed | FR-13 | `core/services/pipeline.py`, `docs/KNOWN_LIMITATIONS.md` | [#530](https://github.com/paruff/prei/issues/530) |
+| G2.6 | Monthly actuals: one row per month, notes kept, errors name the field | FR-13 | `core/views_portfolio.py` | [#531](https://github.com/paruff/prei/issues/531) |
 
 ## G3: grow (journey steps 8–9)
 
@@ -51,6 +64,7 @@ Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here o
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
 | G3.1 | Journey scenarios, steps 8–9, against the container | FR-14, AC-15 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | [#473](https://github.com/paruff/prei/issues/473) |
+| G3.2 | Journey's BRRRR step uses the acquired property's price and rent; leasing asserts tenant and rent | FR-14, AC-15 | `tests_bdd/` | [#532](https://github.com/paruff/prei/issues/532) |
 
 ## G4: trust the numbers
 
@@ -65,6 +79,7 @@ Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here o
 | G4.4 | Dashboard: verdict and score consistent with CoC and cap rate for acquired properties; property count matches `/properties/` | FR-15 | `core/services/scoring.py`, dashboard view | [#506](https://github.com/paruff/prei/issues/506) |
 | G4.5 | One `money`, `pct`, `score` filter set, used by every template | FR-15 | `core/templatetags/`, `templates/` | [#507](https://github.com/paruff/prei/issues/507) |
 | G4.6 | Remove the shadowed second `markets/` route | FR-15 | `core/urls.py` | [#508](https://github.com/paruff/prei/issues/508) |
+| G4.7 | One NOI calculation for underwriting and the acquired property; underwriting uses the stored rates | FR-15, AC-16 | `core/services/cma.py`, `core/services/pipeline.py`, `core/services/portfolio.py` | [#533](https://github.com/paruff/prei/issues/533) |
 
 ## G5: DESIGN.md enforced
 
@@ -95,19 +110,14 @@ Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here o
 ## G7: one journey through the nav
 
 **Outcome:** the nav follows the investor journey, and every step leads to the next without typing a URL.
-**Proof:** the journey scenario walks steps 1–9 through links only, against the container (AC-19). Needs a human decision on the nav before G7.2 (Gate: `intent`). Findings: audit §5.
+**Proof:** the journey scenario walks steps 1–9 through links only, against the container (AC-19). G7.2's nav is a proposal: a human decides it in `intent.md` before G7.2 starts. Findings: audit §5.
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
 | G7.1 | Proof: journey steps follow nav and page links only. Fails today. | FR-18, AC-19 | `tests_bdd/steps/journey_steps.py` | [#519](https://github.com/paruff/prei/issues/519) |
-| G7.2 | Nav = Markets · Pipeline · Portfolio · Leasing, settings under the avatar; `/growth/` is the Markets landing; fold the dashboard screener and `/properties/` into Pipeline and Portfolio; hide the app nav from anonymous users | FR-18 | `templates/base.html`, `core/urls.py`, views | [#520](https://github.com/paruff/prei/issues/520) |
+| G7.2 | Proposed nav (pending the intent decision): Markets · Pipeline · Portfolio · Leasing, settings under the avatar; `/growth/` is the Markets landing; fold the dashboard screener and `/properties/` into Pipeline and Portfolio; hide the app nav from anonymous users | FR-18 | `templates/base.html`, `core/urls.py`, views | [#520](https://github.com/paruff/prei/issues/520) |
 | G7.3 | Acquired property next-step bar: enter actuals, start leasing, model BRRRR pre-filled from the property | FR-18 | `templates/pipeline/pipeline_detail.html`, `core/views/` | [#521](https://github.com/paruff/prei/issues/521) |
 | G7.4 | Plain language: no raw enums, "Remove" not "Kill", GACS explained, empty states via the partial, forms blank instead of `0` | FR-18 | `templates/`, `core/forms.py` | [#522](https://github.com/paruff/prei/issues/522) |
-
-## In flight (not a goal)
-
-- **#457:** dependency security bumps (Django 6.0.8, Pillow 13, DRF 3.18.2, aiohttp 3.14.4). Main CI is red on the Trivy scan until it merges. Needs dependency approval.
-- **#458:** CSP, Permissions-Policy and CORP headers (FR-9, AC-8). Merge after #457.
 
 ## Later (no milestone)
 
@@ -123,6 +133,7 @@ Kept from the superseded beta-readiness plan; spec IDs unchanged. None of these 
 | L6 | SRI on external scripts; authenticated ZAP 0 FAIL / 0 WARN | FR-9, AC-9 |
 | L7 | Hosted deploy (Render or other) with Postgres | NFR-6 |
 | L8 | Design-system drift: moved to G5 and G6 | FR-16, FR-17 |
+| L9 | Hygiene from the 2026-10-30 review: GreatSchools error log says what broke (no key, no ZIP); `docker-rent-report` in `make help`; `requirements.txt` "must match" comments agree with `.pre-commit-config.yaml`; drop unused `django-structlog`; screening yield/PTR in Decimal | none |
 
 Also later: portfolio analytics, saved searches, partner API. Deferred by decision: team sharing (#371, #372).
 
