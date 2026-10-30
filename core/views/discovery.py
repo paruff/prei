@@ -340,7 +340,6 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         CountyForeclosureNotice,
         HudProperty,
         PipelineProperty,
-        ScreeningCriteria,
         UsdaProperty,
         VrmProperty,
     )
@@ -557,12 +556,6 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
             except Exception as exc:
                 logger.error("Discovery USDA ingestion failed: %s", exc)
 
-    # Get or create user screening criteria for auto-screening
-    try:
-        criteria = ScreeningCriteria.objects.get(user=request.user)
-    except ScreeningCriteria.DoesNotExist:
-        criteria = None
-
     results = {
         "discovered": 0,
         "already_existed": 0,
@@ -589,7 +582,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 if created:
                     results["discovered"] += 1
                     results["properties"].append(pp)
-                    if criteria and pp.screening_passed is not None:
+                    if pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
@@ -616,7 +609,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 if created:
                     results["discovered"] += 1
                     results["properties"].append(pp)
-                    if criteria and pp.screening_passed is not None:
+                    if pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
@@ -643,7 +636,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 if created:
                     results["discovered"] += 1
                     results["properties"].append(pp)
-                    if criteria and pp.screening_passed is not None:
+                    if pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
@@ -669,7 +662,7 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                 if created:
                     results["discovered"] += 1
                     results["properties"].append(pp)
-                    if criteria and pp.screening_passed is not None:
+                    if pp.screening_passed is not None:
                         if pp.screening_passed:
                             results["screening_passed"] += 1
                         else:
