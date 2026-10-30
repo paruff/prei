@@ -1,0 +1,44 @@
+name: Docker Accept — journey proof against the container
+
+on:
+  pull_request:
+    paths:
+      - "core/**"
+      - "templates/**"
+      - "tests_bdd/**"
+      - "tests/acceptance/**"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".github/workflows/docker-accept.yml"
+
+concurrency:
+  group: docker-accept-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docker-accept:
+    name: "🐳 Journey proof (container)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install test deps
+        run: |
+          pip install -r requirements.txt -q
+          pip install httpx pydantic -q
+      # Makefile's ensure-env uses [[ ]], which /bin/sh (dash) lacks.
+      - name: Create .env
+        run: |
+          cp .env.example .env
+          # .env.example is production-shaped; the journey talks plain HTTP.
+          sed -i -e 's/^DJANGO_ENV=.*/DJANGO_ENV=development/' -e 's/^DEBUG=.*/DEBUG=True/' -e 's/^SECURE_SSL_REDIRECT=.*/SECURE_SSL_REDIRECT=False/' .env
+      - name: Build, start, seed, run journey, stop
+        timeout-minutes: 12
+        run: make docker-accept
+      - name: Container logs on failure
+        if: failure() || cancelled()
+        run: docker compose logs --no-color --tail 200 || true
