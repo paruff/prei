@@ -44,9 +44,14 @@ CSRF_COOKIE_SECURE = False
 # The manifest-based WhiteNoise storage is required in production, but in tests
 # we do not collect static assets and the manifest may be absent. Use the
 # non-manifest storage backend so template rendering can run during pytest.
-STORAGES["staticfiles"]["BACKEND"] = (
-    "django.contrib.staticfiles.storage.StaticFilesStorage"
-)
+_storages = globals().get("STORAGES", {})
+STORAGES = {
+    **_storages,
+    "staticfiles": {
+        **_storages.get("staticfiles", {}),
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 # Clear proxy header — tests don't run behind a TLS-terminating proxy, and
 # setting this can cause false positives when the test client doesn't send
