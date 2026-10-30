@@ -507,3 +507,6 @@ class TestConvertCompleteness:
         assert prop.insurance_annual > 0
         assert prop.down_payment_pct == Decimal("0.2000")
         assert prop.interest_rate > 0
+        assert prop.vacancy_rate == Decimal("0.05")
+        assert prop.mgmt_fee_pct == Decimal("0.08")
+        assert prop.capex_monthly == Decimal("100.00")

@@ -653,6 +653,12 @@ def convert_to_property_record(
                 Decimal("0.01")
             ),
             insurance_annual=insurance,
+            vacancy_rate=Decimal(str(defaults["vacancy_rate"])),
+            mgmt_fee_pct=Decimal(str(defaults["management_fee_rate"])),
+            capex_monthly=(
+                (pipeline_property.estimated_rent or Decimal("0"))
+                * Decimal(str(defaults["capex_reserve_rate"]))
+            ).quantize(Decimal("0.01")),
             down_payment_pct=down_payment_pct,
             interest_rate=Decimal(str(defaults["loan_interest_rate_pct"])) / 100,
             loan_term_years=int(str(defaults["loan_term_years"])),
