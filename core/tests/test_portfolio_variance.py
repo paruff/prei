@@ -352,3 +352,38 @@ class TestComputePortfolioPerformance:
         assert "coc_variance" in detail
         assert "vacancy_variance" in detail
         assert "expense_variance" in detail
+
+
+@pytest.mark.django_db
+def test_dashboard_actuals_form_roundtrip(client, user, property_with_analysis):
+    """FR-13: the dashboard form posts actuals; re-entering a month updates it."""
+    from core.models import PipelineProperty
+
+    PipelineProperty.objects.create(
+        user=user,
+        source_type="manual",
+        source_id="a1",
+        address="123 Test St",
+        status=PipelineProperty.Status.ACQUIRED,
+        property_record=property_with_analysis,
+    )
+    client.force_login(user)
+    page = client.get("/portfolio/")
+    assert 'name="actual_rent_collected"' in page.content.decode()
+
+    data = {
+        "property_id": property_with_analysis.pk,
+        "month": "2026-06",
+        "actual_rent_collected": "1500",
+        "actual_vacancy_days": "2",
+        "actual_expenses": "400",
+        "actual_maintenance": "50",
+    }
+    for rent in ("1500", "1600"):
+        data["actual_rent_collected"] = rent
+        assert client.post("/portfolio/actuals/add/", data).status_code == 302
+    row = MonthlyActuals.objects.get(prop=property_with_analysis)
+    assert row.month == date(2026, 6, 1) and row.actual_rent_collected == Decimal(
+        "1600"
+    )
+    assert "Jun 2026" in client.get("/portfolio/").content.decode()

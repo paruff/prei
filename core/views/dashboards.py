@@ -230,10 +230,21 @@ def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
         "-composite_score"
     )[:10]
 
+    from core.views_portfolio import MonthlyActualsForm
+
+    # Acquired properties that actuals can be entered against
+    actuals_properties = [
+        p.property_record
+        for p in qs.select_related("property_record")
+        if p.property_record
+    ]
+
     return render(
         request,
         "portfolio_dashboard.html",
         {
+            "actuals_form": MonthlyActualsForm(),
+            "actuals_properties": actuals_properties,
             "properties": qs,
             "total_properties": total,
             "total_equity": total_equity,

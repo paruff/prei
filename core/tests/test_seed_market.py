@@ -22,4 +22,5 @@ def test_seed_market_dallas_fixture_gacs_is_sane_without_live_data(monkeypatch) 
     call_command("seed_market", state="TX", city="Dallas")
 
     area = GrowthArea.objects.get(state="TX", city_name="Dallas")
+    assert area.composite_score is not None
     assert Decimal("0") <= area.composite_score <= Decimal("100")

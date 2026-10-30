@@ -83,6 +83,48 @@
   </div>
 </div>
 
+<div class="card mt-section" id="enter-actuals">
+  <div class="card-title">Monthly Actuals</div>
+  <div class="card-body">
+    {% if actuals_properties %}
+    <form method="post" action="{% url 'portfolio_actuals_add' %}" >
+      {% csrf_token %}
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="actual_property">Property</label>
+          <select class="form-input" id="actual_property" name="property_id" required>
+            {% for prop in actuals_properties %}<option value="{{ prop.pk }}">{{ prop.address }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="{{ actuals_form.month.id_for_label }}">Month</label>
+          {{ actuals_form.month }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="{{ actuals_form.actual_rent_collected.id_for_label }}">Rent Collected ($)</label>
+          {{ actuals_form.actual_rent_collected }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="{{ actuals_form.actual_vacancy_days.id_for_label }}">Vacancy Days</label>
+          {{ actuals_form.actual_vacancy_days }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="{{ actuals_form.actual_expenses.id_for_label }}">Operating Expenses ($)</label>
+          {{ actuals_form.actual_expenses }}
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="{{ actuals_form.actual_maintenance.id_for_label }}">Maintenance ($)</label>
+          {{ actuals_form.actual_maintenance }}
+        </div>
+      </div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">Save Actuals</button></div>
+    </form>
+    {% else %}
+    <p class="page-sub">Actuals can be entered once an acquired property has a property record.</p>
+    {% endif %}
+  </div>
+</div>
+
 <div class="card mt-section">
   <div class="card-title">Matching Growth Areas</div>
   <div class="card-body">

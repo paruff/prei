@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib import messages
 from django.shortcuts import redirect, render
 
 from core.models import MonthlyActuals, Property
@@ -16,7 +17,7 @@ class MonthlyActualsForm(forms.ModelForm):
     # <input type="month"> submits "YYYY-MM", which DateField rejects by default.
     month = forms.DateField(
         input_formats=["%Y-%m-%d", "%Y-%m"],
-        widget=forms.DateInput(attrs={"type": "month", "class": "form-control"}),
+        widget=forms.DateInput(attrs={"type": "month", "class": "form-input"}),
     )
 
     class Meta:
@@ -31,18 +32,18 @@ class MonthlyActualsForm(forms.ModelForm):
         ]
         widgets = {
             "actual_rent_collected": forms.NumberInput(
-                attrs={"step": "0.01", "class": "form-control"}
+                attrs={"step": "0.01", "min": "0", "class": "form-input"}
             ),
             "actual_vacancy_days": forms.NumberInput(
-                attrs={"class": "form-control", "min": "0", "max": "31"}
+                attrs={"class": "form-input", "min": "0", "max": "31"}
             ),
             "actual_expenses": forms.NumberInput(
-                attrs={"step": "0.01", "class": "form-control"}
+                attrs={"step": "0.01", "class": "form-input"}
             ),
             "actual_maintenance": forms.NumberInput(
-                attrs={"step": "0.01", "class": "form-control"}
+                attrs={"step": "0.01", "class": "form-input"}
             ),
-            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
+            "notes": forms.Textarea(attrs={"class": "form-input", "rows": 2}),
         }
 
 
@@ -90,8 +91,17 @@ def portfolio_actuals_add(request):
 
     form = MonthlyActualsForm(request.POST)
     if form.is_valid():
-        actuals = form.save(commit=False)
-        actuals.prop = property_obj
-        actuals.save()
+        data = form.cleaned_data
+        month = data.pop("month")
+        MonthlyActuals.objects.update_or_create(
+            prop=property_obj, month=month, defaults=data
+        )
+        messages.success(request, f"Saved actuals for {month:%b %Y}.")
+    else:
+        messages.error(
+            request,
+            "Could not save actuals: "
+            + "; ".join(str(e) for errs in form.errors.values() for e in errs),
+        )
 
     return redirect("portfolio_dashboard")
