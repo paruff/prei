@@ -13,6 +13,8 @@ Feature: Investor journey, steps 1-9 (identify through grow)
     Then Dallas, TX is ranked with a composite score
     When I discover VRM properties in Dallas, TX
     Then the screener lists "1200 Seed Pass Ln" and "3400 Seed Fail Ct"
+    And "1200 Seed Pass Ln" is screened Passed
+    And "3400 Seed Fail Ct" is screened Failed
     When I open "1200 Seed Pass Ln" from the screener
     Then its gross yield is "12.0%" and its price-to-rent is "8.33"
     And it shows NOI, cap rate, cash-on-cash and DSCR
