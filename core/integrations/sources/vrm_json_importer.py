@@ -41,7 +41,7 @@ def _normalize_lot_size_sf(lot_size: Any, lot_size_source: str) -> int | None:
     # "SF", "sf", or anything else: treat as square feet already
     try:
         return int(value)
-    except (ValueError, ArithmeticError):
+    except ValueError, ArithmeticError:
         return None
 
 
@@ -59,7 +59,7 @@ def _to_int(raw: Any) -> int | None:
         return None
     try:
         return int(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

@@ -63,7 +63,7 @@ def search_listings(request):
             max_price = max_price or (
                 str(s.max_price) if s.max_price is not None else None
             )
-        except (SavedSearch.DoesNotExist, ValueError):
+        except SavedSearch.DoesNotExist, ValueError:
             pass
 
     qs = Listing.objects.all()
@@ -340,7 +340,6 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
         CountyForeclosureNotice,
         HudProperty,
         PipelineProperty,
-        ScreeningCriteria,
         UsdaProperty,
         VrmProperty,
     )
@@ -556,12 +555,6 @@ def property_discovery(request: HttpRequest) -> HttpResponse:
                     )
             except Exception as exc:
                 logger.error("Discovery USDA ingestion failed: %s", exc)
-
-    # Get or create user screening criteria for auto-screening
-    try:
-        criteria = ScreeningCriteria.objects.get(user=request.user)
-    except ScreeningCriteria.DoesNotExist:
-        criteria = None
 
     results = {
         "discovered": 0,

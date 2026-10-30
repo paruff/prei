@@ -205,18 +205,18 @@ class FannieMaeHomePathClient:
                     if beds_el:
                         try:
                             beds = int(beds_el.get_text(strip=True))
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
                     if baths_el:
                         try:
                             baths = Decimal(baths_el.get_text(strip=True))
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
                     if sqft_el:
                         sqft_text = sqft_el.get_text(strip=True).replace(",", "")
                         try:
                             sq_ft = int(sqft_text)
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
 
                 url = ""

@@ -24,7 +24,7 @@ def _coerce_float(v: Any) -> float | None:
         return None
     try:
         return float(v)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return 0.0
 
 
@@ -34,7 +34,7 @@ def _coerce_beds(v: Any) -> int:
         return 0
     try:
         return int(float(v))
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return 0
 
 
@@ -44,7 +44,7 @@ def _coerce_baths(v: Any) -> float:
         return 0.0
     try:
         return float(v)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return 0.0
 
 
@@ -54,7 +54,7 @@ def _coerce_sqft(v: Any) -> float | None:
         return None
     try:
         return float(v)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 
@@ -64,7 +64,7 @@ def _coerce_year(v: Any) -> int | None:
         return None
     try:
         return int(float(v))
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 
