@@ -216,6 +216,16 @@ class PipelineProperty(models.Model):
     estimated_insurance_annual = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
+    # Underwriting rates, as fractions (0.05 = 5%); capex is a share of rent
+    estimated_vacancy_rate = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True
+    )
+    estimated_mgmt_fee_pct = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True
+    )
+    estimated_capex_reserve_rate = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True
+    )
     beds = models.IntegerField(null=True, blank=True)
     baths = models.FloatField(null=True, blank=True)
     sqft = models.FloatField(null=True, blank=True)
