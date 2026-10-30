@@ -134,7 +134,7 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 **Location:** `core/services/pipeline.py` — `convert_to_property_record()`
 
-**Impact:** None. The Property is created with the closing price, estimated rent, annual taxes and insurance (`TAX_RATE_PCT`, `INSURANCE_ANNUAL`), and loan terms (down payment from the closing record, rate and term from `FINANCE_DEFAULTS`).
+**Impact:** None. The Property is created with the closing price, estimated rent, annual taxes and insurance (stored on the pipeline record as `estimated_taxes_annual` and `estimated_insurance_annual`, from `TAX_RATE_PCT` and `INSURANCE_ANNUAL`), and loan terms (down payment from the closing record, rate and term from `FINANCE_DEFAULTS`).
 
 **Workaround:** None needed. Bedrooms and sqft come from the pipeline record; property type defaults to SFR.
 

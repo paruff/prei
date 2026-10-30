@@ -503,7 +503,7 @@ class TestConvertCompleteness:
 
         assert prop.purchase_price == Decimal("240000")
         assert prop.monthly_rent_gross == Decimal("2000")
-        assert prop.property_taxes_annual == Decimal("2880.00")
+        assert prop.property_taxes_annual == Decimal("3000.00")
         assert prop.insurance_annual > 0
         assert prop.down_payment_pct == Decimal("0.2000")
         assert prop.interest_rate > 0
@@ -519,3 +519,17 @@ class TestConvertCompleteness:
         assert prop.purchase_price == Decimal("250000")
         assert prop.property_taxes_annual == Decimal("3000.00")
         assert prop.down_payment_pct == Decimal("0.20")
+
+    def test_expenses_come_from_pipeline_record(self, db, user, vrm_property):
+        pp, _ = create_from_vrm(vrm_property, user)
+        assert pp.estimated_taxes_annual == Decimal("3000.00")
+        assert pp.estimated_insurance_annual > 0
+
+        pp.estimated_taxes_annual = Decimal("4321.00")
+        pp.estimated_insurance_annual = Decimal("999.00")
+        pp.save()
+
+        prop = convert_to_property_record(pp)
+
+        assert prop.property_taxes_annual == Decimal("4321.00")
+        assert prop.insurance_annual == Decimal("999.00")
