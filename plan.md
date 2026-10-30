@@ -17,9 +17,9 @@
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G0.1 | `make docker-accept`: build, up, seed, run `tests/acceptance/` against the container, down. Fails today. | FR-10, AC-11 | `Makefile` | no issue yet |
-| G0.2 | Compose starts without the external `observability-lab` network (make OTEL optional) | FR-10, AC-10 | `docker-compose.yml` | no issue yet |
-| G0.3 | One seed command for one market: `seed_markets` + `populate_growth_areas` + properties, inside the container; fix `make docker-dev` (`web` vs the `preiweb` service) | FR-11, AC-10 | `Makefile`, `core/management/commands/` | no issue yet |
+| G0.1 | `make docker-accept`: build, up, seed, run `tests/acceptance/` against the container, down. Fails today. | FR-10, AC-11 | `Makefile` | [#466](https://github.com/paruff/prei/issues/466) |
+| G0.2 | Compose starts without the external `observability-lab` network (make OTEL optional) | FR-10, AC-10 | `docker-compose.yml` | [#467](https://github.com/paruff/prei/issues/467) |
+| G0.3 | One seed command for one market: `seed_markets` + `populate_growth_areas` + properties, inside the container; fix `make docker-dev` (`web` vs the `preiweb` service) | FR-11, AC-10 | `Makefile`, `core/management/commands/` | [#468](https://github.com/paruff/prei/issues/468) |
 
 ## G1: find and decide (journey steps 1–4)
 
@@ -28,8 +28,8 @@
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G1.1 | Journey scenario, steps 1–4, against the container. Fails until it passes. | FR-12, AC-12 | `tests_bdd/features/journey.feature` (new), `tests_bdd/steps/` | no issue yet |
-| G1.2 | Rent report: coverage by source (VRM, Rentometer, HUD FMR) on the seeded market; HUD FMR vs Rentcast quality for Rentcast's fee; recommendation on FR-1 | NFR-7, NFR-1, AC-13 | `docs/assessments/rent-coverage.md` (new), `scripts/` | no issue yet |
+| G1.1 | Journey scenario, steps 1–4, against the container. Fails until it passes. | FR-12, AC-12 | `tests_bdd/features/journey.feature` (new), `tests_bdd/steps/` | [#469](https://github.com/paruff/prei/issues/469) |
+| G1.2 | Rent report: coverage by source (VRM, Rentometer, HUD FMR) on the seeded market; HUD FMR vs Rentcast quality for Rentcast's fee; recommendation on FR-1 | NFR-7, NFR-1, AC-13 | `docs/assessments/rent-coverage.md` (new), `scripts/` | [#470](https://github.com/paruff/prei/issues/470) |
 
 Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here only if a step times out.
 
@@ -40,8 +40,8 @@ Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here o
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G2.1 | Journey scenario, steps 5–7, against the container | FR-13, AC-14 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | no issue yet |
-| G2.2 | Acquired property is complete at creation (LIMIT-12) | FR-13 | `core/services/` pipeline acquisition | no issue yet |
+| G2.1 | Journey scenario, steps 5–7, against the container | FR-13, AC-14 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | [#471](https://github.com/paruff/prei/issues/471) |
+| G2.2 | Acquired property is complete at creation (LIMIT-12) | FR-13 | `core/services/` pipeline acquisition | [#472](https://github.com/paruff/prei/issues/472) |
 
 ## G3: grow (journey steps 8–9)
 
@@ -50,7 +50,7 @@ Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here o
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G3.1 | Journey scenarios, steps 8–9, against the container | FR-14, AC-15 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | no issue yet |
+| G3.1 | Journey scenarios, steps 8–9, against the container | FR-14, AC-15 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | [#473](https://github.com/paruff/prei/issues/473) |
 
 ## In flight (not a goal)
 
