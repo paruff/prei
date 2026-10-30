@@ -64,6 +64,6 @@ class Command(BaseCommand):
         area = GrowthArea.objects.get(state=state, city_name=city)
         self.stdout.write(
             self.style.SUCCESS(
-                f"Seeded {city}, {state}: GACS={area.composite_score_display}"
+                f"Seeded {city}, {state}: GACS={area.composite_score_display()}"
             )
         )

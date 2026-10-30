@@ -14,7 +14,7 @@ def test_seed_market_default_dallas_falls_back_to_fixture(monkeypatch) -> None:
     monkeypatch.delenv("CENSUS_API_KEY", raising=False)
     call_command("seed_market")
     area = GrowthArea.objects.get(state="TX", city_name="Dallas")
-    assert area.composite_score_display is not None
+    assert area.composite_score_display() is not None
     assert Property.objects.exists()
     assert RentalIncome.objects.exists()
 
