@@ -108,7 +108,8 @@ def test_compose_web_service_has_required_config() -> None:
     web = compose.get("services", {}).get("preiweb", {})
 
     assert web.get("image") == "ghcr.io/paruff/prei:latest"
-    assert web.get("env_file") == ".env"
+    # .env is optional so `docker compose up` works on a clean checkout (FR-10)
+    assert web.get("env_file") == [{"path": ".env", "required": False}]
     assert "8000:8000" in web.get("ports", [])
     assert web.get("restart") == "unless-stopped"
 
