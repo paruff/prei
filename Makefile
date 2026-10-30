@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev test-live
+.PHONY: help ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev docker-accept test-live
 
 # Prefer the local venv; fall back to `python` (containers, bare environments).
 # Avoids the Apple /usr/bin/python3 shim that triggers the xcode-select prompt.
@@ -35,6 +35,7 @@ help:
 	@echo "  make smoke              Smoke test localhost:8000 health + APIs"
 	@echo "  ── Docker (build image locally, no CI needed) ──"
 	@echo "  make docker-dev         Build + start Docker stack (migrate + seed)"
+	@echo "  make docker-accept      Build, start, seed, run tests/acceptance/ against the container, stop"
 	@echo "  make test-live          Start Docker + run live acceptance tests"
 	@echo "  make build              Build Docker image"
 	@echo "  make up                 Build + start daemon + smoke test"
@@ -188,6 +189,22 @@ docker-dev: ensure-env build up
 	@echo "  make restart  — stop, rebuild, start"
 	@echo "  make down     — stop containers"
 	@echo "  make clean    — remove images + volumes"
+
+# Acceptance suite against the built container; always tears the stack down.
+ACCEPT_URL ?= http://localhost:8000
+docker-accept: ensure-env build
+	@docker compose up -d
+	@rc=0; \
+	for i in $$(seq 1 60); do curl -sf -o /dev/null $(ACCEPT_URL)/api/health/ && break; sleep 3; done; \
+	curl -sf -o /dev/null $(ACCEPT_URL)/api/health/ || { echo "❌ container never became healthy"; rc=1; }; \
+	if [ $$rc -eq 0 ]; then \
+		docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_data || rc=$$?; \
+	fi; \
+	if [ $$rc -eq 0 ]; then \
+		BASE_URL=$(ACCEPT_URL) $(PYTHON) -m pytest tests/acceptance/ -m acceptance -v --tb=short || rc=$$?; \
+	fi; \
+	docker compose down; \
+	exit $$rc
 
 # ── Financial math verification ────────────────────────────────────────
 
