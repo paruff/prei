@@ -114,10 +114,7 @@ from core.integrations.sources.attom_adapter import ATTOMAdapter
 adapter = ATTOMAdapter()
 
 # Fetch property details with caching
-property_data = adapter.fetch_with_cache(
-    "123 Ocean Drive",
-    "Miami, FL 33139"
-)
+property_data = adapter.fetch_with_cache("123 Ocean Drive", "Miami, FL 33139")
 
 # Normalize to ForeclosureProperty schema
 normalized = adapter.normalize_property(property_data)

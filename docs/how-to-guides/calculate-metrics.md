@@ -56,7 +56,7 @@ property = Property.objects.create(
     city="Austin",
     state="TX",
     zip_code="78701",
-    purchase_price=Decimal("400000")
+    purchase_price=Decimal("400000"),
 )
 
 # Add rental income
@@ -64,7 +64,7 @@ RentalIncome.objects.create(
     property=property,
     monthly_rent=Decimal("3000"),
     effective_date="2024-01-01",
-    vacancy_rate=Decimal("0.05")
+    vacancy_rate=Decimal("0.05"),
 )
 
 # Add operating expenses
@@ -73,7 +73,7 @@ OperatingExpense.objects.create(
     category="Property Tax",
     amount=Decimal("4800"),
     frequency="annual",
-    effective_date="2024-01-01"
+    effective_date="2024-01-01",
 )
 
 OperatingExpense.objects.create(
@@ -81,7 +81,7 @@ OperatingExpense.objects.create(
     category="Insurance",
     amount=Decimal("1800"),
     frequency="annual",
-    effective_date="2024-01-01"
+    effective_date="2024-01-01",
 )
 
 OperatingExpense.objects.create(
@@ -89,7 +89,7 @@ OperatingExpense.objects.create(
     category="Maintenance",
     amount=Decimal("300"),
     frequency="monthly",
-    effective_date="2024-01-01"
+    effective_date="2024-01-01",
 )
 
 # Calculate metrics

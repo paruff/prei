@@ -139,8 +139,8 @@ Classes like `.card`, `.kpi-grid`, `.data-table`, `.verdict-badge`, `.brrrr-bann
 ### Python-Driven Colors
 `UnderwritingScore` exposes properties that return CSS class names:
 ```python
-score.coc_color_class   # → "num-good" | "num-warn" | "num-bad"
-score.verdict_label     # → "Strong Buy" | "Conditional" | "Pass"
+score.coc_color_class  # → "num-good" | "num-warn" | "num-bad"
+score.verdict_label  # → "Strong Buy" | "Conditional" | "Pass"
 ```
 Templates reference these directly — no threshold comparisons in HTML.
 

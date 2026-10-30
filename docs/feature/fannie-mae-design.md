@@ -72,8 +72,7 @@ class FannieMaeHomePathClient:
 
     BASE_URL = "https://www.homepath.com"
 
-    def __init__(self, delay_seconds: float | None = None):
-        ...
+    def __init__(self, delay_seconds: float | None = None): ...
 
     def search_by_location(self, location: str) -> list[dict]:
         """Search listings by city/state or ZIP. Returns normalized dicts.
@@ -103,9 +102,9 @@ class FannieMaeHomePathClient:
     "property_type": "SFH",
     "url": "https://www.homepath.com/listing/...",
     "posted_at": datetime(2026, 7, 1),
-    "status": "Active",           # Active, Pending, Sold
+    "status": "Active",  # Active, Pending, Sold
     "year_built": 2005,
-    "lot_size": 0.25,             # Acres
+    "lot_size": 0.25,  # Acres
     "description": "Beautiful 3BR...",
     "images": ["https://..."],
 }
@@ -121,10 +120,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--location", help="City, State or ZIP to search")
-        parser.add_argument("--request-id", type=int,
-            help="Fulfill a specific DiscoveryRequest by ID")
-        parser.add_argument("--all-pending", action="store_true",
-            help="Fulfill all pending DiscoveryRequests for Fannie Mae")
+        parser.add_argument(
+            "--request-id", type=int, help="Fulfill a specific DiscoveryRequest by ID"
+        )
+        parser.add_argument(
+            "--all-pending",
+            action="store_true",
+            help="Fulfill all pending DiscoveryRequests for Fannie Mae",
+        )
 ```
 
 **Upsert logic** (in `handle`):

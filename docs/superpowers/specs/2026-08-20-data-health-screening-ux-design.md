@@ -84,7 +84,9 @@ Add "Preview Impact" button below the form (before Save). On click:
 **New model:** `ScreeningCriteriaVersion`
 ```python
 class ScreeningCriteriaVersion(models.Model):
-    criteria = models.ForeignKey(ScreeningCriteria, on_delete=models.CASCADE, related_name='versions')
+    criteria = models.ForeignKey(
+        ScreeningCriteria, on_delete=models.CASCADE, related_name="versions"
+    )
     snapshot = models.JSONField()  # serialized criteria fields
     created_at = models.DateTimeField(auto_now_add=True)
 ```

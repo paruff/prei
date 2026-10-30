@@ -505,8 +505,11 @@ from decimal import Decimal
 from investor_app.finance.utils import project_annual_cash_flows
 
 flows = project_annual_cash_flows(
-    Decimal("36000"), Decimal("12000"), Decimal("18000"),
-    rent_growth_rate=Decimal("0.03"), expense_growth_rate=Decimal("0.02"),
+    Decimal("36000"),
+    Decimal("12000"),
+    Decimal("18000"),
+    rent_growth_rate=Decimal("0.03"),
+    expense_growth_rate=Decimal("0.02"),
     hold_years=5,
 )
 # → [Decimal("6000"), Decimal("6760.00"), ...]  (5 entries)

@@ -450,9 +450,9 @@ Financial calculations use default rates from environment configuration:
 
 ```python
 # From .env.example
-VACANCY_RATE=0.05         # 5% vacancy
-MANAGEMENT_FEE_RATE=0.08   # 8% management fee
-CAPEX_RESERVE_RATE=0.05    # 5% capital expenditure reserve
+VACANCY_RATE = 0.05  # 5% vacancy
+MANAGEMENT_FEE_RATE = 0.08  # 8% management fee
+CAPEX_RESERVE_RATE = 0.05  # 5% capital expenditure reserve
 ```
 
 These can be overridden per property or rental income record.

@@ -58,12 +58,12 @@ live tests (external APIs). This causes:
 All test files live in `tests/` root. Each file gets ONE file-level `pytestmark`:
 
 ```python
-pytestmark = pytest.mark.unit                    # pure functions
-pytestmark = pytest.mark.integration             # needs DB
-pytestmark = pytest.mark.e2e                     # full pipeline flow
-pytestmark = pytest.mark.smoke                   # container/Docker
-pytestmark = pytest.mark.acceptance              # httpx HTTP
-pytestmark = pytest.mark.live                    # real external APIs
+pytestmark = pytest.mark.unit  # pure functions
+pytestmark = pytest.mark.integration  # needs DB
+pytestmark = pytest.mark.e2e  # full pipeline flow
+pytestmark = pytest.mark.smoke  # container/Docker
+pytestmark = pytest.mark.acceptance  # httpx HTTP
+pytestmark = pytest.mark.live  # real external APIs
 ```
 
 Files with mixed test types (e.g. some pure functions + some DB tests) are split.

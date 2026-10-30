@@ -63,7 +63,7 @@ def search_listings(request):
             max_price = max_price or (
                 str(s.max_price) if s.max_price is not None else None
             )
-        except SavedSearch.DoesNotExist, ValueError:
+        except (SavedSearch.DoesNotExist, ValueError):
             pass
 
     qs = Listing.objects.all()

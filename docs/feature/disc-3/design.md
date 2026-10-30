@@ -32,9 +32,11 @@ Key mappings:
 def kill_reason(self) -> str | None:
     return self.hard_failures[0] if self.hard_failures else None
 
+
 @property
 def yield_evaluated(self) -> bool:
     return "Gross yield" in str(self.passes) or "Gross yield" in str(self.soft_failures)
+
 
 @property
 def yield_note(self) -> str:

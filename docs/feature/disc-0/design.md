@@ -30,9 +30,13 @@ class HudProperty(models.Model):
     state = models.CharField(max_length=2, db_index=True)
     zip_code = models.CharField(max_length=16)
     county = models.CharField(max_length=128, blank=True, default="")
-    list_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    list_price = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
     bedrooms = models.IntegerField(null=True, blank=True)
-    bathrooms = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    bathrooms = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True
+    )
     square_feet = models.IntegerField(null=True, blank=True)
     property_type = models.CharField(max_length=64, blank=True, default="")
     status = models.CharField(max_length=32, choices=Status.choices)
@@ -64,11 +68,17 @@ class UsdaProperty(models.Model):
     state = models.CharField(max_length=2, db_index=True)
     zip_code = models.CharField(max_length=16)
     county = models.CharField(max_length=128, blank=True, default="")
-    list_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    list_price = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
     bedrooms = models.IntegerField(null=True, blank=True)
-    bathrooms = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    bathrooms = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True
+    )
     square_feet = models.IntegerField(null=True, blank=True)
-    lot_size_acres = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    lot_size_acres = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True
+    )
     property_type = models.CharField(max_length=64, blank=True, default="")
     status = models.CharField(max_length=32, choices=Status.choices)
     listing_url = models.URLField(blank=True, default="")
@@ -108,9 +118,15 @@ class CountyForeclosureNotice(models.Model):
     sale_date = models.DateField(null=True, blank=True, db_index=True)
     auction_time = models.CharField(max_length=64, blank=True, default="")
     auction_location = models.TextField(blank=True, default="")
-    opening_bid = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    unpaid_balance = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    estimated_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    opening_bid = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    unpaid_balance = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    estimated_value = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
     parcel_number = models.CharField(max_length=128, blank=True, default="")
     source_url = models.URLField(blank=True, default="")
     raw_data = models.JSONField(default=dict, blank=True)

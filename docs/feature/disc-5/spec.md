@@ -38,9 +38,9 @@ def test_dallas_county_scraper_returns_notices(mock_dallas_response):
 def test_dallas_notice_has_required_fields(mock_dallas_response):
     notices = scrape_dallas_county_nts()
     for n in notices:
-        assert n['address']
-        assert n['notice_type'] == 'NTS'
-        assert n['state'] == 'TX'
+        assert n["address"]
+        assert n["notice_type"] == "NTS"
+        assert n["state"] == "TX"
 ```
 
 ### AC-3: Sale date is TX-valid (first Tuesday)
@@ -49,6 +49,6 @@ def test_dallas_notice_sale_date_is_first_tuesday():
     """TX law: NTS sales on first Tuesday. Spot-check parsed dates."""
     notices = scrape_dallas_county_nts()
     for n in notices:
-        if n.get('sale_date'):
-            assert n['sale_date'].weekday() == 1  # Tuesday
+        if n.get("sale_date"):
+            assert n["sale_date"].weekday() == 1  # Tuesday
 ```

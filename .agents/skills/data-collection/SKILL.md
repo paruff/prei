@@ -69,8 +69,7 @@ print(f"VRM: {stale}/{total} properties stale (>24h)")
 
 # HUD: check data_timestamp
 hud_stale = ForeclosureProperty.objects.filter(
-    data_source='HUD',
-    data_timestamp__lt=cutoff
+    data_source="HUD", data_timestamp__lt=cutoff
 ).count()
 ```
 
