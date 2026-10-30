@@ -34,4 +34,8 @@ jobs:
       - name: Create .env
         run: cp -n .env.example .env
       - name: Build, start, seed, run journey, stop
+        timeout-minutes: 12
         run: make docker-accept
+      - name: Container logs on failure
+        if: failure() || cancelled()
+        run: docker compose logs --no-color --tail 200 || true
