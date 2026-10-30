@@ -29,7 +29,7 @@ jobs:
       - name: Install test deps
         run: |
           pip install -r requirements.txt -q
-          pip install httpx pydantic pytest-django pytest-bdd pytest-rerunfailures -q
+          pip install httpx pydantic -q
       # Makefile's ensure-env uses [[ ]], which /bin/sh (dash) lacks.
       - name: Create .env
         run: cp -n .env.example .env
