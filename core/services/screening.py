@@ -489,7 +489,7 @@ def _eval_price_to_rent_ratio(
             None,
         )
 
-    ptr = price / monthly_rent
+    ptr = price / (monthly_rent * Decimal("12"))  # price / annual rent
     max_ratio = criteria.max_price_to_rent_ratio
 
     if ptr <= max_ratio:
@@ -937,6 +937,7 @@ def screen_property(
 
     score = Decimal("100")
     soft_failures: list[str] = []
+    critical_soft_failures = False
 
     # 5. GACS score
     ded, pass_msg, fail_msg = _eval_gacs_score(
@@ -957,6 +958,9 @@ def screen_property(
         passes.append(pass_msg)
     if fail_msg:
         soft_failures.append(fail_msg)
+        critical_soft_failures = critical_soft_failures or fail_msg.startswith(
+            "Gross yield "
+        )
 
     # 7. Price-to-rent ratio
     ded, pass_msg, fail_msg = _eval_price_to_rent_ratio(
@@ -967,6 +971,9 @@ def screen_property(
         passes.append(pass_msg)
     if fail_msg:
         soft_failures.append(fail_msg)
+        critical_soft_failures = critical_soft_failures or fail_msg.startswith(
+            "Price-to-rent ratio "
+        )
 
     # 8. Year built
     ded, pass_msg, fail_msg = _eval_year_built(pipeline_property, criteria)
@@ -987,7 +994,9 @@ def screen_property(
     # ── Finalize ──────────────────────────────────────────────────────────
     score = max(Decimal("0"), score.quantize(Decimal("0.01")))
 
-    passed = len(soft_failures) == 0 or score >= Decimal("50")
+    passed = (not critical_soft_failures) and (
+        len(soft_failures) == 0 or score >= Decimal("50")
+    )
 
     return ScreeningResult(
         passed=passed,

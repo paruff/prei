@@ -208,9 +208,9 @@ class TestSoftCriteria:
         ded, pass_msg, fail_msg = _eval_price_to_rent_ratio(
             pipeline_prop, criteria, None
         )
-        # 200000 / 1800 = 111.11 > 15 max — deducts
-        assert ded > 0
-        assert fail_msg is not None
+        # 200000 / (1800 * 12) = 9.26 <= 15 max — passes
+        assert ded == 0
+        assert "9.26" in (pass_msg or "")
 
     def test_price_to_rent_deducts(
         self, pipeline_prop: PipelineProperty, criteria: ScreeningCriteria
@@ -295,6 +295,9 @@ class TestScreenPropertyFull:
             state = "TX"
             property_type = None
             foreclosure_status = None
+
+        criteria.max_price_to_rent_ratio = Decimal("200")
+        criteria.save()
 
         result = screen_property(pipeline_prop, criteria, source_record=MockSource())
         assert result.passed is True

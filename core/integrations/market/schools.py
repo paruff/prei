@@ -52,7 +52,7 @@ def fetch_school_rating(
         resp.raise_for_status()
         schools = resp.json()
     except requests.RequestException, json.JSONDecodeError, TypeError:
-        logger.warning("GreatSchools API error for zip=%s", zip_code)
+        logger.warning("GreatSchools API error")
         return None
 
     if not isinstance(schools, list) or len(schools) == 0:
