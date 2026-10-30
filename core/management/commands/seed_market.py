@@ -21,12 +21,12 @@ from core.models import GrowthArea, VrmProperty
 FIXTURE_GROWTH_AREAS = {
     ("TX", "Dallas"): dict(
         metro_area="Dallas-Fort Worth-Arlington, TX",
-        population_growth_rate=Decimal("1.20"),
-        employment_growth_rate=Decimal("2.10"),
-        median_income_growth=Decimal("3.40"),
+        population_growth_rate=Decimal("0.01"),
+        employment_growth_rate=Decimal("0.02"),
+        median_income_growth=Decimal("0.03"),
         housing_demand_index=72,
         supply_constraint_index=45,
-        rent_growth_rate=Decimal("4.00"),
+        rent_growth_rate=Decimal("0.04"),
         fmr_2br=Decimal("1650.00"),
         county_fips="48113",
     ),
