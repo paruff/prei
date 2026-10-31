@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.4.11](https://github.com/paruff/prei/compare/v0.4.10...v0.4.11) (2026-10-31)
+
+
+### Added
+
+* **compose:** docker-accept target and optional observability network ([#479](https://github.com/paruff/prei/issues/479)) ([8575197](https://github.com/paruff/prei/commit/8575197bb4c2dd82b257848e39ab367eaac30507))
+* **journey:** add steps 1-4 scenario against the container ([#485](https://github.com/paruff/prei/issues/485)) ([d44eb54](https://github.com/paruff/prei/commit/d44eb5478fb457f36e0aadcea1ae5943a944230e)), closes [#469](https://github.com/paruff/prei/issues/469)
+* **journey:** add steps 5-7 scenario against the container ([#496](https://github.com/paruff/prei/issues/496)) ([7348278](https://github.com/paruff/prei/commit/7348278dc6734b49235a92f031184e52c9f87732)), closes [#471](https://github.com/paruff/prei/issues/471)
+* **make:** add docker-accept target ([#478](https://github.com/paruff/prei/issues/478)) ([b08b9a9](https://github.com/paruff/prei/commit/b08b9a9ba1ff477799841f84e6c2712bda34a84d))
+* nonce-based CSP, Permissions-Policy and CORP headers (FR9) ([#458](https://github.com/paruff/prei/issues/458)) ([5c8d4e4](https://github.com/paruff/prei/commit/5c8d4e4a219300b1c2235a8b5874755c19cef989))
+* **pipeline:** store vacancy, management fee and capex rates on the pipeline record ([#501](https://github.com/paruff/prei/issues/501)) ([df0892b](https://github.com/paruff/prei/commit/df0892b83abad9377dba29895bc5ce8c4ee92b5b))
+* **portfolio:** add monthly actuals form to portfolio dashboard ([#499](https://github.com/paruff/prei/issues/499)) ([420439e](https://github.com/paruff/prei/commit/420439ec27a138563ed02a40372178777d90f4dd))
+* **rent:** coverage report script and first rent measurement ([#488](https://github.com/paruff/prei/issues/488)) ([25f7ca6](https://github.com/paruff/prei/commit/25f7ca6c71f20ed3ed7bbf36d746a8527f9a660c))
+* **rent:** measure hud fmr at zip level, compare with rentcast zip stats ([#489](https://github.com/paruff/prei/issues/489)) ([c16beff](https://github.com/paruff/prei/commit/c16beffc988f24037fc5a2938fae03d7025292bb))
+* **seed:** one seed command for one market in the container ([#482](https://github.com/paruff/prei/issues/482)) ([cf1ebe3](https://github.com/paruff/prei/commit/cf1ebe36d7f01ab119c518bceea740c7f900563b))
+
+
+### Fixed
+
+* **ci:** resolve Tier 2 image build failure from OpenTelemetry pin mismatch ([#480](https://github.com/paruff/prei/issues/480)) ([fdf9b2f](https://github.com/paruff/prei/commit/fdf9b2fdae944484258924ff1215e18132c5d042))
+* **deps:** bump msgpack to 1.2.3 for CVE-2026-114613 ([#476](https://github.com/paruff/prei/issues/476)) ([c3814d4](https://github.com/paruff/prei/commit/c3814d422fd81e6bcd4c5aec8743e313a15b15e8))
+* **discovery:** count banner verdicts without screening criteria ([#495](https://github.com/paruff/prei/issues/495)) ([fbe14bd](https://github.com/paruff/prei/commit/fbe14bddfb94857297550adfc4c8bd2da3f87f95))
+* **hud:** handle Small Area FMR responses and map county FIPS to HUD entity IDs ([#492](https://github.com/paruff/prei/issues/492)) ([3a3ce86](https://github.com/paruff/prei/commit/3a3ce86d893960ab96c5241b90754f64730ab4da))
+* **make:** run docker-accept without reruns ([#498](https://github.com/paruff/prei/issues/498)) ([a098201](https://github.com/paruff/prei/commit/a0982018aa6098185fbec89a8cd429839816c3a6))
+* **make:** wait for health before smoke test in up and deploy-local ([#484](https://github.com/paruff/prei/issues/484)) ([b3cc318](https://github.com/paruff/prei/commit/b3cc3181ba65cbfda12eec937164841c142f2b65)), closes [#483](https://github.com/paruff/prei/issues/483)
+* **pipeline:** create acquired property complete (LIMIT-12) ([#500](https://github.com/paruff/prei/issues/500)) ([59297e2](https://github.com/paruff/prei/commit/59297e294497369891c5ff6b08d56421686d1dbf))
+* **screening:** fail low-yield and high-PTR listings even above score cutoff ([#494](https://github.com/paruff/prei/issues/494)) ([018c16d](https://github.com/paruff/prei/commit/018c16d46e670e4b8386c95700078b7bdb539b28))
+* **screening:** pass county fips to hud fmr so zip-level rent reaches screening ([#536](https://github.com/paruff/prei/issues/536)) ([e91c093](https://github.com/paruff/prei/commit/e91c093758e9ce90eee5399623111b130b2114ce))
+* **seed:** normalize Dallas fallback growth-rate units and add GACS regression guard ([#493](https://github.com/paruff/prei/issues/493)) ([e21b6fe](https://github.com/paruff/prei/commit/e21b6fed3971d5d8b56499f8b9f2ee07473cca4f))
+
+
+### Docs
+
+* adopt intent/spec/plan chain, DESIGN.md, REVIEW.md and board workflow ([#452](https://github.com/paruff/prei/issues/452)) ([de7bfae](https://github.com/paruff/prei/commit/de7bfaed4376cabf8f44412df9b833da3dfced3e))
+* link plan rows G0.1-G3.1 to their issues ([#477](https://github.com/paruff/prei/issues/477)) ([57d0ffb](https://github.com/paruff/prei/commit/57d0ffbceb5135ae4f6de2e989ad4aee66a2ac73))
+* **plan:** add goals G4-G7 and review follow-up rows ([#523](https://github.com/paruff/prei/issues/523)) ([7355578](https://github.com/paruff/prei/commit/73555789d61a69a2fab3ac61db13f5884beb00c7))
+* re-aim intent, spec and plan at a functioning prei, one goal at a time ([#465](https://github.com/paruff/prei/issues/465)) ([891d72e](https://github.com/paruff/prei/commit/891d72e58cb435c7c1386ad806041206349cfd09))
+
+
+### Chores
+
+* **deps:** bump anomalyco/opencode/github from 2.0.32 to 2.2.0 ([#464](https://github.com/paruff/prei/issues/464)) ([c367c4d](https://github.com/paruff/prei/commit/c367c4d1af5e84355e071e369d775b3fd570e325))
+* **deps:** bump commitizen from 4.17.0 to 4.19.3 ([#462](https://github.com/paruff/prei/issues/462)) ([3fc3f46](https://github.com/paruff/prei/commit/3fc3f4687eb47bf493cd7dc22e7a614fae2afba0))
+* **deps:** bump coverage from 7.16.0 to 7.17.0 ([#463](https://github.com/paruff/prei/issues/463)) ([eeb70d3](https://github.com/paruff/prei/commit/eeb70d375dd637d2747e798003532c5b54bb466a))
+* **deps:** bump django-structlog from 10.1.0 to 11.0.0 ([#460](https://github.com/paruff/prei/issues/460)) ([6d07866](https://github.com/paruff/prei/commit/6d07866a6ef760a0f34c3cf7a57c6f3d5a959ee6))
+* **deps:** bump djangorestframework-stubs from 3.17.0 to 3.18.1 ([#437](https://github.com/paruff/prei/issues/437)) ([6b54d7a](https://github.com/paruff/prei/commit/6b54d7a9e3467aa63165dc35e028f67c09b53b30))
+* **deps:** bump docker/login-action from 4.6.0 to 4.7.0 ([#459](https://github.com/paruff/prei/issues/459)) ([c60240f](https://github.com/paruff/prei/commit/c60240fe68b7a576bacf6b2f1adb90b03ac58e69))
+* **deps:** bump mkdocs-material from 9.7.7 to 9.8.0 ([#461](https://github.com/paruff/prei/issues/461)) ([6d62540](https://github.com/paruff/prei/commit/6d62540e204eb81ce97b52892eddf32785faee30))
+* **deps:** bump opentelemetry-api from 1.44.0 to 1.45.1 in the uv group across 1 directory ([#475](https://github.com/paruff/prei/issues/475)) ([e76fc98](https://github.com/paruff/prei/commit/e76fc98970319a5df796ea216601efee7f96b01d))
+* **deps:** bump pytest-django from 4.12.0 to 4.14.0 ([#440](https://github.com/paruff/prei/issues/440)) ([e46b835](https://github.com/paruff/prei/commit/e46b835152cf65b8a4ea4e92f71ec4368936285f))
+* **deps:** bump the uv group across 1 directory with 6 updates ([#457](https://github.com/paruff/prei/issues/457)) ([13bcfc4](https://github.com/paruff/prei/commit/13bcfc49bf68f3a0c88e3a699aad60d3e1ca91bb))
+* **deps:** bump types-reportlab from 4.5.1.20260728 to 5.0.0.20260911 ([#439](https://github.com/paruff/prei/issues/439)) ([8593948](https://github.com/paruff/prei/commit/8593948eaa6d81deebb2687d7c620f5d1416a5d6))
+* drop graphify and the unused .githooks directory ([#455](https://github.com/paruff/prei/issues/455)) ([d09f040](https://github.com/paruff/prei/commit/d09f04067211e7d399c85852517f3ced9f5c29e7))
+* **ruff:** reformat except clauses and align ruff versions ([#481](https://github.com/paruff/prei/issues/481)) ([d775808](https://github.com/paruff/prei/commit/d77580837106131fdfc6ae23527421ab02f930a7))
+
 ## [0.4.10](https://github.com/paruff/prei/compare/v0.4.9...v0.4.10) (2026-10-24)
 
 
