@@ -598,13 +598,7 @@ def _get_monthly_rent(
     # 4. Fallback: HUD Fair Market Rent
     if zip_code:
         try:
-            from core.integrations.market.hud_fmr import (  # type: ignore[assignment]
-                get_rent_estimate,
-            )
-
-            rent = get_rent_estimate(
-                zip_code=zip_code, bedrooms=int(bedrooms) if bedrooms else 2
-            )
+            rent = hud_fmr_rent(zip_code, state, city, bedrooms)
             if rent is not None and rent > 0:
                 return _cache_rent(pipeline_property, rent, cache_rent)
         except Exception:
@@ -615,6 +609,37 @@ def _get_monthly_rent(
             )
 
     return None
+
+
+def hud_fmr_rent(
+    zip_code: str, state: str | None, city: str | None, bedrooms: Any
+) -> Decimal | None:
+    """HUD FMR for a ZIP; the county FIPS comes from the market's GrowthArea.
+
+    Without a FIPS the HUD adapter has no entity id and returns None.
+    New England county-subdivision entity ids are not supported.
+    """
+    from core.integrations.market.hud_fmr import get_rent_estimate
+    from core.models import GrowthArea
+
+    fips = ""
+    if state and city:
+        fips = (
+            GrowthArea.objects.filter(state=state.upper(), city_name__iexact=city)
+            .exclude(county_fips="")
+            .values_list("county_fips", flat=True)
+            .first()
+            or ""
+        )
+    if not fips:
+        logger.info(
+            "No GrowthArea county FIPS for %s, %s; HUD FMR skipped", city, state
+        )
+    return get_rent_estimate(
+        zip_code=zip_code,
+        fips_code=fips or None,
+        bedrooms=2 if bedrooms is None else int(bedrooms),
+    )
 
 
 def _extract_zip(source_record: Any | None, pipeline_property: Any) -> str | None:

@@ -4,7 +4,7 @@ Run in the container (after `make docker-seed`):
     make docker-rent-report SEED_ARGS="--city Dallas --state TX"
 or: python scripts/rent_coverage.py --city Dallas --state TX
 
-Sources: VRM projected rent (stored), HUD FMR (ZIP-level Small Area FMR where HUD
+Sources: VRM projected rent (stored), HUD FMR (through the screening rent chain: ZIP-level Small Area FMR where HUD
 publishes it, else metro/county level), Rentcast ZIP market statistics (only when
 RENTCAST_API_KEY is set and its subscription is active). Rentometer has no adapter,
 so it is not measured.
@@ -27,40 +27,14 @@ django.setup()
 
 from django.conf import settings  # noqa: E402
 
-from core.integrations.market.fmr_adapter import fetch_fmr_entity_id  # noqa: E402
-from core.integrations.market.hud_fmr import FMRClient  # noqa: E402
 from core.models import GrowthArea, VrmProperty  # noqa: E402
+from core.services.screening import hud_fmr_rent  # noqa: E402
 
-BED_KEY = {
-    0: "Efficiency",
-    1: "One-Bedroom",
-    2: "Two-Bedroom",
-    3: "Three-Bedroom",
-    4: "Four-Bedroom",
-}
-FMR_YEAR = 2026
 RENTCAST_MARKETS = "https://api.rentcast.io/v1/markets"
 
 
 def pct(n: int, total: int) -> str:
     return f"{n}/{total} ({100 * n / total:.0f}%)" if total else "0/0"
-
-
-def hud_rows(state: str, city: str) -> tuple[dict[str, dict], str | None]:
-    """HUD FMR rows keyed by ZIP (plus 'MSA level'); error text if unavailable."""
-    entity = fetch_fmr_entity_id(state, city)
-    if not entity:
-        return {}, "no HUD entity id for the market (token missing FMR access?)"
-    try:
-        data = FMRClient()._get(f"data/{entity}", params={"year": str(FMR_YEAR)})[
-            "data"
-        ]
-    except Exception as exc:  # reported in the output, not swallowed
-        return {}, f"HUD request failed: {exc}"
-    basic = data.get("basicdata") or []
-    if isinstance(basic, dict):  # non-Small-Area markets return one row
-        return {"MSA level": basic}, None
-    return {str(r.get("zip_code")): r for r in basic}, None
 
 
 def rentcast_zip(zip_code: str, key: str) -> tuple[dict[int, Decimal], str | None]:
@@ -101,15 +75,16 @@ def main() -> int:
         )
         return 1
 
-    hud, hud_err = hud_rows(state, city)
+    hud_errs: set[str] = set()
 
     def hud_rent(p: VrmProperty) -> tuple[Decimal | None, str]:
-        beds = p.bedrooms if p.bedrooms in BED_KEY else 2
-        for level in (p.zip_code, "MSA level"):
-            row = hud.get(level)
-            if row and row.get(BED_KEY[beds]):
-                return Decimal(str(row[BED_KEY[beds]])), level
-        return None, ""
+        # The screening rent chain's HUD step, so coverage matches what screening gets.
+        try:
+            rent = hud_fmr_rent(p.zip_code, p.state, p.city, p.bedrooms)
+        except Exception as exc:  # reported in the output, not swallowed
+            hud_errs.add(str(exc))
+            return None, ""
+        return (rent, "screening") if rent else (None, "")
 
     key = getattr(settings, "RENTCAST_API_KEY", "") or os.environ.get(
         "RENTCAST_API_KEY", ""
@@ -126,11 +101,14 @@ def main() -> int:
     hud_hits = [hud_rent(p) for p in props]
     vrm_n = sum(1 for p in props if p.projected_monthly_rent)
     hud_n = sum(1 for h, _ in hud_hits if h)
-    zip_n = sum(1 for h, lvl in hud_hits if h and lvl != "MSA level")
     any_n = sum(
         1 for p, (h, _) in zip(props, hud_hits) if p.projected_monthly_rent or h
     )
-    rc_n = sum(1 for p in props if rc.get(p.zip_code, {}).get(p.bedrooms or 2))
+    rc_n = sum(
+        1
+        for p in props
+        if rc.get(p.zip_code, {}).get(2 if p.bedrooms is None else p.bedrooms)
+    )
 
     print(f"# Rent coverage: {city}, {state} (county FIPS {area.county_fips})\n")
     print(f"Properties measured: {n} (VrmProperty rows for the market)\n")
@@ -139,8 +117,9 @@ def main() -> int:
         f"| VRM projected rent | {pct(vrm_n, n)} | stored on the row at scrape time |"
     )
     hud_note = (
-        hud_err
-        or f"FY{FMR_YEAR}; {zip_n} at ZIP level (Small Area FMR), rest metro level; 40th percentile floor"
+        "HUD request failed: " + "; ".join(sorted(hud_errs))
+        if hud_errs
+        else "via the screening rent chain (hud_fmr_rent); 40th percentile floor"
     )
     print(f"| HUD FMR | {pct(hud_n, n)} | {hud_note} |")
     if not key:
@@ -158,11 +137,11 @@ def main() -> int:
 
     print("## HUD FMR vs Rentcast\n")
     print(
-        "| ZIP | Beds | HUD FMR | Level | Rentcast median | HUD below Rentcast |\n|---|---|---|---|---|---|"
+        "| ZIP | Beds | HUD FMR | Via | Rentcast median | HUD below Rentcast |\n|---|---|---|---|---|---|"
     )
     diffs: list[Decimal] = []
-    for p, (h, lvl) in zip(props, hud_hits):
-        beds = p.bedrooms or 2
+    for p, (h, via) in zip(props, hud_hits):
+        beds = 2 if p.bedrooms is None else p.bedrooms
         r = rc.get(p.zip_code, {}).get(beds)
         gap = ""
         if h and r:
@@ -170,7 +149,7 @@ def main() -> int:
             diffs.append(d)
             gap = f"{d:.1f}%"
         print(
-            f"| {p.zip_code} | {beds} | {h or 'n/a'} | {lvl or 'n/a'} | {r or 'n/a'} | {gap or 'n/a'} |"
+            f"| {p.zip_code} | {beds} | {h or 'n/a'} | {via or 'n/a'} | {r or 'n/a'} | {gap or 'n/a'} |"
         )
     if diffs:
         print(

@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 FMR_API_BASE = "https://www.huduser.gov/hudapi/public/fmr"
 REQUEST_TIMEOUT = 30
+FMR_YEAR = 2026  # fiscal year queried; HUD's default year is older
 
 
 class FMRError(Exception):
@@ -224,8 +225,10 @@ def get_rent_estimate(
 ) -> Decimal | None:
     """Get a rent estimate for a location from HUD FMR data.
 
-    This is a convenience function that attempts to look up FMR data,
-    falling back to county-level data when needed.  Requires a
+    Resolves the county entity id from ``fips_code``; Small Area FMR markets
+    return the row for ``zip_code``, others the county/metro row.  Without a
+    ``fips_code`` there is no entity id, so it returns ``None``.  New England
+    county-subdivision entity ids are not supported.  Requires a
     ``HUD_API_KEY`` environment variable or Django setting.
 
     Args:
@@ -252,17 +255,8 @@ def get_rent_estimate(
 
     if fips_code:
         entity_id = _to_hud_entity_id(fips_code)
-        data = client.get_county_data(entity_id, zip_code=zip_code)
+        data = client.get_county_data(entity_id, year=FMR_YEAR, zip_code=zip_code)
         if data and data.get(key) is not None:
             return cast(Decimal | None, data[key])
-
-    # Fall back to a reasonable default based on 2BR FMR
-    if zip_code:
-        # Log once per session — this is called per-property during screening
-        if not getattr(get_rent_estimate, "_zip_warned", False):
-            logger.info(
-                "ZIP-level FMR lookup not yet implemented via API — using county-level"
-            )
-            get_rent_estimate._zip_warned = True  # type: ignore[attr-defined]
 
     return None
