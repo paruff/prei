@@ -51,4 +51,5 @@ def test_banner_counts_screening_verdicts_without_criteria(client):
 
     results = resp.context["discovery_results"]
     assert results["discovered"] == 1
-    assert results["screening_passed"] + results["screening_failed"] == 1
+    assert results["screening_passed"] == 1
+    assert results["screening_failed"] == 0
