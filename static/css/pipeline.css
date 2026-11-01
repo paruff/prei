@@ -753,7 +753,7 @@
 }
 
 .kanban-empty {
-  color: var(--color-neutral-200);
+  color: var(--color-neutral-500);
   text-align: center;
   padding: var(--sp-4);
   font-size: var(--text-lg);

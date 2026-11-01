@@ -31,10 +31,10 @@
       <h3 class="scenario-name">{{ result.loan_type }}</h3>
       <div class="scenario-badges">
         {% if best_coc and best_coc.loan_type == result.loan_type %}
-        <span class="badge badge-coc">Best CoC</span>
+        <span class="scenario-badge badge-coc">Best CoC</span>
         {% endif %}
         {% if best_dscr and best_dscr.loan_type == result.loan_type %}
-        <span class="badge badge-dscr">Best DSCR</span>
+        <span class="scenario-badge badge-dscr">Best DSCR</span>
         {% endif %}
       </div>
     </div>

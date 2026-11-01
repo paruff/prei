@@ -13,6 +13,7 @@ templates/expenses/add.html bootstrap-class mt-1 1
 templates/expenses/add.html bootstrap-class small 1
 templates/growth_explorer.html bootstrap-class card-body 2
 templates/hud_properties/detail.html bootstrap-class align-items-center 1
+templates/hud_properties/detail.html bootstrap-class badge 1
 templates/hud_properties/detail.html bootstrap-class bg-{% 1
 templates/hud_properties/detail.html bootstrap-class card-body 1
 templates/hud_properties/detail.html bootstrap-class card-footer 1
@@ -25,6 +26,7 @@ templates/hud_properties/detail.html bootstrap-class mb-0 1
 templates/hud_properties/detail.html bootstrap-class row 1
 templates/hud_properties/list.html bootstrap-class align-items-center 1
 templates/hud_properties/list.html bootstrap-class align-items-end 1
+templates/hud_properties/list.html bootstrap-class badge 2
 templates/hud_properties/list.html bootstrap-class bg-secondary 1
 templates/hud_properties/list.html bootstrap-class bg-{% 1
 templates/hud_properties/list.html bootstrap-class btn-outline-primary 1
@@ -57,12 +59,14 @@ templates/investment_targets/edit.html bootstrap-class form-check-label 1
 templates/investment_targets/edit.html bootstrap-class mb-3 2
 templates/investment_targets/edit.html bootstrap-class py-4 1
 templates/investment_targets/edit.html bootstrap-class row 3
+templates/markets/dashboard.html bootstrap-class badge 4
 templates/onboard.html bootstrap-class card-body 3
 templates/pipeline/review_queue.html bootstrap-class card-body 1
 templates/pipeline_dashboard.html bootstrap-class card-body 4
 templates/portfolio.html bootstrap-class alert 2
 templates/portfolio.html bootstrap-class alert-info 1
 templates/portfolio.html bootstrap-class alert-warning 1
+templates/portfolio.html bootstrap-class badge 7
 templates/portfolio.html bootstrap-class bg-danger 2
 templates/portfolio.html bootstrap-class bg-secondary 1
 templates/portfolio.html bootstrap-class bg-success 2
@@ -123,6 +127,7 @@ templates/properties/compare.html bootstrap-class mb-0 1
 templates/properties/compare.html bootstrap-class mb-3 1
 templates/properties/compare.html bootstrap-class table-bordered 1
 templates/properties/compare.html bootstrap-class table-responsive 1
+templates/properties/detail.html bootstrap-class badge 2
 templates/properties/detail.html bootstrap-class btn-secondary 1
 templates/properties/detail.html bootstrap-class btn-sm 1
 templates/properties/edit.html bootstrap-class btn-outline-secondary 1
@@ -179,6 +184,7 @@ templates/registration/login.html bootstrap-class mb-3 1
 templates/registration/login.html bootstrap-class row 1
 templates/registration/login.html bootstrap-class w-100 1
 templates/usda_properties/detail.html bootstrap-class align-items-center 1
+templates/usda_properties/detail.html bootstrap-class badge 1
 templates/usda_properties/detail.html bootstrap-class bg-{% 1
 templates/usda_properties/detail.html bootstrap-class card-body 1
 templates/usda_properties/detail.html bootstrap-class card-footer 1
@@ -191,6 +197,7 @@ templates/usda_properties/detail.html bootstrap-class mb-0 1
 templates/usda_properties/detail.html bootstrap-class row 1
 templates/usda_properties/list.html bootstrap-class align-items-center 1
 templates/usda_properties/list.html bootstrap-class align-items-end 1
+templates/usda_properties/list.html bootstrap-class badge 2
 templates/usda_properties/list.html bootstrap-class bg-secondary 1
 templates/usda_properties/list.html bootstrap-class bg-{% 1
 templates/usda_properties/list.html bootstrap-class btn-outline-primary 1
@@ -213,6 +220,7 @@ templates/vrm_properties/list.html bootstrap-class alert 3
 templates/vrm_properties/list.html bootstrap-class alert-info 1
 templates/vrm_properties/list.html bootstrap-class align-items-center 1
 templates/vrm_properties/list.html bootstrap-class align-items-end 2
+templates/vrm_properties/list.html bootstrap-class badge 3
 templates/vrm_properties/list.html bootstrap-class bg-primary 1
 templates/vrm_properties/list.html bootstrap-class bg-secondary 1
 templates/vrm_properties/list.html bootstrap-class btn-outline-success 1
