@@ -24,7 +24,6 @@ class JourneyCtx:
         self.screener: str = ""
         self.detail_path: str = ""
         self.offer: int = 0
-        self.closing_price: int = 0
         self.leasing_path: str = ""
 
 
@@ -239,7 +238,6 @@ def dd_go(ctx: JourneyCtx) -> None:
 @when(parsers.parse("I close the deal at {price:d}"))
 def close_deal(ctx: JourneyCtx, price: int) -> None:
     loan = price * 3 // 4  # 75% LTV: loan + down payment = price
-    ctx.closing_price = price
     resp = _post(
         ctx,
         f"{ctx.detail_path}closing/",
@@ -414,7 +412,7 @@ def _cells(row: str) -> list[str]:
 
 @then(parsers.parse("the portfolio shows its purchase price of {price:d}"))
 def shows_purchase_price(ctx: JourneyCtx, price: int) -> None:
-    # columns: Address, Price, Est. Rent, Monthly CF, ...
+    # columns: Address, Price, Down Payment, Est. Rent, Monthly CF, ...
     shown = _dollars(_cells(_portfolio_row(ctx.page))[1])
     assert shown == price, f"portfolio price {shown} is not the closing price {price}"
 
@@ -430,7 +428,7 @@ def equity_is_value_minus_loan(ctx: JourneyCtx) -> None:
 
 @then(parsers.parse("the portfolio cash flow is below the gross rent of {rent:d}"))
 def cash_flow_is_net(ctx: JourneyCtx, rent: int) -> None:
-    cash_flow = _dollars(_cells(_portfolio_row(ctx.page))[3])
+    cash_flow = _dollars(_cells(_portfolio_row(ctx.page))[4])
     assert cash_flow < rent, f"cash flow {cash_flow} is gross rent, not net of costs"
 
 
@@ -448,13 +446,8 @@ def dashboard_verdict_agrees(ctx: JourneyCtx) -> None:
     assert not (coc < 8 and verdict == "A"), f"CoC {coc}% is rated Strong Buy"
 
 
-@then("the portfolio equity covers its down payment")
-def equity_covers_down_payment(ctx: JourneyCtx) -> None:
-    # closed at 75% LTV, so the buyer put in a quarter of the closing price
-    kpi = re.search(r"Total Equity</div>\s*<div[^>]*>([^<]+)<", ctx.page)
-    assert kpi, "no Total Equity tile on the portfolio"
-    down_payment = ctx.closing_price - ctx.closing_price * 3 // 4
-    equity = _dollars(kpi.group(1))
-    assert equity >= down_payment, (
-        f"equity {equity} is below the down payment {down_payment}"
-    )
+@then(parsers.parse("the portfolio shows its down payment share of {share}"))
+def shows_down_payment_share(ctx: JourneyCtx, share: str) -> None:
+    # closing loan + down payment = price, so the share is down payment / price
+    shown = _cells(_portfolio_row(ctx.page))[2]
+    assert shown == share, f"portfolio down payment {shown!r} is not {share!r}"
