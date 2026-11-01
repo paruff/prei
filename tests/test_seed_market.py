@@ -101,6 +101,11 @@ def test_seed_market_other_city_gets_no_dallas_listings(monkeypatch) -> None:
 
     assert not VrmProperty.objects.filter(city="Austin").exists()
     assert (
+        not VrmProperty.objects.exclude(city="Dallas")
+        .filter(zip_code__in=["75201", "75204"])
+        .exists()
+    )
+    assert (
         set(
             VrmProperty.objects.filter(city="Dallas").values_list(
                 "vrm_property_id", "city"
