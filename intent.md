@@ -39,3 +39,16 @@ One investor, one seeded market, running locally in Docker:
 1. Which market is seeded first? Default: Dallas, TX (the Dallas County scraper exists).
 2. Is HUD FMR rent good enough for screening, or is Rentcast worth its fee? G1 measures it.
 3. When does a hosted deploy (Render or other) come back? After G3, or earlier if G0 proves easy.
+
+## Decision: the app nav (G7.2)
+
+Decided 2026-11-01 (approved by merging this PR). G7.2 builds exactly this; changes come back here first.
+
+- **Four items, in journey order:** Markets · Pipeline · Portfolio · Leasing. Settings (screening criteria, system), Sell and Sign out sit under the avatar menu.
+- **Markets lands on `/growth/`** (the ranked list), not the explorer. Pipeline is one link to a stage-tabbed page (Discover, Screen, Underwrite, Offer, Close); there is no hover-only dropdown carrying the main path.
+- **Every authenticated page shows the nav** from `base.html`, with `aria-current="page"` on the current item. Anonymous visitors see only Sign in.
+- **Plain accessible names:** no emoji or description text inside a link; descriptions move to a hint or `title`.
+- **At 390px** the four items become a bottom tab bar, not a hamburger.
+- **Next step on detail pages:** an acquired property shows a next-step bar (enter actuals, start leasing, model BRRRR); that is G7.3.
+- **Fold in:** the dashboard screener and `/properties/` merge into Pipeline and Portfolio.
+- **Proof:** the journey scenario (AC-19) walks steps 1–9 through these links only.
