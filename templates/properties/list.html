@@ -1,27 +1,28 @@
 {% extends "base.html" %}
 {% block title %}Properties{% endblock %}
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Properties</h1>
+  <div class="page-header">
+    <h1 class="page-title">Properties</h1>
     {% if can_add_property %}
-      <a href="{% url 'property_add' %}" class="btn btn-primary btn-sm">Add Property</a>
+      <a href="{% url 'property_add' %}" class="btn btn-primary">Add Property</a>
     {% endif %}
   </div>
 
   {% if properties %}
     <form method="get" action="{% url 'property_compare' %}">
-      <div class="d-flex justify-content-end mb-2">
-        <button type="submit" class="btn btn-outline-primary btn-sm" id="compare-selected-btn" disabled>Compare selected</button>
+      <div class="form-actions">
+        <p id="compare-selection-hint" class="form-hint">Select 2–4 properties to compare.</p>
+        <button type="submit" class="btn" id="compare-selected-btn" disabled>Compare selected</button>
       </div>
-      <p id="compare-selection-hint" class="text-muted small mb-2">Select 2–4 properties to compare.</p>
-      <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle">
+      <div class="card">
+      <div class="table-wrap">
+        <table class="data-table">
           <thead>
             <tr>
               <th class="col-checkbox">Compare</th>
               <th>Address</th>
-              <th>Purchase Price</th>
-              <th>Score</th>
+              <th class="col-right">Purchase Price</th>
+              <th class="col-right">Score</th>
               <th>Verdict</th>
               <th>Top Flags</th>
               <th></th>
@@ -35,23 +36,23 @@
                   <label for="compare-{{ property.id }}" class="visually-hidden">Select {{ property.address }} for comparison</label>
                 </td>
                 <td>{{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}</td>
-                <td>{{ property.purchase_price|money }}</td>
-                <td>
+                <td class="col-right num">{{ property.purchase_price|money }}</td>
+                <td class="col-right num">
                   {% if property.underwriting_score %}
-                    <span class="fw-bold">{{ property.underwriting_score.total_score }}</span>
+                    {{ property.underwriting_score.total_score }}
                   {% else %}—{% endif %}
                 </td>
                 <td>
                   {% if property.underwriting_score %}
-                    {% include "components/verdict_badge.html" with verdict=property.underwriting_score.verdict verdict_label=property.underwriting_score.verdict %}
+                    {% include "components/verdict_badge.html" with verdict=property.underwriting_score.verdict verdict_label=property.underwriting_score.verdict_label %}
                   {% else %}—{% endif %}
                 </td>
                 <td>
                   {% if property.underwriting_score %}
                     {% for flag in property.underwriting_score.flags|slice:":2" %}
-                      <div class="small text-muted">{{ flag }}</div>
+                      <div class="form-hint">{{ flag }}</div>
                     {% empty %}
-                      <span class="text-success small">No flags</span>
+                      <span class="form-hint">No flags</span>
                     {% endfor %}
                   {% else %}—{% endif %}
                 </td>
@@ -70,6 +71,7 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
       </div>
     </form>
     <script nonce="{{ csp_nonce }}">
@@ -103,9 +105,7 @@
       })();
     </script>
   {% else %}
-    <div class="alert alert-light border text-center">
-      <p class="mb-2">No properties yet.</p>
-      <a href="{% url 'property_add' %}" class="btn btn-primary">Add your first property</a>
-    </div>
+    {% url 'property_add' as add_url %}
+    {% include "components/empty_state.html" with title="No properties yet" body="Add a property to start tracking and comparing deals." action_url=add_url action_label="Add your first property" %}
   {% endif %}
 {% endblock %}

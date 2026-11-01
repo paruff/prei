@@ -392,7 +392,7 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 .data-table tr:hover td { background: var(--surface-secondary); }
 
 /* ── Table overflow wrapper ─────────────────────────────────── */
-.table-wrap { overflow-x: auto; }
+.table-wrap { overflow-x: auto; position: relative; }
 
 /* ── Verdict badge ──────────────────────────────────────────── */
 .verdict-badge {
@@ -1273,3 +1273,16 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 .data-table a:not([class]) { color: var(--color-neutral-900); text-decoration: underline; text-underline-offset: 2px; }
 .data-table a:not([class]):hover { text-decoration-thickness: 2px; }
 .data-table a:not([class]):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* ── Accessibility helper ───────────────────────────────────── */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

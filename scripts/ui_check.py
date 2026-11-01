@@ -27,6 +27,7 @@ PAGES = [
     "/properties/",
     "/properties/compare/?ids=1&ids=2",
     "/properties/1/",
+    "/properties/1/edit/",
     "/analyze/1/",
     "/leasing/",
     "/vrm-properties/",

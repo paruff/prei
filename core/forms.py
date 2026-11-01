@@ -40,6 +40,30 @@ class StyledSelect(forms.Select):
         self.attrs.setdefault("class", "form-input")
 
 
+class PercentField(forms.DecimalField):
+    """Decimal form field shown as a percentage (8) and stored as a fraction (0.08)."""
+
+    def prepare_value(self, value):
+        if isinstance(value, Decimal):
+            return format((value * 100).normalize(), "f")
+        return value
+
+    def clean(self, value):
+        cleaned = super().clean(value)
+        return None if cleaned is None else cleaned / 100
+
+
+def _percent_field(label: str, hint: str, *, min_value: int = 0) -> PercentField:
+    return PercentField(
+        label=label,
+        help_text=hint,
+        min_value=min_value,
+        max_value=100,
+        decimal_places=2,
+        widget=StyledNumberInput(attrs={"step": "0.1"}),
+    )
+
+
 class PropertyForm(forms.ModelForm):
     """Form for creating and editing properties with all MVP data-entry fields."""
 
@@ -65,6 +89,11 @@ class PropertyForm(forms.ModelForm):
         min_value=MIN_REALISTIC_YEAR_BUILT,
         widget=StyledNumberInput(attrs={"step": "1", "min": "1800", "max": "2030"}),
     )
+
+    down_payment_pct = _percent_field("Down Payment (%)", "e.g. 20 for 20 %")
+    interest_rate = _percent_field("Interest Rate (%)", "e.g. 7 for 7 %")
+    vacancy_rate = _percent_field("Vacancy Rate (%)", "e.g. 8 for 8 %")
+    mgmt_fee_pct = _percent_field("Management Fee (%)", "e.g. 10 for 10 %")
 
     class Meta:
         model = Property
@@ -125,20 +154,8 @@ class PropertyForm(forms.ModelForm):
             "hoa_monthly": StyledNumberInput(attrs={"step": "10", "min": "0"}),
             "maintenance_monthly": StyledNumberInput(attrs={"step": "10", "min": "0"}),
             "capex_monthly": StyledNumberInput(attrs={"step": "10", "min": "0"}),
-            "down_payment_pct": StyledNumberInput(
-                attrs={"step": "1", "min": "0", "max": "100"}
-            ),
-            "interest_rate": StyledNumberInput(
-                attrs={"step": "0.125", "min": "0", "max": "30"}
-            ),
             "loan_term_years": StyledNumberInput(
                 attrs={"step": "1", "min": "1", "max": "40"}
-            ),
-            "vacancy_rate": StyledNumberInput(
-                attrs={"step": "1", "min": "0", "max": "100"}
-            ),
-            "mgmt_fee_pct": StyledNumberInput(
-                attrs={"step": "1", "min": "0", "max": "50"}
             ),
         }
 
@@ -181,30 +198,6 @@ class CapExItemForm(forms.ModelForm):
     class Meta:
         model = CapExItem
         fields = ["replacement_cost", "useful_life_years", "age_years", "notes"]
-
-
-class PercentField(forms.DecimalField):
-    """Decimal form field shown as a percentage (8) and stored as a fraction (0.08)."""
-
-    def prepare_value(self, value):
-        if isinstance(value, Decimal):
-            return format((value * 100).normalize(), "f")
-        return value
-
-    def clean(self, value):
-        cleaned = super().clean(value)
-        return None if cleaned is None else cleaned / 100
-
-
-def _percent_field(label: str, hint: str, *, min_value: int = 0) -> PercentField:
-    return PercentField(
-        label=label,
-        help_text=hint,
-        min_value=min_value,
-        max_value=100,
-        decimal_places=2,
-        widget=StyledNumberInput(attrs={"step": "0.1"}),
-    )
 
 
 class InvestmentTargetsForm(forms.ModelForm):

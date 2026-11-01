@@ -59,11 +59,11 @@ def test_property_form_maps_square_footage_and_units(user):
             "property_taxes_annual": "3000.00",
             "insurance_annual": "1200.00",
             "hoa_monthly": "0.00",
-            "down_payment_pct": "0.20",
-            "interest_rate": "0.07",
+            "down_payment_pct": "20",
+            "interest_rate": "7",
             "loan_term_years": "30",
-            "vacancy_rate": "0.08",
-            "mgmt_fee_pct": "0.10",
+            "vacancy_rate": "8",
+            "mgmt_fee_pct": "10",
             "maintenance_monthly": "150.00",
             "capex_monthly": "100.00",
         }
@@ -114,11 +114,11 @@ def test_property_workflow_views_create_and_redirect(client, user):
             "property_taxes_annual": "4000.00",
             "insurance_annual": "1500.00",
             "hoa_monthly": "0.00",
-            "down_payment_pct": "0.20",
-            "interest_rate": "0.07",
+            "down_payment_pct": "20",
+            "interest_rate": "7",
             "loan_term_years": "30",
-            "vacancy_rate": "0.08",
-            "mgmt_fee_pct": "0.10",
+            "vacancy_rate": "8",
+            "mgmt_fee_pct": "10",
             "maintenance_monthly": "150.00",
             "capex_monthly": "100.00",
         },
@@ -298,3 +298,39 @@ class TestInvestmentTargetsFormPercent:
                 instance=UserInvestmentTargets(min_coc_pct=Decimal(fraction))
             )
             assert f'value="{shown}"' in str(form["min_coc_pct"])
+
+
+@pytest.mark.django_db
+def test_property_form_percent_fields_take_percentages(user):
+    from decimal import Decimal
+
+    form = PropertyForm(
+        data={
+            "address": "1 Pct St",
+            "city": "Austin",
+            "state": "TX",
+            "zip_code": "78701",
+            "purchase_price": "250000.00",
+            "monthly_rent_gross": "1500.00",
+            "other_monthly_income": "0.00",
+            "property_taxes_annual": "3000.00",
+            "insurance_annual": "1200.00",
+            "hoa_monthly": "0.00",
+            "down_payment_pct": "25",
+            "interest_rate": "6.5",
+            "loan_term_years": "30",
+            "vacancy_rate": "8",
+            "mgmt_fee_pct": "10",
+            "maintenance_monthly": "150.00",
+            "capex_monthly": "100.00",
+        }
+    )
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data["down_payment_pct"] == Decimal("0.25")
+    assert form.cleaned_data["interest_rate"] == Decimal("0.065")
+    assert (
+        PropertyForm(initial={"interest_rate": Decimal("0.0700")})[
+            "interest_rate"
+        ].value()
+        == "7"
+    )
