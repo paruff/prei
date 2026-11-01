@@ -29,7 +29,10 @@ RGB = re.compile(r"\brgba?\(")
 STYLE = re.compile(r"<style\b")
 STYLE_ATTR = re.compile(r'\sstyle="')
 CLASS_ATTR = re.compile(r'class="([^"]*)"')
-COMMENT = re.compile(r"/\*.*?\*/|<!--.*?-->|\{#.*?#\}", re.S)
+# theme-color meta cannot use var(): browsers read the attribute literally
+COMMENT = re.compile(
+    r"/\*.*?\*/|<!--.*?-->|\{#.*?#\}|<meta name=\"theme-color\"[^>]*>", re.S
+)
 BOOTSTRAP = re.compile(
     r"^(col(-(xs|sm|md|lg|xl|xxl))?(-\d+)?|row|container(-fluid)?"
     r"|d-(flex|none|block|inline|inline-block|grid)|justify-content-.+|align-items-.+"

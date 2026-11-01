@@ -223,7 +223,7 @@ One family, **Inter**, self-hosted from `static/fonts/` (declared in `tokens.css
 
 ## Elevation & Depth
 
-Flat. Hierarchy comes from tonal layers (page, then card, then secondary surface) and 1px borders, not shadows. The top nav is translucent white with a 12px backdrop blur. Shadows appear only on floating or dragged elements (kanban card hover and drag, menus, modals), and there is no shadow token yet.
+Flat. Hierarchy comes from tonal layers (page, then card, then secondary surface) and 1px borders, not shadows. The top nav is translucent white with a 12px backdrop blur. Shadows appear only on floating or dragged elements (kanban card hover and drag, menus, modals), .
 
 ## Shapes
 

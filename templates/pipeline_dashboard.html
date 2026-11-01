@@ -39,7 +39,7 @@
 <!-- Stage Distribution Card -->
 <div class="card mb-form">
   <div class="card-title">Stage Distribution</div>
-  <div class="card-body">
+  <div>
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -63,7 +63,7 @@
 <!-- Screening Results: Advanced (passed screening) -->
 <div class="card mb-form">
   <div class="card-title">✅ Passed Screening ({{ advanced_assets|length }})</div>
-  <div class="card-body">
+  <div>
     {% if advanced_assets %}
       <div class="table-wrap">
         <table class="data-table">
@@ -104,7 +104,7 @@
 <!-- Screening Results: Killed (failed screening) -->
 <div class="card mb-form">
   <div class="card-title">🛑 Failed Screening / Killed ({{ killed_assets|length }})</div>
-  <div class="card-body">
+  <div>
     {% if killed_assets %}
       <div class="table-wrap">
         <table class="data-table">
@@ -143,7 +143,7 @@
 <!-- Recent Activity -->
 <div class="card mb-form">
   <div class="card-title">Recent Activity</div>
-  <div class="card-body">
+  <div>
     {% if all_assets %}
       <div class="table-wrap">
         <table class="data-table">

@@ -1,50 +1,50 @@
 {% extends "base.html" %}
 {% block title %}Share Property{% endblock %}
 {% block content %}
-  <h1 class="h3 mb-3">Share {{ property.address }}</h1>
+  <h1 class="page-title">Share {{ property.address }}</h1>
 
   {% if error %}
-    <div class="alert alert-danger">{{ error }}</div>
+    <div class="message message-error">{{ error }}</div>
   {% endif %}
 
-  <form method="post" class="card mb-3">
+  <form method="post" class="card mb-4">
     {% csrf_token %}
-    <div class="card-body">
-      <div class="mb-3">
+    <div>
+      <div class="form-group">
         <label class="form-label" for="share-email">User email</label>
-        <input id="share-email" name="email" type="email" class="form-control" required />
+        <input id="share-email" name="email" type="email" class="form-input" required />
       </div>
-      <div class="mb-3">
+      <div class="form-group">
         <label class="form-label" for="share-role">Role</label>
-        <select id="share-role" name="role" class="form-select">
+        <select id="share-role" name="role" class="form-input">
           {% for value, label in role_choices %}
             <option value="{{ value }}">{{ label }}</option>
           {% endfor %}
         </select>
       </div>
       <button type="submit" class="btn btn-primary">Add share</button>
-      <a href="{% url 'property_detail' property.pk %}" class="btn btn-outline-secondary">Back</a>
+      <a href="{% url 'property_detail' property.pk %}" class="btn">Back</a>
     </div>
   </form>
 
   <div class="card">
-    <div class="card-body">
-      <h2 class="h5">Current shares</h2>
+    <div>
+      <h2 class="card-title">Current shares</h2>
       {% if shares %}
-        <ul class="list-group">
+        <ul class="share-list">
           {% for share in shares %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
+            <li class="share-row">
               <span>{{ share.shared_with.email }} ({{ share.get_role_display }})</span>
-              <form method="post" class="m-0">
+              <form method="post" class="form-inline">
                 {% csrf_token %}
                 <input type="hidden" name="revoke_share_id" value="{{ share.id }}" />
-                <button type="submit" class="btn btn-outline-danger btn-sm">Revoke</button>
+                <button type="submit" class="btn btn-danger">Revoke</button>
               </form>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p class="text-muted mb-0">No shares yet.</p>
+        <p class="page-sub">No shares yet.</p>
       {% endif %}
     </div>
   </div>

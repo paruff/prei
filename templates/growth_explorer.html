@@ -42,7 +42,7 @@
 
 {% if error %}
 <div class="card card-danger">
-  <div class="card-body">
+  <div>
     <p class="card-danger-text">{{ error|safe }}</p>
   </div>
 </div>
@@ -110,7 +110,7 @@
 
 <div id="loading-overlay" class="loading-overlay" hidden>
   <div class="loading-card card">
-    <div class="card-body text-center">
+    <div class="text-center">
       <div class="loading-spinner"></div>
       <p>Analyzing growth markets...</p>
       <div class="progress-bar-wrap"><div id="analysis-progress" class="progress-bar" role="progressbar"></div></div>

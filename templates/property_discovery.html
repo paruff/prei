@@ -154,10 +154,10 @@
               {% csrf_token %}
               <input type="hidden" name="action" value="advance">
               <input type="hidden" name="next" value="?growth_area_id={{ growth_area.pk }}">
-              <button type="submit" class="btn btn-primary btn-sm">Continue to Underwriting →</button>
+              <button type="submit" class="btn btn-primary">Continue to Underwriting →</button>
             </form>
             {% else %}
-            <a href="{% url 'pipeline_detail' pk=prop.pk %}" class="btn btn-sm">View →</a>
+            <a href="{% url 'pipeline_detail' pk=prop.pk %}" class="btn">View →</a>
             {% endif %}
           </td>
         </tr>
