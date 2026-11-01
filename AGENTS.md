@@ -37,8 +37,8 @@
 "What's next for an agent?" and "what waits on a human?" are answered by the
 [Real Estate Investor board](https://github.com/users/paruff/projects/3) only. Its **Status** field is the
 only place status lives (no status labels, no status in docs). Goal = GitHub milestone (`G0: …`, `G1: …`);
-work one goal at a time, in order. Outcome, proof and rows are in `plan.md`. AI-DLC (`.claude/`, `aidlc/`)
-may run the stages inside one issue; the board decides what is next. If they disagree, the board wins.
+work one goal at a time, in order. Outcome, proof and rows are in `plan.md`.
+The board decides what is next.
 
 | Status | Means |
 |---|---|
