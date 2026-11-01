@@ -825,7 +825,7 @@ def pipeline_closing_create(request: HttpRequest, pk: int) -> HttpResponse:
         messages.success(
             request,
             f"Property acquired at {prop.address}! "
-            "Complete your property record to begin portfolio tracking.",
+            "It is now tracked in your portfolio.",
         )
         return redirect("portfolio_dashboard")
 

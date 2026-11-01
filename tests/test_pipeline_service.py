@@ -503,7 +503,7 @@ class TestConvertCompleteness:
 
         assert prop.purchase_price == Decimal("240000")
         assert prop.monthly_rent_gross == Decimal("2000")
-        assert prop.property_taxes_annual == Decimal("3000.00")
+        assert prop.property_taxes_annual == Decimal("2880.00")
         assert prop.insurance_annual > 0
         assert prop.down_payment_pct == Decimal("0.2000")
         assert prop.interest_rate > 0
@@ -550,3 +550,67 @@ class TestConvertCompleteness:
         assert prop.vacancy_rate == Decimal("0.10")
         assert prop.mgmt_fee_pct == Decimal("0.12")
         assert prop.capex_monthly == Decimal("200.00")
+
+
+class TestConvertLoanTerms:
+    def _closed(self, user, vrm_property, **kwargs):
+        from core.models import ClosingRecord
+
+        pp, _ = create_from_vrm(vrm_property, user)
+        ClosingRecord.objects.create(
+            pipeline_property=pp,
+            final_purchase_price=Decimal("200000"),
+            closing_date=timezone.now().date(),
+            **kwargs,
+        )
+        pp.refresh_from_db()
+        return pp
+
+    def test_cash_purchase_is_fully_equity_funded(self, db, user, vrm_property):
+        pp = self._closed(user, vrm_property, loan_amount=Decimal("0"))
+        prop = convert_to_property_record(pp)
+        assert prop.down_payment_pct == Decimal("1")
+        assert prop.purchase_price * (1 - prop.down_payment_pct) == 0  # no loan
+
+    def test_loan_wins_over_down_payment(self, db, user, vrm_property):
+        pp = self._closed(
+            user,
+            vrm_property,
+            loan_amount=Decimal("150000"),
+            down_payment=Decimal("100000"),
+        )
+        assert convert_to_property_record(pp).down_payment_pct == Decimal("0.2500")
+
+    def test_no_loan_or_down_payment_uses_default(self, db, user, vrm_property):
+        pp = self._closed(user, vrm_property)
+        assert convert_to_property_record(pp).down_payment_pct == Decimal("0.20")
+
+    def test_loan_only_sets_down_payment_from_price(self, db, user, vrm_property):
+        pp = self._closed(user, vrm_property, loan_amount=Decimal("150000"))
+        assert convert_to_property_record(pp).down_payment_pct == Decimal("0.2500")
+
+    def test_down_payment_above_price_is_capped(self, db, user, vrm_property):
+        pp = self._closed(user, vrm_property, down_payment=Decimal("250000"))
+        assert convert_to_property_record(pp).down_payment_pct == Decimal("1")
+
+    def test_loan_above_price_is_floored_at_zero_down(self, db, user, vrm_property):
+        pp = self._closed(user, vrm_property, loan_amount=Decimal("300000"))
+        assert convert_to_property_record(pp).down_payment_pct == Decimal("0")
+
+    def test_taxes_use_closing_price_not_list_price(self, db, user, vrm_property):
+        pp = self._closed(user, vrm_property, loan_amount=Decimal("0"))
+        assert pp.estimated_taxes_annual == Decimal("3000.00")  # list 250000
+        assert convert_to_property_record(pp).property_taxes_annual == Decimal(
+            "2400.00"
+        )
+
+    def test_pre_migration_row_with_null_estimates(self, db, user, vrm_property):
+        pp = self._closed(user, vrm_property, loan_amount=Decimal("0"))
+        pp.estimated_taxes_annual = None
+        pp.estimated_insurance_annual = None
+        pp.estimated_vacancy_rate = None
+        pp.save()
+        prop = convert_to_property_record(pp)
+        assert prop.property_taxes_annual == Decimal("2400.00")
+        assert prop.insurance_annual > 0
+        assert prop.vacancy_rate == Decimal("0.05")
