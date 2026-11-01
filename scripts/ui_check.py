@@ -39,6 +39,8 @@ PAGES = [
     "/markets/",
 ]
 
+DETAIL_LISTS = ["/hud-properties/", "/usda-properties/"]
+
 CHECKS = r"""() => {
   const out = {};
   out.hscroll = document.documentElement.scrollWidth > window.innerWidth + 1;
@@ -80,6 +82,19 @@ def check_page(page, path: str) -> list[str]:
     return failures
 
 
+def detail_pages(page) -> list[str]:
+    """First detail link on each list in DETAIL_LISTS, so detail pages are crawled too."""
+    found = []
+    for path in DETAIL_LISTS:
+        page.goto(BASE + path, wait_until="networkidle")
+        link = page.locator(f'main a[href^="{path}"]').first
+        if link.count() == 0:
+            print(f"FAIL no detail link on {path} (seed a row)")
+            continue
+        found.append(link.get_attribute("href"))
+    return found
+
+
 def main() -> int:
     failed = 0
     with sync_playwright() as p:
@@ -98,7 +113,7 @@ def main() -> int:
             if "/accounts/login" in page.url:
                 print(f"FAIL {label}: login as {USER!r} did not succeed")
                 return 1
-            for path in PAGES:
+            for path in PAGES + detail_pages(page):
                 for failure in check_page(page, path):
                     failed += 1
                     print(f"FAIL {label} {path}: {failure}")
