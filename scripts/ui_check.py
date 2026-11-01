@@ -22,6 +22,8 @@ PAGES = [
     "/pipeline/",
     "/pipeline/kanban/",
     "/pipeline/list/",
+    "/pipeline/screening/settings/",
+    "/settings/investment-targets/",
     "/properties/",
     "/properties/compare/?ids=1&ids=2",
     "/properties/1/",

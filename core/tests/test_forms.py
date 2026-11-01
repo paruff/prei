@@ -243,3 +243,46 @@ def test_property_add_form_requires_csrf(client, user):
         },
     )
     assert response.status_code == 403
+
+
+class TestInvestmentTargetsFormPercent:
+    """Percentage fields take percentages (8) and store fractions (0.08)."""
+
+    DATA = {
+        "min_coc_pct": "8",
+        "min_dscr": "1.25",
+        "max_grm": "12",
+        "target_hold_years": "7",
+        "annual_rent_growth_assumption": "3",
+        "annual_appreciation_assumption": "3.5",
+        "marginal_tax_rate": "24",
+    }
+
+    def test_percent_input_stored_as_fraction(self):
+        from decimal import Decimal
+
+        from core.forms import InvestmentTargetsForm
+
+        form = InvestmentTargetsForm(self.DATA)
+        assert form.is_valid(), form.errors
+        assert form.cleaned_data["min_coc_pct"] == Decimal("0.08")
+        assert form.cleaned_data["annual_appreciation_assumption"] == Decimal("0.035")
+        assert form.cleaned_data["marginal_tax_rate"] == Decimal("0.24")
+
+    def test_existing_fraction_displayed_as_percent(self):
+        from decimal import Decimal
+
+        from core.forms import InvestmentTargetsForm
+        from core.models import UserInvestmentTargets
+
+        form = InvestmentTargetsForm(
+            instance=UserInvestmentTargets(min_coc_pct=Decimal("0.08"))
+        )
+        assert form["min_coc_pct"].value() == Decimal("8")
+
+    def test_over_100_percent_rejected(self):
+        from core.forms import InvestmentTargetsForm
+
+        form = InvestmentTargetsForm({**self.DATA, "marginal_tax_rate": "240"})
+        assert not form.is_valid()
+        assert "marginal_tax_rate" in form.errors

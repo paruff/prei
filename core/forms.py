@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import cast
 
 from django import forms
@@ -182,8 +183,44 @@ class CapExItemForm(forms.ModelForm):
         fields = ["replacement_cost", "useful_life_years", "age_years", "notes"]
 
 
+class PercentField(forms.DecimalField):
+    """Decimal form field shown as a percentage (8) and stored as a fraction (0.08)."""
+
+    def prepare_value(self, value):
+        if isinstance(value, Decimal):
+            return (value * 100).normalize().quantize(Decimal("0.01")).normalize()
+        return value
+
+    def clean(self, value):
+        cleaned = super().clean(value)
+        return None if cleaned is None else cleaned / 100
+
+
+def _percent_field(label: str, hint: str, *, min_value: int = 0) -> PercentField:
+    return PercentField(
+        label=label,
+        help_text=hint,
+        min_value=min_value,
+        max_value=100,
+        decimal_places=2,
+        widget=StyledNumberInput(attrs={"step": "0.1"}),
+    )
+
+
 class InvestmentTargetsForm(forms.ModelForm):
-    """Form for editing a user's underwriting thresholds and assumptions."""
+    """Form for editing a user's underwriting thresholds and assumptions.
+
+    Percentage fields take percentages (8) and are stored as fractions (0.08).
+    """
+
+    min_coc_pct = _percent_field("Min Cash-on-Cash (%)", "e.g. 8 for 8 %")
+    annual_rent_growth_assumption = _percent_field(
+        "Annual Rent Growth (%)", "e.g. 3 for 3 %", min_value=-100
+    )
+    annual_appreciation_assumption = _percent_field(
+        "Annual Appreciation (%)", "e.g. 3 for 3 %", min_value=-100
+    )
+    marginal_tax_rate = _percent_field("Marginal Tax Rate (%)", "e.g. 24 for 24 %")
 
     class Meta:
         model = UserInvestmentTargets
@@ -198,26 +235,7 @@ class InvestmentTargetsForm(forms.ModelForm):
             "marginal_tax_rate",
         ]
         widgets = {
-            "min_coc_pct": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.01"}
-            ),
-            "min_dscr": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.01"}
-            ),
-            "max_grm": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.1"}
-            ),
-            "require_one_pct_rule": forms.CheckboxInput(
-                attrs={"class": "form-check-input"}
-            ),
-            "target_hold_years": forms.NumberInput(attrs={"class": "form-control"}),
-            "annual_rent_growth_assumption": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.01"}
-            ),
-            "annual_appreciation_assumption": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.01"}
-            ),
-            "marginal_tax_rate": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.01"}
-            ),
+            "min_dscr": StyledNumberInput(attrs={"step": "0.01"}),
+            "max_grm": StyledNumberInput(attrs={"step": "0.1"}),
+            "target_hold_years": StyledNumberInput(),
         }
