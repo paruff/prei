@@ -112,6 +112,7 @@ def process_discovery(
         PipelineProperty instance (created or existing).
     """
     from core.models import PipelineProperty
+    from core.services.pipeline import expense_estimates
 
     existing = (
         PipelineProperty.objects.filter(
@@ -142,4 +143,5 @@ def process_discovery(
         sqft=payload.sqft,
         year_built=payload.year_built,
         discovered_at=timezone.now(),
+        **expense_estimates(payload.price),
     )

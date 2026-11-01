@@ -323,6 +323,7 @@ def create_from_foreclosure(
             "stage": PipelineProperty.Stage.DISCOVERED,
             "status": PipelineProperty.Status.ACTIVE,
             "price": foreclosure_property.opening_bid,
+            **expense_estimates(foreclosure_property.opening_bid),
             "beds": foreclosure_property.bedrooms,
             "year_built": foreclosure_property.year_built,
             "discovered_at": timezone.now(),
@@ -602,12 +603,12 @@ def expense_estimates(price: Any) -> dict[str, Decimal | None]:
         "estimated_capex_reserve_rate": Decimal(str(defaults["capex_reserve_rate"])),
     }
     if price:
-        tax_rate_pct = Decimal(str(getattr(settings, "TAX_RATE_PCT", 1.2)))
+        tax_rate_pct = Decimal(str(defaults["tax_rate_pct"]))
         estimates["estimated_taxes_annual"] = (
             Decimal(price) * tax_rate_pct / 100
         ).quantize(Decimal("0.01"))
         estimates["estimated_insurance_annual"] = Decimal(
-            str(getattr(settings, "INSURANCE_ANNUAL", 1200))
+            str(defaults["insurance_annual"])
         )
     return estimates
 
@@ -702,6 +703,7 @@ def convert_to_property_record(
             insurance_annual=insurance,
             vacancy_rate=from_record("estimated_vacancy_rate"),
             mgmt_fee_pct=from_record("estimated_mgmt_fee_pct"),
+            maintenance_monthly=Decimal(str(defaults["maintenance_monthly"])),
             capex_monthly=(
                 (pipeline_property.estimated_rent or Decimal("0")) * capex_rate
             ).quantize(Decimal("0.01")),
@@ -762,7 +764,14 @@ def underwriting_summary(pipeline_property: Any) -> dict[str, Any] | None:
     if not price or not rent or price <= 0 or rent <= 0:
         return None
     annual_rent = Decimal(rent) * 12
-    kpis = estimate_kpis(Decimal(price), Decimal(rent))
+    # Rates stored on the record at creation; legacy rows fall back to defaults.
+    estimates = expense_estimates(price)
+    stored = {
+        k: getattr(pipeline_property, k)
+        for k in estimates
+        if getattr(pipeline_property, k, None) is not None
+    }
+    kpis = estimate_kpis(Decimal(price), Decimal(rent), {**estimates, **stored})
     return {
         "gross_yield_pct": annual_rent / Decimal(price) * 100,
         "price_to_rent": Decimal(price) / annual_rent,

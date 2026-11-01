@@ -124,6 +124,26 @@ class TestLocationFlag:
         for prop in PipelineProperty.objects.all():
             assert prop.stage == PipelineProperty.Stage.DISCOVERED
 
+    def test_stores_rate_snapshot(self, db, django_user_model) -> None:  # type: ignore[misc]
+        """New pipeline records carry the underwriting rate snapshot (FR-15)."""
+        django_user_model.objects.create_superuser(
+            username="admin", email="admin@example.com", password="adminpass"
+        )
+        with patch(
+            "core.management.commands.collect_fannie_mae.FannieMaeHomePathClient"
+        ) as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.search_by_location.return_value = _SAMPLE_LISTINGS
+
+            call_command("collect_fannie_mae", location="Austin, TX")
+
+        props = PipelineProperty.objects.all()
+        assert props
+        for prop in props:
+            assert prop.estimated_vacancy_rate is not None
+            assert prop.estimated_mgmt_fee_pct is not None
+            assert prop.estimated_capex_reserve_rate is not None
+
 
 # ---------------------------------------------------------------------------
 # --request-id flag

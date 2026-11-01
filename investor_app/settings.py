@@ -258,6 +258,9 @@ FINANCE_DEFAULTS = {
     "down_payment_rate": Decimal(env("DOWN_PAYMENT_RATE", default="0.20")),
     "loan_interest_rate_pct": Decimal(env("LOAN_INTEREST_RATE_PCT", default="7.5")),
     "loan_term_years": int(env("LOAN_TERM_YEARS", default="30")),
+    "tax_rate_pct": Decimal(env("TAX_RATE_PCT", default="1.2")),
+    "insurance_annual": Decimal(env("INSURANCE_ANNUAL", default="1200")),
+    "maintenance_monthly": Decimal(env("MAINTENANCE_MONTHLY", default="150")),
     # Minimum DSCR required by most lenders for investment-property refinancing.
     # Fannie Mae / conventional lenders typically require >= 1.25; some require 1.15–1.30.
     "brrrr_dscr_threshold": Decimal(env("BRRRR_DSCR_THRESHOLD", default="1.25")),

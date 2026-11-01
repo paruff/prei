@@ -36,6 +36,52 @@ class PortfolioCashflow:
     property_breakdown: List[Dict[str, Any]]
 
 
+def monthly_operating_expenses(
+    *,
+    effective_gross_income: Decimal,
+    mgmt_fee_pct: Decimal,
+    taxes_annual: Decimal,
+    insurance_annual: Decimal,
+    maintenance_monthly: Decimal,
+    capex_monthly: Decimal,
+    hoa_monthly: Decimal = Decimal("0"),
+) -> Decimal:
+    """Monthly operating expenses; management is a share of effective income."""
+    return (
+        taxes_annual / Decimal(12)
+        + insurance_annual / Decimal(12)
+        + hoa_monthly
+        + maintenance_monthly
+        + capex_monthly
+        + effective_gross_income * mgmt_fee_pct
+    )
+
+
+def annual_noi(
+    *,
+    monthly_rent: Decimal,
+    vacancy_rate: Decimal,
+    mgmt_fee_pct: Decimal,
+    taxes_annual: Decimal,
+    insurance_annual: Decimal,
+    maintenance_monthly: Decimal,
+    capex_monthly: Decimal,
+    hoa_monthly: Decimal = Decimal("0"),
+) -> Decimal:
+    """The one NOI formula: underwriting and acquired properties both use it."""
+    egi = monthly_rent * (Decimal(1) - vacancy_rate)
+    opex = monthly_operating_expenses(
+        effective_gross_income=egi,
+        mgmt_fee_pct=mgmt_fee_pct,
+        taxes_annual=taxes_annual,
+        insurance_annual=insurance_annual,
+        maintenance_monthly=maintenance_monthly,
+        capex_monthly=capex_monthly,
+        hoa_monthly=hoa_monthly,
+    )
+    return (egi - opex) * MONTHS_PER_YEAR
+
+
 def compute_portfolio_cashflow(user) -> PortfolioCashflow:
     """Compute portfolio-level cash flow aggregation with blended DSCR.
 
@@ -85,13 +131,14 @@ def compute_portfolio_cashflow(user) -> PortfolioCashflow:
         effective_gross_income = gross_rent - vacancy_loss
 
         # Operating expenses (monthly) - taxes, insurance, HOA, maintenance, capex, mgmt
-        monthly_opex = (
-            to_decimal(prop.property_taxes_annual) / Decimal(12)
-            + to_decimal(prop.insurance_annual) / Decimal(12)
-            + prop.hoa_monthly
-            + prop.maintenance_monthly
-            + prop.capex_monthly
-            + effective_gross_income * prop.mgmt_fee_pct
+        monthly_opex = monthly_operating_expenses(
+            effective_gross_income=effective_gross_income,
+            mgmt_fee_pct=prop.mgmt_fee_pct,
+            taxes_annual=to_decimal(prop.property_taxes_annual),
+            insurance_annual=to_decimal(prop.insurance_annual),
+            maintenance_monthly=prop.maintenance_monthly,
+            capex_monthly=prop.capex_monthly,
+            hoa_monthly=prop.hoa_monthly,
         )
         total_opex += monthly_opex
 
