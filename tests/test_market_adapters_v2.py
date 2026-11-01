@@ -198,7 +198,7 @@ class MarketDataRentSchoolWiringTest(TestCase):
         mock_school.return_value = None
         mock_dummy_school.return_value = Decimal("7.5")
 
-        keys = {"RENTCAST_API_KEY": "rc-key"}  # no GREATSCHOOLS_API_KEY
+        keys = {"RENTCAST_API_KEY": "rc-key", "GREATSCHOOLS_API_KEY": ""}  # key absent
         with patch.dict(os.environ, keys):
             snap = MarketDataServiceHelper.refresh("97201")
 
@@ -219,7 +219,7 @@ class MarketDataRentSchoolWiringTest(TestCase):
         mock_dummy_rent.return_value = Decimal("1600.00")
         mock_school.return_value = Decimal("6.0")
 
-        keys = {"GREATSCHOOLS_API_KEY": "gs-key"}  # no RENTCAST_API_KEY
+        keys = {"GREATSCHOOLS_API_KEY": "gs-key", "RENTCAST_API_KEY": ""}  # key absent
         with patch.dict(os.environ, keys):
             snap = MarketDataServiceHelper.refresh("97201")
 
