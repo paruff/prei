@@ -25,6 +25,7 @@ class JourneyCtx:
         self.detail_path: str = ""
         self.offer: int = 0
         self.leasing_path: str = ""
+        self.lease: tuple[str, int] = ("", 0)
 
 
 @pytest.fixture
@@ -331,14 +332,19 @@ def shows_actuals(ctx: JourneyCtx) -> None:
 
 @when(parsers.parse("I run the BRRRR calculator with rehab {rehab:d} and ARV {arv:d}"))
 def run_brrrr(ctx: JourneyCtx, rehab: int, arv: int) -> None:
+    # the acquired property's price and rent, as the portfolio shows them
+    # columns: Address, Price, Down Payment, Est. Rent, ...
+    cells = _cells(_portfolio_row(ctx.client.get("/portfolio/").text))
+    price, rent = _dollars(cells[1]), _dollars(cells[3])
+    assert price == ctx.offer and rent > 0, f"portfolio row {cells[:4]}"
     resp = _post(
         ctx,
         "/brrrr/",
         {
-            "purchase_price": str(ctx.offer),
+            "purchase_price": str(price),
             "rehab_cost": str(rehab),
             "arv": str(arv),
-            "monthly_rent_post_rehab": "1800",
+            "monthly_rent_post_rehab": str(rent),
             "annual_operating_expenses": "4200",
         },
     )
@@ -370,6 +376,7 @@ def add_to_leasing(ctx: JourneyCtx) -> None:
 
 @when(parsers.parse('I lease it to "{tenant}" at {rent:d} a month'))
 def lease_it(ctx: JourneyCtx, tenant: str, rent: int) -> None:
+    ctx.lease = (tenant, rent)
     steps = [
         ("showing/", {}),
         ("application/", {"applicant_name": tenant, "application_date": "2026-10-05"}),
@@ -395,6 +402,10 @@ def lease_it(ctx: JourneyCtx, tenant: str, rent: int) -> None:
 def leasing_stabilized(ctx: JourneyCtx) -> None:
     assert _stage(ctx.page) == "STABILIZED"
     assert "Filled" in ctx.page
+    text = _text(ctx.page)
+    tenant, rent = ctx.lease
+    assert f"Name {tenant}" in text, text[:500]
+    assert f"Monthly Rent ${rent:,}" in text, text[:500]
 
 
 # ── G4.1: the figures an investor acts on (AC-16) ────────────────────────────
