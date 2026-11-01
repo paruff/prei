@@ -36,7 +36,7 @@
         </div>
         <div class="kanban-card-meta">
           {% if lp.asking_rent %}
-          <span class="kanban-card-price">${{ lp.asking_rent|intcomma }}/mo</span>
+          <span class="kanban-card-price">{{ lp.asking_rent|money }}/mo</span>
           {% endif %}
         </div>
         {% if lp.listed_date %}

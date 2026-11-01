@@ -24,7 +24,7 @@
     <div class="form-row">
       <div class="form-field-group">
         <label class="field-label">
-          Min Price: <strong id="min-price-label">${{ criteria.min_price|default:0|floatformat:0|intcomma }}</strong>
+          Min Price: <strong id="min-price-label">{{ criteria.min_price|default:0|money }}</strong>
         </label>
         <input type="range" name="min_price_slider" min="0" max="2000000" step="10000"
                value="{{ criteria.min_price|default:0 }}" class="slider-input"
@@ -33,7 +33,7 @@
       </div>
       <div class="form-field-group">
         <label class="field-label">
-          Max Price: <strong id="max-price-label">${{ criteria.max_price|default:2000000|floatformat:0|intcomma }}</strong>
+          Max Price: <strong id="max-price-label">{{ criteria.max_price|default:2000000|money }}</strong>
         </label>
         <input type="range" name="max_price_slider" min="0" max="2000000" step="10000"
                value="{{ criteria.max_price|default:2000000 }}" class="slider-input"
@@ -52,7 +52,7 @@
     <div class="form-row">
       <div class="form-field-group">
         <label class="field-label">
-          Min Gross Yield: <strong id="yield-label">{{ criteria.min_gross_yield_pct|default:7 }}%</strong>
+          Min Gross Yield: <strong id="yield-label">{{ criteria.min_gross_yield_pct|default:7|pct:"pts" }}</strong>
         </label>
         <input type="range" name="min_gross_yield_pct_slider" min="0" max="20" step="0.5"
                value="{{ criteria.min_gross_yield_pct|default:7 }}" class="slider-input"
@@ -131,10 +131,10 @@
       {% for v in versions %}
       <tr>
         <td>{{ v.created_at|date:"M j, Y H:i" }}</td>
-        <td>{{ v.snapshot.min_gross_yield_pct|default:"—" }}%</td>
+        <td>{{ v.snapshot.min_gross_yield_pct|default:"—"|pct:"pts" }}</td>
         <td>{{ v.snapshot.max_price_to_rent_ratio|default:"—" }}</td>
-        <td>${{ v.snapshot.min_price|default:"0"|intcomma }}</td>
-        <td>${{ v.snapshot.max_price|default:"No limit" }}</td>
+        <td>{{ v.snapshot.min_price|default:"0"|money }}</td>
+        <td>{{ v.snapshot.max_price|default:"No limit"|money }}</td>
       </tr>
       {% endfor %}
     </tbody>

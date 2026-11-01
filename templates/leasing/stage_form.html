@@ -8,7 +8,7 @@
     <p class="page-sub">
       {{ entry.property_record.address }}
       &middot; {{ entry.get_stage_display }}
-      {% if entry.asking_rent %} &middot; ${{ entry.asking_rent|floatformat:0 }}/mo{% endif %}
+      {% if entry.asking_rent %} &middot; {{ entry.asking_rent|money }}/mo{% endif %}
     </p>
   </div>
   <a href="{% url 'leasing_detail' pk=entry.pk %}" class="btn">Back</a>

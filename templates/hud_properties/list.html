@@ -53,7 +53,7 @@
         <td>{{ prop.address }}</td>
         <td>{{ prop.city }}</td>
         <td>{{ prop.state }}</td>
-        <td>{% if prop.asking_price %}${{ prop.asking_price|floatformat:0 }}{% elif prop.list_price %}${{ prop.list_price|floatformat:0 }}{% else %}-{% endif %}</td>
+        <td>{% if prop.asking_price %}{{ prop.asking_price|money }}{% elif prop.list_price %}{{ prop.list_price|money }}{% else %}-{% endif %}</td>
         <td>{{ prop.bedrooms|default:"-" }}</td>
         <td>{{ prop.bathrooms|default:"-" }}</td>
         <td>{{ prop.square_feet|default:"-" }}</td>

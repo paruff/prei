@@ -9,7 +9,7 @@
     <p class="page-sub">
       {% if total_properties > 0 %}
         {{ total_properties }} property{{ total_properties|pluralize }} acquired
-        &middot; ${{ total_equity|floatformat:0|intcomma }} total equity
+        &middot; {{ total_equity|money }} total equity
       {% else %}
         No properties acquired yet
       {% endif %}
@@ -34,17 +34,17 @@
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Total Equity</div>
-    <div class="kpi-value num-good">${{ total_equity|floatformat:0|intcomma }}</div>
+    <div class="kpi-value num-good">{{ total_equity|money }}</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Monthly Cash Flow</div>
     <div class="kpi-value {% if total_monthly_cf >= 0 %}num-good{% else %}num-bad{% endif %}">
-      ${{ total_monthly_cf|floatformat:0|intcomma }}
+      {{ total_monthly_cf|money }}
     </div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Avg GACS Score</div>
-    <div class="kpi-value num">{{ avg_gacs|floatformat:1 }}</div>
+    <div class="kpi-value num">{{ avg_gacs|score }}</div>
     <div class="kpi-sub">Market quality</div>
   </div>
 </div>
@@ -69,11 +69,11 @@
           {% for prop in properties %}
           <tr data-property-id="{{ prop.property_record_id }}">
             <td>{{ prop.address|truncatechars:40 }}</td>
-            <td class="col-right num">${{ prop.price|floatformat:0|intcomma }}</td>
-            <td class="col-right num">{% if prop.estimated_rent %}${{ prop.estimated_rent|floatformat:0|intcomma }}/mo{% else %}—{% endif %}</td>
-            <td class="col-right num">{% if prop.estimated_rent and prop.price %}${{ prop.estimated_rent|floatformat:0|intcomma }}{% else %}—{% endif %}</td>
-            <td class="col-right num" data-metric="latest-actuals">{% if prop.latest_actual %}${{ prop.latest_actual.actual_rent_collected|floatformat:0|intcomma }} ({{ prop.latest_actual.month|date:"M Y" }}){% else %}No data{% endif %}</td>
-            <td class="col-right num">{% if prop.gacs_score %}{{ prop.gacs_score|floatformat:1 }}{% else %}—{% endif %}</td>
+            <td class="col-right num">{{ prop.price|money }}</td>
+            <td class="col-right num">{% if prop.estimated_rent %}{{ prop.estimated_rent|money }}/mo{% else %}—{% endif %}</td>
+            <td class="col-right num">{% if prop.estimated_rent and prop.price %}{{ prop.estimated_rent|money }}{% else %}—{% endif %}</td>
+            <td class="col-right num" data-metric="latest-actuals">{% if prop.latest_actual %}{{ prop.latest_actual.actual_rent_collected|money }} ({{ prop.latest_actual.month|date:"M Y" }}){% else %}No data{% endif %}</td>
+            <td class="col-right num">{% if prop.gacs_score %}{{ prop.gacs_score|score }}{% else %}—{% endif %}</td>
             <td>{{ prop.acquired_at|date:"M Y"|default:"—" }}</td>
           </tr>
           {% endfor %}
@@ -139,7 +139,7 @@
             <tr>
               <td>{{ ga.city_name }}</td>
               <td>{{ ga.state }}</td>
-              <td class="col-right num">{{ ga.population_growth_rate|floatformat:2 }}%</td>
+              <td class="col-right num">{{ ga.population_growth_rate|pct }}</td>
               <td class="col-right num">{{ ga.employment_growth_rate|default:"—" }}</td>
               <td class="col-right num-good">{{ ga.composite_score|default:"—" }}</td>
             </tr>

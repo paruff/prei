@@ -32,9 +32,11 @@
               {% for value_item in row.values %}
                 <td class="{% if value_item.property_id in row.best_property_ids %}table-success{% elif value_item.property_id in row.worst_property_ids %}table-danger{% endif %}">
                   {% if row.format == "currency" %}
-                    ${{ value_item.value|floatformat:2 }}
+                    {{ value_item.value|money }}
+                  {% elif row.format == "percent" %}
+                    {{ value_item.value|pct }}
                   {% else %}
-                    {{ value_item.value|floatformat:4 }}
+                    {{ value_item.value|score }}
                   {% endif %}
                 </td>
               {% endfor %}

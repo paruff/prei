@@ -195,20 +195,20 @@ def property_compare(request):
         {
             "label": "Cap Rate",
             "key": "cap_rate",
-            "format": "decimal4",
+            "format": "percent",
             "higher_is_better": True,
         },
         {
             "label": "Cash-on-Cash",
             "key": "cash_on_cash",
-            "format": "decimal4",
+            "format": "percent",
             "higher_is_better": True,
         },
-        {"label": "IRR", "key": "irr", "format": "decimal4", "higher_is_better": True},
+        {"label": "IRR", "key": "irr", "format": "percent", "higher_is_better": True},
         {
             "label": "DSCR",
             "key": "dscr",
-            "format": "decimal4",
+            "format": "ratio",
             "higher_is_better": True,
         },
         {
@@ -226,7 +226,7 @@ def property_compare(request):
         {
             "label": "Vacancy Rate",
             "key": "vacancy_rate",
-            "format": "decimal4",
+            "format": "percent",
             "higher_is_better": False,
         },
     ]

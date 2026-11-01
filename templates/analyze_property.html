@@ -9,10 +9,10 @@
     <p><a href="{% url 'report_property' property.id %}">Open Property Report</a></p>
     <h3>Financial KPIs</h3>
     <ul>
-      <li>NOI: ${{ analysis.noi }}</li>
-      <li>Cap Rate: {{ analysis.cap_rate|floatformat:4 }}</li>
-      <li>Cash-on-Cash: {{ analysis.cash_on_cash|floatformat:4 }}</li>
-      <li>IRR: {{ analysis.irr|floatformat:4 }}</li>
+      <li>NOI: {{ analysis.noi|money }}</li>
+      <li>Cap Rate: {{ analysis.cap_rate|pct }}</li>
+      <li>Cash-on-Cash: {{ analysis.cash_on_cash|pct }}</li>
+      <li>IRR: {{ analysis.irr|pct }}</li>
       <li>DSCR: {{ analysis.dscr|floatformat:4 }}</li>
     </ul>
 
@@ -31,14 +31,14 @@
         <tr><th>Category</th><th>Monthly</th></tr>
       </thead>
       <tbody>
-        <tr><td>Taxes</td><td>${{ carry_costs.taxes }}</td></tr>
-        <tr><td>Insurance</td><td>${{ carry_costs.insurance }}</td></tr>
-        <tr><td>Maintenance</td><td>${{ carry_costs.maintenance }}</td></tr>
-        <tr><td>Management Fees</td><td>${{ carry_costs.management_fees }}</td></tr>
+        <tr><td>Taxes</td><td>{{ carry_costs.taxes|money }}</td></tr>
+        <tr><td>Insurance</td><td>{{ carry_costs.insurance|money }}</td></tr>
+        <tr><td>Maintenance</td><td>{{ carry_costs.maintenance|money }}</td></tr>
+        <tr><td>Management Fees</td><td>{{ carry_costs.management_fees|money }}</td></tr>
       </tbody>
     </table>
 
     <h3>Projected Monthly Cash Flow</h3>
-    <p>${{ carry_costs.projected_monthly_cash_flow|floatformat:2 }}</p>
+    <p>{{ carry_costs.projected_monthly_cash_flow|money }}</p>
   {% endif %}
 {% endblock %}

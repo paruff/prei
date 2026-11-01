@@ -48,13 +48,13 @@
         </div>
         <div class="indicator-value">
           {% if data.value >= 1000000 %}
-            ${{ data.value|floatformat:0|intcomma }}
+            {{ data.value|money }}
           {% elif data.value >= 1000 %}
-            ${{ data.value|floatformat:0|intcomma }}
+            {{ data.value|money }}
           {% elif data.value >= 1 %}
-            ${{ data.value|floatformat:1 }}
+            {{ data.value|money }}
           {% else %}
-            {{ data.value|floatformat:2 }}%
+            {{ data.value|pct:"pts" }}
           {% endif %}
         </div>
         {% if data.sparkline %}

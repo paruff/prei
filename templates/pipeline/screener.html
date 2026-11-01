@@ -12,7 +12,7 @@
     <p class="page-sub">
       {% if growth_area %}
         {{ growth_area.city_name }}, {{ growth_area.state }}
-        &middot; GACS {{ growth_area.composite_score|floatformat:4 }}
+        &middot; GACS {{ growth_area.composite_score|score }}
         &middot; Landlord {{ growth_area.landlord_score|default:"—" }}/10
       {% else %}
         All Markets
@@ -36,7 +36,7 @@
     <div class="kpi-value num-good">{{ passed_count }}</div>
     <div class="kpi-sub">
       {% if total > 0 %}
-        {{ passed_count }}/{{ total }} ({{ passed_pct|floatformat:0 }}%)
+        {{ passed_count }}/{{ total }} ({{ passed_pct|pct:"pts" }})
       {% endif %}
     </div>
   </div>
@@ -172,7 +172,7 @@
           </span>
         </td>
         <td class="col-right num">
-          {% if pp.price %}${{ pp.price|intcomma }}{% else %}—{% endif %}
+          {% if pp.price %}{{ pp.price|money }}{% else %}—{% endif %}
         </td>
         <td class="col-right">{{ pp.beds|default:"—" }}</td>
         <td class="col-right">
@@ -180,7 +180,7 @@
         </td>
         <td class="col-right num">
           {% if pp.estimated_rent %}
-            ${{ pp.estimated_rent|intcomma }}/mo
+            {{ pp.estimated_rent|money }}/mo
           {% else %}—{% endif %}
         </td>
         <td>

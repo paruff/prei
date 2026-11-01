@@ -43,12 +43,12 @@
           <div class="mao-viz-row">
             <span class="mao-viz-label">$0</span>
             <span class="mao-viz-label--bold">MAO Range</span>
-            <span class="mao-viz-label">${{ property.purchase_price|intcomma }}</span>
+            <span class="mao-viz-label">{{ property.purchase_price|money }}</span>
           </div>
           <div class="mao-viz-bar">
             <div class="mao-viz-fill" title="85% of purchase price — conservative MAO"></div>
           </div>
-          <div class="mao-viz-caption">Target offer: ${{ property.purchase_price|floatformat:0|intcomma }} × 85% = conservative MAO</div>
+          <div class="mao-viz-caption">Target offer: {{ property.purchase_price|money }} × 85% = conservative MAO</div>
         </div>
         {% endif %}
 
@@ -90,7 +90,7 @@
           {% for offer in offers %}
           <tr>
             <td>{{ offer.offer_date|date:"M j, Y" }}</td>
-            <td>${{ offer.offer_price|floatformat:2|intcomma }}</td>
+            <td>{{ offer.offer_price|money }}</td>
             <td>{{ offer.get_status_display }}</td>
             <td>{{ offer.offer_expiry|date:"M j, Y"|default:"-" }}</td>
           </tr>

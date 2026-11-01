@@ -106,7 +106,7 @@
         <td>{{ prop.city }}</td>
         <td>{{ prop.state }}</td>
         <td>{{ prop.zip_code }}</td>
-        <td>{% if prop.list_price %}${{ prop.list_price|floatformat:0 }}{% else %}-{% endif %}</td>
+        <td>{% if prop.list_price %}{{ prop.list_price|money }}{% else %}-{% endif %}</td>
         <td>{% if prop.bedrooms %}{{ prop.bedrooms }}{% else %}-{% endif %}</td>
         <td>{% if prop.bathrooms %}{{ prop.bathrooms }}{% else %}-{% endif %}</td>
         <td>{% if prop.square_feet %}{{ prop.square_feet|floatformat:0 }}{% else %}-{% endif %}</td>

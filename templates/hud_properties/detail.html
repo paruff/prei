@@ -29,8 +29,8 @@
       </div>
       <div class="col-md-6">
         <table class="table table-sm">
-          <tr><th>Asking Price</th><td>{% if hud_property.asking_price %}${{ hud_property.asking_price|floatformat:2 }}{% else %}-{% endif %}</td></tr>
-          <tr><th>List Price</th><td>{% if hud_property.list_price %}${{ hud_property.list_price|floatformat:2 }}{% else %}-{% endif %}</td></tr>
+          <tr><th>Asking Price</th><td>{% if hud_property.asking_price %}{{ hud_property.asking_price|money }}{% else %}-{% endif %}</td></tr>
+          <tr><th>List Price</th><td>{% if hud_property.list_price %}{{ hud_property.list_price|money }}{% else %}-{% endif %}</td></tr>
           <tr><th>Bedrooms</th><td>{{ hud_property.bedrooms|default:"-" }}</td></tr>
           <tr><th>Bathrooms</th><td>{{ hud_property.bathrooms|default:"-" }}</td></tr>
           <tr><th>Square Feet</th><td>{{ hud_property.square_feet|default:"-" }}</td></tr>

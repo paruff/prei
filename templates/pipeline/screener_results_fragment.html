@@ -3,8 +3,8 @@
 <tr>
   <td><a href="{% url 'pipeline_detail' pk=pp.pk %}">{{ pp.address|truncatechars:40 }}</a></td>
   <td>{{ pp.city }}, {{ pp.state }}</td>
-  <td>${{ pp.price|intcomma }}</td>
-  <td>{{ pp.gross_yield_pct|default:"—" }}%</td>
+  <td>{{ pp.price|money }}</td>
+  <td>{{ pp.gross_yield_pct|default:"—"|pct:"pts" }}</td>
   <td>{{ pp.price_to_rent_ratio|default:"—" }}</td>
   <td>{{ pp.beds }}</td>
   <td>

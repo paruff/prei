@@ -30,8 +30,8 @@
             <div class="pipeline-card-address">{{ prop.address }}</div>
             <div class="pipeline-card-meta">
               {{ prop.city }}, {{ prop.state }} {{ prop.zip_code }}
-              &middot; ${{ prop.purchase_price|floatformat:0|intcomma }}
-              &middot; {{ prop.monthly_rent_gross|floatformat:0|intcomma }}/mo
+              &middot; {{ prop.purchase_price|money }}
+              &middot; {{ prop.monthly_rent_gross|money }}/mo
             </div>
           </div>
         </div>

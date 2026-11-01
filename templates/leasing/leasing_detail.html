@@ -24,7 +24,7 @@
     <div class="pipeline-detail-section">
       <h2>Listing</h2>
       <table class="pipeline-detail-table">
-        <tr><td>Asking Rent</td><td>{% if entry.asking_rent %}${{ entry.asking_rent|floatformat:2|intcomma }}/mo{% else %}—{% endif %}</td></tr>
+        <tr><td>Asking Rent</td><td>{% if entry.asking_rent %}{{ entry.asking_rent|money }}/mo{% else %}—{% endif %}</td></tr>
         <tr><td>Listed</td><td>{{ entry.listed_date|date:"M j, Y"|default:"—" }}</td></tr>
         <tr><td>Source</td><td>{{ entry.listing_source|default:"—" }}</td></tr>
         {% if entry.days_vacant is not None %}
@@ -50,8 +50,8 @@
       <table class="pipeline-detail-table">
         <tr><td>Start Date</td><td>{{ entry.lease_start_date|date:"M j, Y"|default:"—" }}</td></tr>
         <tr><td>End Date</td><td>{{ entry.lease_end_date|date:"M j, Y"|default:"—" }}</td></tr>
-        <tr><td>Monthly Rent</td><td>${{ entry.monthly_rent|floatformat:2|intcomma }}</td></tr>
-        <tr><td>Security Deposit</td><td>${{ entry.security_deposit|floatformat:2|intcomma }}</td></tr>
+        <tr><td>Monthly Rent</td><td>{{ entry.monthly_rent|money }}</td></tr>
+        <tr><td>Security Deposit</td><td>{{ entry.security_deposit|money }}</td></tr>
       </table>
     </div>
     {% endif %}

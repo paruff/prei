@@ -56,10 +56,10 @@
           {% endif %}
         </td>
         <td class="col-right col-hide-mobile num {% if m.unemployment_rate <= 0.04 %}num-good{% elif m.unemployment_rate <= 0.06 %}num-warn{% else %}num-bad{% endif %}">
-          {% if m.unemployment_rate %}{{ m.unemployment_rate|floatformat:1 }}%{% else %}&mdash;{% endif %}
+          {% if m.unemployment_rate %}{{ m.unemployment_rate|pct }}{% else %}&mdash;{% endif %}
         </td>
         <td class="col-right col-hide-mobile num {% if m.population_growth_pct_5yr > 0 %}num-good{% else %}num-bad{% endif %}">
-          {% if m.population_growth_pct_5yr %}{{ m.population_growth_pct_5yr|floatformat:1 }}%{% else %}&mdash;{% endif %}
+          {% if m.population_growth_pct_5yr %}{{ m.population_growth_pct_5yr|pct }}{% else %}&mdash;{% endif %}
         </td>
         <td class="col-right num {% if m.overall_score >= 65 %}num-good{% elif m.overall_score >= 40 %}num-warn{% else %}num-bad{% endif %}">
           {% if m.overall_score %}{{ m.overall_score }}{% else %}&mdash;{% endif %}

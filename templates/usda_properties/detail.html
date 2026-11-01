@@ -29,7 +29,7 @@
       </div>
       <div class="col-md-6">
         <table class="table table-sm">
-          <tr><th>List Price</th><td>{% if usda_property.list_price %}${{ usda_property.list_price|floatformat:2 }}{% else %}-{% endif %}</td></tr>
+          <tr><th>List Price</th><td>{% if usda_property.list_price %}{{ usda_property.list_price|money }}{% else %}-{% endif %}</td></tr>
           <tr><th>Bedrooms</th><td>{{ usda_property.bedrooms|default:"-" }}</td></tr>
           <tr><th>Bathrooms</th><td>{{ usda_property.bathrooms|default:"-" }}</td></tr>
           <tr><th>Square Feet</th><td>{{ usda_property.square_feet|default:"-" }}</td></tr>

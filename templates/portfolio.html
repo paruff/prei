@@ -13,7 +13,7 @@
       <div class="card">
         <div class="card-body">
           <h6 class="card-subtitle mb-2 text-muted">Total Monthly Cashflow</h6>
-          <h3 class="card-title mb-0">${{ total_monthly_cashflow }}</h3>
+          <h3 class="card-title mb-0">{{ total_monthly_cashflow|money }}</h3>
         </div>
       </div>
     </div>
@@ -21,7 +21,7 @@
       <div class="card">
         <div class="card-body">
           <h6 class="card-subtitle mb-2 text-muted">Total Estimated Equity</h6>
-          <h3 class="card-title mb-0">${{ total_equity }}</h3>
+          <h3 class="card-title mb-0">{{ total_equity|money }}</h3>
         </div>
       </div>
     </div>
@@ -32,7 +32,7 @@
           <h6 class="card-title mb-0 text-success">
             {% if best_property %}
               {{ best_property.property.address|truncatechars:20 }}
-              <small class="d-block">+{{ best_property.coc_variance|floatformat:1 }}% CoC</small>
+              <small class="d-block">+{{ best_property.coc_variance|pct }} CoC</small>
             {% else %}
               —
             {% endif %}
@@ -47,7 +47,7 @@
           <h6 class="card-title mb-0 text-danger">
             {% if worst_property %}
               {{ worst_property.property.address|truncatechars:20 }}
-              <small class="d-block">{{ worst_property.coc_variance|floatformat:1 }}% CoC</small>
+              <small class="d-block">{{ worst_property.coc_variance|pct }} CoC</small>
             {% else %}
               —
             {% endif %}
@@ -94,7 +94,7 @@
               </td>
               <td>
                 {% if detail.analysis %}
-                  {{ detail.analysis.cash_on_cash|floatformat:2 }}%
+                  {{ detail.analysis.cash_on_cash|pct }}
                 {% else %}
                   <span class="text-muted">—</span>
                 {% endif %}
@@ -102,9 +102,9 @@
               <td>
                 {% if detail.latest_actual %}
                   {% if detail.coc_variance >= 0 %}
-                    <span class="text-success">+{{ detail.coc_variance|floatformat:2 }}%</span>
+                    <span class="text-success">+{{ detail.coc_variance|pct }}</span>
                   {% else %}
-                    <span class="text-danger">{{ detail.coc_variance|floatformat:2 }}%</span>
+                    <span class="text-danger">{{ detail.coc_variance|pct }}</span>
                   {% endif %}
                 {% else %}
                   <span class="text-muted">No data</span>
@@ -113,9 +113,9 @@
               <td>
                 {% if detail.latest_actual %}
                   {% if detail.coc_variance >= 0 %}
-                    <span class="badge bg-success">+{{ detail.coc_variance|floatformat:2 }}%</span>
+                    <span class="badge bg-success">+{{ detail.coc_variance|pct }}</span>
                   {% else %}
-                    <span class="badge bg-danger">{{ detail.coc_variance|floatformat:2 }}%</span>
+                    <span class="badge bg-danger">{{ detail.coc_variance|pct }}</span>
                   {% endif %}
                 {% else %}
                   <span class="badge bg-secondary">N/A</span>
@@ -124,9 +124,9 @@
               <td>
                 {% if detail.latest_actual %}
                   {% if detail.vacancy_variance >= 0 %}
-                    <span class="text-success">+{{ detail.vacancy_variance|floatformat:2 }}%</span>
+                    <span class="text-success">+{{ detail.vacancy_variance|pct }}</span>
                   {% else %}
-                    <span class="text-danger">{{ detail.vacancy_variance|floatformat:2 }}%</span>
+                    <span class="text-danger">{{ detail.vacancy_variance|pct }}</span>
                   {% endif %}
                 {% else %}
                   <span class="text-muted">—</span>
@@ -135,9 +135,9 @@
               <td>
                 {% if detail.latest_actual %}
                   {% if detail.expense_variance >= 0 %}
-                    <span class="text-success">${{ detail.expense_variance }}</span>
+                    <span class="text-success">{{ detail.expense_variance|money }}</span>
                   {% else %}
-                    <span class="text-danger">-${{ detail.expense_variance|floatformat:"0" }}</span>
+                    <span class="text-danger">{{ detail.expense_variance|money }}</span>
                   {% endif %}
                 {% else %}
                   <span class="text-muted">—</span>
@@ -145,9 +145,9 @@
               </td>
               <td>
                 {% if detail.ytd.variance >= 0 %}
-                  <span class="text-success">${{ detail.ytd.ytd_actual }} / ${{ detail.ytd.ytd_projected }}</span>
+                  <span class="text-success">{{ detail.ytd.ytd_actual|money }} / {{ detail.ytd.ytd_projected|money }}</span>
                 {% else %}
-                  <span class="text-danger">${{ detail.ytd.ytd_actual }} / ${{ detail.ytd.ytd_projected }}</span>
+                  <span class="text-danger">{{ detail.ytd.ytd_actual|money }} / {{ detail.ytd.ytd_projected|money }}</span>
                 {% endif %}
               </td>
               <td>
