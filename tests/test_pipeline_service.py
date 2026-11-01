@@ -614,3 +614,56 @@ class TestConvertLoanTerms:
         assert prop.property_taxes_annual == Decimal("2400.00")
         assert prop.insurance_annual > 0
         assert prop.vacancy_rate == Decimal("0.05")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  NOI parity: underwriting vs acquired property (FR-15, AC-16)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestUnderwritingMatchesAcquired:
+    def test_same_noi_and_cap_rate_before_and_after_acquisition(
+        self, user, vrm_property
+    ):
+        from core.services.pipeline import underwriting_summary
+        from core.services.portfolio import annual_noi
+
+        pp, _ = create_from_vrm(vrm_property, user)
+        pp.estimated_rent = Decimal("2000")
+        pp.save()
+
+        before = underwriting_summary(pp)
+        assert before is not None
+        prop = convert_to_property_record(pp)
+        after = annual_noi(
+            monthly_rent=prop.monthly_rent_gross,
+            vacancy_rate=prop.vacancy_rate,
+            mgmt_fee_pct=prop.mgmt_fee_pct,
+            taxes_annual=prop.property_taxes_annual,
+            insurance_annual=prop.insurance_annual,
+            maintenance_monthly=prop.maintenance_monthly,
+            capex_monthly=prop.capex_monthly,
+        )
+
+        assert before["noi"] == after == Decimal("13776.00")
+        assert before["cap_rate_pct"] == after / prop.purchase_price * 100
+
+    def test_underwriting_uses_stored_rates_not_live_defaults(
+        self, user, vrm_property, settings
+    ):
+        from core.services.pipeline import underwriting_summary
+
+        pp, _ = create_from_vrm(vrm_property, user)
+        pp.estimated_rent = Decimal("2000")
+        pp.save()
+        settings.FINANCE_DEFAULTS = {
+            **settings.FINANCE_DEFAULTS,
+            "vacancy_rate": Decimal("0.50"),
+        }
+        summary = underwriting_summary(pp)
+        assert summary is not None
+        assert summary["noi"] == Decimal("13776.00")
+
+    def test_foreclosure_stores_rate_snapshot(self, user, foreclosure_property):
+        pp, _ = create_from_foreclosure(foreclosure_property, user)
+        assert pp.estimated_vacancy_rate == Decimal("0.05")

@@ -8,7 +8,7 @@ from django.conf import settings
 
 from core.models import Listing, MarketSnapshot
 from investor_app.finance.mortgage import calculate_monthly_mortgage
-from investor_app.finance.utils import cap_rate, cash_on_cash, dscr, noi
+from investor_app.finance.utils import cap_rate, cash_on_cash, dscr
 
 logger = logging.getLogger(__name__)
 
@@ -83,23 +83,39 @@ def estimate_listing_kpis(
     return estimate_kpis(price, monthly_rent)
 
 
-def estimate_kpis(price: Decimal, monthly_rent: Decimal) -> dict[str, Decimal]:
+def estimate_kpis(
+    price: Decimal,
+    monthly_rent: Decimal,
+    estimates: dict[str, Decimal | None] | None = None,
+) -> dict[str, Decimal]:
     """Cap rate, cash-on-cash, DSCR and NOI for a price and monthly rent.
 
-    Uses ``settings.FINANCE_DEFAULTS`` for vacancy, expense and loan rates.
+    ``estimates`` are the stored underwriting rates (``expense_estimates``
+    keys); omitted, they come from ``settings.FINANCE_DEFAULTS``. NOI comes
+    from ``portfolio.annual_noi``, the same formula an acquired property uses.
     """
+    from core.services.pipeline import expense_estimates
+    from core.services.portfolio import annual_noi
+
     defaults = settings.FINANCE_DEFAULTS
-    vacancy_rate = Decimal(str(defaults["vacancy_rate"]))
-    management_fee_rate = Decimal(str(defaults["management_fee_rate"]))
-    capex_reserve_rate = Decimal(str(defaults["capex_reserve_rate"]))
+    est = estimates if estimates is not None else expense_estimates(price)
     down_payment_rate = Decimal(str(defaults["down_payment_rate"]))
     loan_interest_rate_pct = Decimal(str(defaults["loan_interest_rate_pct"]))
     loan_term_years = int(str(defaults["loan_term_years"]))
 
-    effective_monthly_income = monthly_rent * (Decimal("1") - vacancy_rate)
-    monthly_expenses = monthly_rent * (management_fee_rate + capex_reserve_rate)
-    annual_noi = noi(effective_monthly_income, monthly_expenses)
-    cap_rate_val = cap_rate(annual_noi, price)
+    zero = Decimal("0")
+    noi_annual = annual_noi(
+        monthly_rent=monthly_rent,
+        vacancy_rate=est["estimated_vacancy_rate"] or zero,
+        mgmt_fee_pct=est["estimated_mgmt_fee_pct"] or zero,
+        taxes_annual=est["estimated_taxes_annual"] or zero,
+        insurance_annual=est["estimated_insurance_annual"] or zero,
+        maintenance_monthly=Decimal(str(defaults["maintenance_monthly"])),
+        capex_monthly=(
+            monthly_rent * (est["estimated_capex_reserve_rate"] or zero)
+        ).quantize(Decimal("0.01")),
+    )
+    cap_rate_val = cap_rate(noi_annual, price)
 
     down_payment = price * down_payment_rate
     loan_amount = price - down_payment
@@ -107,13 +123,13 @@ def estimate_kpis(price: Decimal, monthly_rent: Decimal) -> dict[str, Decimal]:
         loan_amount, loan_interest_rate_pct, loan_term_years
     )
     annual_debt_service = monthly_mortgage * Decimal("12")
-    annual_cash_flow = annual_noi - annual_debt_service
+    annual_cash_flow = noi_annual - annual_debt_service
     coc_val = cash_on_cash(annual_cash_flow, down_payment)
-    dscr_val = dscr(annual_noi, annual_debt_service)
+    dscr_val = dscr(noi_annual, annual_debt_service)
 
     return {
         "cap_rate": cap_rate_val,
         "cash_on_cash": coc_val,
         "dscr": dscr_val,
-        "noi": annual_noi,
+        "noi": noi_annual,
     }
