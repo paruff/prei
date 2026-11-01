@@ -24,6 +24,7 @@ class JourneyCtx:
         self.screener: str = ""
         self.detail_path: str = ""
         self.offer: int = 0
+        self.closing_price: int = 0
         self.leasing_path: str = ""
 
 
@@ -237,6 +238,8 @@ def dd_go(ctx: JourneyCtx) -> None:
 
 @when(parsers.parse("I close the deal at {price:d}"))
 def close_deal(ctx: JourneyCtx, price: int) -> None:
+    loan = price * 3 // 4  # 75% LTV: loan + down payment = price
+    ctx.closing_price = price
     resp = _post(
         ctx,
         f"{ctx.detail_path}closing/",
@@ -244,8 +247,8 @@ def close_deal(ctx: JourneyCtx, price: int) -> None:
             "final_purchase_price": str(price),
             "closing_date": "2026-10-01",
             "closing_costs": "3500",
-            "loan_amount": "131250",
-            "down_payment": "43750",
+            "loan_amount": str(loan),
+            "down_payment": str(price - loan),
             "lender": "Seed Bank",
         },
     )
@@ -418,7 +421,7 @@ def shows_purchase_price(ctx: JourneyCtx, price: int) -> None:
 
 @then("the portfolio equity is value minus loan, not the price")
 def equity_is_value_minus_loan(ctx: JourneyCtx) -> None:
-    # closed at 95,000 with a 131,250 loan: equity can never be the price
+    # closed at 95,000 with a 71,250 loan (75% LTV): equity can never be the price
     kpi = re.search(r"Total Equity</div>\s*<div[^>]*>([^<]+)<", ctx.page)
     assert kpi, "no Total Equity tile on the portfolio"
     equity = _dollars(kpi.group(1))
@@ -443,3 +446,15 @@ def dashboard_verdict_agrees(ctx: JourneyCtx) -> None:
     coc = _dollars(_cells(rows[0])[1])
     verdict = re.search(r'data-verdict="(\w*)"', rows[0]).group(1)
     assert not (coc < 8 and verdict == "A"), f"CoC {coc}% is rated Strong Buy"
+
+
+@then("the portfolio equity covers its down payment")
+def equity_covers_down_payment(ctx: JourneyCtx) -> None:
+    # closed at 75% LTV, so the buyer put in a quarter of the closing price
+    kpi = re.search(r"Total Equity</div>\s*<div[^>]*>([^<]+)<", ctx.page)
+    assert kpi, "no Total Equity tile on the portfolio"
+    down_payment = ctx.closing_price - ctx.closing_price * 3 // 4
+    equity = _dollars(kpi.group(1))
+    assert equity >= down_payment, (
+        f"equity {equity} is below the down payment {down_payment}"
+    )
