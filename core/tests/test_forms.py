@@ -278,7 +278,7 @@ class TestInvestmentTargetsFormPercent:
         form = InvestmentTargetsForm(
             instance=UserInvestmentTargets(min_coc_pct=Decimal("0.08"))
         )
-        assert form["min_coc_pct"].value() == Decimal("8")
+        assert form["min_coc_pct"].value() == "8"
 
     def test_over_100_percent_rejected(self):
         from core.forms import InvestmentTargetsForm
@@ -286,3 +286,15 @@ class TestInvestmentTargetsFormPercent:
         form = InvestmentTargetsForm({**self.DATA, "marginal_tax_rate": "240"})
         assert not form.is_valid()
         assert "marginal_tax_rate" in form.errors
+
+    def test_round_values_render_without_exponent(self):
+        from decimal import Decimal
+
+        from core.forms import InvestmentTargetsForm
+        from core.models import UserInvestmentTargets
+
+        for fraction, shown in (("0.20", "20"), ("1.00", "100"), ("0.0825", "8.25")):
+            form = InvestmentTargetsForm(
+                instance=UserInvestmentTargets(min_coc_pct=Decimal(fraction))
+            )
+            assert f'value="{shown}"' in str(form["min_coc_pct"])

@@ -188,7 +188,7 @@ class PercentField(forms.DecimalField):
 
     def prepare_value(self, value):
         if isinstance(value, Decimal):
-            return (value * 100).normalize().quantize(Decimal("0.01")).normalize()
+            return format((value * 100).normalize(), "f")
         return value
 
     def clean(self, value):
