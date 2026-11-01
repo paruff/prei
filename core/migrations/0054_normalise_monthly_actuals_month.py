@@ -1,4 +1,8 @@
+import logging
+
 from django.db import migrations
+
+logger = logging.getLogger(__name__)
 
 
 def month_to_first(apps, schema_editor):
@@ -8,10 +12,27 @@ def month_to_first(apps, schema_editor):
     for row in MonthlyActuals.objects.order_by("pk"):
         key = (row.prop_id, row.month.replace(day=1))
         if key in keep:
-            keep[key].delete()  # older row of the same month
+            old = keep[key]  # older row of the same month
+            logger.warning(
+                "monthly actuals: dropping pk=%s prop=%s month=%s rent=%s "
+                "(superseded by pk=%s)",
+                old.pk,
+                old.prop_id,
+                old.month,
+                old.actual_rent_collected,
+                row.pk,
+            )
+            old.delete()
         keep[key] = row
     for (_, first), row in keep.items():
         if row.month != first:
+            logger.warning(
+                "monthly actuals: pk=%s prop=%s month %s -> %s",
+                row.pk,
+                row.prop_id,
+                row.month,
+                first,
+            )
             row.month = first
             row.save(update_fields=["month"])
 

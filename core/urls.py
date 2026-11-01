@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import TemplateView
 
 from . import views
 from .views import MarketRefreshView
@@ -6,6 +7,9 @@ from .views_portfolio import portfolio_actuals_add
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path(
+        "offline/", TemplateView.as_view(template_name="offline.html"), name="offline"
+    ),
     path("onboard/", views.onboard, name="onboard"),
     path("health/", views.health_check, name="health_check"),
     path("system/", views.system_status, name="system_status"),

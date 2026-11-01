@@ -12,7 +12,7 @@ migration = import_module("core.migrations.0054_normalise_monthly_actuals_month"
 
 
 @pytest.mark.django_db
-def test_mid_month_rows_move_to_the_first_and_newest_wins():
+def test_mid_month_rows_move_to_the_first_and_newest_wins(caplog):
     user = get_user_model().objects.create_user("m", password="x")  # noqa: S106
     prop = Property.objects.create(
         user=user,
@@ -32,5 +32,6 @@ def test_mid_month_rows_move_to_the_first_and_newest_wins():
     MonthlyActuals.objects.create(prop=prop, month=date(2026, 10, 1), notes="old")
     MonthlyActuals.objects.create(prop=prop, month=date(2026, 10, 15), notes="new")
     migration.month_to_first(apps, None)
+    assert "dropping" in caplog.text and "-> 2026-10-01" in caplog.text
     rows = {r.month: r.notes for r in MonthlyActuals.objects.filter(prop=prop)}
     assert rows == {other: "", date(2026, 10, 1): "new"}
