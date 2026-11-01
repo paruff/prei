@@ -1334,5 +1334,8 @@ a.tab-btn { text-decoration: none; }
     border-bottom: none;
     z-index: 100;
   }
+  /* backdrop-filter would make the topnav the containing block of the fixed tab bar */
+  .topnav { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .tab-bar { overflow-x: auto; }
   .page-footer { padding-bottom: calc(var(--sp-8) + var(--sp-4)); }
 }
