@@ -19,3 +19,9 @@ def test_month_input_value_is_accepted():
 
 def test_full_date_still_accepted():
     assert MonthlyActualsForm(_data("2026-10-01")).is_valid()
+
+
+def test_mid_month_date_is_normalised_to_first():
+    form = MonthlyActualsForm(_data("2026-10-15"))
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data["month"].isoformat() == "2026-10-01"

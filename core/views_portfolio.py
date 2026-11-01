@@ -20,6 +20,10 @@ class MonthlyActualsForm(forms.ModelForm):
         widget=forms.DateInput(attrs={"type": "month", "class": "form-input"}),
     )
 
+    def clean_month(self):
+        # Browsers that render type=month as text let a mid-month date through.
+        return self.cleaned_data["month"].replace(day=1)
+
     class Meta:
         model = MonthlyActuals
         fields = [
@@ -93,6 +97,8 @@ def portfolio_actuals_add(request):
     if form.is_valid():
         data = form.cleaned_data
         month = data.pop("month")
+        if "notes" not in request.POST:
+            data.pop("notes")  # keep existing notes when the form doesn't render them
         MonthlyActuals.objects.update_or_create(
             prop=property_obj, month=month, defaults=data
         )
@@ -101,7 +107,11 @@ def portfolio_actuals_add(request):
         messages.error(
             request,
             "Could not save actuals: "
-            + "; ".join(str(e) for errs in form.errors.values() for e in errs),
+            + "; ".join(
+                f"{form.fields[name].label or name}: {e}"
+                for name, errs in form.errors.items()
+                for e in errs
+            ),
         )
 
     return redirect("portfolio_dashboard")
