@@ -108,7 +108,7 @@ def portfolio_actuals_add(request):
             request,
             "Could not save actuals: "
             + "; ".join(
-                f"{form.fields[name].label or name}: {e}"
+                f"{getattr(form.fields.get(name), 'label', None) or name}: {e}"
                 for name, errs in form.errors.items()
                 for e in errs
             ),
