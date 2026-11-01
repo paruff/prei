@@ -814,7 +814,6 @@
   align-items: center;
   gap: var(--sp-2);
   margin-bottom: var(--sp-2);
-  font-size: var(--text-sm);
   cursor: pointer;
 }
 
