@@ -1,7 +1,7 @@
 // Service Worker for PREI - Cache-first strategy for offline support
 // Version: 1.0.0
 
-const CACHE_NAME = 'prei-v1';
+const CACHE_NAME = 'prei-v2';
 const OFFLINE_URL = '/offline/';
 
 // Static assets to cache on install

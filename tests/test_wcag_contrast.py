@@ -24,5 +24,15 @@ def test_primary_fill_has_aa_contrast_with_white():
 def test_no_text_uses_neutral_200_and_focus_visible_exists():
     base = (CSS / "base.css").read_text() + (CSS / "pipeline.css").read_text()
     assert not re.search(r"(?<![-\w])color:\s*var\(--color-neutral-200\)", base)
-    assert ":focus-visible" in base
-    assert "outline: none" not in base
+    assert re.search(r":focus-visible\s*\{[^}]*outline:\s*2px", base)
+    assert not re.search(r"outline:\s*(none|0)\b", base)
+
+
+def test_neutral_500_text_has_aa_contrast_on_every_surface():
+    tokens = (CSS / "tokens.css").read_text()
+    match = re.search(r"--color-neutral-500:\s*(#\w{6})", tokens)
+    assert match
+    text = match.group(1)
+    for surface in ("#FFFFFF", "#F8F8F6", "#F1EFE8"):
+        ratio = (_lum(surface) + 0.05) / (_lum(text) + 0.05)
+        assert ratio >= 4.5, (surface, ratio)

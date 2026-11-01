@@ -816,5 +816,6 @@
 }
 
 /* Plain text links in cards use the palette, not browser blue. */
-.pipeline-card a:not([class]) { color: var(--color-neutral-900); text-decoration: none; }
-.pipeline-card a:not([class]):hover { text-decoration: underline; }
+.pipeline-card a:not([class]) { color: var(--color-neutral-900); text-decoration: underline; text-underline-offset: 2px; }
+.pipeline-card a:not([class]):hover { text-decoration-thickness: 2px; }
+.pipeline-card a:not([class]):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
