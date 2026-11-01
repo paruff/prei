@@ -657,11 +657,16 @@ def convert_to_property_record(
         else (pipeline_property.price or Decimal("0"))
     )
     down_payment_pct = Decimal(str(defaults["down_payment_rate"]))
-    if closing_record and closing_record.down_payment is not None and price:
+    if closing_record and price:
+        # The loan is what creates debt service, so it wins over the down
+        # payment; a cash purchase (loan 0) is 100% down.
+        if closing_record.loan_amount is not None:
+            down_payment_pct = Decimal("1") - closing_record.loan_amount / price
+        elif closing_record.down_payment is not None:
+            down_payment_pct = closing_record.down_payment / price
         down_payment_pct = min(
-            Decimal("1"),
-            (closing_record.down_payment / price).quantize(Decimal("0.0001")),
-        )
+            Decimal("1"), max(Decimal("0"), down_payment_pct)
+        ).quantize(Decimal("0.0001"))
     # Expenses come from the pipeline record; rows created before those
     # fields existed fall back to the same estimate, on the closing price.
     estimates = expense_estimates(price)
@@ -670,7 +675,13 @@ def convert_to_property_record(
         value = getattr(pipeline_property, field)
         return value if value is not None else estimates[field] or Decimal("0")
 
-    taxes = from_record("estimated_taxes_annual")
+    # The pipeline estimate taxes the list price, which for county notices is
+    # the unpaid balance; once a closing price exists, tax that instead.
+    taxes = (
+        estimates["estimated_taxes_annual"] or Decimal("0")
+        if closing_record and price
+        else from_record("estimated_taxes_annual")
+    )
     insurance = from_record("estimated_insurance_annual")
     capex_rate = from_record("estimated_capex_reserve_rate")
 

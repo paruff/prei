@@ -130,18 +130,6 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 ---
 
-### [LIMIT-12] 🟡 HIGH — Newly acquired Property records are incomplete at creation (resolved)
-
-**Location:** `core/services/pipeline.py` — `convert_to_property_record()`
-
-**Impact:** None. The Property is created with the closing price, estimated rent, annual taxes and insurance (stored on the pipeline record as `estimated_taxes_annual` and `estimated_insurance_annual`, from `TAX_RATE_PCT` and `INSURANCE_ANNUAL`), and loan terms (down payment from the closing record, rate and term from `FINANCE_DEFAULTS`).
-
-**Workaround:** None needed. Bedrooms and sqft come from the pipeline record; property type defaults to SFR.
-
-**Fix tracked in:** Resolved by G2.2 (#472).
-
----
-
 ### [LIMIT-13] 🟢 LOW — AuctionAlert not wired to PipelineProperty
 
 **Location:** `core/models/notifications.py` — `AuctionAlert`
