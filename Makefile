@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help docker-seed docker-rent-report ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev docker-accept test-live
+.PHONY: help docker-seed docker-rent-report ensure-env dev seed superuser lint test test-unit test-integration test-live-sources test-e2e check deploy-dev deploy-local deploy-devcontainer gitops-validate smoke build up down restart logs clean docker-dev docker-accept test-live ui-check
 
 # Prefer the local venv; fall back to `python` (containers, bare environments).
 # Avoids the Apple /usr/bin/python3 shim that triggers the xcode-select prompt.
@@ -37,6 +37,7 @@ help:
 	@echo "  make docker-dev         Build + start Docker stack (migrate + seed)"
 	@echo "  make docker-seed        Seed one market (default Dallas, TX) in the container"
 	@echo "  make docker-accept      Build, start, seed, run tests/acceptance/ + the journey feature against the container, stop"
+	@echo "  make ui-check           Build, start, seed, crawl routes at 1280/390px in Chrome (non-200, hscroll, labels, AA contrast), stop"
 	@echo "  make test-live          Start Docker + run live acceptance tests"
 	@echo "  make build              Build Docker image"
 	@echo "  make up                 Build + start daemon + smoke test"
@@ -211,6 +212,21 @@ docker-accept: ensure-env build
 	fi; \
 	if [ $$rc -eq 0 ]; then \
 		BASE_URL=$(ACCEPT_URL) $(PYTHON) -m pytest tests/acceptance/ tests_bdd/test_journey.py -m acceptance --reruns 0 -v --tb=short || rc=$$?; \
+	fi; \
+	docker compose down; \
+	exit $$rc
+
+# UI crawl (1280 + 390px, Chrome) against the seeded container; always tears the stack down.
+ui-check: ensure-env build
+	@docker compose up -d
+	@rc=0; \
+	for i in $$(seq 1 60); do curl -sf -o /dev/null $(ACCEPT_URL)/api/health/ && break; sleep 3; done; \
+	curl -sf -o /dev/null $(ACCEPT_URL)/api/health/ || { echo "❌ container never became healthy"; rc=1; }; \
+	if [ $$rc -eq 0 ]; then \
+		docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_market || rc=$$?; \
+	fi; \
+	if [ $$rc -eq 0 ]; then \
+		UI_CHECK_URL=$(ACCEPT_URL) $(PYTHON) scripts/ui_check.py || rc=$$?; \
 	fi; \
 	docker compose down; \
 	exit $$rc
