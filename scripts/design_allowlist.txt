@@ -51,14 +51,6 @@ templates/income/add.html bootstrap-class mb-1 1
 templates/income/add.html bootstrap-class mb-3 2
 templates/income/add.html bootstrap-class mt-1 1
 templates/income/add.html bootstrap-class small 1
-templates/investment_targets/edit.html bootstrap-class card-body 1
-templates/investment_targets/edit.html bootstrap-class col-md-4 9
-templates/investment_targets/edit.html bootstrap-class container 1
-templates/investment_targets/edit.html bootstrap-class form-check 1
-templates/investment_targets/edit.html bootstrap-class form-check-label 1
-templates/investment_targets/edit.html bootstrap-class mb-3 2
-templates/investment_targets/edit.html bootstrap-class py-4 1
-templates/investment_targets/edit.html bootstrap-class row 3
 templates/markets/dashboard.html bootstrap-class badge 4
 templates/onboard.html bootstrap-class card-body 3
 templates/pipeline/review_queue.html bootstrap-class card-body 1

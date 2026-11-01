@@ -21,21 +21,21 @@
   {# ── Price Slider ──────────────────────────────────────────────── #}
   <div class="card">
     <h2 class="card-title">Price Range</h2>
-    <div class="form-row">
-      <div class="form-field-group">
-        <label class="field-label">
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label" for="id_min_price_slider">
           Min Price: <strong id="min-price-label">{{ criteria.min_price|default:0|money }}</strong>
         </label>
-        <input type="range" name="min_price_slider" min="0" max="2000000" step="10000"
+        <input type="range" id="id_min_price_slider" name="min_price_slider" min="0" max="2000000" step="10000"
                value="{{ criteria.min_price|default:0 }}" class="slider-input"
                data-update-label="min_price|min-price-label|$|intcomma">
         <input type="hidden" name="min_price" value="{{ criteria.min_price|default:'' }}">
       </div>
-      <div class="form-field-group">
-        <label class="field-label">
+      <div class="form-group">
+        <label class="form-label" for="id_max_price_slider">
           Max Price: <strong id="max-price-label">{{ criteria.max_price|default:2000000|money }}</strong>
         </label>
-        <input type="range" name="max_price_slider" min="0" max="2000000" step="10000"
+        <input type="range" id="id_max_price_slider" name="max_price_slider" min="0" max="2000000" step="10000"
                value="{{ criteria.max_price|default:2000000 }}" class="slider-input"
                data-update-label="max_price|max-price-label|$|intcomma">
         <input type="hidden" name="max_price" value="{{ criteria.max_price|default:'' }}">
@@ -46,24 +46,24 @@
   {# ── Yield & Ratio Sliders ─────────────────────────────────────── #}
   <div class="card">
     <h2 class="card-title">Yield &amp; Price-to-Rent</h2>
-    <div class="form-note-inline">
+    <div class="form-hint">
       Only VRM properties have rent estimates. Other sources skip these checks.
     </div>
-    <div class="form-row">
-      <div class="form-field-group">
-        <label class="field-label">
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label" for="id_min_gross_yield_pct_slider">
           Min Gross Yield: <strong id="yield-label">{{ criteria.min_gross_yield_pct|default:7|pct:"pts" }}</strong>
         </label>
-        <input type="range" name="min_gross_yield_pct_slider" min="0" max="20" step="0.5"
+        <input type="range" id="id_min_gross_yield_pct_slider" name="min_gross_yield_pct_slider" min="0" max="20" step="0.5"
                value="{{ criteria.min_gross_yield_pct|default:7 }}" class="slider-input"
                data-update-label="min_gross_yield_pct|yield-label||%">
         <input type="hidden" name="min_gross_yield_pct" value="{{ criteria.min_gross_yield_pct|default:7 }}">
       </div>
-      <div class="form-field-group">
-        <label class="field-label">
+      <div class="form-group">
+        <label class="form-label" for="id_max_price_to_rent_ratio_slider">
           Max Price/Rent Ratio: <strong id="ptr-label">{{ criteria.max_price_to_rent_ratio|default:15 }}</strong>
         </label>
-        <input type="range" name="max_price_to_rent_ratio_slider" min="1" max="50" step="1"
+        <input type="range" id="id_max_price_to_rent_ratio_slider" name="max_price_to_rent_ratio_slider" min="1" max="50" step="1"
                value="{{ criteria.max_price_to_rent_ratio|default:15 }}" class="slider-input"
                data-update-label="max_price_to_rent_ratio|ptr-label||">
         <input type="hidden" name="max_price_to_rent_ratio" value="{{ criteria.max_price_to_rent_ratio|default:15 }}">
@@ -74,21 +74,21 @@
   {# ── Beds & GACS Sliders ───────────────────────────────────────── #}
   <div class="card">
     <h2 class="card-title">Size &amp; Market Score</h2>
-    <div class="form-row">
-      <div class="form-field-group">
-        <label class="field-label">
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label" for="id_min_beds_slider">
           Min Bedrooms: <strong id="beds-label">{{ criteria.min_beds|default:1 }}</strong>
         </label>
-        <input type="range" name="min_beds_slider" min="1" max="10" step="1"
+        <input type="range" id="id_min_beds_slider" name="min_beds_slider" min="1" max="10" step="1"
                value="{{ criteria.min_beds|default:1 }}" class="slider-input"
                data-update-label="min_beds|beds-label||">
         <input type="hidden" name="min_beds" value="{{ criteria.min_beds|default:1 }}">
       </div>
-      <div class="form-field-group">
-        <label class="field-label">
+      <div class="form-group">
+        <label class="form-label" for="id_min_gacs_score_slider">
           Min GACS Score: <strong id="gacs-label">{{ criteria.min_gacs_score|default:0 }}</strong>
         </label>
-        <input type="range" name="min_gacs_score_slider" min="0" max="100" step="1"
+        <input type="range" id="id_min_gacs_score_slider" name="min_gacs_score_slider" min="0" max="100" step="1"
                value="{{ criteria.min_gacs_score|default:0 }}" class="slider-input"
                data-update-label="min_gacs_score|gacs-label||">
         <input type="hidden" name="min_gacs_score" value="{{ criteria.min_gacs_score|default:'' }}">
