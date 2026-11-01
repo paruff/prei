@@ -20,15 +20,13 @@ from core.forms import (
 from core.models import (
     Property,
     UserInvestmentTargets,
-    UserScreeningPreferences,
 )
 
 
 @login_required
 def investment_targets_edit(request: HttpRequest) -> HttpResponse:
-    """Edit the current user's investment targets and screening preferences."""
+    """Edit the current user's investment targets."""
     targets, _created = UserInvestmentTargets.objects.get_or_create(user=request.user)
-    prefs, _ = UserScreeningPreferences.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
         form = InvestmentTargetsForm(request.POST, instance=targets)
@@ -41,7 +39,7 @@ def investment_targets_edit(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "investment_targets/edit.html",
-        {"form": form, "targets": targets, "prefs": prefs},
+        {"form": form, "targets": targets},
     )
 
 

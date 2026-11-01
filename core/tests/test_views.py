@@ -93,6 +93,6 @@ def test_investment_targets_save_leaves_screening_preferences(client, user):
 
     response = client.post(url, data)
 
-    assert response.status_code in (200, 302)
+    assert response.status_code == 302
     prefs = UserScreeningPreferences.objects.get(user=user)
     assert (prefs.min_beds, prefs.min_baths) == (3, 2)
