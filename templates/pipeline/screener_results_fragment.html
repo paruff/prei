@@ -8,13 +8,7 @@
   <td>{{ pp.price_to_rent_ratio|default:"—" }}</td>
   <td>{{ pp.beds }}</td>
   <td>
-    {% if pp.screening_passed %}
-      <span class="chip chip-success">✓ Passed</span>
-    {% elif pp.screening_passed == False %}
-      <span class="chip chip-danger">✗ Failed</span>
-    {% else %}
-      <span class="chip chip-default">Unscreened</span>
-    {% endif %}
+    {% include "components/screening_verdict.html" with passed=pp.screening_passed %}
   </td>
 </tr>
 {% empty %}

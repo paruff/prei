@@ -184,13 +184,7 @@
           {% else %}—{% endif %}
         </td>
         <td>
-          {% if pp.screening_passed is None %}
-            <span class="chip chip-default">Not screened</span>
-          {% elif pp.screening_passed %}
-            <span class="chip chip-success">✓ Passed</span>
-          {% else %}
-            <span class="chip chip-danger">✗ Failed</span>
-          {% endif %}
+          {% include "components/screening_verdict.html" with passed=pp.screening_passed %}
         </td>
         <td>
           {% if pp.screening_passed %}

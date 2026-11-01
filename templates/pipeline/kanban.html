@@ -48,11 +48,7 @@
         </div>
         {% if pp.screening_passed is not None %}
         <div class="kanban-card-screening">
-          {% if pp.screening_passed %}
-          <span class="chip chip-success">✓ Passed</span>
-          {% else %}
-          <span class="chip chip-danger">✗ Failed</span>
-          {% endif %}
+          {% include "components/screening_verdict.html" with passed=pp.screening_passed %}
         </div>
         {% endif %}
       </div>
