@@ -3,79 +3,61 @@
 {% load math_filters %}
 {% block title %}VRM Properties{% endblock %}
 
-{% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/pipeline.css' %}">
-{% endblock %}
-
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">VRM Properties</h1>
-  <span class="badge bg-secondary">{{ total_count }} total / {{ filtered_count }} shown</span>
+<div class="page-header">
+  <h1 class="page-title">VRM Properties</h1>
+  <span class="chip chip-default">{{ total_count }} total / {{ filtered_count }} shown</span>
 </div>
 
-<!-- Scrape + Filter Form -->
 <div class="card mb-4">
-  <div class="card-body">
-    <form method="get" class="row g-3 align-items-end">
-      <div class="col-md-4">
-        <label for="state" class="form-label">State</label>
-        <select name="state" id="state" class="form-select">
-          <option value="">All States</option>
-          {% for code, name in states %}
-          <option value="{{ code }}" {% if selected_state == code %}selected{% endif %}>
-            {{ name }} ({{ code }})
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label for="zip" class="form-label">Zip Code</label>
-        <input type="text" name="zip" id="zip" class="form-control"
-               placeholder="e.g. 23356" maxlength="5" pattern="[0-9]{5}"
-               value="{{ selected_zip }}">
-      </div>
-      <div class="col-md-2">
-        <button type="submit" class="btn btn-primary w-100">Filter</button>
-      </div>
-      <div class="col-md-3">
-        <button type="button" class="btn btn-outline-success w-100" id="scrape-btn">
-          Scrape Selected State
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Import JSON Form -->
-<div class="card mb-4">
-  <div class="card-header">
-    <strong>Import from JSON</strong>
-    <small class="text-muted ms-2">Upload a VRM JSON export file (array of property objects)</small>
-  </div>
-  <div class="card-body">
-    <div class="row g-3 align-items-end">
-      <div class="col-md-6">
-        <label for="json-file-input" class="form-label">JSON File</label>
-        <input type="file" id="json-file-input" class="form-control" accept=".json,application/json">
-      </div>
-      <div class="col-md-3">
-        <button type="button" class="btn btn-primary w-100" id="import-btn">
-          Import JSON
-        </button>
-      </div>
+  <form method="get" class="form-row form-row--align-end">
+    <div class="form-group">
+      <label for="state" class="form-label">State</label>
+      <select name="state" id="state" class="form-input">
+        <option value="">All States</option>
+        {% for code, name in states %}
+        <option value="{{ code }}" {% if selected_state == code %}selected{% endif %}>
+          {{ name }} ({{ code }})
+        </option>
+        {% endfor %}
+      </select>
     </div>
-    <div id="import-status" class="alert mt-3 d-none" role="alert"></div>
-  </div>
+    <div class="form-group">
+      <label for="zip" class="form-label">Zip Code</label>
+      <input type="text" name="zip" id="zip" class="form-input form-input-w200"
+             placeholder="e.g. 23356" maxlength="5" pattern="[0-9]{5}"
+             value="{{ selected_zip }}">
+    </div>
+    <div class="form-group form-actions">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <button type="button" class="btn" id="scrape-btn">Scrape Selected State</button>
+    </div>
+  </form>
 </div>
 
-<!-- Scrape Status -->
-<div id="scrape-status" class="alert d-none" role="alert"></div>
+<div class="card mb-4">
+  <h2 class="card-title">Import from JSON</h2>
+  <p class="form-hint">Upload a VRM JSON export file (array of property objects)</p>
+  <div class="form-row form-row--align-end">
+    <div class="form-group">
+      <label for="json-file-input" class="form-label">JSON File</label>
+      <input type="file" id="json-file-input" class="form-input" accept=".json,application/json">
+    </div>
+    <div class="form-group">
+      <button type="button" class="btn btn-primary" id="import-btn">Import JSON</button>
+    </div>
+  </div>
+  <div id="import-status" class="message" role="alert" hidden></div>
+</div>
+
+<div id="scrape-status" class="message" role="alert" hidden></div>
 
 <!-- Results Table -->
 {% if properties %}
-<div class="table-responsive">
-  <table class="table table-striped table-hover">
-    <thead class="table-dark">
+<div class="card">
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
       <tr>
         <th>Address</th>
         <th>City</th>
@@ -111,29 +93,25 @@
         <td>{% if prop.bathrooms %}{{ prop.bathrooms }}{% else %}-{% endif %}</td>
         <td>{% if prop.square_feet %}{{ prop.square_feet|floatformat:0 }}{% else %}-{% endif %}</td>
         <td>
-          <span class="badge
-            {% if prop.status == 'for_sale' %}bg-success
-            {% elif prop.status == 'coming_soon' %}bg-info
-            {% elif prop.status == 'pending' %}bg-warning
-            {% else %}bg-secondary{% endif %}">
+          <span class="chip {% if prop.status == 'for_sale' %}chip-success{% elif prop.status == 'pending' %}chip-warning{% elif prop.status == 'coming_soon' %}chip-info{% else %}chip-default{% endif %}">
             {{ prop.get_status_display }}
           </span>
         </td>
-        <td>{% if prop.vendee_eligible %}<span class="badge bg-primary">Yes</span>{% else %}-{% endif %}</td>
+        <td>{% if prop.vendee_eligible %}<span class="chip chip-info">Yes</span>{% else %}-{% endif %}</td>
         <td>{{ prop.last_seen_at|date:"M d, Y" }}</td>
         <td>
           {% with pp_id=prop.vrm_property_id|stringformat:"s" %}
           {% if pp_id in pipeline_entries %}
-            <a href="{% url 'pipeline_detail' pipeline_entries|get_item:pp_id %}" class="pipeline-in-link">
+            <a href="{% url 'pipeline_detail' pipeline_entries|get_item:pp_id %}" class="chip chip-success">
               In Pipeline &rarr;
             </a>
           {% else %}
-          <form method="post" action="{% url 'pipeline_add_from_source' %}" class="pipeline-inline-form">
+          <form method="post" action="{% url 'pipeline_add_from_source' %}">
             {% csrf_token %}
             <input type="hidden" name="source_type" value="vrm">
             <input type="hidden" name="source_id" value="{{ prop.vrm_property_id }}">
             <input type="hidden" name="next" value="{% url 'vrm_properties_list' %}{% if selected_state %}?state={{ selected_state }}{% endif %}">
-            <button type="submit" class="pipeline-add-btn">
+            <button type="submit" class="btn">
               + Add to Pipeline
             </button>
           </form>
@@ -145,8 +123,9 @@
     </tbody>
   </table>
 </div>
+</div>
 {% else %}
-<div class="alert alert-info">
+<div class="message message-warning" role="status">
   {% if selected_state or selected_zip %}
     No properties found matching your filters.
     {% if selected_state %}<strong>State:</strong> {{ selected_state }}{% endif %}
@@ -173,9 +152,9 @@ function triggerImport() {
 
   btn.disabled = true;
   btn.textContent = 'Importing...';
-  statusEl.className = 'alert alert-info mt-3';
+  statusEl.className = 'message';
   statusEl.textContent = 'Importing properties...';
-  statusEl.classList.remove('d-none');
+  statusEl.hidden = false;
 
   fetch('/api/v1/vrm-properties/import/', {
     method: 'POST',
@@ -188,18 +167,18 @@ function triggerImport() {
       var msg = 'Import complete! ' + data.created + ' created, ' + data.updated + ' updated';
       if (data.skipped > 0) { msg += ', ' + data.skipped + ' skipped'; }
       if (data.errors && data.errors.length) { msg += ': ' + data.errors.join('; '); }
-      statusEl.className = data.skipped > 0 ? 'alert alert-warning mt-3' : 'alert alert-success mt-3';
+      statusEl.className = data.skipped > 0 ? 'message message-warning' : 'message message-success';
       statusEl.textContent = msg + '. Reloading...';
       setTimeout(function() { location.reload(); }, 1800);
     } else {
-      statusEl.className = 'alert alert-danger mt-3';
+      statusEl.className = 'message message-error';
       statusEl.textContent = 'Error: ' + (data.error || JSON.stringify(data));
       btn.disabled = false;
       btn.textContent = 'Import JSON';
     }
   })
   .catch(function(err) {
-    statusEl.className = 'alert alert-danger mt-3';
+    statusEl.className = 'message message-error';
     statusEl.textContent = 'Network error: ' + err.message;
     btn.disabled = false;
     btn.textContent = 'Import JSON';
@@ -216,9 +195,9 @@ function triggerScrape() {
   var status = document.getElementById('scrape-status');
   btn.disabled = true;
   btn.textContent = 'Scraping...';
-  status.className = 'alert alert-info';
+  status.className = 'message';
   status.textContent = 'Scraping ' + state + '... this may take a minute.';
-  status.classList.remove('d-none');
+  status.hidden = false;
 
   fetch('/api/v1/vrm-properties/scrape/', {
     method: 'POST',
@@ -231,18 +210,18 @@ function triggerScrape() {
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.status === 'completed') {
-      status.className = 'alert alert-success';
+      status.className = 'message message-success';
       status.textContent = 'Scrape complete! ' + data.total_listings + ' listings found (' + data.created + ' new, ' + data.updated + ' updated). Reloading...';
       setTimeout(function() { location.reload(); }, 1500);
     } else {
-      status.className = 'alert alert-danger';
+      status.className = 'message message-error';
       status.textContent = 'Error: ' + (data.error || 'Unknown error');
       btn.disabled = false;
       btn.textContent = 'Scrape Selected State';
     }
   })
   .catch(function(err) {
-    status.className = 'alert alert-danger';
+    status.className = 'message message-error';
     status.textContent = 'Network error: ' + err.message;
     btn.disabled = false;
     btn.textContent = 'Scrape Selected State';

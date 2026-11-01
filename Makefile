@@ -226,6 +226,9 @@ ui-check: ensure-env build
 		docker compose exec -T preiweb $(CONTAINER_PY) manage.py seed_market || rc=$$?; \
 	fi; \
 	if [ $$rc -eq 0 ]; then \
+		docker compose exec -T preiweb $(CONTAINER_PY) manage.py shell -c "from core.models import HudProperty as H, UsdaProperty as U; from django.utils import timezone as t; d=dict(scraped_at=t.now(), last_seen_at=t.now(), address='1 Main St', city='Dallas', state='TX', zip_code='75201', list_price=100000, bedrooms=3, bathrooms=2); H.objects.update_or_create(hud_case_number='UI-CHECK', defaults=d); U.objects.update_or_create(usda_case_number='UI-CHECK', defaults=d)" || rc=$$?; \
+	fi; \
+	if [ $$rc -eq 0 ]; then \
 		UI_CHECK_URL=$(ACCEPT_URL) $(PYTHON) scripts/ui_check.py || rc=$$?; \
 	fi; \
 	docker compose down; \
