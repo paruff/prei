@@ -23,27 +23,27 @@
       <div class="pipeline-detail-section">
         <h2>Budget &amp; Timeline</h2>
         <div class="form-row">
-          <div class="form-field-group">
-            <label class="field-label">Estimated Budget ($)</label>
+          <div class="form-group">
+            <label class="form-label" for="id_estimated_budget">Estimated Budget ($)</label>
             <input type="number" name="estimated_budget" step="0.01" min="0"
-                   value="{{ renovation.estimated_budget|default:'' }}" class="field-input input-lg">
+                   value="{{ renovation.estimated_budget|default:'' }}" class="form-input" id="id_estimated_budget">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Actual Cost ($)</label>
+          <div class="form-group">
+            <label class="form-label" for="id_actual_cost">Actual Cost ($)</label>
             <input type="number" name="actual_cost" step="0.01" min="0"
-                   value="{{ renovation.actual_cost|default:'' }}" class="field-input input-lg">
+                   value="{{ renovation.actual_cost|default:'' }}" class="form-input" id="id_actual_cost">
           </div>
         </div>
         <div class="form-row mt-2">
-          <div class="form-field-group">
-            <label class="field-label">Start Date</label>
+          <div class="form-group">
+            <label class="form-label" for="id_start_date">Start Date</label>
             <input type="date" name="start_date"
-                   value="{{ renovation.start_date|date:'Y-m-d'|default:'' }}" class="field-input input-md">
+                   value="{{ renovation.start_date|date:'Y-m-d'|default:'' }}" class="form-input" id="id_start_date">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Completion Date</label>
+          <div class="form-group">
+            <label class="form-label" for="id_completion_date">Completion Date</label>
             <input type="date" name="completion_date"
-                   value="{{ renovation.completion_date|date:'Y-m-d'|default:'' }}" class="field-input input-md">
+                   value="{{ renovation.completion_date|date:'Y-m-d'|default:'' }}" class="form-input" id="id_completion_date">
           </div>
         </div>
       </div>
@@ -51,14 +51,14 @@
       {# Contractor & Scope #}
       <div class="pipeline-detail-section">
         <h2>Contractor &amp; Scope</h2>
-        <div class="form-field-group">
-          <label class="field-label">Contractor</label>
+        <div class="form-group">
+          <label class="form-label" for="id_contractor">Contractor</label>
           <input type="text" name="contractor" value="{{ renovation.contractor }}"
-                 class="field-input input-full">
+                 class="form-input" id="id_contractor">
         </div>
-        <div class="form-field-group mt-2">
-          <label class="field-label">Scope of Work</label>
-          <textarea name="scope_of_work" rows="4" class="field-input input-full">{{ renovation.scope_of_work }}</textarea>
+        <div class="form-group mt-2">
+          <label class="form-label" for="id_scope_of_work">Scope of Work</label>
+          <textarea name="scope_of_work" rows="4" class="form-input" id="id_scope_of_work">{{ renovation.scope_of_work }}</textarea>
         </div>
       </div>
 
@@ -84,7 +84,7 @@
       {# Notes #}
       <div class="pipeline-detail-section">
         <h2>Notes</h2>
-        <textarea name="notes" rows="3" class="field-input input-full">{{ renovation.notes }}</textarea>
+        <textarea name="notes" rows="3" class="form-input">{{ renovation.notes }}</textarea>
       </div>
 
       {# Save + leasing link #}

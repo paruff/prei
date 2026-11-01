@@ -573,6 +573,7 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
   gap: var(--sp-3);
   flex-wrap: wrap;
 }
+.form-row > .form-group { flex: 1 1 140px; margin-bottom: 0; }
 .form-row--align-end { align-items: flex-end; }
 .form-actions--wrap { flex-wrap: wrap; }
 .form-input-sm { width: 100px; }

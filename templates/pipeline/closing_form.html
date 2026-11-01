@@ -28,44 +28,44 @@
         {% csrf_token %}
 
         <div class="form-row">
-          <div class="form-field-group">
-            <label class="field-label">Final Purchase Price ($) *</label>
+          <div class="form-group">
+            <label class="form-label" for="id_final_purchase_price">Final Purchase Price ($) *</label>
             <input type="number" name="final_purchase_price" step="0.01" min="0.01" required
-                   value="" class="field-input input-lg">
+                   value="" class="form-input" id="id_final_purchase_price">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Closing Date *</label>
+          <div class="form-group">
+            <label class="form-label" for="id_closing_date">Closing Date *</label>
             <input type="date" name="closing_date" required
-                   value="" class="field-input input-md">
+                   value="" class="form-input" id="id_closing_date">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Closing Costs ($)</label>
+          <div class="form-group">
+            <label class="form-label" for="id_closing_costs">Closing Costs ($)</label>
             <input type="number" name="closing_costs" step="0.01" min="0"
-                   value="0" class="field-input input-md">
+                   value="0" class="form-input" id="id_closing_costs">
           </div>
         </div>
 
         <div class="form-row mt-2">
-          <div class="form-field-group">
-            <label class="field-label">Loan Amount ($)</label>
+          <div class="form-group">
+            <label class="form-label" for="id_loan_amount">Loan Amount ($)</label>
             <input type="number" name="loan_amount" step="0.01" min="0"
-                   value="" class="field-input input-lg">
+                   value="" class="form-input" id="id_loan_amount">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Down Payment ($)</label>
+          <div class="form-group">
+            <label class="form-label" for="id_down_payment">Down Payment ($)</label>
             <input type="number" name="down_payment" step="0.01" min="0"
-                   value="" class="field-input input-lg">
+                   value="" class="form-input" id="id_down_payment">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Lender</label>
+          <div class="form-group">
+            <label class="form-label" for="id_lender">Lender</label>
             <input type="text" name="lender" value=""
-                   class="field-input input-md">
+                   class="form-input" id="id_lender">
           </div>
         </div>
 
-        <div class="form-field-group mt-3">
-          <label class="field-label">Notes</label>
-          <textarea name="notes" rows="3" class="field-input input-full"></textarea>
+        <div class="form-group mt-3">
+          <label class="form-label" for="id_notes">Notes</label>
+          <textarea name="notes" rows="3" class="form-input" id="id_notes"></textarea>
         </div>
 
         <div class="form-submit-row">

@@ -51,7 +51,7 @@
         <tr><td>Stage</td><td>{{ prop.stage|title }}</td></tr>
         <tr><td>Status</td><td>{{ prop.status|title }}</td></tr>
         {% if prop.screening_passed is not None %}
-        <tr><td>Screening</td><td>{% if prop.screening_passed %}<span class="verdict-pass">PASSED</span>{% else %}<span class="verdict-fail">FAILED</span>{% endif %}</td></tr>
+        <tr><td>Screening</td><td>{% if prop.screening_passed %}<span class="chip chip-success">✓ Passed</span>{% else %}<span class="chip chip-danger">✗ Failed</span>{% endif %}</td></tr>
         {% endif %}
         <tr><td>Days in Pipeline</td><td>{{ days_in_pipeline }} days</td></tr>
         {% if prop.investment_analysis %}<tr><td>Analysis</td><td>#{{ prop.investment_analysis.pk }}</td></tr>{% endif %}

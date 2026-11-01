@@ -243,7 +243,7 @@ Use the existing class or partial. Don't restyle it per page.
 - **Tabs:** `.tab-bar` > `.tab-btn.is-active`. Switch panels with the `hidden` attribute, not `style.display`.
 - **Chips:** `.chip` / `.chip.is-active` inside `.chip-group`, used for filters.
 - **Messages and banners:** `.message-success`, `-warning`, `-error`, and `.brrrr-banner` with `.is-full-cycle`, `.is-partial` or `.is-trap`.
-- **Pipeline screens** (`pipeline.css`): kanban board, pipeline cards and stage badges. They currently use their own form classes (`.field-input`, `.input-sm`) and verdict classes (`.verdict-pass`, `.verdict-fail`). New screens use the base classes above.
+- **Pipeline screens** (`pipeline.css`): kanban board, pipeline cards, stage badges and the discover panel. Forms use the base form classes and pass/fail uses `chip` with text, like every other screen.
 
 ## Do's and Don'ts
 
