@@ -19,7 +19,7 @@ Feature: Investor journey, steps 1-9 (identify through grow)
     Then its gross yield is "12.00%" and its price-to-rent is "8.33"
     And it shows NOI, cap rate, cash-on-cash and DSCR
     When I open "3400 Seed Fail Ct" from the screener
-    Then its gross yield is "5.90%" and its price-to-rent is "17.05"
+    Then its gross yield is "5.87%" and its price-to-rent is "17.05"
 
   Scenario: Buy the best property, track it, then run BRRRR and leasing
     Given I am signed in as the demo investor
