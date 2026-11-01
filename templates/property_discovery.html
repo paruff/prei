@@ -9,7 +9,7 @@
     <p class="page-sub">
       {% if growth_area %}
         {{ growth_area.city_name }}, {{ growth_area.state }}
-        &middot; GACS {{ growth_area.composite_score|floatformat:1 }}
+        &middot; GACS {{ growth_area.composite_score|score }}
         &middot; Landlord {{ growth_area.landlord_score|default:"—" }}/10
       {% else %}
         Choose a growth area below to find properties.
@@ -31,8 +31,8 @@
       {% for ga in user_growth_areas %}
       <tr>
         <td>{{ ga.city_name }}</td><td>{{ ga.state }}</td>
-        <td class="col-right">{{ ga.composite_score|floatformat:1 }}</td>
-        <td>{% with conf=ga.data_confidence %}{% if conf >= 80 %}<span class="chip chip-success">{{ conf }}%</span>{% elif conf >= 50 %}<span class="chip chip-warning">{{ conf }}%</span>{% else %}<span class="chip chip-danger">{{ conf }}%</span>{% endif %}{% endwith %}</td>
+        <td class="col-right">{{ ga.composite_score|score }}</td>
+        <td>{% with conf=ga.data_confidence %}{% if conf >= 80 %}<span class="chip chip-success">{{ conf|pct:"pts" }}</span>{% elif conf >= 50 %}<span class="chip chip-warning">{{ conf|pct:"pts" }}</span>{% else %}<span class="chip chip-danger">{{ conf|pct:"pts" }}</span>{% endif %}{% endwith %}</td>
         <td><a href="{% url 'property_discovery' %}?growth_area_id={{ ga.pk }}" class="btn btn-primary">Discover →</a></td>
       </tr>
       {% endfor %}
@@ -87,22 +87,22 @@
   <div class="kpi-grid">
     <div class="kpi-card">
       <div class="kpi-label">Employment Growth</div>
-      <div class="kpi-value">{% if growth_area.employment_growth_rate %}{{ growth_area.employment_growth_rate|mul:100|floatformat:2 }}%{% else %}—{% endif %}</div>
+      <div class="kpi-value">{% if growth_area.employment_growth_rate %}{{ growth_area.employment_growth_rate|pct }}{% else %}—{% endif %}</div>
       <div class="kpi-sub">{% if growth_area.county_fips %}QCEW county{% else %}FRED state{% endif %}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Rent Growth (FMR)</div>
-      <div class="kpi-value">{% if growth_area.rent_growth_rate %}{{ growth_area.rent_growth_rate|mul:100|floatformat:2 }}%{% else %}—{% endif %}</div>
+      <div class="kpi-value">{% if growth_area.rent_growth_rate %}{{ growth_area.rent_growth_rate|pct }}{% else %}—{% endif %}</div>
       <div class="kpi-sub">HUD FY{{ growth_area.fmr_year|default:"—" }}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">2BR Rent Floor</div>
-      <div class="kpi-value">{% if growth_area.fmr_2br %}${{ growth_area.fmr_2br|floatformat:0 }}{% else %}—{% endif %}</div>
+      <div class="kpi-value">{% if growth_area.fmr_2br %}{{ growth_area.fmr_2br|money }}{% else %}—{% endif %}</div>
       <div class="kpi-sub">HUD FMR (40th pct)</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Data Confidence</div>
-      <div class="kpi-value">{{ growth_area.data_confidence }}%</div>
+      <div class="kpi-value">{{ growth_area.data_confidence|pct:"pts" }}</div>
       <div class="kpi-sub" title="Based on available data sources (Census, FRED, HUD FMR). Higher = more signals available.">GACS v2</div>
     </div>
   </div>

@@ -37,7 +37,7 @@
             <div class="pipeline-card-address">{{ entry.property_record.address }}</div>
             <div class="pipeline-card-meta">
               {{ entry.property_record.city }}, {{ entry.property_record.state }}
-              {% if entry.asking_rent %} &middot; ${{ entry.asking_rent|floatformat:0|intcomma }}/mo{% endif %}
+              {% if entry.asking_rent %} &middot; {{ entry.asking_rent|money }}/mo{% endif %}
               {% if entry.days_vacant is not None %}
                 &middot; <strong class="text-danger-bold">{{ entry.days_vacant }} days vacant</strong>
               {% endif %}

@@ -216,7 +216,7 @@ def record_offer(ctx: JourneyCtx, price: int) -> None:
 
 @then("the offer is listed for the property")
 def offer_listed(ctx: JourneyCtx) -> None:
-    assert f"{ctx.offer:,}.00" in ctx.page, _text(ctx.page)[:500]
+    assert f"${ctx.offer:,}" in ctx.page, _text(ctx.page)[:500]
 
 
 @when("I mark due diligence go")

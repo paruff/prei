@@ -75,7 +75,7 @@
             </div>
             <div class="pipeline-card-address">{{ pp.address|truncatechars:60 }}</div>
             <div class="pipeline-card-meta">
-              {% if pp.price %}Price: ${{ pp.price|floatformat:0|intcomma }}{% endif %}
+              {% if pp.price %}Price: {{ pp.price|money }}{% endif %}
               {% if pp.beds and pp.baths %} &middot; {{ pp.beds }} bed / {{ pp.baths }} bath{% endif %}
               {% if pp.sqft %} &middot; {{ pp.sqft|floatformat:0 }} sqft{% endif %}
             </div>

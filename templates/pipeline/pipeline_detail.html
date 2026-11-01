@@ -34,8 +34,8 @@
         <tr><td>Address</td><td>{{ prop.address }}</td></tr>
         {% if source_record.city %}<tr><td>City</td><td>{{ source_record.city }}</td></tr>{% endif %}
         {% if source_record.state %}<tr><td>State</td><td>{{ source_record.state }}</td></tr>{% endif %}
-        {% if prop.price %}<tr><td>Price</td><td>${{ prop.price|floatformat:2|intcomma }}</td></tr>{% endif %}
-        {% if prop.estimated_rent %}<tr><td>Est. Monthly Rent</td><td>${{ prop.estimated_rent|floatformat:2|intcomma }}</td></tr>{% endif %}
+        {% if prop.price %}<tr><td>Price</td><td>{{ prop.price|money }}</td></tr>{% endif %}
+        {% if prop.estimated_rent %}<tr><td>Est. Monthly Rent</td><td>{{ prop.estimated_rent|money }}</td></tr>{% endif %}
         {% if prop.beds %}<tr><td>Beds</td><td>{{ prop.beds }}</td></tr>{% endif %}
         {% if prop.baths %}<tr><td>Baths</td><td>{{ prop.baths }}</td></tr>{% endif %}
         {% if prop.sqft %}<tr><td>Sq Ft</td><td>{{ prop.sqft|floatformat:0 }}</td></tr>{% endif %}
@@ -55,7 +55,7 @@
         {% endif %}
         <tr><td>Days in Pipeline</td><td>{{ days_in_pipeline }} days</td></tr>
         {% if prop.investment_analysis %}<tr><td>Analysis</td><td>#{{ prop.investment_analysis.pk }}</td></tr>{% endif %}
-        {% if prop.mao %}<tr><td>MAO</td><td>${{ prop.mao|floatformat:2|intcomma }}</td></tr>{% endif %}
+        {% if prop.mao %}<tr><td>MAO</td><td>{{ prop.mao|money }}</td></tr>{% endif %}
         {% if prop.property_record %}<tr><td>Property Record</td><td>#{{ prop.property_record.pk }}</td></tr>{% endif %}
         {% if prop.kill_reason %}<tr><td class="text-danger">Kill Reason</td><td>{{ prop.kill_reason }}</td></tr>{% endif %}
       </table>
@@ -65,11 +65,11 @@
     <div class="pipeline-detail-section full-width">
       <h2>Screening &amp; Underwriting</h2>
       <table class="pipeline-detail-table">
-        <tr><td>Gross Yield</td><td data-metric="gross-yield">{{ underwriting.gross_yield_pct|floatformat:1 }}%</td></tr>
+        <tr><td>Gross Yield</td><td data-metric="gross-yield">{{ underwriting.gross_yield_pct|pct:"pts" }}</td></tr>
         <tr><td>Price-to-Rent</td><td data-metric="price-to-rent">{{ underwriting.price_to_rent|floatformat:2 }}</td></tr>
-        <tr><td>NOI (annual)</td><td data-metric="noi">${{ underwriting.noi|floatformat:2|intcomma }}</td></tr>
-        <tr><td>Cap Rate</td><td data-metric="cap-rate">{{ underwriting.cap_rate_pct|floatformat:2 }}%</td></tr>
-        <tr><td>Cash-on-Cash</td><td data-metric="cash-on-cash">{{ underwriting.cash_on_cash_pct|floatformat:2 }}%</td></tr>
+        <tr><td>NOI (annual)</td><td data-metric="noi">{{ underwriting.noi|money }}</td></tr>
+        <tr><td>Cap Rate</td><td data-metric="cap-rate">{{ underwriting.cap_rate_pct|pct:"pts" }}</td></tr>
+        <tr><td>Cash-on-Cash</td><td data-metric="cash-on-cash">{{ underwriting.cash_on_cash_pct|pct:"pts" }}</td></tr>
         <tr><td>DSCR</td><td data-metric="dscr">{{ underwriting.dscr|floatformat:2 }}</td></tr>
       </table>
     </div>
@@ -107,10 +107,10 @@
         <tr><td>Property ID</td><td>{{ source_record.property_id }}</td></tr>
         {% endif %}
         {% if source_record.list_price %}
-        <tr><td>List Price</td><td>${{ source_record.list_price|floatformat:2|intcomma }}</td></tr>
+        <tr><td>List Price</td><td>{{ source_record.list_price|money }}</td></tr>
         {% endif %}
         {% if source_record.opening_bid %}
-        <tr><td>Opening Bid</td><td>${{ source_record.opening_bid|floatformat:2|intcomma }}</td></tr>
+        <tr><td>Opening Bid</td><td>{{ source_record.opening_bid|money }}</td></tr>
         {% endif %}
         {% if source_record.foreclosure_status %}
         <tr><td>Foreclosure Status</td><td>{{ source_record.foreclosure_status|title }}</td></tr>

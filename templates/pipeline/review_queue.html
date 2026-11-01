@@ -35,7 +35,7 @@
           {# Line 2: Price #}
           <div class="page-sub">
             {% if prop.price %}
-              ${{ prop.price|floatformat:0|intcomma }}
+              {{ prop.price|money }}
             {% else %}
               —
             {% endif %}
@@ -44,7 +44,7 @@
           {# Line 3: Estimated rent #}
           <div class="page-sub">
             {% if prop.estimated_rent %}
-              est. rent ${{ prop.estimated_rent }}/mo
+              est. rent {{ prop.estimated_rent|money }}/mo
             {% else %}
               <span class="page-sub">Yield not calculated</span>
             {% endif %}

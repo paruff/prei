@@ -35,7 +35,7 @@
                   <label for="compare-{{ property.id }}" class="visually-hidden">Select {{ property.address }} for comparison</label>
                 </td>
                 <td>{{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}</td>
-                <td>${{ property.purchase_price|floatformat:2 }}</td>
+                <td>{{ property.purchase_price|money }}</td>
                 <td>
                   {% if property.underwriting_score %}
                     <span class="fw-bold">{{ property.underwriting_score.total_score }}</span>

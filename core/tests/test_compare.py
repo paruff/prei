@@ -74,8 +74,8 @@ def test_compare_highlights_best_cap_rate(
 
     content = response.content.decode()
     assert response.status_code == 200
-    assert "0.0800" in content
-    assert "0.0500" in content
+    assert "8.00%" in content
+    assert "5.00%" in content
     assert "table-success" in content
     assert "table-danger" in content
 
@@ -158,4 +158,4 @@ def test_compare_computes_analysis_when_missing(
 
     assert response.status_code == 200
     assert sorted(call_ids) == sorted([property_one.id, property_two.id])
-    assert "10000.00" in response.content.decode()
+    assert "$10,000" in response.content.decode()

@@ -10,7 +10,7 @@
     <h2>Listing Details</h2>
     <p>{{ listing.address }}, {{ listing.city }}, {{ listing.state }} {{ listing.zip_code }}</p>
     <ul>
-      <li>Price: ${{ listing.price }}</li>
+      <li>Price: {{ listing.price|money }}</li>
       <li>Beds/Baths: {{ listing.beds }} / {{ listing.baths }}</li>
       <li>Sq Ft: {{ listing.sq_ft }}</li>
       <li>Type: {{ listing.property_type }}</li>
@@ -22,9 +22,9 @@
   {% if kpis %}
     <h2>Investment KPIs</h2>
     <ul>
-      <li>NOI (annual): ${{ kpis.noi|floatformat:2 }}</li>
-      <li>Cap Rate: {{ kpis.cap_rate|floatformat:2 }}</li>
-      <li>Cash-on-Cash: {{ kpis.cash_on_cash|floatformat:2 }}</li>
+      <li>NOI (annual): {{ kpis.noi|money }}</li>
+      <li>Cap Rate: {{ kpis.cap_rate|pct }}</li>
+      <li>Cash-on-Cash: {{ kpis.cash_on_cash|pct }}</li>
       <li>DSCR: {{ kpis.dscr|floatformat:2 }}</li>
     </ul>
   {% endif %}
@@ -32,10 +32,10 @@
   <h2>Market Data</h2>
   {% if market_snapshot %}
     <ul>
-      <li>Rent Index: ${{ market_snapshot.rent_index|floatformat:2 }}</li>
-      <li>Price Trend: {{ market_snapshot.price_trend|floatformat:2 }}</li>
-      <li>Crime Score: {{ market_snapshot.crime_score|floatformat:2 }}</li>
-      <li>School Rating: {{ market_snapshot.school_rating|floatformat:2 }}</li>
+      <li>Rent Index: {{ market_snapshot.rent_index|money }}</li>
+      <li>Price Trend: {{ market_snapshot.price_trend|pct }}</li>
+      <li>Crime Score: {{ market_snapshot.crime_score|score }}</li>
+      <li>School Rating: {{ market_snapshot.school_rating|score }}</li>
     </ul>
   {% else %}
     <p>N/A — no market snapshot available for this ZIP code.</p>
@@ -44,7 +44,7 @@
   {% if score is not None %}
     <h2>Score</h2>
     <ul>
-      <li>Investment Score: {{ score|floatformat:2 }}</li>
+      <li>Investment Score: {{ score|score }}</li>
     </ul>
   {% endif %}
 
@@ -56,10 +56,10 @@
   {% if analysis %}
     <h3>Financial KPIs</h3>
     <ul>
-      <li>NOI: ${{ analysis.noi }}</li>
-      <li>Cap Rate: {{ analysis.cap_rate|floatformat:4 }}</li>
-      <li>Cash-on-Cash: {{ analysis.cash_on_cash|floatformat:4 }}</li>
-      <li>IRR: {{ analysis.irr|floatformat:4 }}</li>
+      <li>NOI: {{ analysis.noi|money }}</li>
+      <li>Cap Rate: {{ analysis.cap_rate|pct }}</li>
+      <li>Cash-on-Cash: {{ analysis.cash_on_cash|pct }}</li>
+      <li>IRR: {{ analysis.irr|pct }}</li>
       <li>DSCR: {{ analysis.dscr|floatformat:4 }}</li>
     </ul>
   {% endif %}
@@ -70,7 +70,7 @@
       <thead><tr><th>Address</th><th>Price</th><th>Sq Ft</th><th>PPSF</th></tr></thead>
       <tbody>
         {% for c in comps %}
-          <tr><td>{{ c.address }}</td><td>${{ c.price }}</td><td>{{ c.sq_ft }}</td><td>{{ c.ppsf }}</td></tr>
+          <tr><td>{{ c.address }}</td><td>{{ c.price|money }}</td><td>{{ c.sq_ft }}</td><td>{{ c.ppsf }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -78,7 +78,7 @@
 
   {% if rent_estimate %}
     <h3>Rent Estimate</h3>
-    <p>Estimated Monthly Rent: ${{ rent_estimate }}</p>
+    <p>Estimated Monthly Rent: {{ rent_estimate|money }}</p>
   {% endif %}
 
   {% if crime is not None or schools is not None %}

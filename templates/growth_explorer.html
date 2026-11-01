@@ -81,18 +81,18 @@
                 <span class="chip chip-warning" title="Mixed: moderate landlord conditions">🟡 Mixed</span>
               {% endif %}
             </td>
-            <td class="score-num num-good">{{ r.growth_area.composite_score|default_if_none:""|floatformat:2 }}</td>
+            <td class="score-num num-good">{{ r.growth_area.composite_score|default_if_none:""|score }}</td>
             <td>
               {% with conf=r.growth_area.data_confidence %}
-                {% if conf >= 80 %}<span class="chip chip-success">{{ conf }}%</span>
-                {% elif conf >= 50 %}<span class="chip chip-warning">{{ conf }}%</span>
-                {% else %}<span class="chip chip-danger">{{ conf }}%</span>{% endif %}
+                {% if conf >= 80 %}<span class="chip chip-success">{{ conf|pct:"pts" }}</span>
+                {% elif conf >= 50 %}<span class="chip chip-warning">{{ conf|pct:"pts" }}</span>
+                {% else %}<span class="chip chip-danger">{{ conf|pct:"pts" }}</span>{% endif %}
               {% endwith %}
             </td>
             <td>
               <div class="text-detail">
-                Emp: {{ r.growth_area.employment_growth_rate|mul:100|floatformat:1 }}% &middot;
-                Pop: {{ r.growth_area.population_growth_rate|mul:100|floatformat:1 }}% &middot;
+                Emp: {{ r.growth_area.employment_growth_rate|pct }} &middot;
+                Pop: {{ r.growth_area.population_growth_rate|pct }} &middot;
                 Demand: {{ r.growth_area.housing_demand_index }}
               </div>
             </td>

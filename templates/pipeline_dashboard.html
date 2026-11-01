@@ -84,9 +84,9 @@
                 <td>{{ a.asset_id }}</td>
                 <td title="{{ a.address }}">{{ a.address|truncatechars:40 }}</td>
                 <td>{{ a.current_stage }}</td>
-                <td class="col-right num">{% if a.price %}${{ a.price|floatformat:0|intcomma }}{% endif %}</td>
-                <td class="col-right num">{% if a.cap_rate %}{{ a.cap_rate|floatformat:4 }}{% endif %}</td>
-                <td class="col-right num">{% if a.mao %}${{ a.mao|floatformat:0|intcomma }}{% endif %}</td>
+                <td class="col-right num">{% if a.price %}{{ a.price|money }}{% endif %}</td>
+                <td class="col-right num">{% if a.cap_rate %}{{ a.cap_rate|pct }}{% endif %}</td>
+                <td class="col-right num">{% if a.mao %}{{ a.mao|money }}{% endif %}</td>
                 <td>{{ a.updated_at|date:"M d H:i" }}</td>
               </tr>
             {% endfor %}
@@ -124,7 +124,7 @@
                 <td>{{ a.asset_id }}</td>
                 <td title="{{ a.address }}">{{ a.address|truncatechars:40 }}</td>
                 <td title="{{ a.kill_reason }}">{{ a.kill_reason|truncatechars:60 }}</td>
-                <td class="col-right num">{% if a.price %}${{ a.price|floatformat:0|intcomma }}{% endif %}</td>
+                <td class="col-right num">{% if a.price %}{{ a.price|money }}{% endif %}</td>
                 <td class="col-right">{{ a.beds|default_if_none:"" }}</td>
                 <td>{{ a.updated_at|date:"M d H:i" }}</td>
               </tr>

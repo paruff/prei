@@ -31,7 +31,7 @@
   <div class="kpi-card">
     <div class="kpi-label">Growth Areas</div>
     <div class="kpi-value">{{ ga_count }}</div>
-    <div class="kpi-sub">{{ ga_states }} states · {{ ga_fips_pct }}% FIPS</div>
+    <div class="kpi-sub">{{ ga_states }} states · {{ ga_fips_pct|pct:"pts" }} FIPS</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Pipeline</div>
@@ -50,7 +50,7 @@
       <tr>
         <td>{{ ga.city_name }}</td>
         <td>{{ ga.state }}</td>
-        <td>{{ ga.composite_score|floatformat:4 }}</td>
+        <td>{{ ga.composite_score|score }}</td>
         <td>{{ ga.landlord_score|default:"—" }}/10</td>
       </tr>
       {% endfor %}

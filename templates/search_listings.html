@@ -60,11 +60,11 @@
           <td>{{ item.obj.city }}</td>
           <td>{{ item.obj.state }}</td>
           <td>{{ item.obj.zip_code }}</td>
-          <td>${{ item.obj.price }}</td>
+          <td>{{ item.obj.price|money }}</td>
           <td>{{ item.obj.beds }}</td>
           <td>{{ item.obj.baths }}</td>
           <td>{{ item.obj.sq_ft }}</td>
-          <td>{{ item.score|floatformat:2 }}</td>
+          <td>{{ item.score|score }}</td>
           <td><a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a></td>
         </tr>
       {% empty %}

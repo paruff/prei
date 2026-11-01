@@ -43,7 +43,7 @@
         <div class="kanban-card-meta">
           <span class="chip chip-default">{{ pp.get_source_type_display }}</span>
           {% if pp.price %}
-          <span class="kanban-card-price">${{ pp.price|intcomma }}</span>
+          <span class="kanban-card-price">{{ pp.price|money }}</span>
           {% endif %}
         </div>
         {% if pp.screening_passed is not None %}
@@ -83,7 +83,7 @@
         <button class="kanban-market-btn"
                 data-select-market data-id="{{ ga.pk }}" data-name="{{ ga.city_name }}">
           <strong>{{ ga.city_name }}</strong>, {{ ga.state }}
-          <span class="chip chip-default">GACS {{ ga.composite_score|floatformat:1 }}</span>
+          <span class="chip chip-default">GACS {{ ga.composite_score|score }}</span>
         </button>
         {% endfor %}
       </div>

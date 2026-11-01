@@ -6,7 +6,7 @@
 <div class="detail-hero">
   <div>
     <h1 class="page-title">{{ property.address }}</h1>
-    <p class="page-sub">{{ property.city }}, {{ property.state }} {{ property.zip_code }} · ${{ property.purchase_price|intcomma }}</p>
+    <p class="page-sub">{{ property.city }}, {{ property.state }} {{ property.zip_code }} · {{ property.purchase_price|money }}</p>
   </div>
   <div class="detail-hero-actions">
     <a href="{% url 'property_detail' property.pk %}" class="btn">Back to Property</a>
@@ -43,40 +43,40 @@
       <div class="scenario-section">
         <h4>Loan Terms</h4>
         <table class="data-table scenario-table">
-          <tr><td>LTV</td><td class="col-right">{{ result.ltv_pct|floatformat:1 }}%</td></tr>
-          <tr><td>Interest Rate</td><td class="col-right">{{ result.interest_rate|floatformat:2 }}%</td></tr>
+          <tr><td>LTV</td><td class="col-right">{{ result.ltv_pct|pct }}</td></tr>
+          <tr><td>Interest Rate</td><td class="col-right">{{ result.interest_rate|pct }}</td></tr>
           <tr><td>Term</td><td class="col-right">{{ result.term_years }} years</td></tr>
-          <tr><td>Down Payment</td><td class="col-right num">${{ result.down_payment|floatformat:0|intcomma }}</td></tr>
-          <tr><td>Closing Costs</td><td class="col-right num">${{ result.closing_costs|floatformat:0|intcomma }}</td></tr>
-          <tr><td class="total-row">Total Cash Invested</td><td class="col-right num total-row">${{ result.total_cash_invested|floatformat:0|intcomma }}</td></tr>
+          <tr><td>Down Payment</td><td class="col-right num">{{ result.down_payment|money }}</td></tr>
+          <tr><td>Closing Costs</td><td class="col-right num">{{ result.closing_costs|money }}</td></tr>
+          <tr><td class="total-row">Total Cash Invested</td><td class="col-right num total-row">{{ result.total_cash_invested|money }}</td></tr>
         </table>
       </div>
 
       <div class="scenario-section">
         <h4>Monthly Payment</h4>
         <table class="data-table scenario-table">
-          <tr><td>Monthly P&I</td><td class="col-right num">${{ result.monthly_payment|floatformat:0|intcomma }}</td></tr>
-          <tr><td>Annual Debt Service</td><td class="col-right num">${{ result.annual_debt_service|floatformat:0|intcomma }}</td></tr>
+          <tr><td>Monthly P&I</td><td class="col-right num">{{ result.monthly_payment|money }}</td></tr>
+          <tr><td>Annual Debt Service</td><td class="col-right num">{{ result.annual_debt_service|money }}</td></tr>
         </table>
       </div>
 
       <div class="scenario-section">
         <h4>Key Metrics</h4>
         <table class="data-table scenario-table">
-          <tr><td>Annual NOI</td><td class="col-right num">${{ result.noi|floatformat:0|intcomma }}</td></tr>
-          <tr><td>Cap Rate</td><td class="col-right {% if result.cap_rate >= 0.08 %}num-good{% else %}num{% endif %}">{{ result.cap_rate|floatformat:2 }}%</td></tr>
-          <tr><td>Cash-on-Cash</td><td class="col-right {% if result.cash_on_cash >= 0.10 %}num-good{% else %}num{% endif %}">{{ result.cash_on_cash|floatformat:1 }}%</td></tr>
+          <tr><td>Annual NOI</td><td class="col-right num">{{ result.noi|money }}</td></tr>
+          <tr><td>Cap Rate</td><td class="col-right {% if result.cap_rate >= 0.08 %}num-good{% else %}num{% endif %}">{{ result.cap_rate|pct }}</td></tr>
+          <tr><td>Cash-on-Cash</td><td class="col-right {% if result.cash_on_cash >= 0.10 %}num-good{% else %}num{% endif %}">{{ result.cash_on_cash|pct }}</td></tr>
           <tr><td>DSCR</td><td class="col-right {% if result.dscr >= 1.25 %}num-good{% else %}num{% endif %}">{{ result.dscr|floatformat:2 }}</td></tr>
-          <tr><td>Monthly Cash Flow</td><td class="col-right {% if result.monthly_cash_flow >= 0 %}num-good{% else %}num-bad{% endif %}">${{ result.monthly_cash_flow|floatformat:0|intcomma }}</td></tr>
+          <tr><td>Monthly Cash Flow</td><td class="col-right {% if result.monthly_cash_flow >= 0 %}num-good{% else %}num-bad{% endif %}">{{ result.monthly_cash_flow|money }}</td></tr>
         </table>
       </div>
 
       <div class="scenario-section">
         <h4>Break-even Analysis</h4>
         <table class="data-table scenario-table">
-          <tr><td>Break-even Rent</td><td class="col-right num">${{ result.breakeven_rent|floatformat:0|intcomma }}</td></tr>
-          <tr><td>Current Rent</td><td class="col-right num">${{ property.monthly_rent_gross|floatformat:0|intcomma }}</td></tr>
-          <tr><td class="total-row">Rent Cushion</td><td class="col-right {% if result.rent_cushion >= 0 %}num-good{% else %}num-bad{% endif %} total-row">${{ result.rent_cushion|floatformat:0|intcomma }}</td></tr>
+          <tr><td>Break-even Rent</td><td class="col-right num">{{ result.breakeven_rent|money }}</td></tr>
+          <tr><td>Current Rent</td><td class="col-right num">{{ property.monthly_rent_gross|money }}</td></tr>
+          <tr><td class="total-row">Rent Cushion</td><td class="col-right {% if result.rent_cushion >= 0 %}num-good{% else %}num-bad{% endif %} total-row">{{ result.rent_cushion|money }}</td></tr>
         </table>
       </div>
     </div>
