@@ -3,35 +3,32 @@
 {% block title %}USDA Properties{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">USDA Rural Development Properties</h1>
-  <span class="badge bg-secondary">{{ total_count }} total / {{ filtered_count }} shown</span>
+<div class="page-header">
+  <h1 class="page-title">USDA Rural Development Properties</h1>
+  <span class="chip chip-default">{{ total_count }} total / {{ filtered_count }} shown</span>
 </div>
 
 <div class="card mb-4">
-  <div class="card-body">
-    <form method="get" class="row g-3 align-items-end">
-      <div class="col-md-4">
-        <label for="state" class="form-label">State</label>
-        <input type="text" name="state" id="state" class="form-control"
-               placeholder="e.g. TX" maxlength="2" pattern="[A-Za-z]{2}"
-               value="{{ selected_state }}">
-      </div>
-      <div class="col-md-2">
-        <button type="submit" class="btn btn-primary w-100">Filter</button>
-      </div>
-      {% if selected_state %}
-      <div class="col-md-2">
-        <a href="{% url 'usda_property_list' %}" class="btn btn-outline-secondary w-100">Clear</a>
-      </div>
-      {% endif %}
-    </form>
-  </div>
+  <form method="get" class="form-row form-row--align-end">
+    <div class="form-group">
+      <label for="state" class="form-label">State</label>
+      <input type="text" name="state" id="state" class="form-input form-input-sm"
+             placeholder="e.g. TX" maxlength="2" pattern="[A-Za-z]{2}"
+             value="{{ selected_state }}">
+    </div>
+    <div class="form-group form-actions">
+      <button type="submit" class="btn btn-primary">Filter</button>
+    {% if selected_state %}
+    <a href="{% url 'usda_property_list' %}" class="btn">Clear</a>
+    {% endif %}
+    </div>
+  </form>
 </div>
 
-<div class="table-responsive">
-  <table class="table table-striped table-hover align-middle">
-    <thead class="table-dark">
+<div class="card">
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
       <tr>
         <th>Case #</th>
         <th>Address</th>
@@ -58,23 +55,24 @@
         <td>{{ prop.bathrooms|default:"-" }}</td>
         <td>{{ prop.square_feet|default:"-" }}</td>
         <td>{{ prop.lot_size_acres|default:"-" }}</td>
-        <td><span class="badge bg-{% if prop.status == 'active' %}success{% elif prop.status == 'sold' %}secondary{% elif prop.status == 'pending' %}warning{% else %}info{% endif %}">{{ prop.get_status_display }}</span></td>
+        <td><span class="chip {% if prop.status == 'active' %}chip-success{% elif prop.status == 'pending' %}chip-warning{% elif prop.status == 'sold' %}chip-default{% else %}chip-info{% endif %}">{{ prop.get_status_display }}</span></td>
         <td>
-          <form method="post" action="{% url 'pipeline_add_from_source' %}" class="pipeline-inline-form">
+          <form method="post" action="{% url 'pipeline_add_from_source' %}">
             {% csrf_token %}
             <input type="hidden" name="source_type" value="usda">
             <input type="hidden" name="source_id" value="{{ prop.usda_case_number }}">
             <input type="hidden" name="next" value="{% url 'usda_property_list' %}{% if selected_state %}?state={{ selected_state }}{% endif %}">
-            <button type="submit" class="btn btn-sm btn-outline-primary">+ Add to Pipeline</button>
+            <button type="submit" class="btn">+ Add to Pipeline</button>
           </form>
         </td>
       </tr>
       {% empty %}
       <tr>
-        <td colspan="11" class="text-center text-muted py-4">No USDA properties found.</td>
+        <td colspan="12" class="text-center">No USDA properties found.</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+</div>
 </div>
 {% endblock %}

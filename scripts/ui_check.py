@@ -32,6 +32,7 @@ PAGES = [
     "/leasing/",
     "/vrm-properties/",
     "/hud-properties/",
+    "/usda-properties/",
     "/growth-explorer/",
     "/onboard/",
     "/brrrr/",
