@@ -151,7 +151,7 @@ body {
 .nav-dropdown-item .sub-label {
   display: block;
   font-size: var(--text-xs);
-  color: var(--color-neutral-200);
+  color: var(--color-neutral-500);
   margin-top: 1px;
 }
 .nav-divider {
@@ -194,7 +194,7 @@ body {
   padding: var(--sp-6);
   text-align: center;
   font-size: var(--text-xs);
-  color: var(--color-neutral-200);
+  color: var(--color-neutral-500);
   border-top: var(--border-default);
 }
 
@@ -274,7 +274,7 @@ body {
 }
 .kpi-sub {
   font-size: var(--text-xs);
-  color: var(--color-neutral-200);
+  color: var(--color-neutral-500);
   margin-top: var(--sp-1);
 }
 
@@ -301,7 +301,7 @@ body {
   color: #fff;
   border-color: var(--color-primary);
 }
-.btn-primary:hover { background: var(--color-grow-700); border-color: var(--color-grow-700); }
+.btn-primary:hover { background: var(--color-grow-900); border-color: var(--color-grow-900); }
 .btn-danger {
   color: var(--color-risk-700);
   border-color: var(--color-risk-100);
@@ -331,7 +331,8 @@ body {
   transition: border-color 0.1s;
   appearance: none;
 }
-.form-input:focus { outline: none; border-color: var(--color-primary); }
+.form-input:focus { border-color: var(--color-primary); }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .form-input.is-invalid { border-color: var(--color-risk-400); }
 select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235F5E5A' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
 
@@ -607,7 +608,7 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 }
 .pagination .total-count {
   font-size: var(--text-xs);
-  color: var(--color-neutral-200);
+  color: var(--color-neutral-500);
   margin-left: var(--sp-2);
 }
 
@@ -673,7 +674,7 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 /* ── Disclosure (tax disclaimer) ────────────────────────────── */
 .disclosure {
   font-size: var(--text-xs);
-  color: var(--color-neutral-200);
+  color: var(--color-neutral-500);
   line-height: 1.6;
   margin-top: var(--sp-4);
 }
