@@ -35,7 +35,7 @@ Feature: Investor journey, steps 1-9 (identify through grow)
     Then it is in the portfolio
     And the portfolio shows its purchase price of 95000
     And the portfolio equity is value minus loan, not the price
-    And the portfolio equity covers its down payment
+    And the portfolio shows its down payment share of 25.00%
     And the portfolio cash flow is below the gross rent of 1800
     And the dashboard verdict agrees with its cash-on-cash
     When I enter monthly actuals for it

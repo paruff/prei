@@ -58,6 +58,7 @@
           <tr>
             <th>Address</th>
             <th>Price</th>
+            <th>Down Payment</th>
             <th>Est. Rent</th>
             <th>Monthly CF</th>
             <th>Latest Actuals</th>
@@ -70,6 +71,7 @@
           <tr data-property-id="{{ prop.property_record_id }}">
             <td>{{ prop.address|truncatechars:40 }}</td>
             <td class="col-right num">{{ prop.position.price|money }}</td>
+            <td class="col-right num" data-metric="down-payment">{{ prop.position.down_payment_pct|pct }}</td>
             <td class="col-right num">{% if prop.estimated_rent %}{{ prop.estimated_rent|money }}/mo{% else %}—{% endif %}</td>
             <td class="col-right num">{{ prop.position.monthly_cash_flow|money }}</td>
             <td class="col-right num" data-metric="latest-actuals">{% if prop.latest_actual %}{{ prop.latest_actual.actual_rent_collected|money }} ({{ prop.latest_actual.month|date:"M Y" }}){% else %}No data{% endif %}</td>

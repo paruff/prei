@@ -702,6 +702,7 @@ class AcquiredPosition:
     equity: Decimal
     monthly_cash_flow: Decimal
     gacs_score: Decimal | None
+    down_payment_pct: Decimal | None = None
 
 
 def acquired_position(pipeline_property) -> AcquiredPosition:
@@ -740,4 +741,5 @@ def acquired_position(pipeline_property) -> AcquiredPosition:
         equity=price - loan,
         monthly_cash_flow=(egi - opex - debt).quantize(Decimal("0.01")),
         gacs_score=area.composite_score if area else pipeline_property.gacs_score,
+        down_payment_pct=to_decimal(prop.down_payment_pct),
     )
