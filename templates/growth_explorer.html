@@ -16,7 +16,7 @@
     <h2 class="card-title">Select States to Analyze</h2>
     <div class="form-row form-row--align-end">
       <div class="form-group">
-        <label>Tier</label>
+        <label class="form-label" for="tier-select">Tier</label>
         <select name="tier" id="tier-select" class="form-input">
           <option value="">All states</option>
           <option value="landlord_friendly">Landlord-friendly (fast evictions, no rent control)</option>
@@ -25,7 +25,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label id="state-select-label">Then pick a state</label>
+        <label class="form-label" id="state-select-label" for="state-select">Then pick a state</label>
         <select name="state" id="state-select" class="form-input">
           <option value="">— All states —</option>
           {% for code, name in states %}
