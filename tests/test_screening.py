@@ -551,6 +551,33 @@ class TestSoftGrossYield:
         assert "no rent estimate available" in result.notes
 
 
+class TestCriticalFailuresIgnoreMessageWording:
+    @pytest.mark.parametrize(
+        "evaluator", ["_eval_gross_yield", "_eval_price_to_rent_ratio"]
+    )
+    def test_reworded_failure_still_fails(
+        self, db, monkeypatch, configured_criteria, user, evaluator
+    ):
+        """Yield/PTR failures fail the property whatever the message says."""
+        from core.models import PipelineProperty
+        from core.services import screening
+
+        monkeypatch.setattr(
+            screening, evaluator, lambda *a, **k: (Decimal("1"), None, "reworded")
+        )
+        pp = PipelineProperty.objects.create(
+            user=user,
+            source_type="manual",
+            source_id="m-reword",
+            address="1 Reword St",
+            address_hash="reword",
+            price=Decimal("250000"),
+            beds=3,
+            year_built=2015,
+        )
+        assert not screen_property(pp, configured_criteria).passed
+
+
 class TestSoftPriceToRentRatio:
     def test_deducts_when_above_maximum(
         self, db, configured_criteria, user, vrm_property, growth_area
@@ -909,3 +936,29 @@ class TestIntegration:
         # PTR = 250000 / (2200 * 12) ≈ 9.47 <= 20 → no PTR failure.
         # If PP.estimated_rent (500) was used, PTR ≈ 41.7 → would fail.
         assert not any("Price-to-rent" in f for f in result.soft_failures)
+
+
+def test_rescreen_pipeline_corrects_stale_verdict(db, configured_criteria, user):
+    configured_criteria.allowed_states = []
+    configured_criteria.allowed_property_types = []
+    configured_criteria.allowed_foreclosure_statuses = []
+    configured_criteria.save()
+    from django.core.management import call_command
+
+    from core.models import PipelineProperty
+
+    pp = PipelineProperty.objects.create(
+        user=user,
+        source_type="manual",
+        source_id="m-stale",
+        address="2 Stale St",
+        address_hash="stale",
+        price=Decimal("200000"),
+        estimated_rent=Decimal("2000"),
+        beds=3,
+        year_built=2015,
+        screening_passed=False,
+    )
+    call_command("rescreen_pipeline")
+    pp.refresh_from_db()
+    assert pp.screening_passed is True

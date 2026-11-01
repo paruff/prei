@@ -460,7 +460,7 @@ def _eval_price_to_rent_ratio(
 ) -> tuple[Decimal, Optional[str], Optional[str]]:
     """Evaluate price-to-rent ratio soft criterion.
 
-    Formula: ptr = price / monthly_rent
+    Formula: ptr = price / (monthly_rent * 12), i.e. price / annual rent
 
     Returns:
         Tuple of (deduction, pass_msg, fail_msg).
@@ -983,9 +983,7 @@ def screen_property(
         passes.append(pass_msg)
     if fail_msg:
         soft_failures.append(fail_msg)
-        critical_soft_failures = critical_soft_failures or fail_msg.startswith(
-            "Gross yield "
-        )
+        critical_soft_failures = True  # a yield miss fails regardless of score
 
     # 7. Price-to-rent ratio
     ded, pass_msg, fail_msg = _eval_price_to_rent_ratio(
@@ -996,9 +994,7 @@ def screen_property(
         passes.append(pass_msg)
     if fail_msg:
         soft_failures.append(fail_msg)
-        critical_soft_failures = critical_soft_failures or fail_msg.startswith(
-            "Price-to-rent ratio "
-        )
+        critical_soft_failures = True  # a PTR miss fails regardless of score
 
     # 8. Year built
     ded, pass_msg, fail_msg = _eval_year_built(pipeline_property, criteria)

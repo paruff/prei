@@ -90,6 +90,7 @@ class Command(BaseCommand):
 
         call_command("seed_markets")
         call_command("seed_data")
+        call_command("rescreen_pipeline")
         now = timezone.now()
         listings = FIXTURE_VRM_LISTINGS.get((state, city), ())
         if not listings:
