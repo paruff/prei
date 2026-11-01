@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from core.integrations.sources.fannie_mae import FannieMaeHomePathClient
 from core.models import DiscoveryRequest, PipelineProperty
+from core.services.pipeline import expense_estimates
 
 logger = logging.getLogger("prei.scraper.fannie_mae")
 
@@ -150,6 +151,11 @@ class Command(BaseCommand):
                     source_type=PipelineProperty.SourceType.FANNIE,
                     source_id=address_hash,
                     defaults=defaults,
+                    # Rate snapshot is stored once, on create; re-runs keep it.
+                    create_defaults={
+                        **defaults,
+                        **expense_estimates(defaults["price"]),
+                    },
                 )
 
                 if created:
