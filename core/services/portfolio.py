@@ -692,3 +692,52 @@ def compute_portfolio_performance(user: User) -> dict[str, Any]:
         "worst_property": worst_property,
         "flagged_properties": flagged_properties,
     }
+
+
+@dataclass(frozen=True)
+class AcquiredPosition:
+    """What an acquired property is worth to the investor today."""
+
+    price: Decimal
+    equity: Decimal
+    monthly_cash_flow: Decimal
+    gacs_score: Decimal | None
+
+
+def acquired_position(pipeline_property) -> AcquiredPosition:
+    """Closing price, equity (price - loan), net monthly cash flow and market GACS.
+
+    Falls back to the pipeline record's list price and rent when no property
+    record exists yet. # ponytail: value is the closing price until appraisals exist.
+    """
+    from core.models import GrowthArea
+
+    prop = pipeline_property.property_record
+    if prop is None:
+        price = to_decimal(pipeline_property.price)
+        return AcquiredPosition(
+            price, price, Decimal("0"), pipeline_property.gacs_score
+        )
+
+    price = to_decimal(prop.purchase_price)
+    loan = price * (Decimal(1) - to_decimal(prop.down_payment_pct))
+    gross = to_decimal(prop.monthly_rent_gross)
+    egi = gross * (Decimal(1) - to_decimal(prop.vacancy_rate))
+    opex = (
+        to_decimal(prop.property_taxes_annual) / 12
+        + to_decimal(prop.insurance_annual) / 12
+        + to_decimal(prop.hoa_monthly)
+        + to_decimal(prop.maintenance_monthly)
+        + to_decimal(prop.capex_monthly)
+        + egi * to_decimal(prop.mgmt_fee_pct)
+    )
+    debt = _get_annual_debt_service(prop) / MONTHS_PER_YEAR
+    area = GrowthArea.objects.filter(
+        city_name__iexact=prop.city, state__iexact=prop.state
+    ).first()
+    return AcquiredPosition(
+        price=price,
+        equity=price - loan,
+        monthly_cash_flow=(egi - opex - debt).quantize(Decimal("0.01")),
+        gacs_score=area.composite_score if area else pipeline_property.gacs_score,
+    )
