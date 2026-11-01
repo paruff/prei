@@ -66,7 +66,7 @@ Run, or read the CI result for, each check. Quote the output; don't just say "te
 | Tests | `make test` (CI also runs integration, e2e, acceptance and `tests/test_finance_math.py`) |
 | Types | CI `typecheck` job (mypy on `core/` and `investor_app/finance/`) |
 | Coverage | CI floor `--fail-under=70`. It must not drop. |
-| UI change | Run the page at desktop width and at ≤ 640px. |
+| UI change | Run the page at desktop width and at ≤ 640px. The PR shows before/after screenshots at 1280px and 390px. |
 
 A red CI job is Important unless `flaky_report.py` lists it as a known flaky test.
 

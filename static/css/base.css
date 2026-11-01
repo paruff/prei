@@ -1268,3 +1268,7 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
     grid-template-columns: 1fr;
   }
 }
+
+/* Plain text links in tables and cards use the palette, not browser blue. */
+.data-table a:not([class]) { color: var(--color-neutral-900); text-decoration: none; }
+.data-table a:not([class]):hover { text-decoration: underline; }
