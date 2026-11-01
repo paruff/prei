@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import io
-from decimal import Decimal, InvalidOperation
+from decimal import InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -34,14 +34,6 @@ def investment_targets_edit(request: HttpRequest) -> HttpResponse:
         form = InvestmentTargetsForm(request.POST, instance=targets)
         if form.is_valid():
             form.save()
-            # Save screening preferences
-            prefs.min_gross_yield = Decimal(request.POST.get("min_gross_yield", "0.07"))
-            prefs.max_price_to_rent_ratio = Decimal(
-                request.POST.get("max_price_to_rent_ratio", "15.00")
-            )
-            prefs.min_beds = int(request.POST.get("min_beds", 1))
-            prefs.min_baths = int(request.POST.get("min_baths", 1))
-            prefs.save()
             return redirect("investment_targets_edit")
     else:
         form = InvestmentTargetsForm(instance=targets)
