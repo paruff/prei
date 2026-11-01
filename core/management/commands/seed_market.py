@@ -7,6 +7,7 @@ Usage:
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -14,6 +15,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
+from core.management.commands.populate_growth_areas import CACHE_TTL_DAYS
 from core.models import GrowthArea, VrmProperty
 
 # Fallback when Census/FRED/HUD are unreachable or keys are missing (plan.md risk).
@@ -34,24 +36,26 @@ FIXTURE_GROWTH_AREAS = {
 
 # Discoverable listings for the seeded market (VRM rows; discovery reads the DB,
 # never the network). PLACEHOLDER values: one passes default screening, one fails.
-FIXTURE_VRM_LISTINGS: tuple[dict[str, Any], ...] = (
-    dict(
-        vrm_property_id=900001,
-        address="1200 Seed Pass Ln",
-        zip_code="75201",
-        list_price=Decimal("180000.00"),
-        projected_monthly_rent=Decimal("1800.00"),
-        bedrooms=3,
+FIXTURE_VRM_LISTINGS: dict[tuple[str, str], tuple[dict[str, Any], ...]] = {
+    ("TX", "Dallas"): (
+        dict(
+            vrm_property_id=900001,
+            address="1200 Seed Pass Ln",
+            zip_code="75201",
+            list_price=Decimal("180000.00"),
+            projected_monthly_rent=Decimal("1800.00"),
+            bedrooms=3,
+        ),
+        dict(
+            vrm_property_id=900002,
+            address="3400 Seed Fail Ct",
+            zip_code="75204",
+            list_price=Decimal("450000.00"),
+            projected_monthly_rent=Decimal("2200.00"),
+            bedrooms=3,
+        ),
     ),
-    dict(
-        vrm_property_id=900002,
-        address="3400 Seed Fail Ct",
-        zip_code="75204",
-        list_price=Decimal("450000.00"),
-        projected_monthly_rent=Decimal("2200.00"),
-        bedrooms=3,
-    ),
-)
+}
 
 
 class Command(BaseCommand):
@@ -73,10 +77,12 @@ class Command(BaseCommand):
             fixture = FIXTURE_GROWTH_AREAS.get((state, city))
             if fixture is None:
                 raise CommandError(f"No live data and no fixture for {city}, {state}")
+            # Already past the cache TTL so the next run with a key refreshes it.
+            fixture_timestamp = timezone.now() - timedelta(days=CACHE_TTL_DAYS + 1)
             GrowthArea.objects.update_or_create(
                 state=state,
                 city_name=city,
-                defaults={**fixture, "data_timestamp": timezone.now()},
+                defaults={**fixture, "data_timestamp": fixture_timestamp},
             )
             self.stdout.write(
                 self.style.WARNING(f"Used fixture data for {city}, {state}")
@@ -85,7 +91,12 @@ class Command(BaseCommand):
         call_command("seed_markets")
         call_command("seed_data")
         now = timezone.now()
-        for listing in FIXTURE_VRM_LISTINGS:
+        listings = FIXTURE_VRM_LISTINGS.get((state, city), ())
+        if not listings:
+            self.stdout.write(
+                self.style.WARNING(f"No fixture listings for {city}, {state}; skipped")
+            )
+        for listing in listings:
             VrmProperty.objects.update_or_create(
                 vrm_property_id=listing["vrm_property_id"],
                 defaults={
