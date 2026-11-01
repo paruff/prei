@@ -4,6 +4,8 @@ Feature: Investor journey, steps 1-9 (identify through grow)
   I want to go from a ranked market to an underwritten property
   So that I can buy it and track how it performs
 
+  After sign-in the journey moves only by following nav and page links and
+  submitting forms the pages offer (FR-18, AC-19); it types no paths.
   Runs over HTTP against the seeded container (BASE_URL). Seed with
   `manage.py seed_market`; see `make docker-accept`.
 

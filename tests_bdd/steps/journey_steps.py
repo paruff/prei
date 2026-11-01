@@ -5,7 +5,9 @@ from __future__ import annotations
 import os
 import re
 from decimal import Decimal
+from html import unescape
 from html.parser import HTMLParser
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import pytest
@@ -21,6 +23,9 @@ class JourneyCtx:
         self.client: httpx.Client | None = None
         self.growth_area_id: str | None = None
         self.page: str = ""
+        self.url: str = ""
+        self.discovery_href: str = ""
+        self.screener_url: str = ""
         self.screener: str = ""
         self.detail_path: str = ""
         self.offer: int = 0
@@ -39,6 +44,60 @@ def _csrf(client: httpx.Client, path: str) -> str:
     match = re.search(r'name="csrfmiddlewaretoken"\s+value="([^"]+)"', resp.text)
     assert match, f"no CSRF token on {path}"
     return match.group(1)
+
+
+def _visit(ctx: JourneyCtx, resp: httpx.Response) -> httpx.Response:
+    """Record the page the browser is now on (after redirects)."""
+    ctx.page, ctx.url = resp.text, str(resp.url)
+    return resp
+
+
+def _links(html: str) -> list[tuple[str, str]]:
+    """(href, visible text) of every anchor on the page."""
+    return [
+        (href, _text(inner))
+        for href, inner in re.findall(
+            r'<a\s[^>]*?href="([^"#][^"]*)"[^>]*>(.*?)</a>', html, flags=re.S
+        )
+    ]
+
+
+def _click(ctx: JourneyCtx, label: str, href: str | None = None) -> httpx.Response:
+    """Follow the link on the current page whose text matches `label` (regex).
+
+    The journey may only move by clicking: a missing link fails the scenario.
+    """
+    hits = [
+        h
+        for h, t in _links(ctx.page)
+        if re.search(label, t) and (href is None or re.search(href, h))
+    ]
+    assert hits, (
+        f"no link {label!r} on {ctx.url}; links: "
+        f"{[t for _, t in _links(ctx.page)][:25]}"
+    )
+    resp = ctx.client.get(urljoin(ctx.url, unescape(hits[0])))
+    assert resp.status_code == 200, f"{hits[0]} -> {resp.status_code}"
+    return _visit(ctx, resp)
+
+
+def _submit(ctx: JourneyCtx, action: str, data: dict | None = None) -> httpx.Response:
+    """Submit the form on the current page whose action matches `action` (regex).
+
+    Starts from the form's own fields (CSRF token, hidden inputs, defaults), so
+    a form that is not on the page cannot be posted to.
+    """
+    form = _FormParser(action, ctx.url)
+    form.feed(ctx.page)
+    assert form.action is not None, (
+        f"no form posting to {action!r} on {ctx.url}; "
+        f"forms: {re.findall(r'<form[^>]*>', ctx.page)}"
+    )
+    fields = {**form.fields, **(data or {})}
+    fields = {k: v for k, v in fields.items() if v is not None}  # None: leave blank
+    resp = ctx.client.post(urljoin(ctx.url, form.action), data=fields)
+    assert resp.status_code == 200, f"{form.action} -> {resp.status_code}"
+    return _visit(ctx, resp)
 
 
 def _text(html: str) -> str:
@@ -67,14 +126,13 @@ def signed_in(ctx: JourneyCtx) -> None:
         },
     )
     assert resp.status_code == 200
+    _visit(ctx, resp)
     assert "/accounts/login" not in str(resp.url), "demo login failed: run seed_market"
 
 
 @when("I open the growth areas list")
 def open_growth_areas(ctx: JourneyCtx) -> None:
-    resp = ctx.client.get("/growth/")
-    assert resp.status_code == 200
-    ctx.page = resp.text
+    _click(ctx, r"Growth Areas")
 
 
 @then("Dallas, TX is ranked with a composite score")
@@ -85,32 +143,26 @@ def dallas_ranked(ctx: JourneyCtx) -> None:
     score = re.search(r'score-num[^"]*">\s*([\d.]+)\s*<', dallas[0])
     assert score, f"no composite score in the Dallas row: {_text(dallas[0])}"
     assert 0 <= Decimal(score.group(1)) <= 100, score.group(1)
-    link = re.search(r'discovery/\?growth_area_id=(\d+)"', dallas[0])
+    link = re.search(r'href="([^"]*discovery/\?growth_area_id=(\d+))"', dallas[0])
     assert link, "no discovery link in the Dallas row"
-    ctx.growth_area_id = link.group(1)
+    ctx.discovery_href, ctx.growth_area_id = unescape(link.group(1)), link.group(2)
 
 
 @when("I discover VRM properties in Dallas, TX")
 def discover_vrm(ctx: JourneyCtx) -> None:
-    path = f"/discovery/?growth_area_id={ctx.growth_area_id}"
-    resp = ctx.client.post(
-        path,
-        data={
-            "growth_area_id": ctx.growth_area_id,
-            "sources": ["vrm"],
-            "csrfmiddlewaretoken": _csrf(ctx.client, path),
-        },
-    )
+    # the Dallas row's own link, then the form it opens
+    resp = ctx.client.get(urljoin(ctx.url, ctx.discovery_href))
     assert resp.status_code == 200, resp.status_code
+    _visit(ctx, resp)
+    _submit(ctx, r"growth_area_id", {"sources": ["vrm"]})
 
 
 @then(parsers.parse('the screener lists "{first}" and "{second}"'))
 def screener_lists(ctx: JourneyCtx, first: str, second: str) -> None:
-    resp = ctx.client.get(f"/pipeline/screener/?growth_area_id={ctx.growth_area_id}")
-    assert resp.status_code == 200
-    ctx.screener = resp.text
+    _click(ctx, r"\bScreen\b")  # Purchase Pipeline menu
+    ctx.screener, ctx.screener_url = ctx.page, ctx.url
     for address in (first, second):
-        assert address in resp.text, f"{address} missing from screener"
+        assert address in ctx.page, f"{address} missing from screener"
 
 
 def _screener_row(html: str, address: str) -> str:
@@ -129,14 +181,10 @@ def screened_verdict(ctx: JourneyCtx, address: str, verdict: str) -> None:
 
 @when(parsers.parse('I open "{address}" from the screener'))
 def open_from_screener(ctx: JourneyCtx, address: str) -> None:
-    row = re.search(
-        rf'href="(/pipeline/\d+/)"\s*>\s*{re.escape(address)}', ctx.screener
-    )
-    assert row, f"no detail link for {address} in the screener"
-    resp = ctx.client.get(row.group(1))
-    assert resp.status_code == 200
-    ctx.detail_path = row.group(1)
-    ctx.page = resp.text
+    if ctx.url != ctx.screener_url:
+        _click(ctx, r"\bScreen\b")
+    _click(ctx, rf"^{re.escape(address)}$", r"^/pipeline/\d+/$")
+    ctx.detail_path = urlparse(ctx.url).path
 
 
 @then(
@@ -156,32 +204,25 @@ def shows_kpis(ctx: JourneyCtx) -> None:
 # ── Steps 5-7: offer, due diligence, closing, own ────────────────────────────
 
 
-def _post(ctx: JourneyCtx, path: str, data: dict):
-    """POST with the session's CSRF token (the cookie set at login)."""
-    token = ctx.client.cookies.get("csrftoken")
-    assert token, "no csrftoken cookie: sign in first"
-    return ctx.client.post(path, data={**data, "csrfmiddlewaretoken": token})
-
-
 def _stage(html: str) -> str:
     match = re.search(r'badge-stage">([^<]+)<', html)
     assert match, "no stage badge on the detail page"
     return match.group(1).strip().upper().replace(" ", "_")
 
 
+def _on_detail(ctx: JourneyCtx) -> None:
+    """Be on the property page, going back by a link if the walk left it."""
+    if urlparse(ctx.url).path != ctx.detail_path:
+        _click(ctx, r".", rf"^{ctx.detail_path}$")
+
+
 def _advance_to(ctx: JourneyCtx, stage: str) -> None:
+    _on_detail(ctx)
     for _ in range(8):
-        page = ctx.client.get(ctx.detail_path).text
-        if _stage(page) == stage:
-            ctx.page = page
+        if _stage(ctx.page) == stage:
             return
-        resp = _post(
-            ctx,
-            f"{ctx.detail_path}advance-stage/",
-            {"action": "advance", "next": ctx.detail_path},
-        )
-        assert resp.status_code == 200, resp.status_code
-    pytest.fail(f"never reached {stage}; at {_stage(page)}")
+        _submit(ctx, r"/advance-stage/$", {"action": "advance"})
+    pytest.fail(f"never reached {stage}; at {_stage(ctx.page)}")
 
 
 @when("I discover VRM properties in the seeded market")
@@ -209,10 +250,12 @@ def advance_to_closing(ctx: JourneyCtx) -> None:
 
 @when(parsers.parse("I record an offer of {price:d}"))
 def record_offer(ctx: JourneyCtx, price: int) -> None:
-    resp = _post(ctx, f"{ctx.detail_path}offer/", {"offer_price": str(price)})
-    assert resp.status_code == 200
+    _on_detail(ctx)
+    _click(ctx, r"Add Offer")
+    # the form's date is blank (its `'now'|date` default renders empty), so the
+    # investor types one
+    _submit(ctx, r"/offer/$", {"offer_price": str(price), "offer_date": "2026-10-01"})
     ctx.offer = price
-    ctx.page = resp.text
 
 
 @then("the offer is listed for the property")
@@ -222,9 +265,11 @@ def offer_listed(ctx: JourneyCtx) -> None:
 
 @when("I mark due diligence go")
 def dd_go(ctx: JourneyCtx) -> None:
-    resp = _post(
+    _on_detail(ctx)
+    _click(ctx, r"Due Diligence")
+    _submit(
         ctx,
-        f"{ctx.detail_path}dd/",
+        r"/dd/$",
         {
             "inspection_completed": "on",
             "title_clear": "on",
@@ -232,16 +277,17 @@ def dd_go(ctx: JourneyCtx) -> None:
             "go_no_go": "go",
         },
     )
-    assert resp.status_code == 200
-    assert "Due diligence checklist saved" in resp.text
+    assert "Due diligence checklist saved" in ctx.page
 
 
 @when(parsers.parse("I close the deal at {price:d}"))
 def close_deal(ctx: JourneyCtx, price: int) -> None:
     loan = price * 3 // 4  # 75% LTV: loan + down payment = price
-    resp = _post(
+    _on_detail(ctx)
+    _click(ctx, r"Close Deal")
+    _submit(
         ctx,
-        f"{ctx.detail_path}closing/",
+        r"/closing/$",
         {
             "final_purchase_price": str(price),
             "closing_date": "2026-10-01",
@@ -251,9 +297,7 @@ def close_deal(ctx: JourneyCtx, price: int) -> None:
             "lender": "Seed Bank",
         },
     )
-    assert resp.status_code == 200
-    ctx.page = resp.text
-    assert "/portfolio" in str(resp.url), f"closing ended at {resp.url}"
+    assert "/portfolio" in ctx.url, f"closing ended at {ctx.url}"
 
 
 def _portfolio_row(html: str) -> str:
@@ -265,35 +309,38 @@ def _portfolio_row(html: str) -> str:
 
 @then("it is in the portfolio")
 def in_portfolio(ctx: JourneyCtx) -> None:
-    resp = ctx.client.get("/portfolio/")
-    assert resp.status_code == 200
-    ctx.page = resp.text
+    _click(ctx, r"^Portfolio$")
     assert "No data" in _portfolio_row(ctx.page), "fresh acquisition has no actuals"
 
 
 class _FormParser(HTMLParser):
-    """Collect the action and default field values of the form posting to `action`."""
+    """Collect the action and default field values of the first form whose action
+    matches the regex `target` (a form without an action posts to `page_url`)."""
 
-    def __init__(self, action: str) -> None:
+    def __init__(self, target: str, page_url: str = "") -> None:
         super().__init__()
-        self.target, self.action, self.fields, self.options = action, None, {}, {}
-        self._in, self._select = False, None
+        self.target, self.page_url = target, page_url
+        self.action, self.fields, self.options = None, {}, {}
+        self._in, self._done, self._select = False, False, None
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
-        if tag == "form" and a.get("action") == self.target:
-            self._in, self.action = True, a["action"]
-        elif self._in and tag == "select":
+        if tag == "form" and not self._done:
+            action = unescape(a.get("action") or self.page_url)
+            if re.search(self.target, action):
+                self._in, self.action = True, action
+        elif self._in and tag == "select" and a.get("name"):
             self._select = a["name"]
             self.options[self._select] = []
         elif self._in and tag == "option" and self._select:
             self.options[self._select].append(a.get("value", ""))
         elif self._in and tag == "input" and a.get("name"):
-            self.fields[a["name"]] = a.get("value", "")
+            if a.get("type") not in ("checkbox", "radio") or "checked" in a:
+                self.fields[a["name"]] = a.get("value", "")
 
     def handle_endtag(self, tag):
-        if tag == "form":
-            self._in = False
+        if tag == "form" and self._in:
+            self._in, self._done = False, True
         elif tag == "select":
             self._select = None
 
@@ -301,9 +348,10 @@ class _FormParser(HTMLParser):
 @when("I enter monthly actuals for it")
 def enter_actuals(ctx: JourneyCtx) -> None:
     """Fill in and submit the actuals form on the portfolio dashboard."""
+    _click(ctx, r"^Portfolio$")
     prop_id = re.search(r'data-property-id="(\d+)"', _portfolio_row(ctx.page))
     assert prop_id, "no property id in the portfolio row"
-    form = _FormParser("/portfolio/actuals/add/")
+    form = _FormParser(r"/portfolio/actuals/add/$", ctx.url)
     form.feed(ctx.page)
     assert form.action, "no actuals form on the portfolio dashboard"
     assert prop_id.group(1) in form.options["property_id"], "property not in the form"
@@ -317,9 +365,7 @@ def enter_actuals(ctx: JourneyCtx) -> None:
     }
     missing = set(entered) - {"property_id"} - set(form.fields)
     assert not missing, f"form has no input for {missing}"
-    resp = _post(ctx, form.action, {**form.fields, **entered})
-    assert resp.status_code == 200
-    ctx.page = resp.text
+    _submit(ctx, r"/portfolio/actuals/add/$", entered)
 
 
 @then("the portfolio shows its actuals")
@@ -334,22 +380,26 @@ def shows_actuals(ctx: JourneyCtx) -> None:
 def run_brrrr(ctx: JourneyCtx, rehab: int, arv: int) -> None:
     # the acquired property's price and rent, as the portfolio shows them
     # columns: Address, Price, Down Payment, Est. Rent, ...
-    cells = _cells(_portfolio_row(ctx.client.get("/portfolio/").text))
+    cells = _cells(_portfolio_row(ctx.page))
     price, rent = _dollars(cells[1]), _dollars(cells[3])
     assert price == ctx.offer and rent > 0, f"portfolio row {cells[:4]}"
-    resp = _post(
-        ctx,
-        "/brrrr/",
-        {
+    _click(ctx, r"BRRRR")
+    # the page computes in JavaScript and has no form; its view also takes a POST
+    token = ctx.client.cookies.get("csrftoken")
+    assert token, "no csrftoken cookie: sign in first"
+    resp = ctx.client.post(
+        ctx.url,
+        data={
             "purchase_price": str(price),
             "rehab_cost": str(rehab),
             "arv": str(arv),
             "monthly_rent_post_rehab": str(rent),
             "annual_operating_expenses": "4200",
+            "csrfmiddlewaretoken": token,
         },
     )
-    assert resp.status_code == 200
-    ctx.page = resp.text
+    assert resp.status_code == 200, resp.status_code
+    _visit(ctx, resp)
 
 
 @then(parsers.parse('the BRRRR verdict is "{verdict}"'))
@@ -360,28 +410,33 @@ def brrrr_verdict(ctx: JourneyCtx, verdict: str) -> None:
 
 @when("I add it to the leasing pipeline")
 def add_to_leasing(ctx: JourneyCtx) -> None:
-    portfolio = ctx.client.get("/portfolio/").text
-    prop_id = re.search(r'data-property-id="(\d+)"', _portfolio_row(portfolio))
+    _click(ctx, r"^Portfolio$")
+    prop_id = re.search(r'data-property-id="(\d+)"', _portfolio_row(ctx.page))
     assert prop_id, "acquired property not in the portfolio"
-    resp = _post(
+    _click(ctx, r"Leasing")
+    _click(ctx, r"Add", r"/leasing/add/$")
+    _submit(
         ctx,
-        "/leasing/add/",
+        r"/leasing/add/$",
         {"property_record": prop_id.group(1), "asking_rent": "1800"},
     )
-    assert resp.status_code == 200
-    link = re.search(r'href="(/leasing/\d+/)"', resp.text)
-    assert link, f"no leasing entry listed: {_text(resp.text)[:300]}"
-    ctx.leasing_path = link.group(1)
+    _click(ctx, r"View Details", r"^/leasing/\d+/$")
+    ctx.leasing_path = urlparse(ctx.url).path
 
 
 @when(parsers.parse('I lease it to "{tenant}" at {rent:d} a month'))
 def lease_it(ctx: JourneyCtx, tenant: str, rent: int) -> None:
     ctx.lease = (tenant, rent)
     steps = [
-        ("showing/", {}),
-        ("application/", {"applicant_name": tenant, "application_date": "2026-10-05"}),
-        ("screening/", {"screening_passed": "true"}),
+        ("Record Showing", "showing/", {}),
         (
+            "Record Application",
+            "application/",
+            {"applicant_name": tenant, "application_date": "2026-10-05"},
+        ),
+        ("Screen Applicant", "screening/", {"screening_passed": "true"}),
+        (
+            "Record Lease",
             "lease/",
             {
                 "lease_start_date": "2026-11-01",
@@ -389,13 +444,13 @@ def lease_it(ctx: JourneyCtx, tenant: str, rent: int) -> None:
                 "monthly_rent": str(rent),
             },
         ),
-        ("move-in/", {"move_in_date": "2026-11-01"}),
-        ("stabilize/", {"stabilized_date": "2026-12-01"}),
+        ("Move In", "move-in/", {"move_in_date": "2026-11-01"}),
+        ("Stabilize", "stabilize/", {"stabilized_date": "2026-12-01"}),
     ]
-    for suffix, data in steps:
-        resp = _post(ctx, f"{ctx.leasing_path}{suffix}", data)
-        assert resp.status_code == 200, f"{suffix} -> {resp.status_code}"
-        ctx.page = resp.text
+    for label, suffix, data in steps:
+        _click(ctx, label, rf"^{ctx.leasing_path}{suffix}$")
+        # untick "advance": each stage is recorded in turn, none skipped
+        _submit(ctx, rf"{ctx.leasing_path}{suffix}$", {**data, "advance": None})
 
 
 @then("it is stabilized in leasing")
@@ -445,7 +500,7 @@ def cash_flow_is_net(ctx: JourneyCtx, rent: int) -> None:
 
 @then("the dashboard verdict agrees with its cash-on-cash")
 def dashboard_verdict_agrees(ctx: JourneyCtx) -> None:
-    html = ctx.client.get("/dashboard/").text
+    html = _click(ctx, r"PREI").text
     rows = [
         r
         for r in re.findall(r"<tr[^>]*>.*?</tr>", html, flags=re.S)

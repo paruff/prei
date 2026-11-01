@@ -132,7 +132,12 @@
          <a href="{% url 'pipeline_dd_checklist' prop.pk %}" class="btn btn-outline">Due Diligence</a>
          <a href="{% url 'pipeline_renovation' prop.pk %}" class="btn btn-outline">Renovation</a>
          <a href="{% url 'pipeline_closing_create' prop.pk %}" class="btn btn-primary">Close Deal</a>
-         <span class="btn btn-primary btn-placeholder">Advance Stage</span>
+         <form method="post" action="{% url 'pipeline_advance_stage' prop.pk %}" class="pipeline-inline-form">
+           {% csrf_token %}
+           <input type="hidden" name="action" value="advance">
+           <input type="hidden" name="next" value="{% url 'pipeline_detail' prop.pk %}">
+           <button type="submit" class="btn btn-primary">Advance Stage</button>
+         </form>
        {% endif %}
        {% if prop.status == 'ACTIVE' %}
        <span class="btn btn-danger" data-kill-modal="block">Kill</span>
