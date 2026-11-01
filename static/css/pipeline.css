@@ -814,3 +814,7 @@
 .kanban-action-item:hover {
   background: var(--surface-secondary);
 }
+
+/* Plain text links in cards use the palette, not browser blue. */
+.pipeline-card a:not([class]) { color: var(--color-neutral-900); text-decoration: none; }
+.pipeline-card a:not([class]):hover { text-decoration: underline; }
