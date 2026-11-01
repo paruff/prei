@@ -51,7 +51,7 @@
 
 <div class="card mt-section">
   <div class="card-title">Acquired Properties</div>
-  <div class="card-body">
+  <div>
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -87,7 +87,7 @@
 
 <div class="card mt-section" id="enter-actuals">
   <div class="card-title">Monthly Actuals</div>
-  <div class="card-body">
+  <div>
     {% if actuals_properties %}
     <form method="post" action="{% url 'portfolio_actuals_add' %}" >
       {% csrf_token %}
@@ -129,7 +129,7 @@
 
 <div class="card mt-section">
   <div class="card-title">Matching Growth Areas</div>
-  <div class="card-body">
+  <div>
     {% if growth_areas %}
       <div class="table-wrap">
         <table class="data-table">

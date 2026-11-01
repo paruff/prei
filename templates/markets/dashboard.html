@@ -25,9 +25,9 @@
       <div class="kpi-label">{{ market.metro_area }}</div>
       <div class="kpi-value">{{ market.overall_health|capfirst }}</div>
       <div class="kpi-sub">
-        <span class="badge badge-healthy">Healthy {{ market.health_counts.healthy }}</span>
-        <span class="badge badge-caution">Caution {{ market.health_counts.caution }}</span>
-        <span class="badge badge-overheated">Overheated {{ market.health_counts.overheated }}</span>
+        <span class="badge-healthy">Healthy {{ market.health_counts.healthy }}</span>
+        <span class="badge-caution">Caution {{ market.health_counts.caution }}</span>
+        <span class="badge-overheated">Overheated {{ market.health_counts.overheated }}</span>
       </div>
     </div>
     {% endfor %}
@@ -44,7 +44,7 @@
       <div class="indicator-card {% if data.health == 'healthy' %}health-healthy{% elif data.health == 'overheated' %}health-overheated{% else %}health-caution{% endif %}">
         <div class="indicator-header">
           <span class="indicator-label">{{ ind_type|capfirst }}</span>
-          <span class="indicator-health badge badge-{{ data.health }}">{{ data.health|capfirst }}</span>
+          <span class="indicator-health badge-{{ data.health }}">{{ data.health|capfirst }}</span>
         </div>
         <div class="indicator-value">
           {% if data.value >= 1000000 %}

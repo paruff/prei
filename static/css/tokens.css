@@ -15,6 +15,17 @@
 }
 
 :root {
+  --color-white: #FFFFFF;
+  --glass-strong: rgba(255, 255, 255, 0.98);
+  --glass: rgba(255, 255, 255, 0.92);
+  --hairline: rgba(0, 0, 0, 0.06);
+  --overlay: rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-menu: 0 8px 30px rgba(0, 0, 0, 0.08);
+  --pulse-on: rgba(29, 158, 117, 0.4);
+  --pulse-off: rgba(29, 158, 117, 0);
   /* ── Palette ────────────────────────────────── */
   --color-grow-50:   #E1F5EE;
   --color-grow-100:  #9FE1CB;

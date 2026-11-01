@@ -372,7 +372,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.4);
+  background: var(--overlay);
   z-index: 100;
 }
 
@@ -583,7 +583,7 @@
   background: var(--color-primary);
   cursor: pointer;
   border: 2px solid white;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .slider-input::-moz-range-thumb {
@@ -593,7 +593,7 @@
   background: var(--color-primary);
   cursor: pointer;
   border: 2px solid white;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 /* ── Kanban Board ──────────────────────────────────────────────── */
@@ -660,7 +660,7 @@
   transition: box-shadow 0.15s, transform 0.15s;
 }
 
-.kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.10); }
+.kanban-card:hover { box-shadow: var(--shadow-md); }
 .kanban-card--dragging { opacity: 0.5; transform: rotate(2deg); }
 
 .kanban-card-address {
@@ -721,7 +721,7 @@
   background: var(--surface-card);
   border: var(--border-default);
   border-radius: var(--radius-sm);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
   min-width: 120px;
   z-index: 50;
   padding: var(--sp-1) 0;

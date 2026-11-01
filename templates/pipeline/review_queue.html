@@ -28,7 +28,7 @@
     <div class="pipeline-cards">
     {% for prop in page_obj %}
       <div class="card">
-        <div class="card-body">
+        <div>
           {# Line 1: Address #}
           <div class="card-title">{{ prop.address|truncatechars:60 }}</div>
 
