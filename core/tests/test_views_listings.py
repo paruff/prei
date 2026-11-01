@@ -109,7 +109,7 @@ def test_report_listing_with_market_snapshot(authed_client):
     assert resp.status_code == 200
     assert resp.context["market_snapshot"] is not None
     content = resp.content.decode()
-    assert "1800" in content  # rent_index displayed
+    assert "$1,800" in content  # rent_index displayed
 
 
 @pytest.mark.django_db
