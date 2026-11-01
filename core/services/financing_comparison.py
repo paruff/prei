@@ -27,6 +27,7 @@ class ScenarioResult:
     cash_on_cash: Decimal
     dscr: Decimal
     breakeven_rent: Decimal
+    rent_cushion: Decimal
     monthly_cash_flow: Decimal
     total_cash_invested: Decimal
     closing_costs: Decimal
@@ -147,6 +148,7 @@ def calculate_scenario_result(
         cash_on_cash=coc,
         dscr=dscr_val,
         breakeven_rent=breakeven_rent,
+        rent_cushion=property.monthly_rent_gross - breakeven_rent,
         monthly_cash_flow=monthly_cash_flow,
         total_cash_invested=scenario.total_cash_invested,
         closing_costs=scenario.closing_costs,

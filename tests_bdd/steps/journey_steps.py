@@ -394,3 +394,52 @@ def lease_it(ctx: JourneyCtx, tenant: str, rent: int) -> None:
 def leasing_stabilized(ctx: JourneyCtx) -> None:
     assert _stage(ctx.page) == "STABILIZED"
     assert "Filled" in ctx.page
+
+
+# ── G4.1: the figures an investor acts on (AC-16) ────────────────────────────
+
+
+def _dollars(text: str) -> Decimal:
+    match = re.search(r"-?\$?\s*-?[\d,]+(?:\.\d+)?", text)
+    assert match, f"no amount in {text!r}"
+    return Decimal(re.sub(r"[^\d.\-]", "", match.group(0)))
+
+
+def _cells(row: str) -> list[str]:
+    return [_text(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", row, flags=re.S)]
+
+
+@then(parsers.parse("the portfolio shows its purchase price of {price:d}"))
+def shows_purchase_price(ctx: JourneyCtx, price: int) -> None:
+    # columns: Address, Price, Est. Rent, Monthly CF, ...
+    shown = _dollars(_cells(_portfolio_row(ctx.page))[1])
+    assert shown == price, f"portfolio price {shown} is not the closing price {price}"
+
+
+@then("the portfolio equity is value minus loan, not the price")
+def equity_is_value_minus_loan(ctx: JourneyCtx) -> None:
+    # closed at 95,000 with a 131,250 loan: equity can never be the price
+    kpi = re.search(r"Total Equity</div>\s*<div[^>]*>([^<]+)<", ctx.page)
+    assert kpi, "no Total Equity tile on the portfolio"
+    equity = _dollars(kpi.group(1))
+    assert equity < 95000, f"equity {equity} is the price, not value minus loan"
+
+
+@then(parsers.parse("the portfolio cash flow is below the gross rent of {rent:d}"))
+def cash_flow_is_net(ctx: JourneyCtx, rent: int) -> None:
+    cash_flow = _dollars(_cells(_portfolio_row(ctx.page))[3])
+    assert cash_flow < rent, f"cash flow {cash_flow} is gross rent, not net of costs"
+
+
+@then("the dashboard verdict agrees with its cash-on-cash")
+def dashboard_verdict_agrees(ctx: JourneyCtx) -> None:
+    html = ctx.client.get("/dashboard/").text
+    rows = [
+        r
+        for r in re.findall(r"<tr[^>]*>.*?</tr>", html, flags=re.S)
+        if "1200 Seed Pass Ln" in r
+    ]
+    assert rows, "acquired property not on the dashboard"
+    coc = _dollars(_cells(rows[0])[1])
+    verdict = re.search(r'data-verdict="(\w*)"', rows[0]).group(1)
+    assert not (coc < 8 and verdict == "A"), f"CoC {coc}% is rated Strong Buy"

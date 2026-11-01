@@ -250,6 +250,7 @@ class TestScenarioResultDataclass:
             cash_on_cash=Decimal("0.12"),
             dscr=Decimal("1.5"),
             breakeven_rent=Decimal("2500"),
+            rent_cushion=Decimal("500"),
             monthly_cash_flow=Decimal("150"),
             total_cash_invested=Decimal("80000"),
             closing_costs=Decimal("5000"),

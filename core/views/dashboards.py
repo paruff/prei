@@ -30,10 +30,7 @@ def dashboard(request):
 
     from core.services.scoring import score_listing_v2
 
-    try:
-        targets = UserInvestmentTargets.objects.get(user=request.user)
-    except UserInvestmentTargets.DoesNotExist:
-        targets = None
+    targets, _ = UserInvestmentTargets.objects.get_or_create(user=request.user)
 
     properties_qs = (
         Property.objects.filter(
@@ -53,8 +50,7 @@ def dashboard(request):
     properties: list[dict] = []
     for prop in properties_qs:
         if (
-            targets is None
-            or prop.monthly_rent_gross is None
+            prop.monthly_rent_gross is None
             or prop.monthly_rent_gross <= 0
             or prop.purchase_price is None
             or prop.purchase_price <= 0
@@ -212,7 +208,11 @@ def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
         user=request.user,
         status=PipelineProperty.Status.ACQUIRED,
     ).order_by("-acquired_at")
+    from core.services.portfolio import acquired_position
+
     for p in qs:
+        position = acquired_position(p)
+        p.position = position
         p.latest_actual = (
             MonthlyActuals.objects.filter(prop_id=p.property_record_id)
             .order_by("-month")
@@ -220,9 +220,9 @@ def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
         )
 
     total = qs.count()
-    total_equity = sum((p.price or 0) for p in qs)
-    total_rent = sum((p.estimated_rent or 0) for p in qs)
-    scores = [p.gacs_score for p in qs if p.gacs_score]
+    total_equity = sum((p.position.equity for p in qs), Decimal("0"))
+    total_rent = sum((p.position.monthly_cash_flow for p in qs), Decimal("0"))
+    scores = [p.position.gacs_score for p in qs if p.position.gacs_score]
     avg_gacs = sum(scores) / len(scores) if scores else 0
 
     # Show top growth areas
