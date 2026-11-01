@@ -388,3 +388,13 @@ class TestMarketIndicatorsE2E:
         assert "28" in content  # Check DOM shown
         # Trend chart (sparkline SVG) should render for each indicator
         assert "<polyline" in content
+
+
+@pytest.mark.django_db
+def test_markets_routes_each_resolve_to_own_view() -> None:
+    from django.urls import resolve, reverse
+
+    assert reverse("markets_dashboard") == "/markets/"
+    assert reverse("markets_list") == "/markets/zips/"
+    assert resolve("/markets/").url_name == "markets_dashboard"
+    assert resolve("/markets/zips/").url_name == "markets_list"
