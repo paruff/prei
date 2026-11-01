@@ -80,3 +80,19 @@ def test_property_detail_404_for_wrong_user(
     )
 
     assert response.status_code == 404
+
+
+def test_investment_targets_save_leaves_screening_preferences(client, user):
+    from core.models import UserScreeningPreferences
+
+    UserScreeningPreferences.objects.create(user=user, min_beds=3, min_baths=2)
+    client.force_login(user)
+    url = reverse("investment_targets_edit")
+    form = client.get(url).context["form"]
+    data = {k: v for k, v in form.initial.items() if v is not None}
+
+    response = client.post(url, data)
+
+    assert response.status_code == 302
+    prefs = UserScreeningPreferences.objects.get(user=user)
+    assert (prefs.min_beds, prefs.min_baths) == (3, 2)
