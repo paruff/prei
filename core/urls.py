@@ -214,7 +214,7 @@ urlpatterns = [
         views.investment_targets_edit,
         name="investment_targets_edit",
     ),
-    path("markets/", views.markets_list, name="markets_list"),
+    path("markets/zips/", views.markets_list, name="markets_list"),
     path("markets/refresh/", MarketRefreshView.as_view(), name="market_refresh"),
     path("brrrr/", views.brrrr_calculator, name="brrrr_calculator"),
     path("sell/", views.sell_index, name="sell_index"),
