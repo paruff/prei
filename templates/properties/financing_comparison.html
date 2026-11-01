@@ -76,7 +76,7 @@
         <table class="data-table scenario-table">
           <tr><td>Break-even Rent</td><td class="col-right num">${{ result.breakeven_rent|floatformat:0|intcomma }}</td></tr>
           <tr><td>Current Rent</td><td class="col-right num">${{ property.monthly_rent_gross|floatformat:0|intcomma }}</td></tr>
-          <tr><td class="total-row">Rent Cushion</td><td class="col-right {% if property.monthly_rent_gross >= result.breakeven_rent %}num-good{% else %}num-bad{% endif %} total-row">${{ property.monthly_rent_gross|sub:result.breakeven_rent|floatformat:0|intcomma }}</td></tr>
+          <tr><td class="total-row">Rent Cushion</td><td class="col-right {% if result.rent_cushion >= 0 %}num-good{% else %}num-bad{% endif %} total-row">${{ result.rent_cushion|floatformat:0|intcomma }}</td></tr>
         </table>
       </div>
     </div>

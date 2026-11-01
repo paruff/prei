@@ -33,6 +33,10 @@ Feature: Investor journey, steps 1-9 (identify through grow)
     And I advance it to the Closing stage
     And I close the deal at 95000
     Then it is in the portfolio
+    And the portfolio shows its purchase price of 95000
+    And the portfolio equity is value minus loan, not the price
+    And the portfolio cash flow is below the gross rent of 1800
+    And the dashboard verdict agrees with its cash-on-cash
     When I enter monthly actuals for it
     Then the portfolio shows its actuals
     When I run the BRRRR calculator with rehab 25000 and ARV 185000
