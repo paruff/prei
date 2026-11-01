@@ -1310,3 +1310,32 @@ select.form-input { cursor: pointer; background-image: url("data:image/svg+xml,%
 }
 .actuals-dialog::backdrop { background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent); }
 .legend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); font-size: var(--text-sm); }
+
+/* ── Account menu + mobile tab bar (G7.2) ───────────────────── */
+.nav-account { position: relative; }
+.nav-account summary { cursor: pointer; list-style: none; }
+.nav-account summary::-webkit-details-marker { display: none; }
+.nav-account .nav-dropdown-menu { left: auto; right: 0; }
+a.tab-btn { text-decoration: none; }
+@media (max-width: 640px) {
+  .nav-links,
+  .nav-links.is-open {
+    display: flex;
+    flex-direction: row;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    justify-content: space-around;
+    padding: var(--sp-2);
+    background: var(--surface-card);
+    border-top: var(--border-default);
+    border-bottom: none;
+    z-index: 100;
+  }
+  /* backdrop-filter would make the topnav the containing block of the fixed tab bar */
+  .topnav { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .tab-bar { overflow-x: auto; }
+  .page-footer { padding-bottom: calc(var(--sp-8) + var(--sp-4)); }
+}

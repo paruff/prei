@@ -1,0 +1,7 @@
+<nav class="tab-bar" aria-label="Pipeline stages">
+  <a href="{% url 'property_discovery' %}" class="tab-btn {% if active_tab == 'discover' %}is-active{% endif %}"{% if active_tab == 'discover' %} aria-current="page"{% endif %} title="Pick a growth area, check sources, find properties">Discover</a>
+  <a href="{% url 'pipeline_screener' %}" class="tab-btn {% if active_tab == 'screen' %}is-active{% endif %}"{% if active_tab == 'screen' %} aria-current="page"{% endif %} title="Screening pass/fail results">Screen</a>
+  <a href="{% url 'pipeline_review_queue' %}" class="tab-btn {% if active_tab == 'underwrite' %}is-active{% endif %}"{% if active_tab == 'underwrite' %} aria-current="page"{% endif %} title="Properties ready for your decision">Underwrite</a>
+  <a href="{% url 'pipeline_kanban' %}" class="tab-btn {% if active_tab == 'board' %}is-active{% endif %}"{% if active_tab == 'board' %} aria-current="page"{% endif %} title="Offer, due diligence and closing, every property at a glance">Offer &amp; close</a>
+  <a href="{% url 'dashboard' %}" class="tab-btn {% if active_tab == 'deals' %}is-active{% endif %}"{% if active_tab == 'deals' %} aria-current="page"{% endif %} title="Deal scores for every property you track">Deals</a>
+</nav>

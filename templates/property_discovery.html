@@ -2,6 +2,7 @@
 {% block title %}Discover Properties{% if growth_area %} — {{ growth_area.city_name }}, {{ growth_area.state }}{% endif %}{% endblock %}
 {% load humanize math_filters %}
 {% block content %}
+{% include "components/pipeline_tabs.html" with active_tab="discover" %}
 
 <div class="page-header">
   <div>

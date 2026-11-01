@@ -132,7 +132,7 @@ def signed_in(ctx: JourneyCtx) -> None:
 
 @when("I open the growth areas list")
 def open_growth_areas(ctx: JourneyCtx) -> None:
-    _click(ctx, r"Growth Areas")
+    _click(ctx, r"^Markets$")
 
 
 @then("Dallas, TX is ranked with a composite score")
@@ -159,7 +159,7 @@ def discover_vrm(ctx: JourneyCtx) -> None:
 
 @then(parsers.parse('the screener lists "{first}" and "{second}"'))
 def screener_lists(ctx: JourneyCtx, first: str, second: str) -> None:
-    _click(ctx, r"\bScreen\b")  # Purchase Pipeline menu
+    _click(ctx, r"^Screen$")  # Pipeline tab
     ctx.screener, ctx.screener_url = ctx.page, ctx.url
     for address in (first, second):
         assert address in ctx.page, f"{address} missing from screener"
@@ -182,7 +182,7 @@ def screened_verdict(ctx: JourneyCtx, address: str, verdict: str) -> None:
 @when(parsers.parse('I open "{address}" from the screener'))
 def open_from_screener(ctx: JourneyCtx, address: str) -> None:
     if ctx.url != ctx.screener_url:
-        _click(ctx, r"\bScreen\b")
+        _click(ctx, r"^Pipeline$")
     _click(ctx, rf"^{re.escape(address)}$", r"^/pipeline/\d+/$")
     ctx.detail_path = urlparse(ctx.url).path
 
@@ -500,7 +500,8 @@ def cash_flow_is_net(ctx: JourneyCtx, rent: int) -> None:
 
 @then("the dashboard verdict agrees with its cash-on-cash")
 def dashboard_verdict_agrees(ctx: JourneyCtx) -> None:
-    html = _click(ctx, r"PREI").text
+    html = _click(ctx, r"^Pipeline$").text
+    html = _click(ctx, r"^Deals$").text
     rows = [
         r
         for r in re.findall(r"<tr[^>]*>.*?</tr>", html, flags=re.S)

@@ -67,7 +67,7 @@ def e2e_login(page: Page, e2e_user):  # type: ignore[no-untyped-def]
     page.fill('input[name="username"]', E2E_USERNAME)
     page.fill('input[name="password"]', E2E_PASSWORD)
     page.click('button[type="submit"]')
-    page.wait_for_url("**/dashboard/")
+    page.wait_for_url("**/growth/")
     return e2e_user
 
 
