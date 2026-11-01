@@ -65,6 +65,8 @@ def check_page(page, path: str) -> list[str]:
     failures = []
     if resp is None or resp.status != 200:
         failures.append(f"status {resp.status if resp else 'none'}")
+    if "/accounts/login" in page.url:
+        failures.append("redirected to login (session lost)")
     data = page.evaluate(CHECKS)
     if data["hscroll"]:
         failures.append("horizontal scroll")
@@ -89,6 +91,9 @@ def main() -> int:
                 "form button[type=submit], form input[type=submit]"
             ).first.click()
             page.wait_for_load_state("networkidle")
+            if "/accounts/login" in page.url:
+                print(f"FAIL {label}: login as {USER!r} did not succeed")
+                return 1
             for path in PAGES:
                 for failure in check_page(page, path):
                     failed += 1
