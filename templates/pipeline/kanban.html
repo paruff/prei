@@ -9,7 +9,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Pipeline</h1>
-    <p class="page-sub">Drag properties between columns to advance stages</p>
+    <p class="page-sub">Drag properties between columns to advance stages. Scroll sideways for more stages; each column scrolls on its own.</p>
   </div>
   <a href="{% url 'pipeline_list' %}" class="btn">List View</a>
 </div>
@@ -48,11 +48,7 @@
         </div>
         {% if pp.screening_passed is not None %}
         <div class="kanban-card-screening">
-          {% if pp.screening_passed %}
-          <span class="chip chip-success">✓ Passed</span>
-          {% else %}
-          <span class="chip chip-danger">✗ Failed</span>
-          {% endif %}
+          {% include "components/screening_verdict.html" with passed=pp.screening_passed %}
         </div>
         {% endif %}
       </div>
@@ -92,19 +88,19 @@
           Select sources for <strong id="discovery-market-name"></strong>
         </p>
         {% csrf_token %}
-        <label class="kanban-source-option">
+        <label class="form-label kanban-source-option">
           <input type="checkbox" name="sources" value="hud" checked> HUD REO
         </label>
-        <label class="kanban-source-option">
+        <label class="form-label kanban-source-option">
           <input type="checkbox" name="sources" value="usda" checked> USDA REO
         </label>
-        <label class="kanban-source-option">
+        <label class="form-label kanban-source-option">
           <input type="checkbox" name="sources" value="vrm" checked> VRM (VA REO)
         </label>
-        <label class="kanban-source-option">
+        <label class="form-label kanban-source-option">
           <input type="checkbox" name="sources" value="attom"> ATTOM Pre-foreclosure
         </label>
-        <label class="kanban-source-option">
+        <label class="form-label kanban-source-option">
           <input type="checkbox" name="sources" value="county"> County Notices
         </label>
         <div class="form-actions kanban-form-actions">

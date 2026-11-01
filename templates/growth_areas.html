@@ -92,7 +92,7 @@
                   {% endif %}
                 {% endwith %}
               </td>
-              <td>
+              <td class="col-actions">
                 <a href="{% url 'property_discovery' %}?growth_area_id={{ ga.pk }}"
                    class="btn btn-primary">Discover Properties</a>
                 <a href="{% url 'pipeline_screener' %}?growth_area_id={{ ga.pk }}"

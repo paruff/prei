@@ -19,9 +19,9 @@
 
       <div class="pipeline-detail-section full-width">
         <h2>Property</h2>
-        <div class="form-field-group">
-          <label class="field-label">Select Property</label>
-          <select name="property_record" class="field-input select-full">
+        <div class="form-group">
+          <label class="form-label" for="id_property_record">Select Property</label>
+          <select name="property_record" class="form-input" id="id_property_record">
             <option value="">— Select —</option>
             {% for prop in available_properties %}
               <option value="{{ prop.pk }}" {% if prefill_property and prefill_property.pk == prop.pk %}selected{% endif %}>
@@ -35,19 +35,19 @@
       <div class="pipeline-detail-section">
         <h2>Listing Details</h2>
         <div class="form-row">
-          <div class="form-field-group">
-            <label class="field-label">Asking Rent ($/mo)</label>
+          <div class="form-group">
+            <label class="form-label" for="id_asking_rent">Asking Rent ($/mo)</label>
             <input type="number" name="asking_rent" step="0.01" min="0"
-                   class="field-input input-lg">
+                   class="form-input" id="id_asking_rent">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Listed Date</label>
-            <input type="date" name="listed_date" class="field-input input-md">
+          <div class="form-group">
+            <label class="form-label" for="id_listed_date">Listed Date</label>
+            <input type="date" name="listed_date" class="form-input" id="id_listed_date">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Listing Source</label>
+          <div class="form-group">
+            <label class="form-label" for="id_listing_source">Listing Source</label>
             <input type="text" name="listing_source" placeholder="e.g. Zillow, Craigslist"
-                   class="field-input input-md">
+                   class="form-input" id="id_listing_source">
           </div>
         </div>
       </div>

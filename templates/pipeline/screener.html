@@ -54,7 +54,7 @@
 <div class="filter-bar">
   <!-- Growth area chooser -->
   <form method="get" class="form-inline">
-    <select name="growth_area_id" data-autosubmit class="form-input">
+    <select name="growth_area_id" id="growth_area_id" aria-label="Market" data-autosubmit class="form-input">
       <option value="">All Markets</option>
       {% for ga in user_growth_areas %}
         <option value="{{ ga.pk }}"
@@ -117,25 +117,25 @@
 <div class="card" id="screener-filters">
   <h3 class="card-title">Quick Filters</h3>
   <div class="form-row">
-    <div class="form-field-group">
-      <label class="field-label">Min Price</label>
-      <input type="number" class="field-input" id="filter-min-price" placeholder="0">
+    <div class="form-group">
+      <label class="form-label" for="filter-min-price">Min Price</label>
+      <input type="number" class="form-input" id="filter-min-price" placeholder="0">
     </div>
-    <div class="form-field-group">
-      <label class="field-label">Max Price</label>
-      <input type="number" class="field-input" id="filter-max-price" placeholder="No limit">
+    <div class="form-group">
+      <label class="form-label" for="filter-max-price">Max Price</label>
+      <input type="number" class="form-input" id="filter-max-price" placeholder="No limit">
     </div>
-    <div class="form-field-group">
-      <label class="field-label">Min Yield %</label>
-      <input type="number" class="field-input" id="filter-min-yield" step="0.5" placeholder="0">
+    <div class="form-group">
+      <label class="form-label" for="filter-min-yield">Min Yield %</label>
+      <input type="number" class="form-input" id="filter-min-yield" step="0.5" placeholder="0">
     </div>
-    <div class="form-field-group">
-      <label class="field-label">Max PTR</label>
-      <input type="number" class="field-input" id="filter-max-ptr" step="0.5" placeholder="No limit">
+    <div class="form-group">
+      <label class="form-label" for="filter-max-ptr">Max PTR</label>
+      <input type="number" class="form-input" id="filter-max-ptr" step="0.5" placeholder="No limit">
     </div>
-    <div class="form-field-group">
-      <label class="field-label">Min Beds</label>
-      <input type="number" class="field-input" id="filter-min-beds" min="1" placeholder="1">
+    <div class="form-group">
+      <label class="form-label" for="filter-min-beds">Min Beds</label>
+      <input type="number" class="form-input" id="filter-min-beds" min="1" placeholder="1">
     </div>
   </div>
 </div>
@@ -184,13 +184,7 @@
           {% else %}—{% endif %}
         </td>
         <td>
-          {% if pp.screening_passed is None %}
-            <span class="chip chip-default">Not screened</span>
-          {% elif pp.screening_passed %}
-            <span class="chip chip-success">✓ Passed</span>
-          {% else %}
-            <span class="chip chip-danger">✗ Failed</span>
-          {% endif %}
+          {% include "components/screening_verdict.html" with passed=pp.screening_passed %}
         </td>
         <td>
           {% if pp.screening_passed %}

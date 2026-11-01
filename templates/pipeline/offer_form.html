@@ -22,19 +22,19 @@
       <form method="post">
         {% csrf_token %}
         <div class="form-row">
-          <div class="form-field-group">
-            <label class="field-label">Offer Price ($) *</label>
+          <div class="form-group">
+            <label class="form-label" for="id_offer_price">Offer Price ($) *</label>
             <input type="number" name="offer_price" step="0.01" min="0.01" required
-                   class="field-input input-lg">
+                   class="form-input" id="id_offer_price">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Offer Date</label>
+          <div class="form-group">
+            <label class="form-label" for="id_offer_date">Offer Date</label>
             <input type="date" name="offer_date" value="{{ 'now'|date:'Y-m-d' }}"
-                   class="field-input input-md">
+                   class="form-input" id="id_offer_date">
           </div>
-          <div class="form-field-group">
-            <label class="field-label">Offer Expiry</label>
-            <input type="date" name="offer_expiry" class="field-input input-md">
+          <div class="form-group">
+            <label class="form-label" for="id_offer_expiry">Offer Expiry</label>
+            <input type="date" name="offer_expiry" class="form-input" id="id_offer_expiry">
           </div>
         </div>
 
@@ -52,8 +52,8 @@
         </div>
         {% endif %}
 
-        <div class="form-field-group mt-3">
-          <label class="field-label">Contingencies</label>
+        <div class="form-group mt-3">
+          <span class="form-label">Contingencies</span>
           <div class="form-checkbox-grid">
             <label class="checkbox-label">
               <input type="checkbox" name="contingencies" value="inspection">
@@ -70,9 +70,9 @@
           </div>
         </div>
 
-        <div class="form-field-group mt-3">
-          <label class="field-label">Notes</label>
-          <textarea name="notes" rows="3" class="field-input textarea-full"></textarea>
+        <div class="form-group mt-3">
+          <label class="form-label" for="id_notes">Notes</label>
+          <textarea name="notes" rows="3" class="form-input" id="id_notes"></textarea>
         </div>
 
         <div class="form-submit-row">

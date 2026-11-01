@@ -63,12 +63,12 @@
 }
 
 .pipeline-status-tab.active-killed {
-  background: var(--color-risk-400);
+  background: var(--color-risk-700);
   color: white;
 }
 
 .pipeline-status-tab.active-on_hold {
-  background: var(--color-caution-400);
+  background: var(--color-caution-700);
   color: white;
 }
 
@@ -310,15 +310,6 @@
   margin: var(--sp-2) 0 0;
 }
 
-/* Detail inline verdict badges */
-.verdict-pass {
-  color: var(--color-verdict-a-text);
-}
-
-.verdict-fail {
-  color: var(--color-verdict-c-text);
-}
-
 .text-muted {
   font-size: var(--text-sm);
   color: var(--color-neutral-500);
@@ -353,8 +344,8 @@
 
 .pipeline-action-bar .btn-danger {
   background: white;
-  color: var(--color-risk-400);
-  border: 1px solid var(--color-risk-400);
+  color: var(--color-risk-700);
+  border: 1px solid var(--color-risk-700);
 }
 
 .pipeline-action-bar .btn-outline {
@@ -364,7 +355,7 @@
 }
 
 .pipeline-action-bar .btn-warning {
-  background: var(--color-caution-400);
+  background: var(--color-caution-700);
   color: white;
 }
 
@@ -454,59 +445,12 @@
   color: var(--color-neutral-500);
 }
 
-.field-label {
-  font-size: var(--text-sm);
-  color: var(--color-neutral-700);
-  display: block;
-  margin-bottom: var(--sp-1);
-}
-
-.field-input {
-  padding: var(--sp-2);
-  font-size: var(--text-sm);
-  border: var(--border-default);
-  border-radius: var(--radius-sm);
-  box-sizing: border-box;
-}
-
 .checkbox-label {
   font-size: var(--text-sm);
   display: flex;
   align-items: center;
   gap: var(--sp-1);
   cursor: pointer;
-}
-
-/* Form layout */
-.form-row {
-  display: flex;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
-
-.form-field-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-field-group .field-input {
-  width: auto;
-}
-
-.input-xs {
-  width: 80px;
-}
-
-.input-sm {
-  width: 100px;
-}
-
-.input-md {
-  width: 120px;
-}
-
-.input-lg {
-  width: 140px;
 }
 
 .form-note {
@@ -547,26 +491,12 @@
   border-radius: var(--radius-sm);
 }
 
-/* Form spacing */
-.form-field-group {
-  margin-top: 0;
-}
-
 .mt-2 {
   margin-top: var(--sp-2);
 }
 
 .mt-3 {
   margin-top: var(--sp-3);
-}
-
-.input-full {
-  width: 100%;
-}
-
-.textarea-full {
-  width: 100%;
-  resize: vertical;
 }
 
 /* Alert banners */
@@ -632,10 +562,6 @@
   color: var(--color-risk-400);
 }
 
-.select-full {
-  width: 100%;
-}
-
 /* ── Range Sliders ──────────────────────────────────────────── */
 
 .slider-input {
@@ -674,6 +600,7 @@
 
 .kanban-board {
   display: flex;
+  scroll-snap-type: x proximity;
   gap: var(--sp-3);
   overflow-x: auto;
   padding-bottom: var(--sp-4);
@@ -682,6 +609,7 @@
 
 .kanban-column {
   flex: 0 0 240px;
+  scroll-snap-align: start;
   background: var(--surface-secondary);
   border-radius: var(--radius-lg);
   padding: var(--sp-3);
@@ -711,6 +639,8 @@
 .kanban-cards {
   flex: 1;
   min-height: 60px;
+  max-height: 70vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
@@ -819,3 +749,77 @@
 .pipeline-card a:not([class]) { color: var(--color-neutral-900); text-decoration: underline; text-underline-offset: 2px; }
 .pipeline-card a:not([class]):hover { text-decoration-thickness: 2px; }
 .pipeline-card a:not([class]):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* ── Kanban discover panel ─────────────────────────────────────── */
+.kanban-hidden { display: none; }
+
+.kanban-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+}
+
+.kanban-modal-overlay.kanban-hidden { display: none; }
+
+.kanban-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--surface-card);
+  border: var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+}
+
+.kanban-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--sp-3);
+}
+
+.kanban-modal-header h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+}
+
+.kanban-market-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  color: var(--color-neutral-900);
+  background: var(--surface-card);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.kanban-market-btn:hover { background: var(--surface-secondary); }
+
+.kanban-source-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  cursor: pointer;
+}
+
+.kanban-status { margin-top: var(--sp-3); }
+
+.kanban-discover-btn { margin-top: var(--sp-3); width: 100%; }
+
+.col-actions { min-width: 180px; }
+.col-actions .btn { margin: 0 var(--sp-1) var(--sp-1) 0; }

@@ -236,6 +236,7 @@ Use the existing class or partial. Don't restyle it per page.
 - **Buttons:** `.btn` (white, bordered), `.btn-primary` (green fill, white text), `.btn-danger` (red text, light red border). 13px medium, 8px radius.
 - **Cards:** `.card` with an optional `.card-title` (15px medium, subtle bottom border).
 - **KPI grid:** `.kpi-grid` > `.kpi-card` with `.kpi-label`, `.kpi-value`, `.kpi-sub`, or the `components/kpi_card.html` partial.
+- **Screening pass/fail:** `{% include "components/screening_verdict.html" with passed=... %}`.
 - **Verdict badge:** always `{% include "components/verdict_badge.html" %}`, never hand-written markup.
 - **Score bar, empty state, form section:** use the partials in `templates/components/`.
 - **Forms:** `.form-group` > `.form-label`, `.form-input`, `.form-hint`, `.form-error`. Widgets in `core/forms.py` apply the classes, so there are no per-field `attrs` in templates.
@@ -243,7 +244,7 @@ Use the existing class or partial. Don't restyle it per page.
 - **Tabs:** `.tab-bar` > `.tab-btn.is-active`. Switch panels with the `hidden` attribute, not `style.display`.
 - **Chips:** `.chip` / `.chip.is-active` inside `.chip-group`, used for filters.
 - **Messages and banners:** `.message-success`, `-warning`, `-error`, and `.brrrr-banner` with `.is-full-cycle`, `.is-partial` or `.is-trap`.
-- **Pipeline screens** (`pipeline.css`): kanban board, pipeline cards and stage badges. They currently use their own form classes (`.field-input`, `.input-sm`) and verdict classes (`.verdict-pass`, `.verdict-fail`). New screens use the base classes above.
+- **Pipeline screens** (`pipeline.css`): kanban board, pipeline cards, stage badges and the discover panel. Forms use the base form classes and pass/fail uses `components/screening_verdict.html`.
 
 ## Do's and Don'ts
 
