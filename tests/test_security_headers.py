@@ -89,7 +89,8 @@ class TestSecurityHeaders:
 @pytest.mark.integration
 class TestAuthenticatedPages:
     @pytest.mark.parametrize(
-        "path", ["/dashboard/", "/growth-explorer/", "/pipeline/screening/settings/"]
+        "path",
+        ["/pipeline/deals/", "/growth-explorer/", "/pipeline/screening/settings/"],
     )
     def test_converted_pages_render_with_nonce(self, client, user, path):
         client.force_login(user)

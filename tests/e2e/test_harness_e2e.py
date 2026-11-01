@@ -14,8 +14,7 @@ class TestHarness:
         page.goto("/health/")
         assert "ok" in page.locator("body").inner_text()
 
-    def test_login_redirects_to_dashboard(self, page, e2e_login) -> None:
+    def test_old_dashboard_url_lands_on_pipeline(self, page, e2e_login) -> None:
         page.goto("/dashboard/")
-        assert page.locator("text=Dashboard").count() >= 1 or page.url.endswith(
-            "/dashboard/"
-        )
+        assert page.url.endswith("/pipeline/screener/")
+        assert page.get_by_role("link", name="Pipeline").count() >= 1
