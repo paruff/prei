@@ -14,10 +14,9 @@
 
   <div class="card mb-form">
     <div class="card-title">1. Choose your target market</div>
-    <div class="card-body">
       <p class="page-sub mb-4">We'll filter properties to your preferred state. You can change this anytime.</p>
       <div class="form-group">
-        <label for="target_state">Target state</label>
+        <label for="target_state" class="form-label">Target state</label>
         <select name="target_state" id="target_state" class="form-input form-input-w300">
           <option value="">— Any state —</option>
           {% for code, name in states %}
@@ -25,28 +24,24 @@
           {% endfor %}
         </select>
       </div>
-    </div>
   </div>
 
   <div class="card mb-form">
     <div class="card-title">2. Set your price range</div>
-    <div class="card-body">
       <div class="form-row">
         <div class="form-group">
-          <label for="min_price">Min price ($)</label>
+          <label for="min_price" class="form-label">Min price ($)</label>
           <input type="number" name="min_price" id="min_price" class="form-input form-input-w200" value="50000">
         </div>
         <div class="form-group">
-          <label for="max_price">Max price ($)</label>
+          <label for="max_price" class="form-label">Max price ($)</label>
           <input type="number" name="max_price" id="max_price" class="form-input form-input-w200" value="500000">
         </div>
       </div>
-    </div>
   </div>
 
   <div class="card mb-form">
     <div class="card-title">3. API keys (optional)</div>
-    <div class="card-body">
       <p class="page-sub">
         Growth area analysis requires a free Census API key.
         <a href="https://api.census.gov/data/key_signup.html" target="_blank" rel="noopener">Get one here →</a>
@@ -54,7 +49,6 @@
       <p class="page-sub">
         Employment data uses FRED (free) and BLS (free).
       </p>
-    </div>
   </div>
 
   <div class="form-actions">

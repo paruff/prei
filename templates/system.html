@@ -43,7 +43,7 @@
 {% if top_areas %}
 <div class="card mt-5">
   <h2 class="card-title">Top Growth Areas</h2>
-  <table class="table">
+  <div class="table-wrap"><table class="data-table">
     <thead><tr><th>City</th><th>State</th><th>Score</th><th>Landlord</th></tr></thead>
     <tbody>
       {% for ga in top_areas %}
@@ -55,13 +55,13 @@
       </tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endif %}
 
 <div class="card mt-5">
   <h2 class="card-title">Data Source Health</h2>
-  <table class="table">
+  <div class="table-wrap"><table class="data-table">
     <thead>
       <tr><th>Source</th><th>Last Run</th><th>Records</th><th>Status</th></tr>
     </thead>
@@ -85,7 +85,7 @@
       <tr><td colspan="4">No data source health records yet. Run a data ingestion to populate.</td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 
 <div class="card mt-5">
