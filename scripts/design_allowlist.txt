@@ -19,7 +19,6 @@ templates/income/add.html bootstrap-class mb-3 2
 templates/income/add.html bootstrap-class mt-1 1
 templates/income/add.html bootstrap-class small 1
 templates/markets/dashboard.html bootstrap-class badge 4
-templates/onboard.html bootstrap-class card-body 3
 templates/pipeline/review_queue.html bootstrap-class card-body 1
 templates/pipeline_dashboard.html bootstrap-class card-body 4
 templates/portfolio.html bootstrap-class alert 2
@@ -94,11 +93,3 @@ templates/properties/share.html bootstrap-class m-0 1
 templates/properties/share.html bootstrap-class mb-0 1
 templates/properties/share.html bootstrap-class mb-3 4
 templates/property_discovery.html bootstrap-class btn-sm 2
-templates/registration/login.html bootstrap-class card-body 1
-templates/registration/login.html bootstrap-class col-12 1
-templates/registration/login.html bootstrap-class col-lg-4 1
-templates/registration/login.html bootstrap-class col-md-6 1
-templates/registration/login.html bootstrap-class justify-content-center 1
-templates/registration/login.html bootstrap-class mb-3 1
-templates/registration/login.html bootstrap-class row 1
-templates/registration/login.html bootstrap-class w-100 1

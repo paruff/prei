@@ -35,6 +35,8 @@ PAGES = [
     "/usda-properties/",
     "/growth-explorer/",
     "/onboard/",
+    "/system/",
+    "/accounts/login/",
     "/brrrr/",
     "/markets/",
 ]
@@ -71,7 +73,7 @@ def check_page(page, path: str) -> list[str]:
     failures = []
     if resp is None or resp.status != 200:
         failures.append(f"status {resp.status if resp else 'none'}")
-    if "/accounts/login" in page.url:
+    if "/accounts/login" in page.url and "/accounts/login" not in path:
         failures.append("redirected to login (session lost)")
     data = page.evaluate(CHECKS)
     if data["hscroll"]:
