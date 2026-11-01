@@ -76,8 +76,8 @@ def test_compare_highlights_best_cap_rate(
     assert response.status_code == 200
     assert "8.00%" in content
     assert "5.00%" in content
-    assert "table-success" in content
-    assert "table-danger" in content
+    assert "num-good" in content
+    assert "num-bad" in content
 
 
 @pytest.mark.django_db
