@@ -17,7 +17,7 @@ def test_seed_market_dallas_fixture_gacs_is_sane_without_live_data(monkeypatch) 
         return None
 
     monkeypatch.setattr(seed_market_command, "call_command", _fake_call_command)
-    monkeypatch.setattr(seed_market_command, "FIXTURE_VRM_LISTINGS", ())
+    monkeypatch.setattr(seed_market_command, "FIXTURE_VRM_LISTINGS", {})
 
     call_command("seed_market", state="TX", city="Dallas")
 
