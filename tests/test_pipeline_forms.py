@@ -98,6 +98,20 @@ class TestOfferCreate:
             OfferRecord.objects.filter(pipeline_property=pipeline_property).count() == 1
         )
 
+    def test_form_prefills_today_as_offer_date(self, client, pipeline_property):
+        url = reverse("pipeline_offer_create", kwargs={"pk": pipeline_property.pk})
+        today = timezone.localdate().isoformat()
+        assert f'name="offer_date" value="{today}"' in client.get(url).content.decode()
+
+    def test_blank_offer_date_defaults_to_today(self, client, pipeline_property):
+        from core.models import OfferRecord
+
+        url = reverse("pipeline_offer_create", kwargs={"pk": pipeline_property.pk})
+        resp = client.post(url, {"offer_price": "300000", "offer_date": ""})
+        assert resp.status_code == 302
+        offer = OfferRecord.objects.get(pipeline_property=pipeline_property)
+        assert str(offer.offer_date) == timezone.localdate().isoformat()
+
     def test_list_existing_offers(self, client, pipeline_property):
         from core.models import OfferRecord
 

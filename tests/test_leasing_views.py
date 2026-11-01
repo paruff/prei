@@ -157,3 +157,11 @@ class TestLeasingDetail:
         resp = client.get(url)
         assert resp.status_code == 200
         assert b"Asking Rent" in resp.content
+
+
+class TestShowingForm:
+    def test_does_not_advance_by_default(self, client, leasing_entry):
+        """Advancing past SHOWING skips recording the application."""
+        resp = client.get(reverse("leasing_showing", kwargs={"pk": leasing_entry.pk}))
+        assert 'name="advance"' in resp.content.decode()
+        assert 'name="advance" value="1" checked' not in resp.content.decode()

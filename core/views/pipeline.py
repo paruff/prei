@@ -628,7 +628,7 @@ def pipeline_offer_create(request: HttpRequest, pk: int) -> HttpResponse:
         from datetime import date
 
         offer_price = request.POST.get("offer_price")
-        offer_date = request.POST.get("offer_date", str(date.today()))
+        offer_date = request.POST.get("offer_date") or str(date.today())
         offer_expiry = request.POST.get("offer_expiry") or None
         contingencies = request.POST.getlist("contingencies")
         notes = request.POST.get("notes", "")
