@@ -3,7 +3,7 @@ version: alpha
 name: prei
 description: Calm, data-dense underwriting UI for buy-and-hold investors. Light mode only. Values mirror static/css/tokens.css.
 colors:
-  primary: "#1D9E75"
+  primary: "#0F6E56"
   on-primary: "#FFFFFF"
   secondary: "{colors.neutral-500}"
   neutral: "{colors.surface-page}"
@@ -117,7 +117,7 @@ components:
     rounded: "{rounded.md}"
     padding: 7px 16px
   button-primary-hover:
-    backgroundColor: "{colors.grow-700}"
+    backgroundColor: "{colors.grow-900}"
   button-danger:
     backgroundColor: "{colors.surface-card}"
     textColor: "{colors.risk-700}"
@@ -194,7 +194,7 @@ Light mode only; there is no dark theme today. Density: high (KPI grids, tables)
 ## Colors
 
 - **Roles:** `primary` (grow green), `secondary` (warm slate `neutral-500`, labels and metadata), `neutral` (page `#F8F8F6`), `surface` (card white), `on-surface` (ink `neutral-900`), `error` / `warning` / `success` (the 700 steps of risk, caution, grow). The palette names below mirror `tokens.css`.
-- **Grow green (`primary`, #1D9E75):** the only action colour, used for primary buttons, active chips, focus borders and the "moderate" verdict. Its 50 and 700 steps (`primary-bg`, `primary-text`) give tinted backgrounds and readable text.
+- **Grow green (`primary`, #0F6E56 = `grow-700`, 6.2:1 with white; `grow-400` #1D9E75 is 3.39:1, so never put text on it):** the only action colour, used for primary buttons, active chips, focus borders and the "moderate" verdict. Its 50 and 700 steps (`primary-bg`, `primary-text`) give tinted backgrounds and readable text.
 - **Grow, caution and risk scales:** semantic only, meaning good, warning and bad metrics. Use the 50 step for backgrounds and the 700 step for text. Verdict badges A, B and C map to grow, caution and risk.
 - **Warm neutrals (#F1EFE8 to #2C2C2A):** body text is `neutral-900`, labels and secondary text are `neutral-500`.
 - **Surfaces:** page `#F8F8F6`, card `#FFFFFF`, secondary `#F1EFE8` (KPI tiles, hover). Borders are `#E0DED6`: 1px by default, 0.5px for subtle dividers.
@@ -249,8 +249,8 @@ Use the existing class or partial. Don't restyle it per page.
 
 - Do use `var(--token)` from `tokens.css` for every colour, size, space and radius.
 - Do keep colour semantic: green means good, amber caution, red risk. Never use colour as the only signal; pair it with a label or verdict text.
-- Do maintain WCAG AA contrast (4.5:1 for body text).
+- Do maintain WCAG AA contrast (4.5:1 for body text). Never use `neutral-200` for text (1.85:1); use `neutral-500`. Keep the global `:focus-visible` outline (2px `primary`, 2px offset); never remove it.
 - Do put threshold logic in Python and pass the CSS class to the template.
 - Don't use Bootstrap classes, inline `style=` on layout elements, hex colours in templates (the PDF export is the exception), or `!important` ([AGENTS.md](AGENTS.md) "Never Do").
 - Don't add a dark mode, new fonts, new weights (only 400 and 500 are loaded) or new colours without updating this file in the same PR.
-- Don't copy the current exceptions. Known deviations from this file (undefined tokens, off-palette `.chip-success`, `-info`, `-warning`, `-danger` colours, Bootstrap leftovers, hex in two templates, the removed focus outline on inputs, and white-on-primary text at 3.39:1 on `.btn-primary` and `.chip.is-active`, which fails AA) are tracked as goals G5 and G6 in [plan.md](plan.md).
+- Don't copy the current exceptions. Known deviations from this file (undefined tokens, off-palette `.chip-success`, `-info`, `-warning`, `-danger` colours, Bootstrap leftovers, hex in two templates, and the low-contrast BRRRR "Rehab" label, confidence chip and active nav text) are tracked as goals G5 and G6 in [plan.md](plan.md).

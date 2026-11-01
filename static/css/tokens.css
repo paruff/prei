@@ -43,7 +43,7 @@
   --color-accent-400: #8B5CF0;
 
   /* ── Semantic aliases ───────────────────────── */
-  --color-primary:      var(--color-grow-400);
+  --color-primary:      var(--color-grow-700);
   --color-primary-bg:   var(--color-grow-50);
   --color-primary-text: var(--color-grow-700);
 
