@@ -568,7 +568,22 @@ class TestConvertLoanTerms:
 
     def test_cash_purchase_is_fully_equity_funded(self, db, user, vrm_property):
         pp = self._closed(user, vrm_property, loan_amount=Decimal("0"))
-        assert convert_to_property_record(pp).down_payment_pct == Decimal("1")
+        prop = convert_to_property_record(pp)
+        assert prop.down_payment_pct == Decimal("1")
+        assert prop.purchase_price * (1 - prop.down_payment_pct) == 0  # no loan
+
+    def test_loan_wins_over_down_payment(self, db, user, vrm_property):
+        pp = self._closed(
+            user,
+            vrm_property,
+            loan_amount=Decimal("150000"),
+            down_payment=Decimal("100000"),
+        )
+        assert convert_to_property_record(pp).down_payment_pct == Decimal("0.2500")
+
+    def test_no_loan_or_down_payment_uses_default(self, db, user, vrm_property):
+        pp = self._closed(user, vrm_property)
+        assert convert_to_property_record(pp).down_payment_pct == Decimal("0.20")
 
     def test_loan_only_sets_down_payment_from_price(self, db, user, vrm_property):
         pp = self._closed(user, vrm_property, loan_amount=Decimal("150000"))
