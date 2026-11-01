@@ -120,6 +120,16 @@ repos:
           - --ignore=H023,H030,H031,T003
         files: \.html$
 
+  # --- Design lint (DESIGN.md Don'ts; known violations in scripts/design_allowlist.txt) ---
+  - repo: local
+    hooks:
+      - id: design-lint
+        name: design-lint
+        entry: python3 scripts/check_design.py
+        language: system
+        files: ^(templates/.*\.html|static/css/.*\.css|scripts/(check_design\.py|design_allowlist\.txt))$
+        pass_filenames: false
+
   # --- Requirements.txt pinning check ---
   - repo: local
     hooks:
