@@ -60,8 +60,15 @@ def test_no_template_formats_money_or_percent_by_hand():
     pattern = re.compile(r"\$\{\{|\}\}\s*%")
     offenders = [
         f"{path}:{n}"
-        for path in Path("templates").rglob("*.html")
+        for path in (Path(__file__).resolve().parent.parent / "templates").rglob(
+            "*.html"
+        )
         for n, line in enumerate(path.read_text().splitlines(), 1)
         if pattern.search(line)
     ]
     assert not offenders, offenders
+
+
+def test_pct_rejects_unknown_unit():
+    with pytest.raises(ValueError):
+        pct(0.1, "pt")

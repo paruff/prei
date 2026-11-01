@@ -50,8 +50,10 @@ def pct(value, unit="fraction"):
     number = _to_decimal(value)
     if number is None:
         return EMPTY
-    if unit != "pts":
+    if unit == "fraction":
         number *= 100
+    elif unit != "pts":
+        raise ValueError(f"pct unit must be 'fraction' or 'pts', got {unit!r}")
     return f"{_fixed(number, 2)}%"
 
 
