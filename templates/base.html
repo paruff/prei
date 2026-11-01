@@ -23,8 +23,9 @@
 </head>
 <body>
 
+{% with url_name=request.resolver_match.url_name path=request.path %}
 <nav class="topnav" aria-label="Main navigation">
-  <a href="{% url 'dashboard' %}" class="nav-brand">
+  <a href="{% if user.is_authenticated %}{% url 'growth_areas' %}{% else %}{% url 'login' %}{% endif %}" class="nav-brand">
     <div class="brand-mark" aria-hidden="true">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M3 12 L8 4 L13 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -33,70 +34,34 @@
     <span class="brand-name">PREI</span>
   </a>
 
-  <div class="nav-links" id="nav-links" role="list">
-    <a href="{% url 'growth_areas' %}" class="nav-link {% if request.resolver_match.url_name == 'growth_areas' %}active{% endif %}">🚀 Growth Areas</a>
-
-    <div class="nav-dropdown" id="pipeline-dropdown">
-      <button class="nav-dropdown-toggle" aria-expanded="false" aria-controls="pipeline-menu">
-        Purchase Pipeline <span aria-hidden="true">▾</span>
-      </button>
-      <div class="nav-dropdown-menu" id="pipeline-menu" role="menu">
-        <a href="{% url 'property_discovery' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'property_discovery' %}active{% endif %}" role="menuitem">
-          🔍 Discover
-          <span class="sub-label">Pick a growth area, check sources, find properties</span>
-        </a>
-        <a href="{% url 'pipeline_screener' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_screener' %}active{% endif %}" role="menuitem">
-          ✅ Screen
-          <span class="sub-label">Review screening pass/fail results</span>
-        </a>
-        <a href="{% url 'pipeline_review_queue' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_review_queue' %}active{% endif %}" role="menuitem">
-          📊 Underwrite
-          <span class="sub-label">Properties ready for your decision</span>
-        </a>
-        <hr class="nav-divider">
-        <a href="{% url 'pipeline_kanban' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_kanban' %}active{% endif %}" role="menuitem">
-          📋 Portfolio Board
-          <span class="sub-label">Everything, every stage, at a glance — not a step to complete</span>
-        </a>
-        <a href="{% url 'pipeline_list' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_list' %}active{% endif %}" role="menuitem">
-          📋 Portfolio List
-          <span class="sub-label">Same overview as a table — offers, due diligence, closing</span>
-        </a>
-        <hr class="nav-divider">
-        <a href="{% url 'pipeline_screening_settings' %}" class="nav-dropdown-item {% if request.resolver_match.url_name == 'pipeline_screening_settings' %}active{% endif %}" role="menuitem">
-          ⚙️ Screening Criteria
-          <span class="sub-label">Configure your screening thresholds</span>
-        </a>
-      </div>
-    </div>
-
-    <a href="{% url 'leasing_list' %}" class="nav-link {% if request.resolver_match.url_name == 'leasing_list' %}active{% endif %}">Leasing Pipeline</a>
-    <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'portfolio_dashboard' %}active{% endif %}">Portfolio</a>
-    <a href="{% url 'sell_index' %}" class="nav-link {% if request.resolver_match.url_name == 'sell_index' %}active{% endif %}">Sell</a>
+  {% if user.is_authenticated %}
+  <div class="nav-links" id="nav-links">
+    <a href="{% url 'growth_areas' %}" class="nav-link {% if url_name == 'growth_areas' or url_name == 'growth_explorer' %}active{% endif %}"{% if url_name == 'growth_areas' or url_name == 'growth_explorer' %} aria-current="page"{% endif %}>Markets</a>
+    <a href="{% url 'pipeline_screener' %}" class="nav-link {% if '/pipeline/' in path and '/portfolio/' not in path or url_name == 'property_discovery' %}active{% endif %}"{% if '/pipeline/' in path and '/portfolio/' not in path or url_name == 'property_discovery' %} aria-current="page"{% endif %}>Pipeline</a>
+    <a href="{% url 'portfolio_dashboard' %}" class="nav-link {% if '/portfolio/' in path %}active{% endif %}"{% if '/portfolio/' in path %} aria-current="page"{% endif %}>Portfolio</a>
+    <a href="{% url 'leasing_list' %}" class="nav-link {% if '/leasing/' in path %}active{% endif %}"{% if '/leasing/' in path %} aria-current="page"{% endif %}>Leasing</a>
   </div>
+  {% endif %}
 
   <div class="nav-right">
     {% if user.is_authenticated %}
-      <span class="avatar" aria-label="Signed in as {{ user.email }}">{{ user.email|first|upper }}</span>
-      <a href="{% url 'logout' %}" class="nav-link">Sign out</a>
+      <details class="nav-account">
+        <summary class="avatar" aria-label="Account menu for {{ user.email|default:user.username }}">{{ user.email|default:user.username|first|upper }}</summary>
+        <div class="nav-dropdown-menu is-open">
+          <a href="{% url 'investment_targets_edit' %}" class="nav-dropdown-item" title="Your return thresholds">Investment Targets</a>
+          <a href="{% url 'pipeline_screening_settings' %}" class="nav-dropdown-item" title="Pass/fail thresholds for the screener">Screening</a>
+          <a href="{% url 'system_status' %}" class="nav-dropdown-item" title="Data sources and health">System</a>
+          <a href="{% url 'sell_index' %}" class="nav-dropdown-item">Sell</a>
+          <hr class="nav-divider">
+          <a href="{% url 'logout' %}" class="nav-dropdown-item">Sign out</a>
+        </div>
+      </details>
     {% else %}
       <a href="{% url 'login' %}" class="nav-link">Sign in</a>
     {% endif %}
-    <button
-      class="nav-menu-toggle"
-      aria-label="Toggle navigation"
-      aria-expanded="false"
-      aria-controls="nav-links"
-      id="nav-toggle"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
   </div>
 </nav>
+{% endwith %}
 
 <main class="page-main" id="main-content">
   {% if messages %}
@@ -120,33 +85,7 @@
 document.querySelectorAll('[data-width]').forEach(function(el) {
   el.style.width = el.dataset.width + '%';
 });
-(function() {
-  var toggle = document.getElementById('nav-toggle');
-  var links  = document.getElementById('nav-links');
-  if (!toggle || !links) return;
-  toggle.addEventListener('click', function() {
-    var open = links.classList.toggle('is-open');
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });
 
-  // Pipeline dropdown toggle
-  var ddToggle = document.getElementById('pipeline-dropdown');
-  var ddMenu = document.getElementById('pipeline-menu');
-  if (ddToggle && ddMenu) {
-    ddToggle.addEventListener('click', function(e) {
-      e.stopPropagation();
-      ddMenu.classList.toggle('is-open');
-      var expanded = ddMenu.classList.contains('is-open');
-      ddToggle.querySelector('.nav-dropdown-toggle').setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    });
-    // Close on click outside
-    document.addEventListener('click', function(e) {
-      if (!ddToggle.contains(e.target)) {
-        ddMenu.classList.remove('is-open');
-      }
-    });
-  }
-})();
 </script>
 
 {% block extra_js %}{% endblock %}

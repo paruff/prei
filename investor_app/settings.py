@@ -161,7 +161,7 @@ if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
     # Also set a timeout so Django waits instead of failing immediately
     DATABASES["default"].setdefault("timeout", 20)
 
-LOGIN_REDIRECT_URL = "/dashboard/"
+LOGIN_REDIRECT_URL = "/growth/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 TIME_ZONE = env("TIME_ZONE", default="UTC")

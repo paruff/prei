@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from django.views.generic import TemplateView
 
 from . import views
@@ -15,10 +16,20 @@ urlpatterns = [
     path("system/", views.system_status, name="system_status"),
     path("system/refresh-all/", views.refresh_all_sources, name="refresh_all_sources"),
     path("system/health-json/", views.health_json, name="health_json"),
-    path("dashboard/", views.dashboard, name="dashboard"),
+    path(
+        "dashboard/",
+        RedirectView.as_view(pattern_name="pipeline_screener", query_string=True),
+        name="dashboard_home",
+    ),
+    path("pipeline/deals/", views.dashboard, name="dashboard"),
     path("properties/add/", views.property_add, name="property_add"),
     path("properties/create/", views.property_add, name="property_create"),
-    path("properties/", views.property_list, name="property_list"),
+    path(
+        "properties/",
+        RedirectView.as_view(url="/portfolio/", query_string=True),
+        name="properties_home",
+    ),
+    path("portfolio/properties/", views.property_list, name="property_list"),
     path("properties/compare/", views.property_compare, name="property_compare"),
     path("properties/<int:pk>/edit/", views.property_edit, name="property_edit"),
     path("properties/<int:pk>/delete/", views.property_delete, name="property_delete"),
