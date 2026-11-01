@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """design-lint: enforce DESIGN.md "Don'ts" on templates and static CSS.
 
-Rules: undefined-var, hex-color, rgb-color, style-block, bootstrap-class.
+Rules: undefined-var, hex-color, rgb-color, style-block, style-attr, bootstrap-class.
 Today's violations live in scripts/design_allowlist.txt as `path rule token count`
 lines; a count above the entry fails (new violation), below it also fails (shrink
 the entry). `--write-allowlist` regenerates the file from the current tree.
@@ -27,6 +27,7 @@ HEX = re.compile(
 ANCHOR = re.compile(r"""(?:href|hx-target|hx-swap-oob)=["']$""")
 RGB = re.compile(r"\brgba?\(")
 STYLE = re.compile(r"<style\b")
+STYLE_ATTR = re.compile(r'\sstyle="')
 CLASS_ATTR = re.compile(r'class="([^"]*)"')
 COMMENT = re.compile(r"/\*.*?\*/|<!--.*?-->|\{#.*?#\}", re.S)
 BOOTSTRAP = re.compile(
@@ -46,7 +47,9 @@ def scan(root: Path = ROOT) -> Counter:
     css = sorted((root / "static/css").glob("*.css"))
     html = sorted((root / "templates").rglob("*.html"))
     texts = {
-        p: COMMENT.sub(lambda m: "\n" * m.group().count("\n"), p.read_text())
+        p: COMMENT.sub(
+            lambda m: "\n" * m.group().count("\n"), p.read_text(encoding="utf-8")
+        )
         for p in css + html
     }
     defined = {n for t in texts.values() for n in VAR_DEF.findall(t)}
@@ -70,6 +73,8 @@ def scan(root: Path = ROOT) -> Counter:
         if path.suffix == ".html":
             if not is_export and STYLE.search(text):
                 found[(rel, "style-block", "<style>")] += len(STYLE.findall(text))
+            if not is_export and STYLE_ATTR.search(text):
+                found[(rel, "style-attr", 'style="')] += len(STYLE_ATTR.findall(text))
             for attr in CLASS_ATTR.findall(text):
                 for cls in attr.split():
                     if BOOTSTRAP.match(cls) and cls not in project_classes:
@@ -80,7 +85,7 @@ def scan(root: Path = ROOT) -> Counter:
 def read_allowlist() -> Counter:
     allowed: Counter = Counter()
     if ALLOWLIST.exists():
-        for line in ALLOWLIST.read_text().splitlines():
+        for line in ALLOWLIST.read_text(encoding="utf-8").splitlines():
             if line.strip() and not line.startswith("#"):
                 path, rule, token, count = line.rsplit(" ", 3)
                 allowed[(path, rule, token)] = int(count)
@@ -111,7 +116,8 @@ def main(argv: list[str]) -> int:
             errors.append(
                 f"{key[0]}: {key[1]} {key[2]!r} fixed ({found[key]} < {n}), lower it in scripts/design_allowlist.txt"
             )
-    print("\n".join(errors))
+    if errors:
+        print("\n".join(errors))
     return 1 if errors else 0
 
 

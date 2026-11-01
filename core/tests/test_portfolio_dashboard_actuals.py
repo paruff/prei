@@ -96,6 +96,16 @@ def test_resubmitting_month_keeps_notes(client):
 
 
 @pytest.mark.django_db
+def test_explicit_notes_replace_and_empty_notes_clear(client):
+    prop = _owner_with_property(client)
+    MonthlyActuals.objects.create(prop=prop, month=date(2026, 10, 1), notes="roof leak")
+    _post(client, prop, notes="new tenant")
+    assert MonthlyActuals.objects.get(prop=prop).notes == "new tenant"
+    _post(client, prop, notes="")
+    assert MonthlyActuals.objects.get(prop=prop).notes == ""
+
+
+@pytest.mark.django_db
 def test_error_flash_names_the_field(client):
     prop = _owner_with_property(client)
     response = _post(client, prop, actual_rent_collected="")

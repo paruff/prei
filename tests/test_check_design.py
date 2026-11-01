@@ -25,6 +25,7 @@ def test_flags_each_rule(tmp_path):
     rules = {r for _, r, _ in found}
     assert rules == {
         "style-block",
+        "style-attr",
         "bootstrap-class",
         "hex-color",
         "rgb-color",
@@ -38,9 +39,21 @@ def test_flags_each_rule(tmp_path):
 
 
 def test_clean_template_and_exports_pass(tmp_path):
-    assert not _tree(tmp_path, '<div class="card" style="x:var(--ok)">{# #fff #}</div>')
+    assert not _tree(tmp_path, '<div class="card" data-x="var(--ok)">{# #fff #}</div>')
     (tmp_path / "templates/exports/d.html").write_text("<style>a{color:#fff}</style>")
     assert not check_design.scan(tmp_path)
     assert not _tree(
         tmp_path, '<div class="row">', css=".row{}"
     )  # defined by project CSS
+
+
+def test_ratchet_fails_on_new_and_on_fixed_violations(tmp_path, monkeypatch):
+    real_scan = check_design.scan
+    _tree(tmp_path, '<div style="width:1px">')
+    monkeypatch.setattr(check_design, "ALLOWLIST", tmp_path / "allow.txt")
+    monkeypatch.setattr(check_design, "scan", lambda: real_scan(tmp_path))
+    assert check_design.main([]) == 1  # new violation, empty allow-list
+    assert check_design.main(["--write-allowlist"]) == 0
+    assert check_design.main([]) == 0
+    (tmp_path / "templates/x.html").write_text("<div>")
+    assert check_design.main([]) == 1  # fixed: shrink the allow-list
