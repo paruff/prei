@@ -6,7 +6,7 @@ from rest_framework import status
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_basic(client):
+def test_calculate_carrying_costs_basic(admin_client):
     """Test basic carrying costs calculation."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -46,7 +46,7 @@ def test_calculate_carrying_costs_basic(client):
         "investmentStrategy": "buy-and-hold",
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -131,7 +131,7 @@ def test_calculate_carrying_costs_basic(client):
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_all_cash(client):
+def test_calculate_carrying_costs_all_cash(admin_client):
     """Test carrying costs calculation for all-cash purchase."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -166,7 +166,7 @@ def test_calculate_carrying_costs_all_cash(client):
         "rentalIncome": {"monthlyRent": 1800, "otherMonthlyIncome": 0},
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -185,7 +185,7 @@ def test_calculate_carrying_costs_all_cash(client):
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_missing_fields(client):
+def test_calculate_carrying_costs_missing_fields(admin_client):
     """Test API validation with missing required fields."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -198,14 +198,14 @@ def test_calculate_carrying_costs_missing_fields(client):
         }
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "error" in response.json()
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_invalid_property_type(client):
+def test_calculate_carrying_costs_invalid_property_type(admin_client):
     """Test API validation with invalid property type."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -229,13 +229,13 @@ def test_calculate_carrying_costs_invalid_property_type(client):
         "rentalIncome": {"monthlyRent": 2000},
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_positive_cash_flow(client):
+def test_calculate_carrying_costs_positive_cash_flow(admin_client):
     """Test carrying costs with positive cash flow property."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -270,7 +270,7 @@ def test_calculate_carrying_costs_positive_cash_flow(client):
         "rentalIncome": {"monthlyRent": 2000, "otherMonthlyIncome": 0},
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()

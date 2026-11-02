@@ -123,14 +123,7 @@ def upsert_vrm_records(
             fields = parse_vrm_json_record(record)
         except ValueError as exc:
             logger.warning("VRM import: record %d failed validation: %s", idx, exc)
-            # Derive a safe user-facing message from the record, not from the exception
-            missing_fields = [f for f in ("asset_id", "url") if not record.get(f)]
-            user_msg = (
-                "missing required field: " + missing_fields[0]
-                if missing_fields
-                else "validation error"
-            )
-            errors.append(f"Record {idx}: {user_msg}")
+            errors.append(f"Record {idx}: {exc}")
             continue
 
         vrm_id = fields.pop("vrm_property_id")

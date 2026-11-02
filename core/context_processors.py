@@ -18,6 +18,7 @@ Exposed template variables:
 from __future__ import annotations
 
 import logging
+from functools import cache
 from os import getenv
 from pathlib import Path
 
@@ -27,6 +28,7 @@ logger = logging.getLogger("prei.config")
 _SHORT_SHA_LENGTH = 7
 
 
+@cache
 def _read_version() -> str:
     """Read version from baked-in file (Docker) or git tag (dev).
 
@@ -41,8 +43,8 @@ def _read_version() -> str:
         text = Path("/app/.meta/version").read_text().strip()
         if text:
             return text
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError) as exc:
+        logger.debug("build metadata unavailable: %s", exc)
 
     # 2. Environment variable (injected by Docker build)
     env_version = getenv("PREI_VERSION")
@@ -59,6 +61,7 @@ def _read_version() -> str:
     return "0.0.0-dev"
 
 
+@cache
 def _read_build_date() -> str:
     """Read build date from baked-in file (Docker) or derive from git (dev).
 
@@ -72,8 +75,8 @@ def _read_build_date() -> str:
         text = Path("/app/.meta/build-date").read_text().strip()
         if text:
             return text
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError) as exc:
+        logger.debug("build metadata unavailable: %s", exc)
 
     env_date = getenv("BUILD_DATE")
     if env_date:
@@ -94,6 +97,7 @@ def _read_build_date() -> str:
     return ""
 
 
+@cache
 def _read_branch() -> str:
     """Read branch name from baked-in file (Docker) or git HEAD (dev).
 
@@ -107,8 +111,8 @@ def _read_branch() -> str:
         text = Path("/app/.meta/branch").read_text().strip()
         if text:
             return text
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError) as exc:
+        logger.debug("build metadata unavailable: %s", exc)
 
     env_branch = getenv("BRANCH")
     if env_branch:
@@ -124,12 +128,13 @@ def _read_branch() -> str:
                 return head_content[16:]  # strip "ref: refs/heads/"
             if head_content.startswith("ref: "):
                 return head_content[5:]
-        except FileNotFoundError, OSError:
-            pass
+        except (FileNotFoundError, OSError) as exc:
+            logger.debug("build metadata unavailable: %s", exc)
 
     return ""
 
 
+@cache
 def _read_git_commit() -> str:
     """Read short commit SHA from baked-in file (Docker) or git (dev).
 
@@ -144,8 +149,8 @@ def _read_git_commit() -> str:
         text = Path("/app/.meta/commit").read_text().strip()
         if text:
             return text[:_SHORT_SHA_LENGTH]
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError) as exc:
+        logger.debug("build metadata unavailable: %s", exc)
 
     # 2. Environment variable (injected by Docker build)
     env_commit = getenv("PREI_COMMIT")
@@ -186,8 +191,8 @@ def _find_git_dir() -> Path | None:
                 gitdir_path = Path(text[8:].strip())
                 if gitdir_path.is_dir():
                     return gitdir_path
-        except FileNotFoundError, OSError:
-            pass
+        except (FileNotFoundError, OSError) as exc:
+            logger.debug("build metadata unavailable: %s", exc)
     return None
 
 
@@ -229,8 +234,8 @@ def _resolve_packed_ref(git_dir: Path, ref_path: str) -> str | None:
             parts = line.split(" ", 1)
             if len(parts) == 2 and parts[1] == ref_path:
                 return parts[0]
-    except FileNotFoundError, OSError:
-        pass
+    except (FileNotFoundError, OSError) as exc:
+        logger.debug("build metadata unavailable: %s", exc)
     return None
 
 
@@ -256,8 +261,8 @@ def _read_current_tag(git_dir: Path) -> str | None:
                             return tag_file.name
                     except FileNotFoundError, OSError:
                         continue
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.debug("build metadata unavailable: %s", exc)
 
     # 2. Packed refs
     packed = git_dir / "packed-refs"
@@ -274,8 +279,8 @@ def _read_current_tag(git_dir: Path) -> str | None:
                     and parts[1].startswith("refs/tags/")
                 ):
                     return parts[1].removeprefix("refs/tags/")
-        except FileNotFoundError, OSError:
-            pass
+        except (FileNotFoundError, OSError) as exc:
+            logger.debug("build metadata unavailable: %s", exc)
 
     return None
 

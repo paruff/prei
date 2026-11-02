@@ -6,7 +6,7 @@ from rest_framework import status
 
 
 @pytest.mark.django_db
-def test_compare_flip_vs_rental(client):
+def test_compare_flip_vs_rental(admin_client):
     """Test comparing flip and rental strategies."""
     url = reverse("api:strategy-comparison")
 
@@ -54,7 +54,7 @@ def test_compare_flip_vs_rental(client):
         },
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -94,7 +94,7 @@ def test_compare_flip_vs_rental(client):
 
 
 @pytest.mark.django_db
-def test_compare_all_strategies(client):
+def test_compare_all_strategies(admin_client):
     """Test comparing all three strategies."""
     url = reverse("api:strategy-comparison")
 
@@ -147,7 +147,7 @@ def test_compare_all_strategies(client):
         },
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -166,7 +166,7 @@ def test_compare_all_strategies(client):
 
 
 @pytest.mark.django_db
-def test_compare_strategies_missing_assumptions(client):
+def test_compare_strategies_missing_assumptions(admin_client):
     """Test validation when assumptions are missing for a selected strategy."""
     url = reverse("api:strategy-comparison")
 
@@ -200,13 +200,13 @@ def test_compare_strategies_missing_assumptions(client):
         },
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.django_db
-def test_compare_strategies_single_strategy(client):
+def test_compare_strategies_single_strategy(admin_client):
     """Test that single strategy comparison works."""
     url = reverse("api:strategy-comparison")
 
@@ -248,7 +248,7 @@ def test_compare_strategies_single_strategy(client):
         },
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()

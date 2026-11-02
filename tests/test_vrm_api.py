@@ -164,7 +164,10 @@ class VrmPropertyScrapeAPITest(TestCase):
     """Tests for POST /api/v1/vrm-properties/scrape/."""
 
     def setUp(self):
+        from django.contrib.auth.models import User
+
         self.client = Client()
+        self.client.force_login(User.objects.create_user("scraper", password="x"))
         self.url = "/api/v1/vrm-properties/scrape/"
 
     def test_missing_state(self):
@@ -178,6 +181,31 @@ class VrmPropertyScrapeAPITest(TestCase):
         )
         self.assertEqual(resp.status_code, 400)
         self.assertIn("Invalid state code", resp.json()["error"])
+
+    def test_anonymous_is_refused(self):
+        resp = Client().post(self.url, {"state": "VA"}, content_type="application/json")
+        self.assertIn(resp.status_code, (401, 403))
+
+    def test_second_scrape_is_refused_while_one_runs(self):
+        from django.core.cache import cache
+        from unittest import mock
+
+        cache.delete("vrm_scrape_running")
+        # Run the thread body inline so no real scrape starts.
+        with (
+            mock.patch("core.api_views.threading.Thread") as thread,
+            mock.patch("django.core.management.call_command"),
+        ):
+            first = self.client.post(
+                self.url, {"state": "VA"}, content_type="application/json"
+            )
+            second = self.client.post(
+                self.url, {"state": "MD"}, content_type="application/json"
+            )
+        cache.delete("vrm_scrape_running")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 409)
+        thread.return_value.start.assert_called_once()
 
 
 class VrmPropertiesUITest(TestCase):

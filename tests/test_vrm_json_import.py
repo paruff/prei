@@ -208,8 +208,27 @@ class UpsertVrmRecordsTest(TestCase):
 
 class VrmPropertyImportAPITest(TestCase):
     def setUp(self):
+        from django.contrib.auth.models import User
+
         self.client = Client()
+        self.client.force_login(User.objects.create_user("importer", password="x"))
         self.url = "/api/v1/vrm-properties/import/"
+
+    def test_anonymous_is_refused(self):
+        resp = Client().post(
+            self.url,
+            data=json.dumps([RECORD_FOR_SALE]),
+            content_type="application/json",
+        )
+        self.assertIn(resp.status_code, (401, 403))
+        self.assertEqual(VrmProperty.objects.count(), 0)
+
+    def test_too_many_records_returns_413(self):
+        from core.api_views import VRM_IMPORT_MAX_RECORDS
+
+        resp = self._post_json([RECORD_FOR_SALE] * (VRM_IMPORT_MAX_RECORDS + 1))
+        self.assertEqual(resp.status_code, 413)
+        self.assertEqual(VrmProperty.objects.count(), 0)
 
     def _post_json(self, payload):
         return self.client.post(

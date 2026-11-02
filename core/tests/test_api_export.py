@@ -73,7 +73,7 @@ def foreclosure_properties(db):
 class TestExportForeclosuresCSV:
     """Test CSV export endpoint."""
 
-    def test_export_foreclosures_csv_success(self, api_client, foreclosure_properties):
+    def test_export_foreclosures_csv_success(self, auth_client, foreclosure_properties):
         """Test successful CSV export."""
         url = reverse("api:export-foreclosures-csv")
 
@@ -83,7 +83,7 @@ class TestExportForeclosuresCSV:
             }
         }
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "text/csv"
@@ -96,7 +96,7 @@ class TestExportForeclosuresCSV:
         assert "FC-FL-MD-12345" in content
 
     def test_export_foreclosures_csv_with_filters(
-        self, api_client, foreclosure_properties
+        self, auth_client, foreclosure_properties
     ):
         """Test CSV export with filters applied."""
         url = reverse("api:export-foreclosures-csv")
@@ -110,7 +110,7 @@ class TestExportForeclosuresCSV:
             }
         }
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -121,7 +121,7 @@ class TestExportForeclosuresCSV:
         assert "FC-FL-MD-12348" in content  # 280,000
 
     def test_export_foreclosures_csv_with_field_selection(
-        self, api_client, foreclosure_properties
+        self, auth_client, foreclosure_properties
     ):
         """Test CSV export with specific field selection."""
         url = reverse("api:export-foreclosures-csv")
@@ -133,7 +133,7 @@ class TestExportForeclosuresCSV:
             "fields": ["property_id", "street", "city", "state", "opening_bid"],
         }
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -152,18 +152,18 @@ class TestExportForeclosuresCSV:
         assert "Bedrooms" not in header
         assert "Square Feet" not in header
 
-    def test_export_foreclosures_csv_missing_location(self, api_client):
+    def test_export_foreclosures_csv_missing_location(self, auth_client):
         """Test CSV export fails without location."""
         url = reverse("api:export-foreclosures-csv")
 
         data: dict[str, object] = {"filters": {}}
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "error" in response.data
 
-    def test_export_foreclosures_csv_invalid_location(self, api_client):
+    def test_export_foreclosures_csv_invalid_location(self, auth_client):
         """Test CSV export fails with invalid location."""
         url = reverse("api:export-foreclosures-csv")
 
@@ -173,11 +173,11 @@ class TestExportForeclosuresCSV:
             }
         }
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_export_foreclosures_csv_empty_results(self, api_client):
+    def test_export_foreclosures_csv_empty_results(self, auth_client):
         """Test CSV export with no matching properties."""
         url = reverse("api:export-foreclosures-csv")
 
@@ -187,7 +187,7 @@ class TestExportForeclosuresCSV:
             }
         }
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         # Should still return CSV with headers
         assert response.status_code == status.HTTP_200_OK
@@ -199,7 +199,9 @@ class TestExportForeclosuresCSV:
 class TestExportForeclosuresJSON:
     """Test JSON export endpoint."""
 
-    def test_export_foreclosures_json_success(self, api_client, foreclosure_properties):
+    def test_export_foreclosures_json_success(
+        self, auth_client, foreclosure_properties
+    ):
         """Test successful JSON export."""
         url = reverse("api:export-foreclosures-json")
 
@@ -209,7 +211,7 @@ class TestExportForeclosuresJSON:
             }
         }
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/json"
@@ -231,7 +233,7 @@ class TestExportForeclosuresJSON:
         assert len(content["data"]) == 5
 
     def test_export_foreclosures_json_includes_filters(
-        self, api_client, foreclosure_properties
+        self, auth_client, foreclosure_properties
     ):
         """Test JSON export includes filter information in metadata."""
         url = reverse("api:export-foreclosures-json")
@@ -243,7 +245,7 @@ class TestExportForeclosuresJSON:
             }
         }
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -390,7 +392,7 @@ class TestExportPropertyAnalysisPDF:
 class TestExportSizeLimits:
     """Test export size limits."""
 
-    def test_csv_export_rejects_large_exports(self, api_client, db):
+    def test_csv_export_rejects_large_exports(self, auth_client, db):
         """Test that CSV export rejects exports larger than 500 properties."""
         # Create 501 properties
         for i in range(501):
@@ -413,10 +415,24 @@ class TestExportSizeLimits:
             }
         }
 
-        response = api_client.post(url, data, format="json")
+        response = auth_client.post(url, data, format="json")
 
         # Should reject as too large
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "EXPORT_TOO_LARGE" in response.data["code"]
         assert "totalCount" in response.data
         assert response.data["totalCount"] == 501
+
+
+@pytest.mark.parametrize(
+    "url_name",
+    [
+        "api:export-foreclosures-csv",
+        "api:export-foreclosures-json",
+        "api:carrying-costs-calculate",
+        "api:strategy-comparison",
+    ],
+)
+def test_anonymous_post_is_refused(db, api_client, url_name):
+    response = api_client.post(reverse(url_name), {}, format="json")
+    assert response.status_code in (401, 403)
