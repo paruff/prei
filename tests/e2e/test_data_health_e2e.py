@@ -15,7 +15,10 @@ class TestDataHealth:
     def test_data_source_table_structure(self, page, e2e_login) -> None:
         """Data source health table has correct columns."""
         page.goto("/system/")
-        table = page.locator("table", has_text="Data Source Health")
+        card = page.locator(
+            ".card", has=page.locator("h2", has_text="Data Source Health")
+        )
+        table = card.locator("table")
         assert table.is_visible()
         assert table.locator("th", has_text="Source").is_visible()
         assert table.locator("th", has_text="Last Run").is_visible()
