@@ -51,7 +51,7 @@
         <td>
           <a href="{% url 'property_detail' p.id %}" class="deal-link">
             <div class="deal-address">{{ p.address }}</div>
-            <div class="deal-meta">{{ p.city }}, {{ p.state }} &middot; {{ p.property_type|label }}</div>
+            <div class="deal-meta">{{ p.city }}, {{ p.state }} &middot; {{ p.property_type|enum_label }}</div>
           </a>
         </td>
         <td class="col-right num {% if p.coc >= 0.08 %}num-good{% elif p.coc >= 0.05 %}num-warn{% else %}num-bad{% endif %}">{{ p.coc|pct }}</td>

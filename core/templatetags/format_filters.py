@@ -65,6 +65,6 @@ def score(value):
 
 
 @register.filter
-def label(value):
+def enum_label(value):
     """Raw enum value to words: DUE_DILIGENCE -> Due Diligence, for_sale -> For Sale."""
     return EMPTY if value in (None, "") else str(value).replace("_", " ").title()

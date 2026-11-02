@@ -18,7 +18,7 @@
     {% for stage_label, count in stage_items %}
       <span class="pipeline-funnel-stage {% if current_stage == stage_label %}active{% endif %}">
         <a href="?stage={{ stage_label }}&status={{ current_status }}">
-          {{ stage_label|label }} <strong>({{ count }})</strong>
+          {{ stage_label|enum_label }} <strong>({{ count }})</strong>
         </a>
       </span>
     {% endfor %}

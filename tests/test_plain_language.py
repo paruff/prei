@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import PipelineProperty
-from core.templatetags.format_filters import label
+from core.templatetags.format_filters import enum_label
 
 User = get_user_model()
 
@@ -29,10 +29,10 @@ def prop(db, client):
     )
 
 
-def test_label_filter():
-    assert label("DUE_DILIGENCE") == "Due Diligence"
-    assert label("for_sale") == "For Sale"
-    assert label(None) == "—"
+def test_enum_label_filter():
+    assert enum_label("DUE_DILIGENCE") == "Due Diligence"
+    assert enum_label("for_sale") == "For Sale"
+    assert enum_label(None) == "—"
 
 
 def test_detail_shows_words_not_enums(client, prop):

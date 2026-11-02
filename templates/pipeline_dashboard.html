@@ -48,7 +48,7 @@
         <tbody>
           {% for stage, count in stage_counts.items %}
             <tr>
-              <td>{{ stage|label }}</td>
+              <td>{{ stage|enum_label }}</td>
               <td class="col-right num">{{ count }}</td>
             </tr>
           {% empty %}
