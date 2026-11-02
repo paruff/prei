@@ -53,12 +53,14 @@ class PercentField(forms.DecimalField):
         return None if cleaned is None else cleaned / 100
 
 
-def _percent_field(label: str, hint: str, *, min_value: int = 0) -> PercentField:
+def _percent_field(
+    label: str, hint: str, *, min_value: int = 0, max_value: int = 100
+) -> PercentField:
     return PercentField(
         label=label,
         help_text=hint,
         min_value=min_value,
-        max_value=100,
+        max_value=max_value,
         decimal_places=2,
         widget=StyledNumberInput(attrs={"step": "0.1"}),
     )
@@ -91,9 +93,11 @@ class PropertyForm(forms.ModelForm):
     )
 
     down_payment_pct = _percent_field("Down Payment (%)", "e.g. 20 for 20 %")
-    interest_rate = _percent_field("Interest Rate (%)", "e.g. 7 for 7 %")
+    interest_rate = _percent_field("Interest Rate (%)", "e.g. 7 for 7 %", max_value=30)
     vacancy_rate = _percent_field("Vacancy Rate (%)", "e.g. 8 for 8 %")
-    mgmt_fee_pct = _percent_field("Management Fee (%)", "e.g. 10 for 10 %")
+    mgmt_fee_pct = _percent_field(
+        "Management Fee (%)", "e.g. 10 for 10 %", max_value=50
+    )
 
     class Meta:
         model = Property

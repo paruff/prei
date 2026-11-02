@@ -334,3 +334,21 @@ def test_property_form_percent_fields_take_percentages(user):
         ].value()
         == "7"
     )
+
+
+@pytest.mark.parametrize("field,cap", [("interest_rate", "30"), ("mgmt_fee_pct", "50")])
+def test_property_form_percent_limits(field, cap):
+    assert field not in PropertyForm(data={field: cap}).errors
+    errors = PropertyForm(data={field: str(int(cap) + 1)}).errors
+    assert f"less than or equal to {cap}" in str(errors[field])
+
+
+@pytest.mark.django_db
+def test_property_add_view_rejects_out_of_range_rates(client, user):
+    client.force_login(user)
+    response = client.post(
+        reverse("property_add"), data={"interest_rate": "90", "mgmt_fee_pct": "80"}
+    )
+    assert response.status_code == 200
+    assert "interest_rate" in response.context["form"].errors
+    assert "mgmt_fee_pct" in response.context["form"].errors
