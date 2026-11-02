@@ -60,8 +60,8 @@
   <div class="card form-section">
     <h2 class="card-title">Loan</h2>
     <div class="form-grid-3">
-      {% include "investment_targets/_field.html" with field=form.down_payment_pct label="Down payment (%)" %}
-      {% include "investment_targets/_field.html" with field=form.interest_rate label="Interest rate (%)" %}
+      {% include "investment_targets/_field.html" with field=form.down_payment_pct label="Down payment (%)" hint="Enter as percent: 20 = 20%" %}
+      {% include "investment_targets/_field.html" with field=form.interest_rate label="Interest rate (%)" hint="Enter as percent: 7.25 = 7.25%" %}
       {% include "investment_targets/_field.html" with field=form.loan_term_years label="Loan term (years)" %}
     </div>
   </div>
@@ -70,8 +70,8 @@
     <h2 class="card-title">Assumptions</h2>
     <p class="form-hint">Conservative defaults. Adjust based on local market data.</p>
     <div class="form-grid-2">
-      {% include "investment_targets/_field.html" with field=form.vacancy_rate label="Vacancy rate (%)" %}
-      {% include "investment_targets/_field.html" with field=form.mgmt_fee_pct label="Management fee (%)" %}
+      {% include "investment_targets/_field.html" with field=form.vacancy_rate label="Vacancy rate (%)" hint="Default 8%. Adjust for local market vacancy." %}
+      {% include "investment_targets/_field.html" with field=form.mgmt_fee_pct label="Management fee (%)" hint="Default 10%. Set 0 if self-managing." %}
     </div>
   </div>
 
