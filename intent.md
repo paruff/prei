@@ -52,7 +52,7 @@ Leasing-operations tools (listing syndication, online applications, paid screeni
 - No payment processing, listing syndication or tenant portal (VISION non-goal: property management).
 - Hosted: Postgres, secrets from the environment, HTTPS, and a tested database restore before real leasing data goes in.
 
-## Decisions (2026-11-02)
+## Open questions (all resolved 2026-11-02)
 
 1. **Units:** a unit label on the lease for 2–4 unit properties. A Unit model only if the rent roll needs per-unit expenses (plan.md L10).
 2. **Hosted deploy:** comes right after G9 (G10), so the first hosted users get pricing and screening, and renewals land on a hosted app.

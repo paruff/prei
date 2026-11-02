@@ -7,6 +7,7 @@ These tests validate that each investor-workflow doc file:
 """
 
 import pathlib
+import re
 
 
 DOCS = pathlib.Path(__file__).resolve().parent.parent / "docs"
@@ -435,13 +436,14 @@ class TestPlan:
         content = _read(PLAN)
         for section in (
             "## How this plan works",
-            "## G0:",
             "**Proof:**",
             "## Later",
             "## Risks",
             "## Proof summary",
         ):
             assert section in content, section
+        # earlier goals are archived under features/, so the plan starts at any G<n>
+        assert re.search(r"^## G\d+:", content, re.M), "## G<n>:"
 
     def test_links_to_intent(self):
         content = _read(PLAN)
