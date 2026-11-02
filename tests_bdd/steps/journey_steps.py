@@ -345,12 +345,20 @@ class _FormParser(HTMLParser):
             self._select = None
 
 
+def _next_step(ctx: JourneyCtx, label: str, href: str) -> None:
+    """Follow a link in the acquired property's next-step bar (FR-18)."""
+    _click(ctx, r"^Pipeline$")
+    _click(ctx, r"^1200 Seed Pass Ln$", r"^/pipeline/\d+/$")
+    _click(ctx, label, href)
+
+
 @when("I enter monthly actuals for it")
 def enter_actuals(ctx: JourneyCtx) -> None:
     """Fill in and submit the actuals form on the portfolio dashboard."""
     _click(ctx, r"^Portfolio$")
     prop_id = re.search(r'data-property-id="(\d+)"', _portfolio_row(ctx.page))
     assert prop_id, "no property id in the portfolio row"
+    _next_step(ctx, r"^Enter actuals$", r"/portfolio/\?property_id=")
     form = _FormParser(r"/portfolio/actuals/add/$", ctx.url)
     form.feed(ctx.page)
     assert form.action, "no actuals form on the portfolio dashboard"
@@ -383,7 +391,10 @@ def run_brrrr(ctx: JourneyCtx, rehab: int, arv: int) -> None:
     cells = _cells(_portfolio_row(ctx.page))
     price, rent = _dollars(cells[1]), _dollars(cells[3])
     assert price == ctx.offer and rent > 0, f"portfolio row {cells[:4]}"
-    _click(ctx, r"BRRRR")
+    _next_step(ctx, r"^Model BRRRR$", r"^/brrrr/\?purchase_price=")
+    assert f'value="{price}' in ctx.page and f'value="{rent}' in ctx.page, (
+        "BRRRR not pre-filled"
+    )
     # the page computes in JavaScript and has no form; its view also takes a POST
     token = ctx.client.cookies.get("csrftoken")
     assert token, "no csrftoken cookie: sign in first"
@@ -413,8 +424,8 @@ def add_to_leasing(ctx: JourneyCtx) -> None:
     _click(ctx, r"^Portfolio$")
     prop_id = re.search(r'data-property-id="(\d+)"', _portfolio_row(ctx.page))
     assert prop_id, "acquired property not in the portfolio"
-    _click(ctx, r"Leasing")
-    _click(ctx, r"Add", r"/leasing/add/$")
+    _next_step(ctx, r"^Start leasing$", r"/leasing/add/\?property_id=")
+    assert f'value="{prop_id.group(1)}" selected' in ctx.page, "not pre-selected"
     _submit(
         ctx,
         r"/leasing/add/$",
