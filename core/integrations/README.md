@@ -212,7 +212,7 @@ pytest core/tests/test_attom_adapter.py      # ATTOM adapter
 pytest core/tests/test_hud_scraper.py        # HUD scraper
 pytest core/tests/test_health_monitor.py     # Health monitoring
 pytest core/tests/test_market_adapters_v2.py # RentCast, GreatSchools, WalkScore
-pytest tests/test_market_adapters_v2.py      # Comps + market_data wiring
+pytest tests/test_market_adapters_comps_wiring.py      # Comps + market_data wiring
 pytest tests/test_market_adapters.py         # Census, BLS, snapshot cache
 ```
 
