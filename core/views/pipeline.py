@@ -464,6 +464,8 @@ def pipeline_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "days_in_pipeline": days_in_pipeline,
             "kill_reasons": kill_reasons,
             "underwriting": underwriting_summary(prop),
+            "is_acquired": prop.property_record_id is not None
+            and prop.status == PipelineProperty.Status.ACQUIRED,
         },
     )
 

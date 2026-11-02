@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import io
-from decimal import InvalidOperation
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -123,6 +123,14 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
 
     result = None
     form_data: dict[str, str] = {}
+    prefill: dict[str, Decimal] = {}
+    for key in ("purchase_price", "monthly_rent"):
+        try:
+            value = Decimal(request.GET.get(key, ""))
+        except InvalidOperation:
+            continue
+        if value.is_finite() and value >= 0:
+            prefill[key] = value
 
     if request.method == "POST":
         # Collect form values
@@ -163,7 +171,7 @@ def brrrr_calculator(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "brrrr_calculator.html",
-        {"result": result, "form_data": form_data},
+        {"result": result, "form_data": form_data, "prefill": prefill},
     )
 
 

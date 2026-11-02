@@ -70,7 +70,7 @@
         <tbody>
           {% for prop in properties %}
           <tr data-property-id="{{ prop.property_record_id }}">
-            <td>{{ prop.address|truncatechars:40 }}</td>
+            <td><a href="{% url 'pipeline_detail' prop.pk %}">{{ prop.address|truncatechars:40 }}</a></td>
             <td class="col-right num">{{ prop.position.price|money }}</td>
             <td class="col-right num" data-metric="down-payment">{{ prop.position.down_payment_pct|pct }}</td>
             <td class="col-right num">{% if prop.estimated_rent %}{{ prop.estimated_rent|money }}/mo{% else %}—{% endif %}</td>
@@ -96,7 +96,7 @@
         <div class="form-group">
           <label class="form-label" for="actual_property">Property</label>
           <select class="form-input" id="actual_property" name="property_id" required>
-            {% for prop in actuals_properties %}<option value="{{ prop.pk }}">{{ prop.address }}</option>{% endfor %}
+            {% for prop in actuals_properties %}<option value="{{ prop.pk }}"{% if prop.pk|stringformat:"s" == selected_property_id %} selected{% endif %}>{{ prop.address }}</option>{% endfor %}
           </select>
         </div>
         <div class="form-group">
