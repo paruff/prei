@@ -13,8 +13,8 @@
     <p class="page-sub">
       {% if growth_area %}
         {{ growth_area.city_name }}, {{ growth_area.state }}
-        &middot; GACS {{ growth_area.composite_score|score }}
-        &middot; Landlord {{ growth_area.landlord_score|default:"—" }}/10
+        &middot; Market score {{ growth_area.composite_score|score }}
+        &middot; Landlord-friendliness {{ growth_area.landlord_score|default_if_none:"not rated" }}{% if growth_area.landlord_score is not None %}/10{% endif %}
       {% else %}
         All Markets
       {% endif %}
@@ -209,7 +209,7 @@
             {% if ga_id %}
               <input type="hidden" name="growth_area_id" value="{{ ga_id }}">
             {% endif %}
-            <button type="submit" class="btn btn-danger">Kill</button>
+            <button type="submit" class="btn btn-danger">Remove</button>
           </form>
         </td>
       </tr>

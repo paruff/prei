@@ -68,7 +68,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="12" class="text-center">No USDA properties found.</td>
+        {% url 'usda_property_list' as usda_property_list_url %}<td colspan="12">{% include "components/empty_state.html" with title="No USDA properties found" body="Nothing matches these filters. Clear them to see every USDA listing." action_url=usda_property_list_url action_label="Clear filters" %}</td>
       </tr>
       {% endfor %}
     </tbody>

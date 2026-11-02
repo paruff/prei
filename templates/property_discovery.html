@@ -10,8 +10,8 @@
     <p class="page-sub">
       {% if growth_area %}
         {{ growth_area.city_name }}, {{ growth_area.state }}
-        &middot; GACS {{ growth_area.composite_score|score }}
-        &middot; Landlord {{ growth_area.landlord_score|default:"—" }}/10
+        &middot; Market score {{ growth_area.composite_score|score }}
+        &middot; Landlord-friendliness {{ growth_area.landlord_score|default_if_none:"not rated" }}{% if growth_area.landlord_score is not None %}/10{% endif %}
       {% else %}
         Choose a growth area below to find properties.
       {% endif %}
@@ -27,7 +27,7 @@
 {% if user_growth_areas %}
 <div class="table-wrap">
   <table class="data-table">
-    <thead><tr><th>City</th><th>State</th><th>GACS</th><th>Conf.</th><th></th></tr></thead>
+    <thead><tr><th>City</th><th>State</th><th>{% include "components/gacs_label.html" with text="Market score" %}</th><th><abbr title="How much of the data behind the score was available">Confidence</abbr></th><th></th></tr></thead>
     <tbody>
       {% for ga in user_growth_areas %}
       <tr>
@@ -104,7 +104,7 @@
     <div class="kpi-card">
       <div class="kpi-label">Data Confidence</div>
       <div class="kpi-value">{{ growth_area.data_confidence|pct:"pts" }}</div>
-      <div class="kpi-sub" title="Based on available data sources (Census, FRED, HUD FMR). Higher = more signals available.">GACS v2</div>
+      <div class="kpi-sub" title="Based on available data sources (Census, FRED, HUD FMR). Higher = more signals available.">Market score, v2</div>
     </div>
   </div>
 
@@ -133,7 +133,7 @@
   {% if discovery_results.discovered > 0 %}
   <div class="message message-success mt-3">{{ discovery_results.discovered }} new. {{ discovery_results.screening_passed }} passed screening — auto-screened against your criteria below, no extra step needed.</div>
   {% else %}
-  <div class="message message-warning mt-3">No new properties found.</div>
+  {% url 'pipeline_kanban' as pipeline_kanban_url %}{% include "components/empty_state.html" with title="No new properties found" body="Every match is already in your pipeline. Try another market or loosen your screening criteria." action_url=pipeline_kanban_url action_label="Open the pipeline" %}
   {% endif %}
 
   {% if discovery_results.properties %}

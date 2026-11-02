@@ -44,7 +44,7 @@
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Avg GACS Score</div>
+    <div class="kpi-label">{% include "components/gacs_label.html" with text="Avg market score" %}</div>
     <div class="kpi-value num">{{ avg_gacs|score }}</div>
     <div class="kpi-sub">Market quality</div>
   </div>

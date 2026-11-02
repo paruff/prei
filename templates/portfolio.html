@@ -145,9 +145,7 @@
       </ul>
     </div>
   {% else %}
-    <div class="message message-info">
-      No properties found. <a href="{% url 'property_add' %}">Add a property</a> to start tracking performance.
-    </div>
+    {% url 'property_add' as property_add_url %}{% include "components/empty_state.html" with title="No properties to track yet" body="Add a property to start tracking performance against your underwriting." action_url=property_add_url action_label="Add a property" %}
   {% endif %}
 
   <dialog id="actualsModal" class="actuals-dialog" aria-labelledby="actualsModalLabel">

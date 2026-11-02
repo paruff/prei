@@ -33,7 +33,7 @@
         <div class="kanban-card-actions">
           <button class="kanban-action-trigger" aria-label="Actions" type="button">⋮</button>
           <div class="kanban-action-menu" role="menu" hidden>
-            <button class="kanban-action-item" data-action="kill" role="menuitem" type="button">Kill</button>
+            <button class="kanban-action-item" data-action="kill" role="menuitem" type="button">Remove</button>
             <button class="kanban-action-item" data-action="hold" role="menuitem" type="button">Hold</button>
             <button class="kanban-action-item" data-action="reactivate" role="menuitem" type="button" hidden>Reactivate</button>
           </div>
@@ -54,7 +54,7 @@
         {% endif %}
       </div>
       {% empty %}
-      <div class="kanban-empty">&mdash;</div>
+      {% include "components/empty_state.html" with title="Nothing here yet" body="Drag a property here from the previous stage." %}
       {% endfor %}
     </div>
 
@@ -80,7 +80,7 @@
         <button class="kanban-market-btn"
                 data-select-market data-id="{{ ga.pk }}" data-name="{{ ga.city_name }}">
           <strong>{{ ga.city_name }}</strong>, {{ ga.state }}
-          <span class="chip chip-default">GACS {{ ga.composite_score|score }}</span>
+          <span class="chip chip-default">Market score {{ ga.composite_score|score }}</span>
         </button>
         {% endfor %}
       </div>
@@ -238,12 +238,12 @@
     item.closest('.kanban-action-menu').hidden = true;
 
     // Confirm destructive actions.
-    if (action === 'kill' && !confirm('Kill this property? This cannot be undone from the board.')) return;
+    if (action === 'kill' && !confirm('Remove this property from the pipeline? This cannot be undone from the board.')) return;
     if (action === 'hold' && !confirm('Place this property on hold?')) return;
 
     var reason = '';
     if (action === 'kill') {
-      reason = prompt('Reason for killing (optional):') || '';
+      reason = prompt('Reason for removing (optional):') || '';
     } else if (action === 'hold') {
       reason = prompt('Hold reason (optional):') || '';
     }

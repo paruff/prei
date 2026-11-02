@@ -44,7 +44,7 @@
 <div class="card mt-5">
   <h2 class="card-title">Top Growth Areas</h2>
   <div class="table-wrap"><table class="data-table">
-    <thead><tr><th>City</th><th>State</th><th>Score</th><th>Landlord</th></tr></thead>
+    <thead><tr><th>City</th><th>State</th><th>Score</th><th>Landlord-friendliness</th></tr></thead>
     <tbody>
       {% for ga in top_areas %}
       <tr>
@@ -82,7 +82,7 @@
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="4">No data source health records yet. Run a data ingestion to populate.</td></tr>
+      <tr><td colspan="4">{% include "components/empty_state.html" with title="No data source checks yet" body="Source health appears here after the first data refresh. Use Refresh all below." %}</td></tr>
       {% endfor %}
     </tbody>
   </table></div>

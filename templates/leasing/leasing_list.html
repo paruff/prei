@@ -51,7 +51,7 @@
     {% endfor %}
     </div>
   {% else %}
-    <div class="pipeline-empty">No leasing entries found.</div>
+    {% url 'leasing_add' as leasing_add_url %}{% include "components/empty_state.html" with title="No leasing entries yet" body="Start leasing an acquired property to track showings through move-in." action_url=leasing_add_url action_label="Start leasing" %}
   {% endif %}
 
 </div>

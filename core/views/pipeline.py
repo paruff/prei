@@ -785,7 +785,7 @@ def pipeline_closing_create(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == "POST":
         final_price = request.POST.get("final_purchase_price")
         closing_date_str = request.POST.get("closing_date")
-        closing_costs = request.POST.get("closing_costs", "0")
+        closing_costs = request.POST.get("closing_costs", "").strip() or "0"
         loan_amount = request.POST.get("loan_amount", "").strip()
         down_payment = request.POST.get("down_payment", "").strip()
         lender = request.POST.get("lender", "")

@@ -125,15 +125,12 @@
 </div>
 </div>
 {% else %}
-<div class="message message-warning" role="status">
-  {% if selected_state or selected_zip %}
-    No properties found matching your filters.
-    {% if selected_state %}<strong>State:</strong> {{ selected_state }}{% endif %}
-    {% if selected_zip %}<strong>Zip:</strong> {{ selected_zip }}{% endif %}
-  {% else %}
-    No VRM properties scraped yet. Select a state and click <strong>Scrape Selected State</strong> to begin.
-  {% endif %}
-</div>
+{% url 'vrm_properties_list' as vrm_list_url %}
+{% if selected_state or selected_zip %}
+  {% include "components/empty_state.html" with title="No properties match" body="Nothing matches these filters. Clear them to see every VRM listing." action_url=vrm_list_url action_label="Clear filters" %}
+{% else %}
+  {% include "components/empty_state.html" with title="No VRM properties yet" body="Select a state above and click Scrape Selected State to load listings." %}
+{% endif %}
 {% endif %}
 
 <script nonce="{{ csp_nonce }}">

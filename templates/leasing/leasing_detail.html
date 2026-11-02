@@ -62,7 +62,7 @@
       <div class="stage-history">
         {% for stage_name, ts in stage_history %}
         <div class="stage-history-item">
-          <span class="stage-history-name">{{ stage_name|title }}</span>
+          <span class="stage-history-name">{{ stage_name|enum_label }}</span>
           {% if stage_name == entry.stage %}
             <span class="stage-history-current">Current</span>
           {% endif %}

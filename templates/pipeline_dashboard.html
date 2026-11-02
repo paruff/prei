@@ -17,7 +17,7 @@
   <div class="kpi-card">
     <div class="kpi-label">Acquisition</div>
     <div class="kpi-value num-good">{{ flow.acquisition }}</div>
-    <div class="kpi-sub">GACS → DISCOVERY → SCREENING</div>
+    <div class="kpi-sub">Market → Discovery → Screening</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Deal Making</div>
@@ -48,11 +48,11 @@
         <tbody>
           {% for stage, count in stage_counts.items %}
             <tr>
-              <td>{{ stage }}</td>
+              <td>{{ stage|enum_label }}</td>
               <td class="col-right num">{{ count }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="2">No pipeline activity yet.</td></tr>
+            {% url 'pipeline_kanban' as pipeline_kanban_url %}<tr><td colspan="2">{% include "components/empty_state.html" with title="No pipeline activity yet" body="Discover a property to start moving deals through screening." action_url=pipeline_kanban_url action_label="Open the pipeline" %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -83,7 +83,7 @@
               <tr>
                 <td>{{ a.asset_id }}</td>
                 <td title="{{ a.address }}">{{ a.address|truncatechars:40 }}</td>
-                <td>{{ a.current_stage }}</td>
+                <td>{{ a.get_current_stage_display }}</td>
                 <td class="col-right num">{% if a.price %}{{ a.price|money }}{% endif %}</td>
                 <td class="col-right num">{% if a.cap_rate %}{{ a.cap_rate|pct }}{% endif %}</td>
                 <td class="col-right num">{% if a.mao %}{{ a.mao|money }}{% endif %}</td>
@@ -94,16 +94,14 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">
-        <p>No assets have passed screening yet. Run discovery from the <a href="{% url 'growth_explorer' %}">Growth Area Explorer</a>.</p>
-      </div>
+      {% url 'growth_explorer' as growth_explorer_url %}{% include "components/empty_state.html" with title="Nothing has passed screening" body="Run discovery from the Growth Area Explorer to find candidates." action_url=growth_explorer_url action_label="Open the explorer" %}
     {% endif %}
   </div>
 </div>
 
 <!-- Screening Results: Killed (failed screening) -->
 <div class="card mb-form">
-  <div class="card-title">🛑 Failed Screening / Killed ({{ killed_assets|length }})</div>
+  <div class="card-title">🛑 Failed Screening / Removed ({{ killed_assets|length }})</div>
   <div>
     {% if killed_assets %}
       <div class="table-wrap">
@@ -112,7 +110,7 @@
             <tr>
               <th>Asset ID</th>
               <th>Address</th>
-              <th>Kill Reason</th>
+              <th>Removal Reason</th>
               <th>Price</th>
               <th>Beds</th>
               <th>Updated</th>
@@ -133,9 +131,7 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">
-        <p>No failed assets yet.</p>
-      </div>
+      {% include "components/empty_state.html" with title="Nothing removed yet" body="Properties that fail screening or that you remove show up here." %}
     {% endif %}
   </div>
 </div>
@@ -161,7 +157,7 @@
               <tr>
                 <td>{{ a.asset_id }}</td>
                 <td>{{ a.address|truncatechars:50 }}</td>
-                <td>{% if a.current_stage == "KILLED" %}<span class="num-warn">{{ a.current_stage }}</span>{% else %}{{ a.current_stage }}{% endif %}</td>
+                <td>{% if a.current_stage == "KILLED" %}<span class="num-warn">{{ a.get_current_stage_display }}</span>{% else %}{{ a.get_current_stage_display }}{% endif %}</td>
                 <td>{{ a.source_name|default:"—" }}</td>
                 <td>{{ a.updated_at|date:"M d H:i" }}</td>
               </tr>

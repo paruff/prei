@@ -12,5 +12,5 @@
   </td>
 </tr>
 {% empty %}
-<tr><td colspan="7">No properties match the current filters.</td></tr>
+{% url 'property_discovery' as property_discovery_url %}<tr><td colspan="7">{% include "components/empty_state.html" with title="No properties match" body="Loosen the filters, or discover more properties in a market." action_url=property_discovery_url action_label="Discover properties" %}</td></tr>
 {% endfor %}
