@@ -94,9 +94,7 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">
-        <p>No assets have passed screening yet. Run discovery from the <a href="{% url 'growth_explorer' %}">Growth Area Explorer</a>.</p>
-      </div>
+      {% url 'growth_explorer' as growth_explorer_url %}{% include "components/empty_state.html" with title="Nothing has passed screening" body="Run discovery from the Growth Area Explorer to find candidates." action_url=growth_explorer_url action_label="Open the explorer" %}
     {% endif %}
   </div>
 </div>
@@ -133,9 +131,7 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">
-        <p>No failed assets yet.</p>
-      </div>
+      {% include "components/empty_state.html" with title="Nothing removed yet" body="Properties that fail screening or that you remove show up here." %}
     {% endif %}
   </div>
 </div>

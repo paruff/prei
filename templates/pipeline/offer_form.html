@@ -97,7 +97,7 @@
           {% endfor %}
         </table>
       {% else %}
-        <p class="help-text">No offers yet.</p>
+        {% include "components/empty_state.html" with title="No offers yet" body="Use the form to record your first offer on this property." %}
       {% endif %}
     </div>
 

@@ -133,7 +133,7 @@
   {% if discovery_results.discovered > 0 %}
   <div class="message message-success mt-3">{{ discovery_results.discovered }} new. {{ discovery_results.screening_passed }} passed screening — auto-screened against your criteria below, no extra step needed.</div>
   {% else %}
-  <div class="message message-warning mt-3">No new properties found.</div>
+  {% url 'pipeline_kanban' as pipeline_kanban_url %}{% include "components/empty_state.html" with title="No new properties found" body="Every match is already in your pipeline. Try another market or loosen your screening criteria." action_url=pipeline_kanban_url action_label="Open the pipeline" %}
   {% endif %}
 
   {% if discovery_results.properties %}
