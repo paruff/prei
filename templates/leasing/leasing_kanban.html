@@ -53,7 +53,7 @@
         {% endif %}
       </div>
       {% empty %}
-      <div class="kanban-empty">&mdash;</div>
+      {% url 'leasing_add' as leasing_add_url %}{% include "components/empty_state.html" with title="No units at this stage" body="Drag a unit here, or start leasing a property." action_url=leasing_add_url action_label="Start leasing" %}
       {% endfor %}
     </div>
   </div>

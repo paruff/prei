@@ -68,7 +68,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="12" class="text-center">No HUD properties found.</td>
+        {% url 'hud_property_list' as hud_property_list_url %}<td colspan="12">{% include "components/empty_state.html" with title="No HUD properties found" body="Nothing matches these filters. Clear them to see every HUD listing." action_url=hud_property_list_url action_label="Clear filters" %}</td>
       </tr>
       {% endfor %}
     </tbody>

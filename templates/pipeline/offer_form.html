@@ -10,7 +10,7 @@
     <div>
       <a href="{% url 'pipeline_detail' prop.pk %}" class="back-link">&larr; Back to Property</a>
       <h1>New Offer</h1>
-      <p class="help-text">{{ prop.address }} — {{ prop.stage|title }}</p>
+      <p class="help-text">{{ prop.address }} — {{ prop.get_stage_display }}</p>
     </div>
   </div>
 

@@ -13,7 +13,7 @@
       <li>Price: {{ listing.price|money }}</li>
       <li>Beds/Baths: {{ listing.beds }} / {{ listing.baths }}</li>
       <li>Sq Ft: {{ listing.sq_ft }}</li>
-      <li>Type: {{ listing.property_type }}</li>
+      <li>Type: {{ listing.property_type|label }}</li>
       <li>Posted: {{ listing.posted_at }}</li>
       <li><a href="{{ listing.url }}" target="_blank" rel="noopener">Original Listing</a></li>
     </ul>

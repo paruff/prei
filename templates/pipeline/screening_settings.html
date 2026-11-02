@@ -86,7 +86,7 @@
       </div>
       <div class="form-group">
         <label class="form-label" for="id_min_gacs_score_slider">
-          Min GACS Score: <strong id="gacs-label">{{ criteria.min_gacs_score|default:0 }}</strong>
+          Min market score: <strong id="gacs-label">{{ criteria.min_gacs_score|default:0 }}</strong>
         </label>
         <input type="range" id="id_min_gacs_score_slider" name="min_gacs_score_slider" min="0" max="100" step="1"
                value="{{ criteria.min_gacs_score|default:0 }}" class="slider-input"
@@ -104,7 +104,7 @@
       <label class="checkbox-label">
         <input type="checkbox" name="allowed_property_types" value="{{ pt }}"
                {% if pt in criteria.allowed_property_types or not criteria.allowed_property_types %}checked{% endif %}>
-        {{ pt|title }}
+        {{ pt|label }}
       </label>
       {% endfor %}
     </div>
@@ -181,7 +181,7 @@
     .then(function(r) { return r.json(); })
     .then(function(data) {
       document.getElementById('preview-result').textContent =
-        data.passed + ' of ' + data.total + ' properties would pass (' + data.killed + ' killed)';
+        data.passed + ' of ' + data.total + ' properties would pass (' + data.killed + ' removed)';
     })
     .catch(function() {
       document.getElementById('preview-result').textContent = 'Error previewing impact';

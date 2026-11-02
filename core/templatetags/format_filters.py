@@ -62,3 +62,9 @@ def score(value):
     """Score (GACS, investment score) with 2 decimals."""
     number = _to_decimal(value)
     return EMPTY if number is None else _fixed(number, 2)
+
+
+@register.filter
+def label(value):
+    """Raw enum value to words: DUE_DILIGENCE -> Due Diligence, for_sale -> For Sale."""
+    return EMPTY if value in (None, "") else str(value).replace("_", " ").title()

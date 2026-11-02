@@ -18,9 +18,9 @@
       <h1>{{ prop.address|truncatechars:60 }}</h1>
     </div>
     <div class="pipeline-card-badges">
-      <span class="pipeline-badge badge-source">{{ prop.source_type }}</span>
-      <span class="pipeline-badge badge-stage">{{ prop.stage|title }}</span>
-      <span class="pipeline-badge badge-status-{{ prop.status|lower }}">{{ prop.status|title }}</span>
+      <span class="pipeline-badge badge-source">{{ prop.get_source_type_display }}</span>
+      <span class="pipeline-badge badge-stage">{{ prop.get_stage_display }}</span>
+      {% if prop.status != prop.stage %}<span class="pipeline-badge badge-status-{{ prop.status|lower }}">{{ prop.get_status_display }}</span>{% endif %}
     </div>
   </div>
 
@@ -55,9 +55,9 @@
     <div class="pipeline-detail-section">
       <h2>Pipeline Info</h2>
       <table class="pipeline-detail-table">
-        <tr><td>Source</td><td>{{ prop.source_type|title }} #{{ prop.source_id }}</td></tr>
-        <tr><td>Stage</td><td>{{ prop.stage|title }}</td></tr>
-        <tr><td>Status</td><td>{{ prop.status|title }}</td></tr>
+        <tr><td>Source</td><td>{{ prop.get_source_type_display }} (ID {{ prop.source_id }})</td></tr>
+        <tr><td>Stage</td><td>{{ prop.get_stage_display }}</td></tr>
+        <tr><td>Status</td><td>{{ prop.get_status_display }}</td></tr>
         {% if prop.screening_passed is not None %}
         <tr><td>Screening</td><td>{% include "components/screening_verdict.html" with passed=prop.screening_passed %}</td></tr>
         {% endif %}
@@ -65,7 +65,7 @@
         {% if prop.investment_analysis %}<tr><td>Analysis</td><td>#{{ prop.investment_analysis.pk }}</td></tr>{% endif %}
         {% if prop.mao %}<tr><td>MAO</td><td>{{ prop.mao|money }}</td></tr>{% endif %}
         {% if prop.property_record %}<tr><td>Property Record</td><td>#{{ prop.property_record.pk }}</td></tr>{% endif %}
-        {% if prop.kill_reason %}<tr><td class="text-danger">Kill Reason</td><td>{{ prop.kill_reason }}</td></tr>{% endif %}
+        {% if prop.kill_reason %}<tr><td class="text-danger">Removal Reason</td><td>{{ prop.kill_reason }}</td></tr>{% endif %}
       </table>
     </div>
 
@@ -90,7 +90,7 @@
         <div class="stage-history">
         {% for stage_name, ts in stage_history %}
           <div class="stage-history-item">
-            <span class="stage-history-name">{{ stage_name|title }}</span>
+            <span class="stage-history-name">{{ stage_name|label }}</span>
             <span class="stage-history-time">{{ ts|date:"M j, Y g:i A" }}</span>
             {% if stage_name == prop.stage %}
               <span class="stage-history-current">Current</span>
@@ -121,13 +121,13 @@
         <tr><td>Opening Bid</td><td>{{ source_record.opening_bid|money }}</td></tr>
         {% endif %}
         {% if source_record.foreclosure_status %}
-        <tr><td>Foreclosure Status</td><td>{{ source_record.foreclosure_status|title }}</td></tr>
+        <tr><td>Foreclosure Status</td><td>{{ source_record.foreclosure_status|label }}</td></tr>
         {% endif %}
         {% if source_record.property_type %}
-        <tr><td>Property Type</td><td>{{ source_record.property_type|title }}</td></tr>
+        <tr><td>Property Type</td><td>{{ source_record.property_type|label }}</td></tr>
         {% endif %}
         {% if source_record.status %}
-        <tr><td>Status</td><td>{{ source_record.status }}</td></tr>
+        <tr><td>Status</td><td>{{ source_record.status|label }}</td></tr>
         {% endif %}
       </table>
     </div>
@@ -148,7 +148,7 @@
          </form>
        {% endif %}
        {% if prop.status == 'ACTIVE' %}
-       <span class="btn btn-danger" data-kill-modal="block">Kill</span>
+       <span class="btn btn-danger" data-kill-modal="block">Remove</span>
        <span class="btn btn-outline btn-placeholder">Hold</span>
        {% endif %}
        {% if prop.status == 'KILLED' or prop.status == 'ON_HOLD' %}
@@ -163,7 +163,7 @@
 {# Kill reason modal (UI only) #}
 <div id="kill-modal" class="pipeline-modal">
   <div class="pipeline-modal-content">
-    <h3>Kill Property</h3>
+    <h3>Remove Property</h3>
     <form>
       <label for="kill-reason-input">Reason</label>
       <input id="kill-reason-input" list="kill-reasons" name="reason" required>
@@ -174,7 +174,7 @@
       </datalist>
       <div class="pipeline-modal-actions">
         <button type="button" class="btn btn-outline" data-kill-modal="none">Cancel</button>
-        <button type="button" class="btn btn-danger" data-kill-modal="none">Kill (not wired)</button>
+        <button type="button" class="btn btn-danger" data-kill-modal="none">Remove (not wired)</button>
       </div>
     </form>
   </div>

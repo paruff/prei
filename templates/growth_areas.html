@@ -9,7 +9,7 @@
       {% if data_source == "snapshot" %}
         Top markets from recent snapshots
       {% else %}
-        Top growth markets ranked by composite score
+        Top growth markets ranked by market score (GACS): a 0 to 100 read on population, jobs, income, rent and landlord-friendliness. It is a hypothesis, not a forecast.
       {% endif %}
     </p>
   </div>
@@ -65,7 +65,7 @@
             <th>Income Growth (5yr)</th>
             <th>Housing Demand</th>
             <th>Composite Score</th>
-            <th>Conf.</th>
+            <th><abbr title="How much of the data behind the score was available">Confidence</abbr></th>
             <th></th>
           </tr>
         </thead>
@@ -174,7 +174,7 @@
           <td><a href="{{ l.url }}" target="_blank" rel="noopener">View</a></td>
         </tr>
       {% empty %}
-        <tr><td colspan="5">No undervalued listings found.</td></tr>
+        {% url 'search_listings' as search_listings_url %}<tr><td colspan="5">{% include "components/empty_state.html" with title="No undervalued listings" body="No listings priced below their local comparables yet. Search listings to find some." action_url=search_listings_url action_label="Search listings" %}</td></tr>
       {% endfor %}
     </tbody>
   </table>

@@ -145,9 +145,7 @@
       </ul>
     </div>
   {% else %}
-    <div class="message message-info">
-      No properties found. <a href="{% url 'property_add' %}">Add a property</a> to start tracking performance.
-    </div>
+    {% url 'property_add' as property_add_url %}{% include "components/empty_state.html" with title="No properties to track yet" body="Add a property to start tracking performance against your underwriting." action_url=property_add_url action_label="Add a property" %}
   {% endif %}
 
   <dialog id="actualsModal" class="actuals-dialog" aria-labelledby="actualsModalLabel">
@@ -169,7 +167,7 @@
     </div>
     <div class="form-group">
       <label for="actual_vacancy_days" class="form-label">Vacancy Days</label>
-      <input type="number" class="form-input" id="actual_vacancy_days" name="actual_vacancy_days" value="0" min="0" max="31">
+      <input type="number" class="form-input" id="actual_vacancy_days" name="actual_vacancy_days" min="0" max="31" placeholder="0">
     </div>
     <div class="form-group">
       <label for="actual_expenses" class="form-label">Operating Expenses ($)</label>

@@ -33,7 +33,7 @@
         <a href="?saved_id={{ s.id }}&sort={{ sort }}" class="ml-link">Apply</a>
       </li>
     {% empty %}
-      <li>No saved searches yet.</li>
+      <li>No saved searches yet. Save a search to rerun it later.</li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -68,7 +68,7 @@
           <td><a href="{{ item.obj.url }}" target="_blank" rel="noopener noreferrer">View</a></td>
         </tr>
       {% empty %}
-        <tr><td colspan="10">No results.</td></tr>
+        <tr><td colspan="10">{% include "components/empty_state.html" with title="No results" body="Try a different state or ZIP code, or a broader search." %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
