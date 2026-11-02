@@ -8,9 +8,8 @@
 ## Current Architecture
 
 ```
-git push main → docker-publish.yml → build + publish
-                  → post-deployment.yml: smoke + acceptance + performance + security
-                  → deploy to single instance (Render/Docker)
+git push main → docker-publish.yml → build + scan + smoke + publish + attest
+                  → Render deploys from main (single instance)
 ```
 
 **Limitations:** No progressive rollout. Any failure affects 100% of traffic. No automated rollback based on metrics.
@@ -25,7 +24,7 @@ git push main → docker-publish.yml → build + publish
                   → monitor for 5 min:
                      ├── health OK + error rate < 1% → promote to 100%
                      └── health FAIL or error rate > 1% → rollback canary
-                  → post-deployment.yml validates stable
+                  → smoke test validates stable
 ```
 
 ### Prerequisites
@@ -95,7 +94,7 @@ Step 4: Promote or rollback
 
 ## Interim (Pre-K8s) Safety
 
-Until K8s is available, the post-deployment pipeline serves as the deploy gate:
-- Smoke tests run within seconds of deploy
-- Acceptance tests verify content within 60s
-- Rollback is triggered manually or via the post-deployment rollback job
+Until K8s is available, the PR gates (`ci-quality.yml`, including the container journey proof) and the image smoke test in `docker-publish.yml` are the deploy gate:
+- Branch protection requires `All Gates Passed` before merge
+- The built image is scanned and smoke-tested by digest before it is tagged
+- Rollback is a revert of the merge commit (Render redeploys from `main`)

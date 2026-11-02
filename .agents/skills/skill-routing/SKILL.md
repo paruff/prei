@@ -32,7 +32,7 @@ evidence stops being true.
 | `python-testing` | `pytest.ini` drives markers, reruns, and report-log |
 | `python-patterns` | 362 Python files, ~40k non-test lines |
 | `docker-patterns` | Multi-stage Dockerfile is the deployable unit; PDF export broke because the image was never tested |
-| `deployment-patterns` | `render.yaml`, compose base + production overlay, `post-deployment.yml` |
+| `deployment-patterns` | `render.yaml`, compose base + production overlay, `docker-publish.yml` |
 | `database-migrations` | 52 migrations including a merge migration (`0049_merge`); rollback untested |
 | `postgres-patterns` | `psycopg2-binary` in production |
 | `contract-first` | Four external adapters; Census returns `population: 0` while `population_current` is populated |

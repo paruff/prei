@@ -1,5 +1,9 @@
 name: Post-Commit PR Gates
 
+# One required check protects main: "All Gates Passed" (branch protection).
+# Docker Accept and the authenticated ZAP scan are jobs here, run only when the
+# PR touches paths that can break them, so the gate stays a single check.
+
 on:
   pull_request:
     branches: [main, develop]
@@ -11,11 +15,9 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
 
 jobs:
-  # ── Fast checks: no Django deps needed ────────────────────────────────────
-
   pr-title:
     name: "📝 PR Title"
     runs-on: ubuntu-latest
@@ -32,22 +34,29 @@ jobs:
               core.setFailed(`PR title "${title}" does not follow Conventional Commits. Expected: type(scope): description`);
             }
 
-  lint:
-    name: "🔍 Lint"
+  # ── Static checks: .pre-commit-config.yaml is the single source of truth ───
+
+  static:
+    name: "🔍 Static Checks"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
-      - name: Install dependencies
-        run: pip install "$(grep -oE '^ruff==[0-9.]+' requirements.txt)"
-      - name: Ruff
-        run: ruff check .
-      - name: Ruff format
-        run: ruff format --check .
-      - name: DESIGN.md lint
-        run: npx --yes @google/design.md@0.4.0 lint --format text DESIGN.md
-      - name: Design lint
-        run: python3 scripts/check_design.py
+      - name: Install pre-commit
+        run: pip install pre-commit==4.6.2
+      - name: Cache pre-commit environments
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+      # hadolint needs a host binary (run below via docker); gitleaks only sees
+      # staged changes as a hook, so the full-history scan is the `secrets` job.
+      - name: Pre-commit (ruff, mypy, djlint, design, DESIGN.md, pins, hygiene)
+        env:
+          SKIP: hadolint,gitleaks
+        run: pre-commit run --all-files --show-diff-on-failure
+      - name: Hadolint
+        run: docker run --rm -i hadolint/hadolint hadolint --failure-threshold error - < Dockerfile
 
   secrets:
     name: "🔑 Secrets"
@@ -64,32 +73,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ── Django system checks (no test runner, just verification) ──────────────
+  # ── Which optional jobs does this PR need? ────────────────────────────────
 
-  django-checks:
-    name: "🩺 Django Checks"
+  changes:
+    name: "🧭 Changed Paths"
     runs-on: ubuntu-latest
-    env:
-      DJANGO_SETTINGS_MODULE: investor_app.settings_test
-      SECRET_KEY: ci-checks-django
-      DEBUG: "True"
-      DATABASE_URL: "sqlite:///tmp/ci_check_db.sqlite3"
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+      security: ${{ steps.filter.outputs.security }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/python-setup
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: System checks
-        run: python manage.py check
-      - name: Missing migrations
-        run: python manage.py makemigrations --check --dry-run --noinput
-      - name: Static files
-        run: python manage.py collectstatic --noinput --verbosity 0
+      - name: Classify changed files
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename')
+          docker=false
+          security=false
+          if echo "$files" | grep -qE '^(core/|templates/|investor_app/|tests_bdd/|tests/acceptance/|scripts/entrypoint\.sh|Dockerfile|docker-compose\.yml|requirements\.txt|Makefile|\.github/workflows/ci-quality\.yml)'; then docker=true; fi
+          if echo "$files" | grep -qE '^(investor_app/|core/middleware\.py|core/decorators\.py|core/views/permissions\.py|templates/|\.zap/|requirements\.txt|Dockerfile|\.github/workflows/ci-quality\.yml)'; then security=true; fi
+          echo "docker=$docker" >> "$GITHUB_OUTPUT"
+          echo "security=$security" >> "$GITHUB_OUTPUT"
+          echo "docker-accept=$docker zap=$security"
 
-  # ── Test matrix: parallel by layer ────────────────────────────────────────
+  # ── Tests: one install per job, split by layer ────────────────────────────
 
-  tests-unit:
-    name: "🧪 Unit Tests"
+  tests-fast:
+    name: "🧪 Unit + Checks"
     runs-on: ubuntu-latest
     env:
       DJANGO_SETTINGS_MODULE: investor_app.settings_test
@@ -100,8 +110,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libcairo2-dev
       - name: Install dependencies
         run: pip install -r requirements.txt coverage
-      - name: Collect static files
-        run: python manage.py collectstatic --noinput --verbosity 0
+      - name: Django checks, migrations, static files
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          python manage.py check
+          python manage.py makemigrations --check --dry-run --noinput
+          python manage.py collectstatic --noinput --verbosity 0
       - name: Run unit tests
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
@@ -110,10 +124,16 @@ jobs:
       - name: Flaky test report
         if: always()
         run: python .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode report --fail-over 2
+      # Real HTTP against pytest-django's live_server (BASE_URL unset).
+      - name: Run acceptance tests
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          coverage run --parallel-mode -m pytest tests/acceptance/ -m acceptance \
+            -q --tb=short --report-log=.pytest-report-acceptance.jsonl
       - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-unit
+          name: coverage-fast
           path: .coverage.*
           include-hidden-files: true
           retention-days: 1
@@ -121,8 +141,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: report-log-unit
-          path: .pytest-report.jsonl
+          name: report-log-fast
+          path: .pytest-report*.jsonl
           retention-days: 1
 
   tests-integration:
@@ -213,117 +233,67 @@ jobs:
           path: .pytest-report.jsonl
           retention-days: 1
 
-  typecheck:
-    name: "🔷 Typecheck"
+  coverage:
+    name: "📊 Coverage"
+    needs: [tests-fast, tests-integration, tests-e2e]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
-      - name: Install system deps
-        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Mypy
-        run: mypy core/ investor_app/finance/ --ignore-missing-imports --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code operator --disable-error-code misc --disable-error-code has-type --disable-error-code arg-type --disable-error-code assignment
-
-  # ── Lighthouse PWA audit ────────────────────────────────────────────────
-
-  lighthouse:
-    name: "🚀 Lighthouse PWA Audit"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/python-setup
-      - name: Install system deps
-        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Collect static files
-        run: python manage.py collectstatic --noinput --verbosity 0
-      - name: Install Lighthouse CI
-        run: npm install -g @lhci/cli
-      - name: Run Lighthouse CI
-        continue-on-error: true
-        run: |
-          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          export DATABASE_URL="sqlite:///tmp/lighthouse_test.db"
-          export RUN_MIGRATIONS=1
-          export SKIP_SEED=1
-          export DJANGO_ENV=development
-          export DEBUG=True
-          export ALLOWED_HOSTS=localhost,127.0.0.1
-
-          # Start Django server in background
-          python manage.py runserver 0.0.0.0:8000 &
-          SERVER_PID=$!
-
-          # Wait for server to start
-          for i in $(seq 1 30); do
-            if curl -s http://localhost:8000/health/ > /dev/null 2>&1; then
-              echo "Server started"
-              break
-            fi
-            sleep 2
-          done
-
-          # Run Lighthouse CI
-          lhci autorun --config=lighthouserc.json --collect.staticDistDir=./staticfiles
-
-          # Stop server
-          kill $SERVER_PID 2>/dev/null || true
-      - name: Upload Lighthouse results
-        uses: actions/upload-artifact@v7
-        if: always()
+      - name: Install coverage
+        run: pip install coverage
+      - name: Download fast coverage
+        uses: actions/download-artifact@v8
         with:
-          name: lighthouse-results
-          path: .lighthouseci/
-          retention-days: 7
+          name: coverage-fast
+      - name: Download integration coverage
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage-integration
+      - name: Download e2e coverage
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage-e2e
+      - name: Combine and report
+        run: |
+          coverage combine
+          coverage report --fail-under=75
 
-  # ── Acceptance tests (real HTTP, via pytest-django live_server) ────────────
-  # BASE_URL is intentionally unset here: tests/acceptance/conftest.py falls
-  # back to a live_server for this run. Full acceptance tests also run
-  # post-deployment against the actual deployed artifact (BASE_URL set there).
+  # ── Container proof: only when the PR can change what the image does ──────
 
-  acceptance-check:
-    name: "🧪 Acceptance Tests"
+  docker-accept:
+    name: "🐳 Journey proof (container)"
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
     runs-on: ubuntu-latest
-    env:
-      SECRET_KEY: ci-acceptance-check-key
-      DATABASE_URL: sqlite:////tmp/acceptance_check.sqlite3
-      DJANGO_SETTINGS_MODULE: investor_app.settings_test
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/python-setup
       - name: Install test deps
-        run: |
-          pip install -r requirements.txt -q
-          pip install httpx pydantic pytest-django -q
-      - name: Collect static files
-        run: python manage.py collectstatic --noinput --verbosity 0
-      - name: Run acceptance tests against live_server
-        run: python -m pytest tests/acceptance/ -q --tb=short -m acceptance
-
-  # ── Financial math verification ────────────────────────────────────────────
-
-  finance-math:
-    name: "💰 Financial Math"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/python-setup
-      - name: Install deps
         run: pip install -r requirements.txt -q
-      - name: Verify KPI calculations
-        run: python -m pytest tests/test_finance_math.py -v --tb=short
+      # Makefile's ensure-env uses [[ ]], which /bin/sh (dash) lacks.
+      - name: Create .env
+        run: |
+          cp .env.example .env
+          # .env.example is production-shaped; the journey talks plain HTTP.
+          sed -i -e 's/^DJANGO_ENV=.*/DJANGO_ENV=development/' -e 's/^DEBUG=.*/DEBUG=True/' -e 's/^SECURE_SSL_REDIRECT=.*/SECURE_SSL_REDIRECT=False/' .env
+      - name: Build, start, seed, run journey, stop
+        timeout-minutes: 12
+        run: make docker-accept
+      - name: Container logs on failure
+        if: failure() || cancelled()
+        run: docker compose logs --no-color --tail 200 || true
 
   # ── Authenticated security scan (ephemeral CI instance, not live deploy) ──
-  # See docs/KNOWN_LIMITATIONS.md LIMIT-22: this scans a freshly-migrated,
-  # freshly-seeded CI-only instance, not the real deployment. The existing
-  # unauthenticated full scan in post-deployment.yml still runs against the
-  # live artifact and is unchanged.
+  # See docs/KNOWN_LIMITATIONS.md LIMIT-22. Runs on PRs that touch settings,
+  # middleware, auth/permissions, templates or dependencies; the nightly
+  # workflow runs the same scan unconditionally.
 
   zap-authenticated-scan:
     name: "🛡️ Authenticated ZAP Scan"
+    needs: changes
+    if: needs.changes.outputs.security == 'true'
     runs-on: ubuntu-latest
     env:
       DJANGO_SETTINGS_MODULE: investor_app.settings_test
@@ -379,59 +349,21 @@ jobs:
         if: always()
         run: cat server.log || true
 
-  # ── Coverage combine (gate: all test jobs must pass) ──────────────────────
-
-  coverage:
-    name: "📊 Coverage"
-    needs: [tests-unit, tests-integration, tests-e2e]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/python-setup
-      - name: Install coverage
-        run: pip install coverage
-      - name: Download unit coverage
-        uses: actions/download-artifact@v8
-        with:
-          name: coverage-unit
-      - name: Download integration coverage
-        uses: actions/download-artifact@v8
-        with:
-          name: coverage-integration
-      - name: Download e2e coverage
-        uses: actions/download-artifact@v8
-        with:
-          name: coverage-e2e
-      - name: Combine and report
-        run: |
-          coverage combine
-          coverage report --fail-under=75
-
-  # ── Summary gate ──────────────────────────────────────────────────────────
+  # ── The one required check ────────────────────────────────────────────────
+  # Conditional jobs (docker-accept, zap) are "skipped" when not needed; that is
+  # fine. Any failed or cancelled job fails the gate.
 
   pr-gates-pass:
     name: "All Gates Passed"
-    needs: [pr-title, lint, secrets, django-checks, tests-unit, tests-integration, tests-e2e, typecheck, acceptance-check, finance-math, coverage, zap-authenticated-scan]
+    needs: [pr-title, static, secrets, changes, tests-fast, tests-integration, tests-e2e, coverage, docker-accept, zap-authenticated-scan]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Verify all gates
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: |
-          FAILED=""
-          if [ "${{ needs.pr-title.result }}" != "success" ]; then FAILED="$FAILED pr-title"; fi
-          if [ "${{ needs.lint.result }}" != "success" ]; then FAILED="$FAILED lint"; fi
-          if [ "${{ needs.secrets.result }}" != "success" ]; then FAILED="$FAILED secrets"; fi
-          if [ "${{ needs.django-checks.result }}" != "success" ]; then FAILED="$FAILED django-checks"; fi
-          if [ "${{ needs.tests-unit.result }}" != "success" ]; then FAILED="$FAILED tests-unit"; fi
-          if [ "${{ needs.tests-integration.result }}" != "success" ]; then FAILED="$FAILED tests-integration"; fi
-          if [ "${{ needs.tests-e2e.result }}" != "success" ]; then FAILED="$FAILED tests-e2e"; fi
-          if [ "${{ needs.typecheck.result }}" != "success" ]; then FAILED="$FAILED typecheck"; fi
-          if [ "${{ needs.acceptance-check.result }}" != "success" ]; then FAILED="$FAILED acceptance"; fi
-          if [ "${{ needs.finance-math.result }}" != "success" ]; then FAILED="$FAILED finance-math"; fi
-          if [ "${{ needs.coverage.result }}" != "success" ]; then FAILED="$FAILED coverage"; fi
-          if [ "${{ needs.zap-authenticated-scan.result }}" != "success" ]; then FAILED="$FAILED zap-authenticated-scan"; fi
-          if [ -n "$FAILED" ]; then
-            echo "❌ Failed gates:${FAILED}"
-            exit 1
-          fi
-          echo "✅ All gates passed"
+          echo "❌ A gate failed or was cancelled:"
+          echo '${{ toJSON(needs) }}' | python3 -c 'import json,sys; [print(" ", k, v["result"]) for k, v in json.load(sys.stdin).items() if v["result"] != "success"]'
+          exit 1
+      - name: All gates passed
+        run: echo "✅ All gates passed"

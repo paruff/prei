@@ -3,10 +3,9 @@
   ZAP context for the Phase C (C-2) authenticated full scan.
 
   Targets the ephemeral CI instance started by the zap-authenticated-scan
-  job in .github/workflows/ci-quality.yml (localhost:8000, freshly migrated
+  job in .github/workflows/ci-quality.yml and nightly.yml (localhost:8000, freshly migrated
   SQLite DB, seeded via `manage.py seed_zap_scan_user`). Never used against
-  the live deployment - post-deployment.yml's unauthenticated full scan is
-  unchanged and still runs against the real deployed artifact.
+  the live deployment.
 
   The __ZAP_AUTH_CREDS_B64__ placeholder is substituted at job runtime (the
   "Render ZAP auth context" step in ci-quality.yml) with a base64

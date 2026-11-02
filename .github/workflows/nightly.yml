@@ -1,0 +1,397 @@
+name: Nightly
+
+# Everything that should watch the repo without blocking a merge: new CVEs in
+# the published image, an authenticated ZAP scan, Lighthouse budgets, docs
+# drift and the live data sources. Failures open one issue each, or fail the run.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  packages: read
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  cves:
+    name: "🚨 CVEs in :latest"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull published :latest
+        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      - name: Trivy — SARIF scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: sarif
+          output: trivy-nightly.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: false
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-nightly.sarif
+          category: trivy-nightly-scan
+      - name: Trivy — check for CRITICAL CVEs
+        id: critical-check
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        continue-on-error: true
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: false
+      - name: Open or update issue for CRITICAL CVEs
+        if: steps.critical-check.outcome == 'failure'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const title = '🚨 Nightly CRITICAL CVEs in :latest';
+            const body = [
+              '## Nightly Trivy scan found CRITICAL vulnerabilities',
+              '',
+              `**Image:** \`${process.env.REGISTRY}/${process.env.IMAGE_NAME}:latest\``,
+              `**Detected:** ${new Date().toISOString()}`,
+              `**Workflow:** [View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              '',
+              '### What to do',
+              '1. Check **Security → Code scanning** for the full CVE list',
+              '2. Update the base image or affected packages',
+              '3. Push a fix so the publish workflow republishes a clean image',
+            ].join('\n');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find(issue => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+
+  docs-drift:
+    name: "📄 Docs drift"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Detect documentation drift
+        id: docs-drift
+        run: |
+          git log --since="24 hours ago" --name-only --pretty=format: > changed-files.txt
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          changed_paths = {
+              line.strip()
+              for line in Path("changed-files.txt").read_text().splitlines()
+              if line.strip()
+          }
+          changed_code_paths = sorted(
+              path
+              for path in changed_paths
+              if path.startswith("core/services/")
+              or path.startswith("investor_app/finance/")
+              or path.startswith("core/integrations/")
+          )
+          docs_updated = any(
+              path in {"docs/API_SURFACE.md", "docs/CHANGE_IMPACT_MAP.md"}
+              for path in changed_paths
+          )
+
+          if changed_code_paths and not docs_updated:
+              body = "\n".join(
+                  [
+                      "## Nightly documentation drift detected",
+                      "",
+                      "Code changed in the last 24 hours without a matching update to living docs:",
+                      "",
+                      *[f"- `{path}`" for path in changed_code_paths],
+                      "",
+                      "Update `docs/API_SURFACE.md` and/or `docs/CHANGE_IMPACT_MAP.md` if the public API or documented impact changed.",
+                  ]
+              )
+          else:
+              body = "No documentation drift detected."
+
+          Path("docs-drift.md").write_text(body + "\n")
+
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as handle:
+              handle.write(body + "\n")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(
+                  f"has_drift={'true' if changed_code_paths and not docs_updated else 'false'}\n"
+              )
+          PY
+      - name: Open or update documentation drift issue
+        if: steps.docs-drift.outputs.has_drift == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '📄 Nightly docs drift';
+            const body = fs.readFileSync('docs-drift.md', 'utf8');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find(issue => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+
+  zap-authenticated-scan:
+    name: "🛡️ Authenticated ZAP Scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
+      SECRET_KEY: ci-zap-scan-key
+      DATABASE_URL: "sqlite:////tmp/zap_scan.sqlite3"
+      ZAP_AUTH_USERNAME: zap-ci-scan-only
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Generate throwaway scan credential
+        run: |
+          echo "ZAP_AUTH_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')" >> "$GITHUB_ENV"
+      - name: Install dependencies
+        run: pip install -r requirements.txt -q
+      - name: Migrate
+        run: python manage.py migrate --noinput
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --verbosity 0
+      - name: Seed ZAP scan user
+        run: python manage.py seed_zap_scan_user
+      - name: Render ZAP auth context
+        run: |
+          CREDS_B64=$(printf 'username=%s&password=%s' "$ZAP_AUTH_USERNAME" "$ZAP_AUTH_PASSWORD" | base64 -w0)
+          sed "s/__ZAP_AUTH_CREDS_B64__/$CREDS_B64/" .zap/prei-auth-context.xml > .zap/prei-auth-context-runtime.xml
+      - name: Start server
+        run: nohup python manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
+      - name: Wait for healthy
+        run: |
+          set -e
+          HEALTHY=0
+          for i in $(seq 1 60); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8000/health/ 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              HEALTHY=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$HEALTHY" != "1" ]; then
+            echo "::error::Server never became healthy within 120s"
+            cat server.log || true
+            exit 1
+          fi
+      - name: OWASP ZAP Authenticated Full Scan
+        uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
+        with:
+          target: "http://localhost:8000"
+          allow_issue_writing: false
+          fail_action: true
+          cmd_options: "-a -n /zap/wrk/.zap/prei-auth-context-runtime.xml -U zap-ci-scan-only -I"
+      - name: Server logs
+        if: always()
+        run: cat server.log || true
+
+  # Budgets in lighthouserc.json ("error" assertions fail the run).
+  lighthouse:
+    name: "🚀 Lighthouse"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --verbosity 0
+        env:
+          SECRET_KEY: ci-lighthouse-key
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+      - name: Run Lighthouse CI
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          export DATABASE_URL="sqlite:///tmp/lighthouse_test.db"
+          export RUN_MIGRATIONS=1
+          export SKIP_SEED=1
+          export DJANGO_ENV=development
+          export DEBUG=True
+          export ALLOWED_HOSTS=localhost,127.0.0.1
+
+          python manage.py runserver 0.0.0.0:8000 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8000/health/ > /dev/null 2>&1; then
+              echo "Server started"
+              break
+            fi
+            sleep 2
+          done
+
+          lhci autorun --config=lighthouserc.json --collect.staticDistDir=./staticfiles
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+          retention-days: 7
+
+  # Needs repo secrets ATTOM_API_KEY, CENSUS_API_KEY, HUD_API_KEY, FRED_API_KEY
+  # and the repo variable LIVE_SOURCES_ENABLED=true. Without them the tests only
+  # skip, so the job is skipped (visible) instead of reporting a false green.
+  live-sources:
+    name: "🌐 Live Sources"
+    if: vars.LIVE_SOURCES_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: investor_app.settings_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - uses: ./.github/actions/python-setup
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run live source tests
+        id: live
+        continue-on-error: true
+        env:
+          ATTOM_API_KEY: ${{ secrets.ATTOM_API_KEY }}
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+          HUD_API_KEY: ${{ secrets.HUD_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
+          # Reruns are disabled on purpose: a retry that hides a real outage
+          # defeats the point of this job.
+          python -m pytest \
+            core/tests/test_live_sources.py \
+            core/tests/test_integration_attom.py \
+            -m "live or integration" \
+            -p no:randomly -p no:cacheprovider \
+            --reruns 0 -q --no-header --tb=short \
+            2>&1 | tee live-sources.log
+          echo "exit=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo "## Live data source check"
+            echo ""
+            echo '```'
+            tail -30 live-sources.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Open or update issue on failure
+        if: steps.live.outputs.exit != '0'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '🌐 Live data source failure';
+            const log = fs.readFileSync('live-sources.log', 'utf8').split('\n').slice(-40).join('\n');
+            const body = [
+              '## A live data source is failing',
+              '',
+              `**Detected:** ${new Date().toISOString()}`,
+              `**Workflow:** [View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              '',
+              'These tests skip in the PR gate when keys are absent, so this is the',
+              'only place the failure surfaces. Causes are usually one of:',
+              'an expired or unprovisioned API key, a quota limit, a changed',
+              'upstream response contract, or a scraper whose page layout moved.',
+              '',
+              '### Tail of the run',
+              '```',
+              log,
+              '```',
+            ].join('\n');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find(issue => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }

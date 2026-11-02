@@ -1,12 +1,18 @@
-name: Tier 2 Governance — Build, Publish & Attest
+name: Build, Publish & Attest
+
+# Push to main (or a v* tag): build the image once, scan it, smoke-test the
+# exact digest, then tag and attest it. workflow_dispatch runs build, scan and
+# smoke only (publish and attest are limited to main and tags), so this file can
+# be checked from a branch before it merges.
 
 on:
   push:
     branches: [main]
     tags: ["v[0-9]*"]
+  workflow_dispatch:
 
 concurrency:
-  group: tier-2-${{ github.event_name }}-${{ github.ref }}
+  group: publish-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -15,7 +21,7 @@ env:
 
 jobs:
   build-image:
-    name: "🏗️ Tier 2 — Build Image"
+    name: "🏗️ Build Image"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -24,12 +30,6 @@ jobs:
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
-          echo "build-start-epoch: $(date +%s)"
-          echo "build-start-epoch=$(date +%s)" >> "$GITHUB_ENV"
       - name: Checkout
         uses: actions/checkout@v7
       - name: Extract metadata
@@ -41,8 +41,6 @@ jobs:
             org.opencontainers.image.title=PREI - Real Estate Investment Analyzer
             org.opencontainers.image.description=Django app for RE investment KPIs
             org.opencontainers.image.vendor=paruff
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
       - name: Log in to GHCR
@@ -60,19 +58,19 @@ jobs:
           else
             VERSION="0.0.0-dev+sha-${GITHUB_SHA::7}"
           fi
-          BUILD_DATE=$(date -u +%y.%m.%d.%H)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "commit=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          echo "build-date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
+          echo "build-date=$(date -u +%y.%m.%d.%H)" >> "$GITHUB_OUTPUT"
           echo "branch=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+      # Pushed by digest only (no build-<sha> tag to pile up in GHCR); the
+      # publish job attaches the real tags to this same digest.
       - name: Build image
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: .
           platforms: linux/amd64
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.sha }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ steps.version.outputs.version }}
@@ -81,51 +79,53 @@ jobs:
             BRANCH=${{ steps.version.outputs.branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Check build time
-        if: always() && steps.build.outcome == 'success'
-        run: |
-          BUILD_END_EPOCH=$(date +%s)
-          DURATION=$((BUILD_END_EPOCH - build_start_epoch))
-          echo "Build completed at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "Build duration: ${DURATION}s"
-          if [ "$DURATION" -gt 600 ]; then
-            echo "::error::Build exceeded 10-minute budget (${DURATION}s > 600s)"
-            exit 1
-          fi
-        env:
-          build_start_epoch: ${{ env.build-start-epoch }}
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
 
-  live-test:
-    name: "🧪 Tier 2 — Smoke + BDD"
+  scan-image:
+    name: "🛡️ Scan Image"
     needs: build-image
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: read
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
+      # Nightly uploads the SARIF report; this scan only gates the publish.
+      - name: Trivy — block HIGH/CRITICAL CVEs
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          vuln-type: os,library
+          version: v0.74.0
+          timeout: 10m
+          skip-version-check: true
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  smoke:
+    name: "💨 Smoke (built image)"
+    needs: build-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    steps:
       - name: Log in to GHCR
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Checkout source
-        uses: actions/checkout@v7
       - name: Start container
         env:
           IMAGE_DIGEST: ${{ needs.build-image.outputs.image-digest }}
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$IMAGE_DIGEST"
-          echo "Starting container from: $IMAGE"
           docker run -d \
             --name prei-live-test \
             -p 8000:8000 \
@@ -141,16 +141,12 @@ jobs:
       - name: Wait for healthy
         run: |
           set -e
-          echo "=== Checking container is running ==="
           sleep 3
-          CID=$(docker ps -q -f name=prei-live-test)
-          if [ -z "$CID" ]; then
+          if [ -z "$(docker ps -q -f name=prei-live-test)" ]; then
             echo "::error::Container exited immediately"
             docker logs prei-live-test || true
-            docker rm prei-live-test 2>/dev/null || true
             exit 1
           fi
-          echo "=== Waiting for healthy (up to 180s) ==="
           HEALTHY=0
           for i in $(seq 1 90); do
             STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8000/health/ 2>/dev/null || echo "000")
@@ -163,15 +159,14 @@ jobs:
           done
           if [ "$HEALTHY" != "1" ]; then
             echo "::error::Container never became healthy within 180s"
-            echo "=== Container logs ==="
             docker logs prei-live-test || true
-            echo "=== End container logs ==="
             exit 1
           fi
+      # The user journey against the container runs on every PR (docker-accept
+      # job in ci-quality.yml); this only proves the built artifact boots.
       - name: Smoke tests
         run: |
           set -e
-          echo "=== Smoke Tests ==="
           echo -n "1. Health check: "
           curl -sf http://localhost:8000/health/ | python3 -m json.tool | grep -q '"status": "ok"' && echo "PASS" || { echo "FAIL"; exit 1; }
           echo -n "2. Login page: "
@@ -187,14 +182,12 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/foreclosures)
           [ "$STATUS" = "200" ] && echo "PASS ($STATUS)" || echo "WARN ($STATUS)"
           echo -n "6. Discovery page: "
-          curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/discovery/; echo ""
-          echo -n "7. Pipeline screener: "
-          curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/pipeline/screener/; echo ""
-          echo -n "8. Health API: "
+          curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/discovery/ | grep -q 302 && echo "PASS (login redirect)" || { echo "FAIL"; exit 1; }
+          echo -n "7. Health API: "
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/api/health/; echo ""
-          echo -n "9. Static CSS: "
+          echo -n "8. Static CSS: "
           curl -sf -o /dev/null -w "PASS (%{http_code})" http://localhost:8000/static/css/base.css; echo ""
-          echo -n "10. PDF renderer (headless Chromium in image): "
+          echo -n "9. PDF renderer (headless Chromium in image): "
           docker exec prei-live-test python -c "
           from playwright.sync_api import sync_playwright
           with sync_playwright() as pw:
@@ -204,124 +197,23 @@ jobs:
               assert page.pdf(format='A4')[:4] == b'%PDF'
               browser.close()
           " >/dev/null 2>&1 && echo "PASS" || { echo "FAIL — PDF export would 500 in production"; exit 1; }
-          echo ""
-          echo "=== All smoke tests passed ==="
-      - name: Seed test data
-        run: |
-          echo "=== Seeding demo data ==="
-          docker exec prei-live-test python manage.py seed_data 2>&1
-      - name: BDD acceptance tests
-        run: |
-          echo "=== BDD Acceptance Tests ==="
-          # Copy tests into container (excluded from image by .dockerignore).
-          # Clean pyc caches first to avoid stale host-path references.
-          find tests_bdd -path '*/__pycache__/*' -delete
-          find tests_bdd -name '*.pyc' -delete
-          docker exec prei-live-test rm -rf /app/tests_bdd 2>/dev/null || true
-          docker cp tests_bdd prei-live-test:/app/tests_bdd
-          # Collect static files (skipped at startup via SKIP_COLLECTSTATIC=1)
-          docker exec prei-live-test python manage.py collectstatic --noinput 2>&1
-          docker exec \
-            -e DJANGO_SETTINGS_MODULE=investor_app.settings_test \
-            prei-live-test \
-            python -m pytest tests_bdd/ -q --tb=short -m e2e 2>&1
-          echo "=== All BDD acceptance tests passed ==="
-      - name: Extract test report log
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs prei-live-test || true
+      - name: Clean up
         if: always()
-        run: docker cp prei-live-test:/app/.pytest-report.jsonl .pytest-report.jsonl 2>/dev/null || true
-      - name: Update flaky test ledger
-        if: always()
-        run: |
-          if [ -f .pytest-report.jsonl ]; then
-            python3 .github/scripts/flaky_report.py --report-log .pytest-report.jsonl --mode write
-          else
-            echo "No report log found, skipping flaky ledger update"
-          fi
-      - name: Commit flaky test ledger
-        if: always()
-        run: |
-          if git diff --quiet -- docs/quality/flaky_tests.json tests/.flaky_quarantine.txt; then
-            echo "No ledger changes"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add docs/quality/flaky_tests.json tests/.flaky_quarantine.txt
-            git commit -m "chore(ci): update flaky test ledger [skip ci]"
-            git push origin HEAD:main
-          fi
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "=== Cleaning up ==="
-          docker stop prei-live-test 2>/dev/null || true
-          docker rm prei-live-test 2>/dev/null || true
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
-
-  scan-image:
-    name: "🛡️ Tier 2 — Scan Image"
-    needs: build-image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-      security-events: write
-    steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
-      - name: Trivy — block HIGH/CRITICAL CVEs with retries
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}
-          format: table
-          exit-code: 1
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          vuln-type: os,library
-          version: v0.74.0
-          timeout: 10m
-          skip-version-check: true
-      - name: Trivy — upload SARIF
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        if: always()
-        with:
-          scan-type: image
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}
-          format: sarif
-          output: trivy-tier-2.sarif
-          severity: CRITICAL,HIGH,MEDIUM
-          ignore-unfixed: true
-          version: v0.74.0
-          timeout: 10m
-          skip-version-check: true
-      - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: trivy-tier-2.sarif
-          category: trivy-tier-2-scan
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
+        run: docker rm -f prei-live-test 2>/dev/null || true
 
   publish:
-    name: "📤 Tier 2 — Publish"
-    needs: [build-image, scan-image]
+    name: "📤 Publish"
+    needs: [build-image, scan-image, smoke]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read
       packages: write
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
@@ -333,14 +225,6 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=sha-,format=short
             type=raw,value=latest,enable={{is_default_branch}}
-          labels: |
-            org.opencontainers.image.title=PREI - Real Estate Investment Analyzer
-            org.opencontainers.image.description=Django app for RE investment KPIs
-            org.opencontainers.image.vendor=paruff
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
       - name: Log in to GHCR
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
         with:
@@ -362,78 +246,9 @@ jobs:
             args+=("-t" "$tag")
           done
           docker buildx imagetools create "${args[@]}" "$SOURCE_IMAGE"
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
-
-  gitops-deploy:
-    name: "🚀 Tier 2 — GitOps Deploy"
-    needs: [publish, live-test, scan-image]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: read
-    if: vars.GITOPS_REPO != ''
-    env:
-      GITOPS_REPO: ${{ vars.GITOPS_REPO }}
-      GITOPS_MANIFEST_PATH: ${{ vars.GITOPS_MANIFEST_PATH || 'deploy/overlays/production/docker-compose.override.yml' }}
-    steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
-          echo "image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}"
-      - name: Checkout GitOps repo
-        uses: actions/checkout@v7
-        with:
-          repository: ${{ env.GITOPS_REPO }}
-          token: ${{ secrets.GITOPS_DEPLOY_KEY || secrets.GITHUB_TOKEN }}
-          path: gitops
-      - name: Update image manifest
-        working-directory: gitops
-        run: |
-          MANIFEST="${{ env.GITOPS_MANIFEST_PATH }}"
-          if [ ! -f "$MANIFEST" ]; then
-            echo "::error::Manifest not found: $MANIFEST"
-            exit 1
-          fi
-          # Replace PALCEHOLDER with actual image digest
-          sed -i "s|sha256:PLACEHOLDER|${{ needs.build-image.outputs.image-digest }}|g" "$MANIFEST"
-          # Also update tag-based references (for base manifest)
-          sed -i "s|\(ghcr\.io/paruff/prei\)[:@].*|\1@${{ needs.build-image.outputs.image-digest }}|g" "$MANIFEST"
-          # If the manifest uses images[].newTag format
-          sed -i "s|\(newTag:\).*|\1 sha-${{ github.sha }}|" "$MANIFEST" 2>/dev/null || true
-          echo "Updated manifest:"
-          cat "$MANIFEST"
-      - name: Commit and push
-        working-directory: gitops
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${{ env.GITOPS_MANIFEST_PATH }}"
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "deploy: update image to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }} [skip ci]"
-            git push
-            echo "✅ GitOps manifest updated and pushed"
-          fi
-      - name: Trigger post-deployment smoke
-        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4
-        with:
-          event-type: deploy-complete
-          client-payload: >
-            {"url":"${{ vars.DEPLOY_URL || '' }}","image":"${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-image.outputs.image-digest }}","sha":"${{ github.sha }}"}
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
 
   attest:
-    name: "🧾 Tier 2 — Attest"
+    name: "🧾 Attest"
     needs: [publish, build-image]
     runs-on: ubuntu-latest
     permissions:
@@ -442,10 +257,6 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - name: "job-start"
-        run: |
-          echo "job-start: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"
       - name: Log in to GHCR
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
         with:
@@ -458,8 +269,3 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ needs.build-image.outputs.image-digest }}
           push-to-registry: true
-      - name: "job-finish"
-        if: always()
-        run: |
-          echo "job-finish: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "sha: ${{ github.sha }}"

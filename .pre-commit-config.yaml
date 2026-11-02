@@ -3,7 +3,8 @@
 # Run: pre-commit run --all-files
 #
 # When updating tool versions here, keep them in sync with:
-#   - .github/workflows/ci-quality.yml (CI lint/test/typecheck)
+#   - CI runs `pre-commit run --all-files` (.github/workflows/ci-quality.yml, `static` job),
+#     so this file is the single source of truth for lint/format/type checks
 #   - requirements.txt (pip-resolved versions)
 #   - Makefile (local dev targets)
 #
@@ -123,6 +124,12 @@ repos:
   # --- Design lint (DESIGN.md Don'ts; known violations in scripts/design_allowlist.txt) ---
   - repo: local
     hooks:
+      - id: design-md-lint
+        name: DESIGN.md lint
+        entry: npx --yes @google/design.md@0.4.0 lint --format text DESIGN.md
+        language: system
+        files: ^DESIGN\.md$
+        pass_filenames: false
       - id: design-lint
         name: design-lint
         entry: python3 scripts/check_design.py
