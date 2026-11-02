@@ -96,7 +96,7 @@
         <div class="form-group">
           <label class="form-label" for="actual_property">Property</label>
           <select class="form-input" id="actual_property" name="property_id" required>
-            {% for prop in actuals_properties %}<option value="{{ prop.pk }}">{{ prop.address }}</option>{% endfor %}
+            {% for prop in actuals_properties %}<option value="{{ prop.pk }}"{% if prop.pk|stringformat:"s" == selected_property_id %} selected{% endif %}>{{ prop.address }}</option>{% endfor %}
           </select>
         </div>
         <div class="form-group">

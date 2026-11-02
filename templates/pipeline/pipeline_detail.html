@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load humanize l10n %}
 {% load static %}
 
 {% block title %}Pipeline #{{ prop.pk }} — prei{% endblock %}
@@ -23,6 +23,14 @@
       <span class="pipeline-badge badge-status-{{ prop.status|lower }}">{{ prop.status|title }}</span>
     </div>
   </div>
+
+  {% if is_acquired %}
+  <div class="pipeline-action-bar" data-next-steps>
+    <a href="{% url 'portfolio_dashboard' %}?property_id={{ prop.property_record_id }}#enter-actuals" class="btn btn-primary">Enter actuals</a>
+    <a href="{% url 'leasing_add' %}?property_id={{ prop.property_record_id }}" class="btn btn-outline">Start leasing</a>
+    <a href="{% url 'brrrr_calculator' %}?purchase_price={{ prop.property_record.purchase_price|unlocalize }}&amp;monthly_rent={{ prop.property_record.monthly_rent_gross|unlocalize }}" class="btn btn-outline">Model BRRRR</a>
+  </div>
+  {% endif %}
 
   {# Main content grid #}
   <div class="pipeline-detail-body">

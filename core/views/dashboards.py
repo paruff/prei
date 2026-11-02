@@ -245,6 +245,7 @@ def portfolio_dashboard(request: HttpRequest) -> HttpResponse:
         {
             "actuals_form": MonthlyActualsForm(),
             "actuals_properties": actuals_properties,
+            "selected_property_id": request.GET.get("property_id", ""),
             "properties": qs,
             "total_properties": total,
             "total_equity": total_equity,
