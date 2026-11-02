@@ -110,7 +110,8 @@ def test_compose_web_service_has_required_config() -> None:
     assert web.get("image") == "ghcr.io/paruff/prei:latest"
     # .env is optional so `docker compose up` works on a clean checkout (FR-10)
     assert web.get("env_file") == [{"path": ".env", "required": False}]
-    assert "8000:8000" in web.get("ports", [])
+    # Published on loopback only: the stack runs DEBUG with a seeded demo user
+    assert "127.0.0.1:8000:8000" in web.get("ports", [])
     assert web.get("restart") == "unless-stopped"
 
     # Healthcheck test command must reference the health API endpoint

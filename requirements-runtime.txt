@@ -1,0 +1,22 @@
+# Production runtime pins (subset of requirements.txt). Render builds from this file;
+# CI and the Docker image keep using requirements.txt, which adds test/lint tooling.
+# When bumping a pin in requirements.txt, bump it here too.
+Django==6.0.8
+djangorestframework==3.18.2
+psycopg2-binary==2.9.13
+numpy==2.5.1
+numpy-financial==1.0.0
+django-environ==0.14.0
+whitenoise==6.12.0
+gunicorn==26.2.0
+requests==2.34.2
+beautifulsoup4==4.15.0
+defusedxml==0.7.1
+playwright==1.62.0
+reportlab==5.0.1
+matplotlib==3.11.1
+pillow==13.0.0
+structlog==26.1.0
+opentelemetry-api==1.44.0
+opentelemetry-sdk==1.44.0
+opentelemetry-exporter-otlp==1.44.0

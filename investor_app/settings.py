@@ -372,6 +372,21 @@ REST_FRAMEWORK = {
     },
 }
 
+# Shared cache for rate limits, DRF throttles and the VRM scrape guard. The default
+# per-process memory cache gave every gunicorn worker its own counters.
+# The table is created by core migration 0055.
+# shortcut: DatabaseCache.incr is get-then-set, not atomic, so a burst can slip a
+# few extra hits past a limit; move to Redis if limits ever need to be exact.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+        # Default is 300 rows; past that Django culls a third of them, including
+        # the paid-API quota counters and rate limits that live here.
+        "OPTIONS": {"MAX_ENTRIES": 100000},
+    }
+}
+
 # Password validation — Django defaults
 # See https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = [

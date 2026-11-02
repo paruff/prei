@@ -57,3 +57,8 @@ STORAGES = {
 # setting this can cause false positives when the test client doesn't send
 # HTTP_X_FORWARDED_PROTO.
 SECURE_PROXY_SSL_HEADER = None  # type: ignore[assignment]
+
+# Production uses a DB-backed cache (shared across workers). Tests run in one
+# process and conftest clears the cache before every test, including tests with
+# no database access, so keep the cache in memory.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}

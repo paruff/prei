@@ -403,3 +403,12 @@ class TestNotificationPreferencesAPI:
         assert prefs.notify_email is True
         assert prefs.notify_sms is True
         assert prefs.email == "test@example.com"
+
+
+@pytest.mark.django_db
+def test_watchlist_rejects_non_numeric_property_id(authenticated_client):
+    response = authenticated_client.post(
+        "/api/v1/watchlist", {"propertyId": "abc"}, format="json"
+    )
+
+    assert response.status_code == 400

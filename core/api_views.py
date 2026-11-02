@@ -13,8 +13,6 @@ from django.db import DatabaseError
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.pagination import PageNumberPagination
@@ -745,7 +743,6 @@ def get_property_type_defaults(
 
 
 @api_view(["POST"])
-@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, CalculationRateThrottle])
 def calculate_carrying_costs(request):
     """
@@ -1129,7 +1126,8 @@ def calculate_carrying_costs(request):
                 }
             )
 
-        if break_even["monthly"] > monthly_rent:
+        # Rent of 0 has no "% over" to show; the negative cash flow warning covers it.
+        if monthly_rent > 0 and break_even["monthly"] > monthly_rent:
             pct_over = float(
                 (
                     (break_even["monthly"] - monthly_rent) / monthly_rent * Decimal(100)
@@ -1307,7 +1305,12 @@ def watchlist_view(request):
             )
 
         try:
-            property_obj = ForeclosureProperty.objects.get(id=property_id)
+            property_obj = ForeclosureProperty.objects.get(id=int(property_id))
+        except ValueError, TypeError:
+            return Response(
+                {"error": "propertyId must be a number", "code": "INVALID_REQUEST"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except ForeclosureProperty.DoesNotExist:
             return Response(
                 {"error": "Property not found", "code": "NOT_FOUND"},
@@ -1546,7 +1549,6 @@ def notification_preferences_view(request):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def export_foreclosures_csv(request):
     """
@@ -1675,7 +1677,6 @@ def export_foreclosures_csv(request):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, AnonRateThrottle])
 def export_foreclosures_json(request):
     """
@@ -1957,7 +1958,6 @@ def export_property_deal_pack(request, property_id: int):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.AllowAny])
 @throttle_classes([UserRateThrottle, CalculationRateThrottle])
 def compare_investment_strategies(request):
     """
@@ -2348,16 +2348,21 @@ class VrmPropertyListAPI(APIView):
         )
 
 
-@method_decorator(csrf_exempt, name="dispatch")
+_VRM_SCRAPE_LOCK = "vrm_scrape_running"
+_VRM_SCRAPE_LOCK_SECONDS = 600
+VRM_IMPORT_MAX_RECORDS = 1000
+
+
 class VrmPropertyScrapeAPI(APIView):
     """
-    GET /api/v1/vrm-properties/scrape/?state=VA
+    POST /api/v1/vrm-properties/scrape/  {"state": "VA"}
 
-    Trigger a VRM scrape for the given state. Runs in a background thread
-    so the request returns immediately — refresh to see results.
+    Start a VRM scrape for the given state (logged-in users only). One scrape
+    runs at a time across all workers; it runs the ``collect_vrm_data`` command
+    in a background thread so the request returns immediately.
     """
 
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request: Any) -> Response:
         state = request.data.get("state", "").strip().upper()
@@ -2372,31 +2377,29 @@ class VrmPropertyScrapeAPI(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Run scrape in background thread — Gunicorn worker timeout (30s)
-        # is too short for full state scrapes (60-120s).
-        from django.db import connection
+        # cache.add is a no-op when the key exists, so only one caller wins.
+        if not cache.add(_VRM_SCRAPE_LOCK, state, timeout=_VRM_SCRAPE_LOCK_SECONDS):
+            return Response(
+                {"error": "A scrape is already running. Try again in a few minutes."},
+                status=status.HTTP_409_CONFLICT,
+            )
 
+        # Gunicorn's worker timeout is too short for a full state scrape (60-120s).
+        # shortcut: a worker restart mid-scrape drops it (the command's upsert is
+        # one transaction, so no partial rows); move to a cron job if that bites.
         def _run_scrape() -> None:
-            connection.close()  # Don't share the request's DB connection
+            from django.core.management import call_command
+            from django.db import connection
+
             try:
-                from core.integrations.sources.vrm_scraper import VrmScraper
+                call_command("collect_vrm_data", state=state)
+            except Exception:
+                logger.exception("Background VRM scrape failed for %s", state)
+            finally:
+                cache.delete(_VRM_SCRAPE_LOCK)
+                connection.close()  # This thread's own connection
 
-                scraper = VrmScraper()
-                listings = scraper.collect_state_listings(state)
-
-                now = timezone.now()
-                for listing in listings:
-                    listing["scraped_at"] = now
-                    listing["last_seen_at"] = now
-                    VrmProperty.objects.update_or_create(
-                        vrm_property_id=listing["vrm_property_id"],
-                        defaults=listing,
-                    )
-            except Exception as exc:
-                logger.error("Background VRM scrape failed for %s: %s", state, exc)
-
-        t = threading.Thread(target=_run_scrape, daemon=True)
-        t.start()
+        threading.Thread(target=_run_scrape, daemon=True).start()
 
         return Response(
             {
@@ -2408,20 +2411,21 @@ class VrmPropertyScrapeAPI(APIView):
         )
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class VrmPropertyImportAPI(APIView):
-    permission_classes = [permissions.AllowAny]
     """
     POST /api/v1/vrm-properties/import/
 
     Accept a JSON body that is either a single VRM property object or an array
-    of VRM property objects and upsert them into the VrmProperty table.
+    of VRM property objects and upsert them into the VrmProperty table
+    (logged-in users only, at most ``VRM_IMPORT_MAX_RECORDS`` records).
 
     Supports both:
     - ``Content-Type: application/json`` with a raw JSON body
     - ``Content-Type: multipart/form-data`` with a ``file`` field containing
       a ``.json`` file upload
     """
+
+    permission_classes = [permissions.IsAuthenticated]
 
     parser_classes = [JSONParser, MultiPartParser]
 
@@ -2457,6 +2461,11 @@ class VrmPropertyImportAPI(APIView):
             return Response(
                 {"error": "Payload is an empty array — nothing to import."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(data) > VRM_IMPORT_MAX_RECORDS:
+            return Response(
+                {"error": f"Too many records; the limit is {VRM_IMPORT_MAX_RECORDS}."},
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             )
 
         try:

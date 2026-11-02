@@ -1,12 +1,14 @@
 """Integration tests for carrying cost calculation API."""
 
+from typing import Any
+
 import pytest
 from django.urls import reverse
 from rest_framework import status
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_basic(client):
+def test_calculate_carrying_costs_basic(admin_client):
     """Test basic carrying costs calculation."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -46,7 +48,7 @@ def test_calculate_carrying_costs_basic(client):
         "investmentStrategy": "buy-and-hold",
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -131,7 +133,7 @@ def test_calculate_carrying_costs_basic(client):
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_all_cash(client):
+def test_calculate_carrying_costs_all_cash(admin_client):
     """Test carrying costs calculation for all-cash purchase."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -166,7 +168,7 @@ def test_calculate_carrying_costs_all_cash(client):
         "rentalIncome": {"monthlyRent": 1800, "otherMonthlyIncome": 0},
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -185,7 +187,7 @@ def test_calculate_carrying_costs_all_cash(client):
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_missing_fields(client):
+def test_calculate_carrying_costs_missing_fields(admin_client):
     """Test API validation with missing required fields."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -198,14 +200,14 @@ def test_calculate_carrying_costs_missing_fields(client):
         }
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "error" in response.json()
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_invalid_property_type(client):
+def test_calculate_carrying_costs_invalid_property_type(admin_client):
     """Test API validation with invalid property type."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -229,13 +231,13 @@ def test_calculate_carrying_costs_invalid_property_type(client):
         "rentalIncome": {"monthlyRent": 2000},
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.django_db
-def test_calculate_carrying_costs_positive_cash_flow(client):
+def test_calculate_carrying_costs_positive_cash_flow(admin_client):
     """Test carrying costs with positive cash flow property."""
     url = reverse("api:carrying-costs-calculate")
 
@@ -270,7 +272,7 @@ def test_calculate_carrying_costs_positive_cash_flow(client):
         "rentalIncome": {"monthlyRent": 2000, "otherMonthlyIncome": 0},
     }
 
-    response = client.post(url, payload, content_type="application/json")
+    response = admin_client.post(url, payload, content_type="application/json")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -294,3 +296,73 @@ def test_calculate_carrying_costs_positive_cash_flow(client):
     assert (
         len(recommendations) >= 0
     )  # May or may not have recommendations depending on metrics
+
+
+def _deal(**overrides: dict[str, Any]) -> dict[str, Any]:
+    """A valid calculator request body; overrides replace top-level section keys."""
+    body: dict[str, Any] = {
+        "propertyDetails": {
+            "purchasePrice": 300000,
+            "propertyType": "single-family",
+            "yearBuilt": 2000,
+            "location": {
+                "address": "1 Main St",
+                "county": "Dallas",
+                "state": "TX",
+                "zip": "75001",
+            },
+        },
+        "financing": {
+            "downPayment": 60000,
+            "loanAmount": 240000,
+            "interestRate": 7,
+            "loanTermYears": 30,
+        },
+        "operatingExpenses": {
+            "propertyTaxRate": 1.2,
+            "hoaMonthly": 0,
+            "utilitiesMonthly": 0,
+            "maintenanceAnnualPercent": 1,
+            "propertyManagementPercent": 10,
+            "vacancyRatePercent": 8,
+        },
+        "rentalIncome": {"monthlyRent": 2500},
+    }
+    for section, values in overrides.items():
+        body[section] = {**body[section], **values}
+    return body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"rentalIncome": {"monthlyRent": 0}},
+        {"financing": {"interestRate": 0}},
+        {"financing": {"loanTermYears": 1}},
+        {"financing": {"loanAmount": 900000}},
+        {"rentalIncome": {"monthlyRent": 300}},
+    ],
+    ids=["zero-rent", "zero-interest", "one-year-term", "loan-over-price", "tiny-rent"],
+)
+def test_calculate_carrying_costs_edge_inputs_do_not_crash(admin_client, overrides):
+    url = reverse("api:carrying-costs-calculate")
+
+    response = admin_client.post(
+        url, _deal(**overrides), content_type="application/json"
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+def test_calculate_carrying_costs_rejects_management_fee_over_100(admin_client):
+    url = reverse("api:carrying-costs-calculate")
+
+    response = admin_client.post(
+        url,
+        _deal(operatingExpenses={"propertyManagementPercent": 150}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST

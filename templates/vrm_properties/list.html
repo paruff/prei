@@ -160,13 +160,12 @@ function triggerImport() {
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    if (data.status === 'completed') {
-      var msg = 'Import complete! ' + data.created + ' created, ' + data.updated + ' updated';
-      if (data.skipped > 0) { msg += ', ' + data.skipped + ' skipped'; }
-      if (data.errors && data.errors.length) { msg += ': ' + data.errors.join('; '); }
-      statusEl.className = data.skipped > 0 ? 'message message-warning' : 'message message-success';
-      statusEl.textContent = msg + '. Reloading...';
-      setTimeout(function() { location.reload(); }, 1800);
+    if (data.status === 'started') {
+      status.className = 'message message-success';
+      status.textContent = data.message + ' Reloading...';
+      setTimeout(function() { location.reload(); }, 60000);
+      btn.disabled = false;
+      btn.textContent = 'Scrape Selected State';
     } else {
       statusEl.className = 'message message-error';
       statusEl.textContent = 'Error: ' + (data.error || JSON.stringify(data));
@@ -206,10 +205,11 @@ function triggerScrape() {
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    if (data.status === 'completed') {
+    if (data.status === 'started') {
       status.className = 'message message-success';
-      status.textContent = 'Scrape complete! ' + data.total_listings + ' listings found (' + data.created + ' new, ' + data.updated + ' updated). Reloading...';
-      setTimeout(function() { location.reload(); }, 1500);
+      status.textContent = data.message;
+      btn.disabled = false;
+      btn.textContent = 'Scrape Selected State';
     } else {
       status.className = 'message message-error';
       status.textContent = 'Error: ' + (data.error || 'Unknown error');
