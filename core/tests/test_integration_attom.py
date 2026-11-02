@@ -20,7 +20,7 @@ pytestmark = [
         not os.getenv("ATTOM_API_KEY"),
         reason="ATTOM_API_KEY not set in environment",
     ),
-    pytest.mark.integration,
+    pytest.mark.live,
 ]
 
 
