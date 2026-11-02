@@ -14,7 +14,7 @@
       {% if growth_area %}
         {{ growth_area.city_name }}, {{ growth_area.state }}
         &middot; Market score {{ growth_area.composite_score|score }}
-        &middot; Landlord-friendliness {{ growth_area.landlord_score|default:"not rated" }}{% if growth_area.landlord_score %}/10{% endif %}
+        &middot; Landlord-friendliness {{ growth_area.landlord_score|default_if_none:"not rated" }}{% if growth_area.landlord_score is not None %}/10{% endif %}
       {% else %}
         All Markets
       {% endif %}

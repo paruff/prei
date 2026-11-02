@@ -171,3 +171,18 @@ class TestPortfolioDashboard:
         url = reverse("portfolio_dashboard")
         resp = client.get(url)
         assert resp.status_code == 200
+
+
+def test_blank_closing_costs_close_the_deal(client, pipeline_property):
+    url = reverse("pipeline_closing_create", kwargs={"pk": pipeline_property.pk})
+    resp = client.post(
+        url,
+        {
+            "final_purchase_price": "245000",
+            "closing_date": "2026-07-15",
+            "closing_costs": "",
+        },
+    )
+    assert resp.status_code == 302
+    pipeline_property.refresh_from_db()
+    assert pipeline_property.closing_record.closing_costs == Decimal("0")
