@@ -11,7 +11,7 @@ Review any change to financial calculations, KPI formulas, or investment analysi
 
 - `investor_app/finance/utils.py` — all KPI calculations (canonical)
 - `core/services/` — business logic that calls finance utils
-- `tests/test_finance_utils_depreciation.py` — existing test patterns
+- `core/tests/test_finance_utils.py` — existing test patterns
 - `core/tests/test_deal_analyzer.py`, `tests/test_hold_period.py`, `tests/test_tax_analysis.py`
 
 ## What to check

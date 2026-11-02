@@ -31,11 +31,11 @@
 
 |If you change…                                       |You must also update…                                                                                          |
 |-----------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-|`calculate_noi` signature or logic                   |`investor_app/tests/test_finance_utils.py`, `tests/test_finance_utils_depreciation.py`, `docs/API_SURFACE.md`               |
-|`calculate_cap_rate` signature or logic              |`investor_app/tests/test_finance_utils.py`, `tests/test_finance_utils_depreciation.py`, `docs/API_SURFACE.md`               |
-|`calculate_cash_on_cash` signature or logic          |`investor_app/tests/test_finance_utils.py`, `tests/test_finance_utils_depreciation.py`, `docs/API_SURFACE.md`               |
-|`calculate_irr` signature, logic, or accepted types  |`investor_app/tests/test_finance_utils.py`, `tests/test_finance_utils_depreciation.py`, `docs/API_SURFACE.md`               |
-|Internal `irr()` helper                              |`calculate_irr` (its only caller), `tests/test_finance_utils_depreciation.py`                                               |
+|`calculate_noi` signature or logic                   |`investor_app/tests/test_finance_utils.py`, `core/tests/test_finance_utils.py`, `docs/API_SURFACE.md`               |
+|`calculate_cap_rate` signature or logic              |`investor_app/tests/test_finance_utils.py`, `core/tests/test_finance_utils.py`, `docs/API_SURFACE.md`               |
+|`calculate_cash_on_cash` signature or logic          |`investor_app/tests/test_finance_utils.py`, `core/tests/test_finance_utils.py`, `docs/API_SURFACE.md`               |
+|`calculate_irr` signature, logic, or accepted types  |`investor_app/tests/test_finance_utils.py`, `core/tests/test_finance_utils.py`, `docs/API_SURFACE.md`               |
+|Internal `irr()` helper                              |`calculate_irr` (its only caller), `core/tests/test_finance_utils.py`                                               |
 |`one_percent_rule` signature or logic                |`tests/test_underwriting_score.py`, `docs/API_SURFACE.md`                                                      |
 |`gross_rent_multiplier` signature or logic           |`tests/test_underwriting_score.py`, `docs/API_SURFACE.md`                                                      |
 |`score_listing_v2` signature or logic                |`tests/test_underwriting_score.py`, `docs/API_SURFACE.md`; callers must supply `local_market_cap_rate` from `MarketSnapshot` at the service layer |
@@ -50,7 +50,7 @@
 
 |If you change…                                         |You must also update…                                             |
 |-------------------------------------------------------|------------------------------------------------------------------|
-|`investor_app/tests/test_finance_utils.py` test cases  |Verify matching coverage in `tests/test_finance_utils_depreciation.py`         |
+|`investor_app/tests/test_finance_utils.py` test cases  |Verify matching coverage in `core/tests/test_finance_utils.py`         |
 |Add new `calculate_*` function to `finance/utils.py`   |Add tests in both `investor_app/tests/` and `tests/` test suites  |
 
 ## Integration Changes (core/integrations/)
