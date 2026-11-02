@@ -6,6 +6,7 @@ import logging
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from django.db import DataError, transaction
 from django.utils import timezone
 
 from core.models import VrmProperty
@@ -106,7 +107,7 @@ def parse_vrm_json_record(record: dict[str, Any]) -> dict[str, Any]:
 
 
 def upsert_vrm_records(
-    records: list[dict[str, Any]],
+    records: list[Any],  # decoded JSON: rows may not be objects
 ) -> tuple[int, int, list[str]]:
     """Parse and upsert a list of VRM JSON records.
 
@@ -119,9 +120,12 @@ def upsert_vrm_records(
     errors: list[str] = []
 
     for idx, record in enumerate(records):
+        if not isinstance(record, dict):
+            errors.append(f"Record {idx}: not a JSON object")
+            continue
         try:
             fields = parse_vrm_json_record(record)
-        except ValueError as exc:
+        except (ValueError, TypeError, AttributeError) as exc:
             logger.warning("VRM import: record %d failed validation: %s", idx, exc)
             errors.append(f"Record {idx}: {exc}")
             continue
@@ -135,10 +139,18 @@ def upsert_vrm_records(
         fields["scraped_at"] = existing_scraped_at or now
         fields["last_seen_at"] = now
 
-        _, was_created = VrmProperty.objects.update_or_create(
-            vrm_property_id=vrm_id,
-            defaults=fields,
-        )
+        try:
+            # Savepoint: on Postgres a failed write would otherwise poison the
+            # rest of the batch.
+            with transaction.atomic():
+                _, was_created = VrmProperty.objects.update_or_create(
+                    vrm_property_id=vrm_id,
+                    defaults=fields,
+                )
+        except (OverflowError, DataError) as exc:
+            logger.warning("VRM import: record %d could not be saved: %s", idx, exc)
+            errors.append(f"Record {idx}: value out of range")
+            continue
         if was_created:
             created += 1
         else:

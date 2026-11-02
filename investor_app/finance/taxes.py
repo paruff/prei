@@ -59,13 +59,21 @@ def calculate_tax_benefits(
     payments_before = (year_num - 1) * 12
     if payments_before > 0:
         num_payments = loan_term_years * 12
-        remaining_factor = (Decimal(1) + monthly_rate) ** Decimal(
-            num_payments - payments_before
-        )
-        payment_factor = (Decimal(1) + monthly_rate) ** Decimal(num_payments)
-        balance_start = loan_amt * (
-            (remaining_factor - Decimal(1)) / (payment_factor - Decimal(1))
-        )
+        if monthly_rate == 0:
+            # 0% loan: the amortization formula divides by zero; balance falls in a line.
+            balance_start = (
+                loan_amt
+                * Decimal(num_payments - payments_before)
+                / Decimal(num_payments)
+            )
+        else:
+            remaining_factor = (Decimal(1) + monthly_rate) ** Decimal(
+                num_payments - payments_before
+            )
+            payment_factor = (Decimal(1) + monthly_rate) ** Decimal(num_payments)
+            balance_start = loan_amt * (
+                (remaining_factor - Decimal(1)) / (payment_factor - Decimal(1))
+            )
     else:
         balance_start = loan_amt
 

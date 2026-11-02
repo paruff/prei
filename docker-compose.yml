@@ -17,7 +17,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: prei
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import sys, urllib.request;\ntry: urllib.request.urlopen('http://localhost:8000/api/health/')\nexcept Exception as e: print(f'health check failed: {e}', file=sys.stderr); sys.exit(1)"]
       interval: 30s

@@ -412,12 +412,15 @@ def calculate_roi_components(
 
     if total_cash_invested > 0:
         multi_year_roi = total_return / to_decimal(total_cash_invested) * Decimal(100)
-        # Annualized return
-        annualized_roi = (
-            (Decimal(1) + multi_year_roi / Decimal(100))
-            ** (Decimal(1) / Decimal(num_years))
-            - Decimal(1)
-        ) * Decimal(100)
+        # Annualized return; losing the whole stake (or more) is -100%, and a
+        # non-positive base cannot be raised to a fractional power.
+        growth = Decimal(1) + multi_year_roi / Decimal(100)
+        if growth <= 0:
+            annualized_roi = Decimal(-100)
+        else:
+            annualized_roi = (
+                growth ** (Decimal(1) / Decimal(num_years)) - Decimal(1)
+            ) * Decimal(100)
     else:
         multi_year_roi = Decimal("0")
         annualized_roi = Decimal("0")

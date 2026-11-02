@@ -296,3 +296,24 @@ class VrmPropertyImportAPITest(TestCase):
         data = resp.json()
         self.assertEqual(data["created"], 0)
         self.assertEqual(data["updated"], 1)
+
+
+class VrmImporterBadRowsTest(TestCase):
+    def test_non_object_rows_are_reported_not_raised(self):
+        good = {"asset_id": 777001, "url": "https://vrm/777001"}
+
+        created, updated, errors = upsert_vrm_records([good, 5, None, "s"])
+
+        self.assertEqual((created, updated), (1, 0))
+        self.assertEqual(len(errors), 3)
+        self.assertIn("Record 1", errors[0])
+
+    def test_out_of_range_id_is_reported_and_batch_continues(self):
+        huge = {"asset_id": 10**30, "url": "https://vrm/huge"}
+        good = {"asset_id": 777002, "url": "https://vrm/777002"}
+
+        created, _, errors = upsert_vrm_records([huge, good])
+
+        self.assertEqual(created, 1)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Record 0", errors[0])

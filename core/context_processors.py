@@ -27,6 +27,9 @@ logger = logging.getLogger("prei.config")
 # Number of characters for short commit SHA
 _SHORT_SHA_LENGTH = 7
 
+# The _read_* functions below are cached per process: during local runserver the
+# branch and "-dirty" marker stay as they were at startup until you restart.
+
 
 @cache
 def _read_version() -> str:

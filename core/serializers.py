@@ -237,7 +237,11 @@ class OperatingExpensesSerializer(serializers.Serializer):
         max_digits=5, decimal_places=2, min_value=0, default=Decimal("1.0")
     )
     propertyManagementPercent = serializers.DecimalField(
-        max_digits=5, decimal_places=2, min_value=0, default=Decimal("10")
+        max_digits=5,
+        decimal_places=2,
+        min_value=0,
+        max_value=100,
+        default=Decimal("10"),
     )
     vacancyRatePercent = serializers.DecimalField(
         max_digits=5, decimal_places=2, min_value=0, max_value=100, default=Decimal("8")

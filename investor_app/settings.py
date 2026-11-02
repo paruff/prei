@@ -381,6 +381,9 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "django_cache",
+        # Default is 300 rows; past that Django culls a third of them, including
+        # the paid-API quota counters and rate limits that live here.
+        "OPTIONS": {"MAX_ENTRIES": 100000},
     }
 }
 

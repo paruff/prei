@@ -1126,7 +1126,8 @@ def calculate_carrying_costs(request):
                 }
             )
 
-        if break_even["monthly"] > monthly_rent:
+        # Rent of 0 has no "% over" to show; the negative cash flow warning covers it.
+        if monthly_rent > 0 and break_even["monthly"] > monthly_rent:
             pct_over = float(
                 (
                     (break_even["monthly"] - monthly_rent) / monthly_rent * Decimal(100)
@@ -1304,7 +1305,12 @@ def watchlist_view(request):
             )
 
         try:
-            property_obj = ForeclosureProperty.objects.get(id=property_id)
+            property_obj = ForeclosureProperty.objects.get(id=int(property_id))
+        except ValueError, TypeError:
+            return Response(
+                {"error": "propertyId must be a number", "code": "INVALID_REQUEST"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except ForeclosureProperty.DoesNotExist:
             return Response(
                 {"error": "Property not found", "code": "NOT_FOUND"},
