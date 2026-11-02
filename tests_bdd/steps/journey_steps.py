@@ -347,7 +347,7 @@ class _FormParser(HTMLParser):
 
 def _next_step(ctx: JourneyCtx, label: str, href: str) -> None:
     """Follow a link in the acquired property's next-step bar (FR-18)."""
-    _click(ctx, r"^Pipeline$")
+    _click(ctx, r"^Portfolio$")
     _click(ctx, r"^1200 Seed Pass Ln$", r"^/pipeline/\d+/$")
     _click(ctx, label, href)
 
@@ -428,7 +428,7 @@ def add_to_leasing(ctx: JourneyCtx) -> None:
     assert f'value="{prop_id.group(1)}" selected' in ctx.page, "not pre-selected"
     _submit(
         ctx,
-        r"/leasing/add/$",
+        r"/leasing/add/(\?.*)?$",
         {"property_record": prop_id.group(1), "asking_rent": "1800"},
     )
     _click(ctx, r"View Details", r"^/leasing/\d+/$")
