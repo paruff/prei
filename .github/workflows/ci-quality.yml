@@ -405,7 +405,7 @@ jobs:
       - name: Combine and report
         run: |
           coverage combine
-          coverage report --fail-under=70
+          coverage report --fail-under=75
 
   # ── Summary gate ──────────────────────────────────────────────────────────
 
