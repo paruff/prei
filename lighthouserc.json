@@ -2,8 +2,7 @@
   "ci": {
     "collect": {
       "numberOfRuns": 2,
-      "staticDistDir": "./staticfiles",
-      "url": "http://localhost:8000/",
+      "url": "http://localhost:8000/accounts/login/",
       "startServerCommand": null,
       "startServerTimeout": 120,
       "maxWaitForLoad": 60000
@@ -11,12 +10,47 @@
     "assert": {
       "preset": "lighthouse:no-pwa",
       "assertions": {
-        "first-contentful-paint": ["warn", {"maxNumericValue": 3000}],
-        "largest-contentful-paint": ["warn", {"maxNumericValue": 4000}],
-        "cumulative-layout-shift": ["error", {"maxNumericValue": 0.1}],
-        "interactive": ["warn", {"maxNumericValue": 5000}],
-        "server-response-time": ["warn", {"maxNumericValue": 1000}],
-        "categories:performance": ["warn", {"minScore": 0.5}]
+        "first-contentful-paint": [
+          "warn",
+          {
+            "maxNumericValue": 3000
+          }
+        ],
+        "largest-contentful-paint": [
+          "warn",
+          {
+            "maxNumericValue": 4000
+          }
+        ],
+        "cumulative-layout-shift": [
+          "error",
+          {
+            "maxNumericValue": 0.1
+          }
+        ],
+        "interactive": [
+          "warn",
+          {
+            "maxNumericValue": 5000
+          }
+        ],
+        "server-response-time": [
+          "warn",
+          {
+            "maxNumericValue": 1000
+          }
+        ],
+        "categories:performance": [
+          "warn",
+          {
+            "minScore": 0.5
+          }
+        ],
+        "bf-cache": "warn",
+        "errors-in-console": "warn",
+        "redirects": "warn",
+        "unminified-css": "warn",
+        "unused-css-rules": "warn"
       }
     },
     "upload": {
