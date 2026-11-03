@@ -1,158 +1,117 @@
-# Plan: a functioning prei
+# Plan: lease and keep it leased
 
-**From:** [intent.md](intent.md) and [spec.md](spec.md), 2026-10-29 · **Status:** proposed (approved by merging the PR that changes this file)
+**From:** [intent.md](intent.md) and [spec.md](spec.md), 2026-11-02 · **Status:** proposed (approved by merging the PR that changes this file)
 **Status of work lives on the board, never here:** [Real Estate Investor project](https://github.com/users/paruff/projects/3) (how it works: [AGENTS.md](AGENTS.md) "Workflow"). Update this file in the same PR when implementation departs from it.
+**Previous plan:** G0–G7, archived in [features/functioning-prei/plan.md](features/functioning-prei/plan.md). Its last open row, #578 (one test tree), finishes in G7 before G8 starts.
 
 ## How this plan works
 
 - **One goal at a time.** Each goal is a GitHub milestone with the same name. A goal is done when its **Proof** passes. The next goal starts after that, not before.
-- **The proof comes first.** Every goal's first row writes the failing test that is its proof. Further rows fix what that test shows is broken; add them to this file when the test finds them, not in advance.
+- **The proof comes first.** Every goal's first row writes the failing test that is its proof. Further rows fix what that test shows is broken; add them to this file when the test finds them.
 - **Each row is one issue** in its goal's milestone. A row with no issue yet says `no issue yet`.
 - **Anything not needed for a goal goes to [Later](#later-no-milestone).**
 
-## G0: runs in Docker, tested end to end
+## G8: one lease, one record
 
-**Outcome:** on a clean checkout, `docker compose up` and one seed command give a running prei with one market's data (default Dallas, TX).
-**Proof:** `tests/acceptance/` passes with `BASE_URL` pointing at the container (AC-10, AC-11).
+**Tracking:** [#617](https://github.com/paruff/prei/issues/617)
 
-| Row | Work | Spec | Files | Issue |
-|---|---|---|---|---|
-| G0.1 | `make docker-accept`: build, up, seed, run `tests/acceptance/` against the container, down. Fails today. | FR-10, AC-11 | `Makefile` | [#466](https://github.com/paruff/prei/issues/466) |
-| G0.2 | Compose starts without the external `observability-lab` network (make OTEL optional) | FR-10, AC-10 | `docker-compose.yml` | [#467](https://github.com/paruff/prei/issues/467) |
-| G0.3 | One seed command for one market: `seed_markets` + `populate_growth_areas` + properties, inside the container; fix `make docker-dev` (`web` vs the `preiweb` service) | FR-11, AC-10 | `Makefile`, `core/management/commands/` | [#468](https://github.com/paruff/prei/issues/468) |
-| G0.4 | CI runs the journey proof against the container, so template changes can't break it unnoticed | FR-10, AC-11 | `.github/workflows/`, `Makefile` | [#524](https://github.com/paruff/prei/issues/524) |
-
-## G1: find and decide (journey steps 1–4)
-
-**Outcome:** on the seeded market, the investor ranks growth areas, discovers properties, screens them with yield and price-to-rent, and underwrites the best one.
-**Proof:** a journey scenario for steps 1–4 passes against the container (AC-12), and the rent report is committed (AC-13).
+**Outcome:** the leasing record can be trusted, and a signed lease is the property's rent in the portfolio without re-entry.
+**Proof:** the journey's leasing step signs at 1800 and the portfolio uses 1800 (AC-20); bad and out-of-order input is refused cleanly (AC-21); every stage reached has a stored date (AC-22).
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G1.1 | Journey scenario, steps 1–4, against the container. Fails until it passes. | FR-12, AC-12 | `tests_bdd/features/journey.feature` (new), `tests_bdd/steps/` | [#469](https://github.com/paruff/prei/issues/469) |
-| G1.2 | Rent report: coverage by source (VRM, Rentometer, HUD FMR) on the seeded market; HUD FMR vs Rentcast quality for Rentcast's fee; recommendation on FR-1 | NFR-7, NFR-1, AC-13 | `docs/assessments/rent-coverage.md` (new), `scripts/` | [#470](https://github.com/paruff/prei/issues/470) |
-| G1.3 | Low-yield and high price-to-rent listings fail even above the score cutoff; PTR against annual rent | FR-12 | `core/services/screening.py` | [#486](https://github.com/paruff/prei/issues/486) |
-| G1.4 | Discovery banner counts verdicts without screening criteria | FR-12 | `core/views/discovery.py` | [#487](https://github.com/paruff/prei/issues/487) |
-| G1.5 | HUD Small Area FMR responses and county FIPS → HUD entity id | NFR-1, AC-13 | `core/integrations/market/hud_fmr.py` | [#490](https://github.com/paruff/prei/issues/490) |
-| G1.6 | Dallas fallback growth rates as fractions; GACS range guard | FR-11 | `core/management/commands/seed_market.py` | [#491](https://github.com/paruff/prei/issues/491) |
-| G1.7 | Journey asserts the screening verdicts and the Dallas row's score | FR-12, AC-12 | `tests_bdd/` | [#525](https://github.com/paruff/prei/issues/525) |
-| G1.8 | HUD ZIP-level rent reaches the screening fallback; rent report measured through screening | NFR-1, AC-13 | `core/services/screening.py`, `core/integrations/market/hud_fmr.py`, `scripts/rent_coverage.py` | [#526](https://github.com/paruff/prei/issues/526) |
-| G1.9 | Seed fixture refreshed by the next live run; listing fixtures keyed by market | FR-11 | `core/management/commands/seed_market.py` | [#527](https://github.com/paruff/prei/issues/527) |
-| G1.10 | Critical screening failures flagged by the evaluator, not message text; re-screen rows from before G1.3 | FR-12 | `core/services/screening.py` | [#528](https://github.com/paruff/prei/issues/528) |
+| G8.1 | Proof: journey asserts portfolio rent and cash flow from the signed lease, rejected backward/skip moves, a field error on `1,800` rent, and stage dates on the detail page. Fails today. | FR-19–22, AC-20–22 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/journey_steps.py` | [#589](https://github.com/paruff/prei/issues/589) |
+| G8.2 | One stage machine in the service: forward one step, required data per stage, hold/resume/withdraw; the `Stage` enum is the only order; views and kanban call it | FR-19 | `core/services/leasing.py`, `core/views/leasing.py`, `templates/leasing/` | [#590](https://github.com/paruff/prei/issues/590) |
+| G8.3 | Stage events: a `LeasingStageEvent` row (stage, date) per change; detail page shows dates and days per stage | FR-20 | `core/models/pipeline.py` (migration, needs approval), `core/services/leasing.py`, `templates/leasing/leasing_detail.html` | [#591](https://github.com/paruff/prei/issues/591) |
+| G8.4 | Leasing forms: add, application, screening, lease, move-in, stabilize through Django forms with field errors | FR-22, NFR-10 | `core/forms.py`, `core/views/leasing.py`, `templates/leasing/stage_form.html` | [#592](https://github.com/paruff/prei/issues/592) |
+| G8.5 | Signing creates `RentalIncome` effective at lease start; portfolio and actuals variance read it; fix the leasing banner that points to Portfolio for renewals | FR-21 | `core/services/leasing.py`, portfolio services, `templates/leasing/leasing_list.html` | [#593](https://github.com/paruff/prei/issues/593) |
+| G8.6 | Unit label on leasing records for `units > 1`; one active listing and one current lease per unit | FR-23 | `core/models/pipeline.py` (migration), `core/services/leasing.py` | [#594](https://github.com/paruff/prei/issues/594) |
+| G8.7 | Seed one leased property for the demo user so Leasing isn't empty on a fresh container | FR-21 | `core/management/commands/seed_market.py` | [#595](https://github.com/paruff/prei/issues/595) |
 
-Rows G1.3 onwards are whatever G1.1 finds broken. Async work (FR-7) joins here only if a step times out.
+## G9: price and fill
 
-## G2: buy and own (journey steps 5–7)
+**Tracking:** [#618](https://github.com/paruff/prei/issues/618)
 
-**Outcome:** a screened property goes from offer through due diligence and closing to acquired, and appears in the portfolio with complete data and monthly actuals.
-**Proof:** a journey scenario for steps 5–7 passes against the container (AC-14).
+**Outcome:** every listing shows a suggested rent and what vacancy costs, and every applicant is screened against written criteria, the same way, on record.
+**Proof:** the journey's two-applicant scenario (AC-23), the suggested rent and vacancy cost on the listing (AC-24), and the restricted-field check (AC-25).
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G2.1 | Journey scenario, steps 5–7, against the container | FR-13, AC-14 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | [#471](https://github.com/paruff/prei/issues/471) |
-| G2.2 | Acquired property is complete at creation (LIMIT-12) | FR-13 | `core/services/` pipeline acquisition | [#472](https://github.com/paruff/prei/issues/472) |
-| G2.3 | Monthly actuals form on the portfolio dashboard | FR-13, AC-14 | `core/views_portfolio.py`, `templates/portfolio_dashboard.html` | [#497](https://github.com/paruff/prei/issues/497) |
-| G2.4 | Journey closing data consistent (loan + down payment = price) and asserted on the portfolio | FR-13, AC-14 | `tests_bdd/` | [#529](https://github.com/paruff/prei/issues/529) |
-| G2.5 | Acquired property honours the closing's loan amount and taxes the closing price; LIMIT-12 removed | FR-13 | `core/services/pipeline.py`, `docs/KNOWN_LIMITATIONS.md` | [#530](https://github.com/paruff/prei/issues/530) |
-| G2.6 | Monthly actuals: one row per month, notes kept, errors name the field | FR-13 | `core/views_portfolio.py` | [#531](https://github.com/paruff/prei/issues/531) |
+| G9.1 | Proof: journey lists at a suggested rent, adds two applicants, declines one on the income criterion with its reason, approves the other; restricted-field unit test. Fails today. | FR-24–27, AC-23–25, NFR-8 | `tests_bdd/`, `core/tests/` | [#596](https://github.com/paruff/prei/issues/596) |
+| G9.2 | `Applicant` model (many per listing, minimal fields, status, reason); approving one closes the others; migrate the single-applicant fields | FR-26, NFR-8 | `core/models/pipeline.py` (migration), `core/services/leasing.py`, `templates/leasing/` | [#597](https://github.com/paruff/prei/issues/597) |
+| G9.3 | Leasing criteria (versioned like `ScreeningCriteria`); score each applicant per criterion; store the version with the decision | FR-27 | `core/models/pipeline.py`, `core/services/leasing.py`, settings screen | [#598](https://github.com/paruff/prei/issues/598) |
+| G9.4 | Suggested rent from the existing rent chain with source and confidence, shown on add and detail; asking vs suggested | FR-24 | `core/services/screening.py` (reuse `_get_monthly_rent` logic), `core/services/leasing.py` | [#599](https://github.com/paruff/prei/issues/599) |
+| G9.5 | Vacancy clock (vacancy start → move-in) and cost so far: daily rent + daily carrying costs; on list, kanban and detail; Decimal unit tests | FR-25, NFR-9 | `core/services/leasing.py`, `templates/leasing/` | [#600](https://github.com/paruff/prei/issues/600) |
+| G9.6 | Listing health prompt after N days or showings without an application | FR-28 | `core/services/leasing.py`, `templates/leasing/` | [#601](https://github.com/paruff/prei/issues/601) |
 
-## G3: grow (journey steps 8–9)
+## G10: hosted
 
-**Outcome:** BRRRR and leasing work on a property acquired in G2.
-**Proof:** scenarios for steps 8 and 9 pass against the container (AC-15).
+**Tracking:** [#619](https://github.com/paruff/prei/issues/619)
 
-| Row | Work | Spec | Files | Issue |
-|---|---|---|---|---|
-| G3.1 | Journey scenarios, steps 8–9, against the container | FR-14, AC-15 | `tests_bdd/features/journey.feature`, `tests_bdd/steps/` | [#473](https://github.com/paruff/prei/issues/473) |
-| G3.2 | Journey's BRRRR step uses the acquired property's price and rent; leasing asserts tenant and rent | FR-14, AC-15 | `tests_bdd/` | [#532](https://github.com/paruff/prei/issues/532) |
-
-## G4: trust the numbers
-
-**Outcome:** every page loads, and the figures an investor acts on are right: an acquired property's equity, cash flow, purchase price and verdict, formatted one way everywhere.
-**Proof:** a route smoke test and journey assertions on the portfolio and dashboard pass against the container (AC-16). Findings: [UX audit](docs/assessments/ux-ui-audit-2026-10-30.md) §1.
+**Outcome:** a real investor can use prei on a hosted URL, and their leasing data is backed up and can be restored.
+**Proof:** the acceptance suite and journey pass against the hosted URL, and a backup restore succeeds (AC-28).
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G4.1 | Proof: smoke-test every named GET route for the demo user; journey asserts equity, cash flow, purchase price and verdict of the acquired property. Fails today. | FR-15, AC-16 | `tests/acceptance/test_routes.py` (new), `tests_bdd/` | [#503](https://github.com/paruff/prei/issues/503) |
-| G4.2 | Financing comparison page 500 (`sub` filter not loaded); rent cushion computed in the service, not the template | FR-15 | `templates/properties/financing_comparison.html`, `core/services/` | [#504](https://github.com/paruff/prei/issues/504) |
-| G4.3 | Portfolio: equity = value − loan, cash flow net of expenses and debt service, closing price not list price, GACS from the property's market | FR-15 | `core/services/` portfolio, `core/views/`, `templates/portfolio_dashboard.html` | [#505](https://github.com/paruff/prei/issues/505) |
-| G4.4 | Dashboard: verdict and score consistent with CoC and cap rate for acquired properties; property count matches `/properties/` | FR-15 | `core/services/scoring.py`, dashboard view | [#506](https://github.com/paruff/prei/issues/506) |
-| G4.5 | One `money`, `pct`, `score` filter set, used by every template | FR-15 | `core/templatetags/`, `templates/` | [#507](https://github.com/paruff/prei/issues/507) |
-| G4.6 | Remove the shadowed second `markets/` route | FR-15 | `core/urls.py` | [#508](https://github.com/paruff/prei/issues/508) |
-| G4.7 | One NOI calculation for underwriting and the acquired property; underwriting uses the stored rates | FR-15, AC-16 | `core/services/cma.py`, `core/services/pipeline.py`, `core/services/portfolio.py` | [#533](https://github.com/paruff/prei/issues/533) |
+| G10.1 | Proof: a workflow runs `tests/acceptance/` and the journey with `BASE_URL` set to the hosted URL. Fails today (404). | FR-33, AC-28 | `.github/workflows/`, `Makefile` | [#602](https://github.com/paruff/prei/issues/602) |
+| G10.2 | Hosted service and Postgres up from `render.yaml` (or another host): account, plan and secrets are a human step | FR-33 | `render.yaml`, `docs/how-to-guides/render-deploy.md` | [#603](https://github.com/paruff/prei/issues/603) |
+| G10.3 | Journey runs on Postgres in Docker before the hosted cut-over, so no SQLite-only behaviour reaches production | FR-33 | `docker-compose.yml`, `Makefile` | [#604](https://github.com/paruff/prei/issues/604) |
+| G10.4 | Scheduled backups and a restore drill (script and runbook) | FR-33, AC-28 | `scripts/`, `docs/how-to-guides/` | [#605](https://github.com/paruff/prei/issues/605) |
+| G10.5 | Clear the WARN-level ZAP findings on the hosted URL (LIMIT-23) | FR-33, FR-9 | `config/settings.py`, middleware | [#606](https://github.com/paruff/prei/issues/606) |
+| G10.6 | Migrations run before the new release takes traffic | NFR-6 | `render.yaml`, start command | [#607](https://github.com/paruff/prei/issues/607) |
 
-## G5: DESIGN.md enforced
+## G11: keep it leased
 
-**Outcome:** DESIGN.md is the source of the UI because a check enforces it, and the palette meets WCAG AA.
-**Proof:** `design-lint` pre-commit hook passes with no token, colour or `<style>` allow-list entries (AC-17). Findings: audit §2–3.
+**Tracking:** [#620](https://github.com/paruff/prei/issues/620)
 
-| Row | Work | Spec | Files | Issue |
-|---|---|---|---|---|
-| G5.1 | Proof: `design-lint` hook (undefined `var(--x)`, hex/`rgb(` outside `tokens.css`, template `<style>` outside `exports/`, Bootstrap classes), with today's violations in an allow-list | FR-16, AC-17 | `scripts/check_design.py` (new), `.pre-commit-config.yaml` | [#509](https://github.com/paruff/prei/issues/509) |
-| G5.2 | Map the 17 undefined tokens; replace off-palette blue and Tailwind colours; fix the invisible logo; delete `theme.css`; move template `<style>` blocks into `base.css` | FR-16 | `static/css/`, 5 templates | [#510](https://github.com/paruff/prei/issues/510) |
-| G5.3 | WCAG AA: primary fill reaches 4.5:1 with white text, no `neutral-200` text, `:focus-visible` outline restored; DESIGN.md updated | FR-16 | `static/css/tokens.css`, `static/css/base.css`, `static/css/pipeline.css`, `DESIGN.md` | [#511](https://github.com/paruff/prei/issues/511) |
-| G5.4 | Links in tables and cards use the palette, not browser blue; REVIEW.md asks for screenshots on UI PRs | FR-16 | `static/css/base.css`, `static/css/pipeline.css`, `REVIEW.md` | [#512](https://github.com/paruff/prei/issues/512) |
-
-## G6: every screen on the design system
-
-**Outcome:** no screen renders browser-default controls or Bootstrap leftovers, and every screen works at phone width.
-**Proof:** `make ui-check` passes against the container and the design-lint allow-list is empty (AC-18). Findings: audit §2–4.
+**Outcome:** expiring leases are surfaced early, the investor renews or re-lets based on a priced comparison, and leasing KPIs sit next to the returns.
+**Proof:** the journey renews a lease and the portfolio shows the new rent (AC-26); a turnover reopens a pre-filled listing and the KPIs show the vacancy (AC-27).
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G6.1 | Proof: `make ui-check` crawls named routes at 1280 and 390px and fails on non-200, horizontal scroll, unlabelled inputs and AA contrast. Fails today. | FR-17, AC-18 | `Makefile`, `scripts/ui_check.py` (new) | [#513](https://github.com/paruff/prei/issues/513) |
-| G6.2 | Investment Targets and Screening Settings forms; percentage fields take percentages | FR-17 | `templates/investment_targets/`, `templates/pipeline/`, `core/forms.py` | [#514](https://github.com/paruff/prei/issues/514) |
-| G6.3 | Properties list, edit and compare | FR-17 | `templates/properties/`, `core/forms.py` | [#515](https://github.com/paruff/prei/issues/515) |
-| G6.4 | VRM, HUD and USDA lists and details | FR-17 | `templates/vrm_properties/`, `templates/hud_properties/`, `templates/usda_properties/` | [#516](https://github.com/paruff/prei/issues/516) |
-| G6.5 | Sign-in, onboard and system pages | FR-17 | `templates/registration/`, `templates/onboard.html`, `templates/system.html` | [#517](https://github.com/paruff/prei/issues/517) |
-| G6.6 | Pipeline screens: screener filters, kanban discover panel and scroll affordance, Growth Areas table clipping, `pipeline.css` form and verdict classes onto base classes | FR-17 | `templates/pipeline/`, `templates/growth_areas.html`, `static/css/pipeline.css` | [#518](https://github.com/paruff/prei/issues/518) |
+| G11.1 | Proof: journey sees the lease in the 90-day list, compares renew vs turnover, renews; then a turnover reopens a listing. Fails today. | FR-29–32, AC-26–27 | `tests_bdd/` | [#608](https://github.com/paruff/prei/issues/608) |
+| G11.2 | Lease end view (90/60/30 days) on Leasing; flag on the portfolio dashboard | FR-29 | `core/services/leasing.py`, `core/views/leasing.py`, `templates/portfolio_dashboard.html` | [#609](https://github.com/paruff/prei/issues/609) |
+| G11.3 | Renew-vs-turnover service and page: both options over the next term, break-even increase; Decimal unit tests | FR-30, NFR-9 | `core/services/leasing.py`, `templates/leasing/` | [#610](https://github.com/paruff/prei/issues/610) |
+| G11.4 | Renew (next lease + `RentalIncome`) and turnover (pre-filled listing, vacancy clock from move-out) actions | FR-31 | `core/services/leasing.py`, `core/views/leasing.py` | [#611](https://github.com/paruff/prei/issues/611) |
+| G11.5 | Leasing KPIs per property and portfolio-wide, on Leasing and the portfolio dashboard; LIMIT-14 updated | FR-32, NFR-9 | `core/services/leasing.py`, portfolio services, `docs/KNOWN_LIMITATIONS.md` | [#612](https://github.com/paruff/prei/issues/612) |
 
-## G7: one journey through the nav
+## G12: screened by a provider
 
-**Outcome:** the nav follows the investor journey, and every step leads to the next without typing a URL.
-**Proof:** the journey scenario walks steps 1–9 through links only, against the container (AC-19). G7.2's nav is a proposal: a human decides it in `intent.md` before G7.2 starts. Findings: audit §5.
+**Tracking:** [#621](https://github.com/paruff/prei/issues/621)
+
+**Outcome:** an investor screens an applicant through a paid provider without prei ever holding the report or the applicant's SSN, and the result is checked against their written criteria.
+**Proof:** a screening request against the provider sandbox (or a recorded fake in CI) is stored as a summary and checked against the criteria (AC-29).
 
 | Row | Work | Spec | Files | Issue |
 |---|---|---|---|---|
-| G7.1 | Proof: journey steps follow nav and page links only. Fails today. | FR-18, AC-19 | `tests_bdd/steps/journey_steps.py` | [#519](https://github.com/paruff/prei/issues/519) |
-| G7.2 | Proposed nav (pending the intent decision): Markets · Pipeline · Portfolio · Leasing, settings under the avatar; `/growth/` is the Markets landing; fold the dashboard screener and `/properties/` into Pipeline and Portfolio; hide the app nav from anonymous users | FR-18 | `templates/base.html`, `core/urls.py`, views | [#520](https://github.com/paruff/prei/issues/520) |
-| G7.3 | Acquired property next-step bar: enter actuals, start leasing, model BRRRR pre-filled from the property | FR-18 | `templates/pipeline/pipeline_detail.html`, `core/views/` | [#521](https://github.com/paruff/prei/issues/521) |
-| G7.4 | Plain language: no raw enums, "Remove" not "Kill", GACS explained, empty states via the partial, forms blank instead of `0` | FR-18 | `templates/`, `core/forms.py` | [#522](https://github.com/paruff/prei/issues/522) |
+| G12.1 | Proof: acceptance test requests screening for an applicant against a recorded fake and asserts the stored summary, criteria result and no restricted field. Fails today. | FR-34, AC-29, NFR-11 | `tests/`, `tests_bdd/` | [#613](https://github.com/paruff/prei/issues/613) |
+| G12.2 | Choose the provider (API access, fee per report, applicant-paid option, onboarding for the investor): human decision | FR-34 | `docs/assessments/` | [#614](https://github.com/paruff/prei/issues/614) |
+| G12.3 | Provider adapter: request, verified callback, result summary; key from the environment | FR-34, NFR-11 | `core/integrations/screening/` (new), `core/views/leasing.py` | [#615](https://github.com/paruff/prei/issues/615) |
+| G12.4 | Check the provider result against the written criteria; fee recorded as a leasing cost | FR-34, FR-27 | `core/services/leasing.py`, `templates/leasing/` | [#616](https://github.com/paruff/prei/issues/616) |
 
 ## Later (no milestone)
 
-Kept from the superseded beta-readiness plan; spec IDs unchanged. None of these has an issue yet.
+Rows L1–L9 from the [archived plan](features/functioning-prei/plan.md#later-no-milestone) are unchanged (Rentcast, ATTOM, GACS backtest and signals, crime data, SRI/ZAP, hygiene L9), except L7 (hosted deploy), which is now G10. Added:
 
 | Row | Work | Spec |
 |---|---|---|
-| L1 | Rentcast adapter, only if G1.2 recommends it | FR-1, AC-1, AC-2 |
-| L2 | ATTOM rent probe | FR-2 |
-| L3 | GACS backtest script and report | FR-3, AC-3, NFR-2 |
-| L4 | GACS signal completion: schools, supply, county employment | FR-4 |
-| L5 | Real crime data (FBI CDE, then fallback) | FR-5, AC-4, NFR-3 |
-| L6 | SRI on external scripts; authenticated ZAP 0 FAIL / 0 WARN | FR-9, AC-9 |
-| L7 | Hosted deploy (Render or other) with Postgres | NFR-6 |
-| L8 | Design-system drift: moved to G5 and G6 | FR-16, FR-17 |
-| L9 | Hygiene from the 2026-10-30 review: GreatSchools error log says what broke (no key, no ZIP); `docker-rent-report` in `make help`; `requirements.txt` "must match" comments agree with `.pre-commit-config.yaml`; drop unused `django-structlog`; screening yield/PTR in Decimal | none |
-
-Also later: portfolio analytics, saved searches, partner API. Deferred by decision: team sharing (#371, #372).
+| L10 | Unit model with per-unit expenses, only if the unit label (G8.6) is not enough | FR-23 |
+| L12 | Market days-on-market and rent comps per ZIP to benchmark a listing, once a free or measured source exists | FR-28, FR-32 |
 
 ## Risks
 
-- **Seeding needs free keys** (Census, BLS, HUD) in `.env`. If a key or API is unavailable, G0.3 commits a small fixture dataset for the market instead.
-- **The journey scenario finds a lot broken.** That is the point: fix in journey order and keep each fix row small.
-- **HUD FMR is too coarse for screening.** G1.2 says so with numbers, and L1 (Rentcast) moves into G1.
+- **Migrations on live leasing data.** G8.3, G8.6 and G9.2 change models; each is additive with a data migration and needs approval first.
+- **Suggested rent is only as good as the rent chain.** HUD FMR is coarse ([rent-coverage.md](docs/assessments/rent-coverage.md)); show source and confidence and never present it as a comp.
+- **Screening records carry legal weight.** prei stores the investor's criteria and decisions; wording stays factual, with no advice and no protected-class data (NFR-8).
+- **Scope pull toward property management.** Anything about collecting rent, maintenance or tenant communication goes to the VISION non-goal list, not a row.
 
 ## Proof summary
 
 | Goal | Proof | Command |
 |---|---|---|
-| G0 | Acceptance suite green against the container | `make docker-accept` |
-| G1 | Steps 1–4 scenario green; rent report committed | `make docker-accept` (runs the journey feature too) |
-| G2 | Steps 5–7 scenario green | same |
-| G3 | Steps 8–9 scenarios green | same |
-| G4 | Route smoke test and portfolio/dashboard assertions green | same |
-| G5 | Design lint green, no token/colour allow-list | `pre-commit run design-lint --all-files` |
-| G6 | UI check green, design-lint allow-list empty | `make ui-check` |
-| G7 | Journey walks by links only | `make docker-accept` |
-| Always | Tests, lint and types green | CI `ci-quality.yml` |
+| G8 | Lease reaches the portfolio; bad input refused; stage dates stored | `make docker-accept` |
+| G9 | Two-applicant screening, suggested rent, vacancy cost; restricted-field check | `make docker-accept`, `.venv/bin/python -m pytest core/tests` |
+| G10 | Acceptance and journey green on the hosted URL; restore drill passes | hosted workflow |
+| G11 | Renewal and turnover through the journey | `make docker-accept` |
+| G12 | Provider screening stored as a summary and checked against criteria | `make docker-accept` |
+| Always | Tests, lint, types, design lint, UI check green | CI pr gate, `make ui-check` |

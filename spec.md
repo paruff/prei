@@ -1,59 +1,67 @@
-# Specification: a functioning prei
+# Specification: lease and keep it leased
 
 **Status**: proposed (approved by merging the PR that changes this file)
-**From**: [intent.md](intent.md) · **Plan**: [plan.md](plan.md) (goals G0–G7)
-**Decisions**: 2026-10-24: single-user; SQLite local, Postgres for hosted; Django 6.0. 2026-10-29: Docker first, Render later; HUD FMR rent first, Rentcast after measurement.
-**IDs**: FR-1 to FR-9 come from the superseded beta-readiness spec. FR-6, FR-8, NFR-5, AC-5 and AC-7 were removed. IDs are never reused.
+**From**: [intent.md](intent.md) · **Plan**: [plan.md](plan.md) (goals G8–G12)
+**Decisions**: all earlier decisions stand ([archived spec](features/functioning-prei/spec.md)). 2026-11-02: leasing is decision analytics, not property management; applicant data kept to the minimum; rent suggestion reuses the existing rent chain.
+**IDs**: continue from the archived spec (FR-18, NFR-7, AC-19). IDs are never reused. Requirements still marked Later in the archived spec keep their IDs and appear in plan.md "Later".
 
 ---
 
 ## Current State Assessment
 
-| Gap | Current | Blocker |
+Audit of 2026-11-02 (code, running container, live site).
+
+| Gap | Current | Where |
 |---|---|---|
-| **Runs anywhere** | Render not running; `docker compose up` needs the external `observability-lab` network | No local or hosted environment runs the journey |
-| **Seed data** | `seed_markets`, `populate_growth_areas` run by hand | GACS empty after a fresh start (LIMIT-17) |
-| **Journey proof** | Page and endpoint tests; kanban e2e | No test walks steps 1–9 |
-| **Rent data** | Chain is VRM → stored estimate → Rentometer → HUD FMR (`_get_monthly_rent`) | Coverage never measured; LIMIT-11 may be stale |
-| **Background tasks** | Re-screen on criteria change is synchronous | Only a blocker if it times out (LIMIT-15) |
+| **Lease → portfolio** | A signed lease writes `monthly_rent` on the leasing record only; no `RentalIncome` is created | `core/views/leasing.py` `leasing_lease` |
+| **Stage integrity** | Each stage view sets its stage unconditionally (an Approved listing can be sent back to Showing); the kanban jumps forward with no data; stage logic in views duplicates the service | `core/views/leasing.py`, `core/services/leasing.py` |
+| **Input validation** | Raw `request.POST`; `Decimal("")` or `"1,800"` → 500; lease end date not checked against start | `leasing_lease`, `leasing_add` |
+| **Stage history** | Built as `(stage, None)`: no dates are stored | `leasing_detail` |
+| **Stage order** | Copied in four places | service, list, kanban, detail |
+| **Applicants** | One name per listing, overwritten by the next application; screening is a pass/fail box and a note | `LeasingPipelineProperty` |
+| **Hold / withdraw** | `put_on_hold` and `mark_filled` are never called; no UI | `core/services/leasing.py` |
+| **Decision support** | No suggested rent, no vacancy cost, days vacant shown only at the Listing stage | list, add, kanban |
+| **After move-in** | No lease end view, renewal or turnover; the banner sends renewals to Portfolio, which has none (LIMIT-14) | `templates/leasing/leasing_list.html` |
+| **Units** | One leasing record per property; `Property.units` ignored | model |
+| **Tests** | Acceptance checks only that the pages return 200; the journey checks "stabilized" only | `tests/acceptance/test_leasing.py`, `tests_bdd/` |
+| **Hosting** | Render returns 404; only the docs site is live | `render.yaml` |
 
 ---
 
 ## Requirements
 
-`Goal` is the [plan.md](plan.md) goal that delivers the requirement. `Later` means after G3.
-
 ### Functional Requirements
 
 | ID | Requirement | Priority | Goal | Description |
 |---|---|---|---|---|
-| FR-10 | **Docker run** | Critical | G0 | `docker compose up` on a clean machine starts prei; observability is optional |
-| FR-11 | **Seeded market** | Critical | G0 | One command loads one market (growth areas with GACS, properties, rent inputs) into the container |
-| FR-12 | **Journey acceptance, steps 1–4** | Critical | G1 | Identify, discover, screen and underwrite on the seeded market |
-| FR-13 | **Journey acceptance, steps 5–7** | Critical | G2 | Offer, acquire and own: an acquired deal appears in the portfolio with complete data |
-| FR-14 | **Journey acceptance, steps 8–9** | High | G3 | BRRRR and leasing on an acquired property |
-| FR-15 | **Trustworthy figures** | Critical | G4 | Every page loads; an acquired property's equity, cash flow, purchase price and verdict are correct; money, percentages and scores are formatted one way everywhere ([UX audit](docs/assessments/ux-ui-audit-2026-10-30.md) §1) |
-| FR-16 | **DESIGN.md enforced** | High | G5 | A check rejects undefined tokens, off-palette colours, template `<style>` blocks and Bootstrap classes; text and primary buttons meet WCAG AA; keyboard focus is visible (audit §2–3) |
-| FR-17 | **Legacy screens on the design system** | High | G6 | Every screen uses DESIGN.md classes and partials; no horizontal scroll at 390px; every input is labelled (audit §2–4) |
-| FR-18 | **One journey through the nav** | High | G7 | The nav follows the journey (markets, pipeline, portfolio, leasing); an acquired property links to its next steps; no raw enum labels (audit §5) |
-| FR-1 | **Rentcast Integration** | Later | Later | Add a Rentcast adapter to the rent chain, only if G1's measurement shows HUD FMR is not good enough |
-| FR-2 | **ATTOM Rent Fields** | Later | Later | Test whether ATTOM returns rent estimates; if yes, add as a fallback |
-| FR-3 | **GACS Backtest & Validation** | Later | Later | Backtest GACS against FHFA/Zillow appreciation; publish weight sensitivity and confidence bands |
-| FR-4 | **GACS Signal Completion** | Later | Later | School quality, supply constraint from permits, county QCEW employment |
-| FR-5 | **Real Crime Data** | Later | Later | FBI CDE retry; else SpotCrime, CityProtect or local PD APIs |
-| FR-7 | **Async work** | High | G1 if needed | Async re-screen, discovery and VRM scrape, only if G1 shows a request timing out |
-| FR-9 | **CSP & Security Headers** | High | In flight (#458), then Later | Django 6 built-in `ContentSecurityPolicyMiddleware` (nonce-based); CSP, Permissions-Policy, Cross-Origin-Resource-Policy; SRI on external scripts |
+| FR-19 | **One lease, one record** | Critical | G8 | Stages advance only forward, one at a time, through the service; a stage cannot be entered without its data (Application: an applicant; Lease Signed: rent, start date, end date after start; Move-In: date). On hold and withdrawn are reachable from the UI |
+| FR-20 | **Stage history** | High | G8 | Every stage change is stored with its date; the detail page shows real dates and days spent per stage |
+| FR-21 | **Lease feeds the portfolio** | Critical | G8 | Signing a lease creates the property's `RentalIncome` from the lease start date; portfolio cash flow and actuals-vs-pro-forma use it; no rent is typed twice |
+| FR-22 | **Validated leasing forms** | Critical | G8 | Every leasing POST goes through a Django form; bad input re-renders with a field error, never a 500 |
+| FR-23 | **Unit-aware leasing** | High | G8 | A leasing record carries a unit label when `Property.units > 1`; each unit has at most one active listing and one current lease |
+| FR-24 | **Suggested rent** | High | G9 | Listing a unit shows a suggested rent from the existing rent chain, with its source and confidence; the asking rent is compared to it |
+| FR-25 | **Cost of vacancy** | High | G9 | Each vacant unit shows days vacant (from vacancy start to move-in, not only while Listed) and cost so far: daily rent plus daily carrying costs |
+| FR-26 | **Many applicants per listing** | Critical | G9 | A listing holds any number of applicants, each with minimal data (intent constraints), a status and a decision reason; approving one closes the others with a reason |
+| FR-27 | **Written screening criteria** | High | G9 | The investor writes leasing criteria once (minimum income as a multiple of rent, minimum credit score, eviction and criminal look-back as the investor's own rules). Each applicant is scored against them the same way; the criteria version in force is stored with each decision |
+| FR-28 | **Listing health prompt** | Medium | G9 | A listing with no application after a set number of days or showings shows a price-review prompt with the vacancy cost to date |
+| FR-29 | **Lease end view** | High | G11 | Leases ending within 90, 60 and 30 days are listed on Leasing and flagged on the portfolio dashboard |
+| FR-30 | **Renew or turn over** | High | G11 | For a lease nearing its end, compare renewal (rent change, any concession) against turnover (expected vacancy days × daily rent, make-ready, leasing fee) over the next term; show the break-even rent increase |
+| FR-31 | **Renewal and turnover actions** | High | G11 | Renewing creates the next lease and its `RentalIncome`; turnover reopens a listing pre-filled from the last lease and starts the vacancy clock at move-out |
+| FR-32 | **Leasing KPIs** | High | G11 | Per property and for the portfolio: economic occupancy, average days vacant, days to lease, showing-to-application conversion, rent vs suggested rent, turnover rate |
+| FR-33 | **Hosted** | Critical | G10 | prei runs on a hosted URL with Postgres, HTTPS and secrets from the environment; the database has scheduled backups and a restore has been tested; no WARN-level ZAP findings on the hosted URL (LIMIT-23) |
+| FR-34 | **Provider tenant screening** | High | G12 | From an applicant record the investor requests a paid screening report; the provider collects consent, SSN and date of birth from the applicant directly; prei stores the result summary, report date, provider reference and fee, and checks the result against the written criteria (FR-27) |
+| FR-1 to FR-5, FR-7, FR-9 | As in the archived spec | Later | Later | Rentcast, ATTOM rent, GACS backtest and signals, crime data, async work, CSP/SRI |
 
 ### Non-Functional Requirements
 
 | ID | Requirement | Priority | Goal | Description |
 |---|---|---|---|---|
-| NFR-7 | **Rent data measured** | Critical | G1 | Coverage by source on the seeded market, and HUD FMR vs Rentcast quality for Rentcast's fee, recorded in `docs/assessments/` |
-| NFR-1 | **Rent coverage ≥ 90%** | High | G1 target | ≥90% of seeded properties have a rent estimate for screening |
-| NFR-4 | **Async task latency < 5s** | High | G1 if needed | User-visible screening re-run under 5s |
-| NFR-2 | **GACS predictive validity** | Later | Later | Backtest R² ≥ 0.4 vs 12-month appreciation; publish methodology |
-| NFR-3 | **Crime data granularity** | Later | Later | ZIP or census-tract level |
-| NFR-6 | **Zero-downtime deploy** | Later | Later | Only with a hosted deploy; canary is a VISION non-goal |
+| NFR-8 | **Applicant data minimal** | Critical | G9 | No SSN, date of birth, credit report file or protected-class field exists on any model; a test fails if one is added |
+| NFR-9 | **Leasing math tested** | Critical | G9, G11 | Vacancy cost, renewal-vs-turnover and KPIs are service functions with Decimal unit tests, including zero rent, missing carrying costs and leases shorter than a month |
+| NFR-10 | **No 5xx on leasing** | Critical | G8 | Leasing routes return non-5xx for blank, malformed and out-of-order input |
+| NFR-11 | **No consumer report stored** | Critical | G12 | prei never receives or stores the full report, SSN or date of birth; provider callbacks are verified (signature or shared secret) and the API key comes from the environment |
+| NFR-6 | **Zero-downtime deploy** | High | G10 | Kept from the archived spec; deploys run migrations before the new release takes traffic |
+| NFR-1 to NFR-5 | As in the archived spec | Later | Later | |
 
 ---
 
@@ -61,43 +69,42 @@
 
 | ID | Criterion | Test Type | Goal |
 |---|---|---|---|
-| AC-10 | On a clean checkout, `docker compose up` plus the seed command gives a healthy `/health/` | live-system (container) | G0 |
-| AC-11 | `tests/acceptance/` passes with `BASE_URL` pointing at the container | live-system (container) | G0 |
-| AC-12 | A journey scenario for steps 1–4 passes against the container | acceptance | G1 |
-| AC-13 | Rent measurement report committed, with coverage by source and a Rentcast recommendation | file exists | G1 |
-| AC-14 | A journey scenario for steps 5–7 passes against the container | acceptance | G2 |
-| AC-15 | Scenarios for BRRRR and leasing on an acquired property pass against the container | acceptance | G3 |
-| AC-16 | Every named GET route returns non-5xx for the demo user, and the journey asserts the acquired property's equity, cash flow, purchase price and verdict, against the container | acceptance | G4 |
-| AC-17 | `pre-commit run design-lint --all-files` passes with no allow-list entries for tokens, colours or `<style>`; `--color-primary` fills and text tokens meet 4.5:1 | static check | G5 |
-| AC-18 | `make ui-check` passes: every named page returns 200, no horizontal scroll at 390px, no unlabelled inputs, no AA contrast failures; the design-lint allow-list is empty | live-system (container) | G6 |
-| AC-19 | The journey scenario reaches every step through nav and page links only (no typed URLs), against the container | acceptance | G7 |
-| AC-8 | CSP header present on all responses | live-system | In flight (#458) |
-| AC-1, AC-2, AC-3, AC-4, AC-6, AC-9 | Rentcast, HUD fallback, GACS backtest, crime, async, SRI (unchanged from the superseded spec) | as before | Later |
+| AC-20 | The journey signs a lease at 1800 and the portfolio shows 1800 as the property's rent and uses it in cash flow, with no rent entered in Portfolio | acceptance (container) | G8 |
+| AC-21 | Moving a listing backwards, skipping a stage, or signing without rent/dates is refused with a message; blank and `1,800` rent give a field error, not a 500 | acceptance (container) | G8 |
+| AC-22 | The detail page shows a stored date for every stage reached | acceptance (container) | G8 |
+| AC-23 | The journey adds two applicants, one fails the written income criterion with its reason recorded, the other is approved, and the first keeps its record | acceptance (container) | G9 |
+| AC-24 | The listing shows a suggested rent with its source, and days vacant and vacancy cost that match the service's unit-tested values | acceptance (container) | G9 |
+| AC-25 | A model-field check finds no restricted applicant field (NFR-8) | unit | G9 |
+| AC-26 | The journey sees the lease in the 90-day list, compares renew vs turn over, renews, and the portfolio shows the new rent from the renewal date | acceptance (container) | G11 |
+| AC-27 | A turnover reopens a listing pre-filled from the last lease, and KPIs show the vacancy | acceptance (container) | G11 |
+| AC-28 | `tests/acceptance/` and the journey pass with `BASE_URL` set to the hosted URL; a restore of last night's backup into a scratch database succeeds | live-system (hosted) | G10 |
+| AC-29 | Against the provider's sandbox (or a recorded fake in CI), a screening request for an applicant returns a result that is stored as a summary and checked against the written criteria, with no restricted field stored | acceptance | G12 |
+| AC-1 to AC-9 | As in the archived spec | as before | Later |
 
 ---
 
 ## Constraints
 
-1. **Decimal money**: all rent and currency stays Decimal.
-2. **Service-layer boundaries**: new adapters in `core/integrations/sources/`.
-3. **No Bootstrap**: custom design system only ([DESIGN.md](DESIGN.md)).
-4. **Docker first**: the container image is the artifact; a hosted deploy comes later.
-5. **Free keys on the critical path**: paid APIs only after measurement.
-6. **Single-user**: no teams or sharing.
+1. **Decimal money**; all leasing math in `core/services/`.
+2. **Service-layer boundaries**: views call `core/services/leasing.py`; no stage logic in views.
+3. **One stage order**: the `Stage` enum; no copies.
+4. **Migrations need approval** (`migration-safety` skill); new models are additive.
+5. **Design system**: existing partials and classes (DESIGN.md); no new colours.
+6. **Free data**: the existing rent chain only; the screening provider (G12) is the one paid exception.
+7. **External calls**: the screening adapter lives in `core/integrations/`; views never call it directly.
 
 ---
 
 ## Out of Scope
 
-- Hosted deploy (Render or other) until after G3
-- Mobile app / PWA enhancements
-- MLS/RESO integration, tax strategy, 1031 exchange tracking
-- Team or shared pipelines, lender/agent deal sharing
-- Postgres for local runs
+- Listing syndication, online application forms for tenants, e-signature, rent collection, maintenance, tenant portal (VISION non-goal: property management)
+- Lease documents and adverse-action notices (no legal advice)
+- Team sharing (#371, #372)
 
 ---
 
 ## Governance Alignment
 
-- **KNOWN_LIMITATIONS.md**: G0 resolves LIMIT-17; G1 re-checks LIMIT-11 and LIMIT-15; G2 resolves LIMIT-12.
-- **CHANGE_IMPACT_MAP.md**: update when seed or rent code changes.
+- **KNOWN_LIMITATIONS.md**: G8–G11 resolve LIMIT-14; update its text when G11 lands.
+- **CHANGE_IMPACT_MAP.md**: add leasing ↔ `RentalIncome` ↔ portfolio when G8 lands.
+- **ARCHITECTURE.md**: no new layer; leasing follows the pipeline service pattern.

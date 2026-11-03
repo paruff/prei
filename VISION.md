@@ -28,7 +28,7 @@ The product is this journey. Each step names the [plan.md](plan.md) goal that pr
 | 6. Acquire | moves the deal through offer, due diligence and closing to acquired | G2 |
 | 7. Own | tracks the property in the portfolio: rent, expenses, monthly actuals vs pro forma | G2 |
 | 8. Grow | runs BRRRR on equity-rich properties to plan the next purchase | G3 |
-| 9. Lease | takes the property from listed through tenant screening to a signed lease | G3 |
+| 9. Lease | prices the listing, screens every applicant against written criteria, signs a lease that feeds the portfolio, and renews or re-lets before it ends | G3, G8, G9, G11, G12 |
 
 ---
 
@@ -50,7 +50,7 @@ The product is this journey. Each step names the [plan.md](plan.md) goal that pr
 - Active stock/REIT trading
 - Commercial property (>4 units, office, retail)
 - Real-time auction bidding
-- Property management (maintenance tickets, tenant portals)
+- Property management (maintenance tickets, tenant portals, rent collection, listing syndication). Leasing *decisions* (asking rent, applicant, renew or re-let) are in scope.
 - Legal/tax advice
 - Multi-user team sharing
 - Kubernetes / canary deployments (post-MVP only)

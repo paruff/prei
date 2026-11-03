@@ -150,7 +150,7 @@ This means a user who runs the API pre-`populate_growth_areas` gets empty result
 
 **Workaround:** After a lease is signed and the property is stabilized, users should manage ongoing operations in Portfolio. The leasing pipeline is specifically for pre-lease and move-in tracking.
 
-**Fix tracked in:** Phase 3 (not yet scheduled).
+**Fix tracked in:** [plan.md](../plan.md) G8 (signed lease feeds the portfolio), G11 (lease end, renewal and turnover). Maintenance and rent collection stay out of scope (VISION non-goal). Until G8, the "use Portfolio" banner is wrong: Portfolio has no renewals.
 
 ---
 
