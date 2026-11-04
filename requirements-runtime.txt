@@ -4,7 +4,7 @@
 Django==6.0.8
 djangorestframework==3.18.2
 psycopg2-binary==2.9.13
-numpy==2.5.1
+numpy==2.5.4
 numpy-financial==1.0.0
 django-environ==0.14.0
 whitenoise==6.12.0
