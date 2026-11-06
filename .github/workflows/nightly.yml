@@ -273,7 +273,7 @@ jobs:
       - name: Run Lighthouse CI
         run: |
           export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(50))')
-          export DATABASE_URL="sqlite:///tmp/lighthouse_test.db"
+          export DATABASE_URL="sqlite:////tmp/lighthouse_test.db"
           export RUN_MIGRATIONS=1
           export SKIP_SEED=1
           export DJANGO_ENV=development
@@ -292,7 +292,7 @@ jobs:
             sleep 2
           done
 
-          lhci autorun --config=lighthouserc.json --collect.staticDistDir=./staticfiles
+          lhci autorun --config=lighthouserc.json
       - name: Upload Lighthouse results
         uses: actions/upload-artifact@v7
         if: always()
