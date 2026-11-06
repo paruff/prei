@@ -12,3 +12,6 @@ that relies on either.
 - PDF export tests drive the venv's Playwright (1.62), which needs its own `chromium_headless_shell-1234` in
   `~/Library/Caches/ms-playwright`, not the system Chrome or the MCP Playwright browser. If they fail with
   "Executable doesn't exist", run `.venv/bin/python -m playwright install chromium-headless-shell` (prebuilt download, allowed).
+
+## EGM
+EGM artifact directory: .dev/egm

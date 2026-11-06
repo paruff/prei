@@ -83,3 +83,6 @@ drafts/
 
 # Agent logs
 .agents/logs/
+
+# EGM scratch (stage reports, drift reports)
+.dev/
