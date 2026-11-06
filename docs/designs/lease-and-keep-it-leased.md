@@ -135,18 +135,18 @@ The proposed solution is to do the work in the order Fix, Price, Keep. Each part
 
 ### Stage table
 
-| Stage | Required data to enter | Next |
+| Stage | Required data to enter (verified against `core/views/leasing.py`) | Next |
 |---|---|---|
-| LISTING | asking rent | SHOWING |
-| SHOWING | none | APPLICATION |
-| APPLICATION | `applicant_name`, `application_date` | SCREENING |
-| SCREENING | none | APPROVED |
-| APPROVED | `screening_passed` true | LEASE_SIGNED |
-| LEASE_SIGNED | rent, start date, end date after start | MOVE_IN |
-| MOVE_IN | move-in date | STABILIZED |
-| STABILIZED | `stabilized_date` | none |
+| LISTING | property, `asking_rent` (optional today; required by this design), `listed_date`, `listing_source` | SHOWING |
+| SHOWING | none (no showing date is stored today; the event table adds it) | APPLICATION |
+| APPLICATION | `applicant_name`; `application_date` defaults to today | SCREENING |
+| SCREENING | `screening_passed`, `screening_notes` | APPROVED, only if `screening_passed` is true |
+| APPROVED | none; reached from the screening form's "advance" (it has no route of its own) | LEASE_SIGNED |
+| LEASE_SIGNED | `monthly_rent`, `lease_start_date`, `lease_end_date` after the start | MOVE_IN |
+| MOVE_IN | `move_in_date`, defaults to today | STABILIZED |
+| STABILIZED | `stabilized_date`, defaults to today | none |
 
-Status is separate: ACTIVE, ON_HOLD (resume returns to the held stage), FILLED (turnover close) and WITHDRAWN (terminal). A kanban drag to a stage that needs data opens that stage's form instead of moving.
+Status is separate: ACTIVE, ON_HOLD (resume returns to the held stage), FILLED and WITHDRAWN (terminal). Today `leasing_stabilize` sets FILLED on stabilize; this design keeps that, and turnover also closes an entry as FILLED. Today `leasing_screening` swallows a `ValueError` from `advance_stage` with `pass`; the stage machine replaces it with a visible message (AGENTS.md Never Do #10). A kanban drag to a stage that needs data opens that stage's form instead of moving.
 
 ### Stop signals
 
@@ -329,7 +329,7 @@ Deferred rows (G8.6 unit label, G8.7 seed) stay in `plan.md` "Later". The file-t
 #### 11. `core/forms.py` (Modify)
 
 *   **Type / Scope**: Django forms.
-*   **Proposed Changes**: Add `LeasingStageForm` (a ModelForm; fields per stage: LISTING `asking_rent`, `listed_date`; APPLICATION `applicant_name`, `application_date`; SCREENING `screening_passed`, `screening_notes`; LEASE_SIGNED `monthly_rent`, `lease_start_date`, `lease_end_date`, `security_deposit`; MOVE_IN `move_in_date`; STABILIZED `stabilized_date`) and `RenewalForm`. A shared rent field strips thousands separators and rejects blank, zero, negative and non-numeric values. The lease form rejects an end date before the start date. `leasing_add` uses the same path.
+*   **Proposed Changes**: Add `LeasingStageForm` (a ModelForm; fields per stage: LISTING `property_record`, `asking_rent`, `listed_date`, `listing_source`; APPLICATION `applicant_name`, `application_date`; SCREENING `screening_passed`, `screening_notes`; LEASE_SIGNED `monthly_rent`, `lease_start_date`, `lease_end_date`, `security_deposit`; MOVE_IN `move_in_date`; STABILIZED `stabilized_date`) and `RenewalForm`. A shared rent field strips thousands separators and rejects blank, zero, negative and non-numeric values. The lease form rejects an end date before the start date. `leasing_add` uses the same path.
 
 #### 12. `core/views/leasing.py` (Modify)
 
@@ -343,7 +343,7 @@ Deferred rows (G8.6 unit label, G8.7 seed) stay in `plan.md` "Later". The file-t
 
     | Name | Path | Method | Form | On success |
     |---|---|---|---|---|
-    | `leasing_hold` / `leasing_resume` / `leasing_withdraw` | `leasing/<pk>/hold/` etc. | POST | none | detail |
+    | `leasing_hold` / `leasing_resume` / `leasing_withdraw` (new; the existing per-stage routes `leasing_showing`, `leasing_application`, `leasing_screening`, `leasing_lease`, `leasing_move_in`, `leasing_stabilize` keep their paths) | `leasing/<pk>/hold/` etc. | POST | none | detail |
     | `leasing_ending` | `leasing/ending/` | GET | none | list of leases ending |
     | `leasing_renew` | `leasing/<pk>/renew/` | GET, POST | `RenewalForm` | detail |
     | `leasing_turnover` | `leasing/<pk>/turnover/` | POST | none | new listing detail |
