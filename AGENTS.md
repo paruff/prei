@@ -32,6 +32,7 @@
 ## Before You Start
 - UI changes: read DESIGN.md first (tokens, components, do and don't)
 - Reviewing a PR: apply REVIEW.md (what is Important, verification, validation, security)
+- Changing intent/spec/plan or a `docs/designs/` doc: load the `egm-workflow` skill (Goldfish review before the gate PR). Small bug fixes skip it.
 
 ## Workflow
 "What's next for an agent?" and "what waits on a human?" are answered by the
@@ -96,6 +97,7 @@ plan.md               ← ACTIVE plan: goals (milestones), proof, rows, risks (g
 VISION.md             ← PRODUCT-LEVEL users, journey, principles, non-goals (permanent)
 features/<slug>/      ← ARCHIVED intent/spec/plan (permanent record after release)
 docs/                 ← LASTING documentation (architecture, API, standards)
+docs/designs/         ← technical designs (EGM), indexed in SITEMAP.md; not DESIGN.md (UI)
 docs/assessments/     ← one-off audit/assessment reports
 docs/planning/        ← policy documents (AI_POLICY.md)
 docs/archive/         ← superseded plans and strategy (read-only)

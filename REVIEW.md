@@ -100,3 +100,7 @@ At most **3 Minor** findings per review, the most useful ones. If there are more
 - Speculative "might want to" refactors.
 
 "No findings" is a valid review.
+
+## 8. Goldfish reports (spec, plan and design documents)
+
+An EGM Goldfish review of a spec, plan or `docs/designs/` doc ([`egm-workflow`](.agents/skills/egm-workflow/SKILL.md)) is advisory and never replaces the human gate. Map its findings: a blocker, or a major with a concrete failure, is **Important**; the rest is **Minor**. The 3-nit cap (§6) and §7 apply to code PRs, not to these reports. Check that `resolution.md` answers every Important finding.

@@ -94,6 +94,16 @@ Table: Row | Work | Spec | Files | Issue (or `no issue yet`). No status column: 
 
 ---
 
+## Technical design (optional)
+
+Between spec and plan, write a technical design only when the work adds a model or migration, a
+cross-service mechanism, or the spec leaves an open "how". It lives in `docs/designs/<slug>.md`,
+is indexed in `docs/designs/SITEMAP.md`, and is approved by merging, under Gate `plan`. It is not
+`DESIGN.md` (UI). Before the gate PR for a spec, plan or design, run the Goldfish review: see the
+[`egm-workflow`](../.agents/skills/egm-workflow/SKILL.md) skill.
+
+---
+
 ## After Implementation
 
 1. After the release ships, archive to `features/<slug>/intent.md`, `spec.md`, `plan.md`
