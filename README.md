@@ -156,3 +156,19 @@ Host the web application and all related code, tests, infra config, and document
 ## License
 
 Licensed per repository terms.
+
+---
+
+## Code Map (EGM contracts)
+
+Each package below has a README describing its interface, invariants and side effects.
+
+- [core](core/README.md) — the Django app: [models](core/models/README.md), [services](core/services/README.md),
+  [views](core/views/README.md), [integrations](core/integrations/README.md),
+  [management commands](core/management/commands/README.md), [migrations](core/migrations/README.md),
+  [export services](core/export_services/README.md), [templatetags](core/templatetags/README.md),
+  [data](core/data/README.md)
+- [investor_app](investor_app/README.md) — Django project settings and [finance math](investor_app/finance/README.md)
+- [scripts](scripts/README.md) — design lint, UI crawl, GitOps and reporting helpers
+- [static](static/README.md) — front-end assets
+- [docs/feature](docs/feature/README.md) — archived feature documents
