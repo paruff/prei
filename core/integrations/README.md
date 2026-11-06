@@ -1,5 +1,25 @@
 # Data Integrations
 
+## Interface
+
+- `hud_adapter.py`: `is_enabled()` (reads `HUD_ENABLED`), `fetch_properties(state, zip_code)` - scaffold returning a demo record when enabled, `[]` otherwise.
+- `health_monitor.py`: `DataSourceHealthMonitor` (`check_circuit`, `record_success`, `record_failure`, `calculate_data_quality_score`, `calculate_uptime_percentage`, `get_cost_tracking`, `get_health_dashboard_data`), `retry_with_backoff`, `CIRCUIT_BREAKER_THRESHOLD = 3`.
+- Subpackages: [county](./county/README.md), [market](./market/README.md), [sources](./sources/README.md).
+
+## Invariants
+
+- Adapters return `None`/`[]` on failure rather than raising to the service layer (live to dummy fallback in `core/services/market_data.py`).
+- Currency values are `Decimal`, never float.
+- API keys come from environment variables only.
+
+## Side Effects
+
+- Outbound HTTP to third-party APIs and scraped sites; Django cache reads/writes; `health_monitor` reads `ATTOM_API_KEY` and `ATTOM_MONTHLY_BUDGET`; `hud_adapter` reads `HUD_ENABLED`.
+
+## Verification
+
+- Run: `.venv/bin/python -m pytest core/tests tests -k "integration or adapter or scraper or health"` (pytest.ini)
+
 This module provides data source integrations for fetching foreclosure and market data from external sources.
 
 ## Overview
@@ -18,11 +38,11 @@ The integrations module supports multiple data source categories:
 |---|---|---|---|---|
 | **Rent Estimate** | `market/rents.py` | 🟢 Live (RentCast) | `RENTCAST_API_KEY` | `Decimal` rent or `None` |
 | **School Rating** | `market/schools.py` | 🟢 Live (GreatSchools) | `GREATSCHOOLS_API_KEY` | `Decimal` rating or `None` |
-| **Walk Score** | `market/walkability.py` | 🟢 Live (Walk Score API) | `WALKSCORE_API_KEY` | `dict` with scores or `None` |
+| **Walk Score** | `market/walkscore.py` | 🟢 Live (Walk Score API) | `WALKSCORE_API_KEY` | `dict` with scores or `None` |
 | **Comps** | `market/comps.py` | 🟡 Live→Dummy fallback (ATTOM) | `ATTOM_API_KEY` | `List[dict]` comps or `[]` |
 | **Crime** | `market/crime.py` | 🔴 Dummy only (see DECISION-2) | None needed | `Decimal` dummy score |
-| **Census Demographics** | `market/demographics.py` | 🟢 Live (Census API) | `CENSUS_API_KEY` | `dict` demographics or `None` |
-| **BLS Unemployment** | `market/employment.py` | 🟢 Live (BLS API) | `BLS_API_KEY` | `Decimal` rate or `None` |
+| **Census Demographics** | `market/census.py` | 🟢 Live (Census API) | `CENSUS_API_KEY` | `dict` demographics or `None` |
+| **BLS Unemployment** | `market/bls.py` | 🟢 Live (BLS API) | `BLS_API_KEY` | `Decimal` rate or `None` |
 
 ## Market Data Integrations
 
@@ -30,7 +50,7 @@ The integrations module supports multiple data source categories:
 
 Uses the RentCast API to fetch rental estimates for a property address. Returns `Decimal` or `None`.
 
-**Real adapter:** `fetch_rent_estimate(address, zip_code, api_key)` — calls RentCast API, caches results for 24h.
+**Real adapter:** `fetch_rent_estimate(address, zip_code, api_key)` — calls RentCast API, caches results for 7 days (`RENTCAST_CACHE_TTL`).
 **Dummy fallback:** `get_rent_estimate_for_listing(listing)` — returns a hardcoded estimate (1% of price).
 
 ```bash
@@ -41,14 +61,14 @@ RENTCAST_API_KEY=your_api_key_here
 
 Uses the GreatSchools API to fetch school ratings for a ZIP code. Returns `Decimal` (average of all schools) or `None`.
 
-**Real adapter:** `fetch_school_rating(zip_code, api_key)` — calls GreatSchools API, caches results for 24h.
+**Real adapter:** `fetch_school_rating(zip_code, api_key)` — calls GreatSchools API, caches results for 30 days (`GREATSCHOOLS_CACHE_TTL`).
 **Dummy fallback:** `get_school_rating(zip_code)` — returns a hardcoded 6.0 rating.
 
 ```bash
 GREATSCHOOLS_API_KEY=your_api_key_here
 ```
 
-### Walk Score (`market/walkability.py`)
+### Walk Score (`market/walkscore.py`)
 
 Uses the Walk Score API to fetch walk/transit/bike scores. Returns a dict or `None`.
 
@@ -71,7 +91,7 @@ Fetches comparable sales using the ATTOM API sales history endpoint (reuses `ATT
 
 Returns `Decimal("1.0")` for TX, `Decimal("7.0")` for CA, `Decimal("3.0")` otherwise.
 
-### Census Demographics (`market/demographics.py`)
+### Census Demographics (`market/census.py`)
 
 Uses Census API to fetch population and growth data for a ZIP code. Returns dict or `None`.
 
@@ -79,7 +99,7 @@ Uses Census API to fetch population and growth data for a ZIP code. Returns dict
 CENSUS_API_KEY=your_api_key_here
 ```
 
-### BLS Unemployment (`market/employment.py`)
+### BLS Unemployment (`market/bls.py`)
 
 Uses BLS API to fetch unemployment rate for a state. Returns `Decimal` fraction or `None`.
 
