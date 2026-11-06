@@ -20,6 +20,7 @@ Single source of truth for all AI-assisted development in prei.
 ├── skills/         # On-demand skill packs (load selectively)
 │   ├── architecture/SKILL.md
 │   ├── data-collection/SKILL.md
+│   ├── egm-workflow/SKILL.md    (Goldfish review before spec/plan/design gate PRs)
 │   ├── evaluation/SKILL.md
 │   ├── finance-review/SKILL.md
 │   ├── gitops-principles/SKILL.md
@@ -27,6 +28,7 @@ Single source of truth for all AI-assisted development in prei.
 │   ├── migration-safety/SKILL.md
 │   ├── model-routing/SKILL.md
 │   ├── pr-contract/SKILL.md
+│   ├── prei-elephant/SKILL.md   (project context for EGM drafting/review)
 │   └── skill-routing/SKILL.md   (which external skills apply here)
 ├── workflows/      # Multi-agent pipelines
 │   ├── bugfix.yml

@@ -44,6 +44,7 @@
 ## Checklist
 
 - [ ] `ruff check . && ruff format --check . && pytest -q` passes (lint + format + tests)
+- [ ] Spec/plan/design PR only: Goldfish review run and report linked (`egm-workflow` skill)
 - [ ] PR is < 400 changed lines, OR `large-pr-approved` label has been applied by a human
 - [ ] No secrets or credentials in any changed file
 - [ ] New features are behind a feature flag (if applicable)
