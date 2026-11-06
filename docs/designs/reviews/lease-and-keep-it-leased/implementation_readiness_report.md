@@ -1,0 +1,56 @@
+# Stage 9: Implementation Readiness report
+
+Target: docs/designs/lease-and-keep-it-leased.md, lines 235-374. Reviewers: egm-implementation-readiness (IR), egm-codebase-details (CB), egm-style (ST); all completed.
+Verdict: not ready. 5 Blockers, many Majors. Most trace to Open Questions (lines 59-68) and to plan claims that do not match the code.
+
+## 🔴 Blockers
+
+1. **Plan depends on unresolved decisions (lines 59-68, 293-296).** [IR B1, CB 7, ST 2] Item 10 says to change `property_service.py` "once the duplicate-income question is answered" and `portfolio.py` "only if" the variance question goes one way. Both are open, so the write allowlist is unknown and CUJ 1 can still fail with a manual row. The stage-machine question (line 61) is also open though item 8 specifies resume and withdraw. `property_service.compute_noi` (lines 38-41) does sum every row. Resolve the questions and mark item 10 Modify or Skip with the exact change.
+2. **Text-to-date conversion is false (lines 26, 110, 220, 251, 266, 276).** [CB 1, IR B2/B3, ST 3] `core/models/pipeline.py` lines 773-802 show `listed_date`, `application_date`, `lease_start_date`, `lease_end_date`, `move_in_date` and `stabilized_date` are already `DateField`. The real bug is `leasing_lease` (views lines 341-342) assigning raw POST text to a `DateField`, which is a form-validation fix. No `AlterField` is needed, the backfill has no text to convert, and "Additive only" (line 266) then holds. Remove the conversion step and reword the Problem section to "unvalidated".
+3. **`_get_monthly_rent` change conflicts with the code (lines 112, 288-291).** [CB 2, IR M4, ST 4]
+   - The function already has `cache_rent: bool` (screening.py line 538) that skips the DB write; the plan's `skip_stored` overlaps it with no stated interaction. `_cache_rent` also mutates `pipeline_property.estimated_rent` on the object even when `cache_rent=False`.
+   - Returning source and confidence changes the return type from `Decimal | None`. Callers: `screening.py` lines 415 and 475, `tests/e2e/test_rentometer_e2e.py` (about 8 calls), `core/tests/test_screening_hud_usda.py`, `core/tests/test_screening_hud_rent.py`. None are listed, so "keep today's behavior by default" cannot hold.
+   - The code reads `pipeline_property.beds`; `Property` has `bedrooms` (property.py line 42). No field mapping is given.
+   - Name the signature, return type or wrapper, the mapping, and every caller and test to update.
+4. **"Replace any silent `except`" targets code that does not exist (lines 112, 291).** [CB 3] The Rentometer step (screening.py 591-596) and HUD step (604-609) already `logger.warning(..., exc_info=True)`. The real gap: the fall-through reason is not returned, and `hud_fmr_rent` returns `None` silently when there is no FIPS. Specify that, or drop the step.
+5. **Backfill rules undefined (lines 115, 276; Open Question line 65).** [IR B2] Missing: the "rent" field and what counts as bad; whether it writes `Property.monthly_rent_gross` and `previous_monthly_rent_gross` as new signings do (line 106); the event's `from_stage`, `user`, `forced` values and nullability; the `vacancy_rate` source for backfilled income rows; and the detail-page fallback for skipped rows. (The date-parsing part falls away with Blocker 2.)
+
+## 🟡 Major
+
+6. **Model and migration specs incomplete (lines 251, 256, 263-276).** [IR B3, CB 5/6/11] No types, lengths, null/blank, choices or defaults for the `suggested_rent_*` fields. `vacant_since` "default `listed_date`" is impossible as a Django `default`; choose a `save()` override, form default, or null with fallback. `LeasingStageEvent` FK targets, `on_delete`, stage choices and null `from_stage` for the first event are missing. `RentalIncome.lease`: say `OneToOneField(null=True)` or FK plus `UniqueConstraint`, use the string reference `"core.LeasingPipelineProperty"` (pipeline.py imports property.py), and note CASCADE deletes the income row but leaves the overwritten `monthly_rent_gross`. State migration dependencies 0055 to 0056 to 0057 to 0058, that 0056/0057 come from `makemigrations`, and add a `makemigrations --check` gate.
+7. **Rentcast is not in the rent chain (lines 112, 134).** [CB 4] The chain is VRM, stored estimate, Rentometer, HUD. The Rentcast adapter is in `core/integrations/market/rents.py` and `screening.py` line 891 says "no Rentcast integration". The stop signal "Rentometer or Rentcast" can only fire on Rentometer. Decide: wire Rentcast in, or exclude it and say so.
+8. **Service signatures and the stage table (line 286).** [IR M1, CB 9, ST 12] No allowed-move table for the eight stages, no per-stage `data` shape, `forced` has no meaning or caller, and no signatures or return types for `hold`, `resume`, `withdraw`, `suggest_rent`, `vacancy_cost`, `renew_vs_turnover`, `renew_lease`, `turn_over`. Hold/resume change `status` (ACTIVE/ON_HOLD), not `stage`, so "resume restores the previous stage" is moot and no `held_from_stage` field exists. Say whether `transition` to STABILIZED sets FILLED (`leasing_stabilize` does today). `mark_filled` and `put_on_hold` have no callers, and `advance_stage` is called only from `views/leasing.py` lines 255 and 316, so the "thin wrapper until callers move" is unnecessary. Reword the replace/keep sentence.
+9. **Vacancy cost formula ambiguous (lines 113, 286).** [IR M2, CB 5] Is carrying cost also divided by 30? `OperatingExpense` rows may already include tax and insurance, while `Property` has `property_taxes_annual`, `insurance_annual`, `hoa_monthly`. Name the fields, whether to use `OperatingExpense.monthly_amount()`, `Frequency` handling, the rent used, rounding, and null or future `vacant_since`.
+10. **Renew vs turnover math undefined (lines 88, 114, 286).** [IR M3] No term, formula, treatment of vacancy, make-ready or leasing cost, or rule for a renewal rent below current. Give the formulas or a worked example for tests.
+11. **Kanban cannot supply required stage data (lines 105, 306).** [CB 8] The kanban POST (views lines 91-113) sends only `property_id` and `new_stage`. Say which stages it may move into, or that data-bearing stages return 400 or redirect to the form.
+12. **Forms not specified (lines 298-301).** [IR M5, CB 10] Only `LeaseForm` has rules. No fields, ModelForm vs Form, required flags, or view mapping for the other seven. Reuse `StyledNumberInput`, `StyledTextInput`, `StyledSelect` (forms.py 19-35). `leasing_add` has an unguarded `Decimal(asking_rent)` (views line 189), the same 500 class of bug; `LeasingListingForm` should cover it. `leasing_move_in` and `leasing_stabilize` pass raw date strings. Define the `1,800` rule for `$1,800` and `1.800,00`. State test style (Django `TestCase` or pytest).
+13. **Views and routes not specified (lines 306, 311).** [IR M6] No URL names, methods, or shapes for the six new views or the kanban 400 JSON body; which existing views and the duplicated stage lists change; which template each view renders; the 90/60/30 grouping; the messages mechanism. The duplicated stage lists number four in the code (service plus `leasing_list` line 43, `leasing_kanban` line 80, `leasing_detail` line 217), not five. [CB 14]
+14. **Phasing not mapped to files (lines 237-244, 343-361).** [IR M7, CB 12, ST 9] No file-to-PR table. PR 1 tests "fail first" but items 16 and 18 test code from PRs 2 and 3, so CI is red unless marked `xfail`. PR 3 is very large. Migration approval delays are not handled. The Postgres run is assigned to no PR. Row 6 covers three PRs.
+15. **Template changes not actionable (lines 314-316).** [IR M8, ST 5] How "days per stage" is computed, context variables, partials, field-error component, confidence label text and "no suggestion" state are undefined. Line 316's last sentence repeats the first.
+16. **Test plan lacks assertions (lines 323-341).** [IR M9, CB 15] Missing edge cases: re-sign after rent edit, sign with a manual `RentalIncome`, withdraw twice, resume with no held stage, `previous_monthly_rent_gross` already saved, a failing source, `vacant_since` today or future, unique-constraint violation. No tests for the `screening.py` change or `admin.py`. Say how logs are asserted (caplog, logger name). Item 17: `test_leasing_forms.py` is Create, `test_leasing_views.py` is Modify (about 17 existing tests; name those that set stages directly).
+17. **README contracts (line 355).** [IR M10, CB 12, ST 15] The README files are untracked in git status and "written earlier in this session". Say whether they are in this PR and what content to add.
+18. **Docs items lack content (lines 346-351).** [IR M11, ST 7] "Record the variance-baseline behavior" depends on the open question. `upgrade-local-image.md` has no outline; "confirm the tag a user pulls" has no owner or pass condition. `README.md` already has local changes; name the section. `docs/how-to-guides/render-deploy.md` exists and describes the rejected hosted path. [CB 16]
+19. **Planning-doc edits bundled (lines 358-361).** [IR M12, ST 6] Four files in "separate PRs" versus three PRs at line 244. No target text or locations; split one bullet per document.
+20. **Unverifiable references (lines 237, 366-370).** [ST 1, 8] "#578 (one test tree)" and `plan.md` are not checkable from this file; "about 10 minutes" has no basis; the SQLite copy and Postgres pass condition are unnamed; Stop signals are deferred to a section the reviewers called unmeasurable.
+
+## 🟢 Nits
+
+- `core/models/__init__.py` (item 3) needs no change; it uses `from core.models.pipeline import *` with no `__all__`. Drop it. [CB 13]
+- Admin: `LeasingPipelineProperty` is not in admin; say so when registering only `LeasingStageEvent`. [CB 18]
+- Test command omits `tests/acceptance/test_leasing.py` and `tests_bdd` (run only by `make docker-accept`); `make build` does not apply migrations, so add `makemigrations --check`. [IR N2/N3, CB 17]
+- Drop stale line counts "61 lines", "413 lines" (both confirmed accurate today). [ST 13, IR N5]
+- Item 14: name the DESIGN.md tokens and components. [IR N4]
+- Wording: row 1 "(fails first)", row 3 mixes kinds of work, line 296 passive conditional, line 346, line 341 "(Price)", footer "Drafted with EGM". [ST 9-16]
+- Assumed final test layout once #578 lands. [IR N1]
+
+## Reusable helpers the plan does not mention
+
+`cache_rent` flag on `_get_monthly_rent`; `hud_fmr_rent` (screening.py 614) and Rentometer `get_rent_estimate`; Rentcast adapter (`core/integrations/market/rents.py`); `Styled*` form widgets; `OperatingExpense.monthly_amount()`; `RentalIncome.effective_gross_income()`; acquisition `core/services/pipeline.py` (`advance_stage`, `hold_property`, `kill_property`).
+
+## Confirmed accurate
+
+Line counts (61, 413); newest migration is 0055 so 0056-0058 are free; files named as Create do not exist and files named as Modify do; Makefile `build`, `docker-accept`, `ui-check`; `scripts/entrypoint.sh` runs `migrate --noinput`; `previous_monthly_rent_gross` does not exist yet; `LeasingPipelineProperty` is in no form, admin or serializer.
+
+## Not checked
+
+`templates/leasing/*` bodies, `tests/acceptance` and `tests_bdd` step contents, `portfolio.py` variance code beyond grep hits, whether `makemigrations` generates what the plan says, and `spec.md`, `plan.md`, `VISION.md`.
