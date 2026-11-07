@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.4.12](https://github.com/paruff/prei/compare/v0.4.11...v0.4.12) (2026-11-07)
+
+
+### Fixed
+
+* **ci:** restore the nightly lighthouse audit ([#623](https://github.com/paruff/prei/issues/623)) ([36280e4](https://github.com/paruff/prei/commit/36280e4c9238fa3dadcc6af57241f4a7ed882c9d))
+
+
+### Docs
+
+* add directory READMEs and lease design draft ([#632](https://github.com/paruff/prei/issues/632)) ([4d78510](https://github.com/paruff/prei/commit/4d7851047f5a8a7cb7e734d8cd3f3868c3a0d19a))
+* **agents:** add egm workflow and elephant skills ([#634](https://github.com/paruff/prei/issues/634)) ([b17e154](https://github.com/paruff/prei/commit/b17e154b4404bbfc8ea80b8fd7cd2864768df540))
+* **designs:** add lease and keep it leased design with review reports ([#631](https://github.com/paruff/prei/issues/631)) ([d516fcf](https://github.com/paruff/prei/commit/d516fcf796e0b91b2bb7d3ff7e272fc004d87579))
+* **designs:** resolve goldfish review of the lease design ([#635](https://github.com/paruff/prei/issues/635)) ([da7d651](https://github.com/paruff/prei/commit/da7d651cb85a38ab4ecadbe0a5e4d429d4d25336))
+* **intent:** narrow the leasing scope ([#636](https://github.com/paruff/prei/issues/636)) ([ce537f1](https://github.com/paruff/prei/commit/ce537f15b22cf890be1001fa6ebc83a2f19c0dce))
+* tidy egm artifacts and features readme ([#633](https://github.com/paruff/prei/issues/633)) ([cc5fec8](https://github.com/paruff/prei/commit/cc5fec8c1d28b27775afc4d23da8155578d94cfe))
+
+
+### Chores
+
+* **deps:** bump mkdocs-git-revision-date-localized-plugin ([#625](https://github.com/paruff/prei/issues/625)) ([e806f8c](https://github.com/paruff/prei/commit/e806f8c2e09970adfb3c549638ac1f8a28e607ec))
+* **deps:** bump numpy from 2.5.1 to 2.5.4 ([#626](https://github.com/paruff/prei/issues/626)) ([37a7577](https://github.com/paruff/prei/commit/37a7577e8486ac1582171451de4c03af8fac1924))
+* **deps:** bump pymdown-extensions from 11.0.2 to 12.3 ([#628](https://github.com/paruff/prei/issues/628)) ([b761a4b](https://github.com/paruff/prei/commit/b761a4b50d40a347882bce0d4e16537a325a3e80))
+* **deps:** bump types-reportlab from 5.0.0.20260911 to 5.0.0.20261008 ([#629](https://github.com/paruff/prei/issues/629)) ([3685783](https://github.com/paruff/prei/commit/36857839e4e366756703defb57d5955a154c0ae6))
+
 ## [0.4.11](https://github.com/paruff/prei/compare/v0.4.10...v0.4.11) (2026-11-03)
 
 
