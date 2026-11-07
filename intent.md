@@ -1,6 +1,6 @@
 # Intent: lease and keep it leased
 
-**Author:** Phil Ruff · **Status:** proposed (approved by merging the PR that changes this file) · **Date:** 2026-11-02
+**Author:** Phil Ruff · **Status:** proposed (approved by merging the PR that changes this file) · **Date:** 2026-11-02 · **Revised:** 2026-11-06 (scope narrowed, see [the design](docs/designs/lease-and-keep-it-leased.md))
 **Next:** [spec.md](spec.md) (what we decided) · [plan.md](plan.md) (goals and proof) · Product context: [VISION.md](VISION.md)
 **Supersedes:** "a functioning prei" (G0–G7), archived in [features/functioning-prei/](features/functioning-prei/). Its decisions, including the app nav, still stand.
 
@@ -21,11 +21,11 @@ G0–G7 proved that one investor can walk the journey from growth areas to leasi
 On the seeded market (Docker first, then hosted), an investor takes an acquired property from vacant to leased to renewed or re-let. Every leasing decision has a number and its source behind it, and the portfolio reflects the lease without re-entry:
 
 1. **Price:** listing a unit shows a suggested rent, where it came from, and what each vacant day costs.
-2. **Fill:** the listing collects any number of applicants. Each applicant is screened against criteria the investor wrote down before seeing any application, the same way for everyone, and the reason for each decision is kept.
+2. **Fill (deferred 2026-11-06, until a real lease has run through the app):** the listing collects any number of applicants. Each applicant is screened against criteria the investor wrote down before seeing any application, the same way for everyone, and the reason for each decision is kept.
 3. **Sign:** a signed lease is the property's (or unit's) rent from its start date. Portfolio cash flow and actuals-vs-pro-forma use it.
 4. **Keep:** leases ending within 90 days are surfaced. A renewal-or-turnover comparison prices both options. Renewing starts the next lease; turnover reopens the listing pre-filled.
-5. **Hosted:** prei runs on a hosted URL with Postgres and backups, so a real investor can use it (after step 2).
-6. **Screened by a provider:** an applicant can be screened through a paid provider, and the result is checked against the written criteria (after hosting).
+5. **Run locally:** other investors run prei from a published Docker image on GHCR, with an upgrade path that keeps their existing SQLite data. (Hosting with Postgres was dropped 2026-11-06.)
+6. **Screened by a provider:** dropped 2026-11-06. prei stores no SSN, date of birth or consumer report.
 7. **Measure:** days vacant, days to lease, showing-to-application conversion, rent vs suggested rent, and economic occupancy are tracked per property and across the portfolio.
 
 ### What "best in its field" means here
@@ -46,15 +46,15 @@ Leasing-operations tools (listing syndication, online applications, paid screeni
 
 - Decimal money. Finance math (vacancy cost, renewal vs turnover) in services only. No Bootstrap; DESIGN.md enforced ([AGENTS.md](AGENTS.md)).
 - Single-user. SQLite in the container. New models and migrations need approval (`migration-safety` skill).
-- Free data on the critical path, except tenant screening (decision 3). Rent suggestions reuse the existing rent chain (VRM, stored estimate, Rentometer, HUD FMR). Rentcast stays behind the G1 measurement ([rent-coverage.md](docs/assessments/rent-coverage.md)).
+- Free data on the critical path. Rent suggestions reuse the existing rent chain (VRM, stored estimate, Rentometer, HUD FMR). Rentcast stays behind the G1 measurement ([rent-coverage.md](docs/assessments/rent-coverage.md)).
 - Minimum applicant data: name, contact, stated income, the screening result summary, the result for each criterion, and the decision with its reason. No SSN, date of birth, credit report files, or protected-class attributes, even with paid screening.
 - No legal advice (VISION non-goal). prei records the investor's criteria and decisions. It does not write leases or adverse-action notices.
 - No payment processing, listing syndication or tenant portal (VISION non-goal: property management).
-- Hosted: Postgres, secrets from the environment, HTTPS, and a tested database restore before real leasing data goes in.
+- Local Docker image: users copy their SQLite volume before upgrading, and migrations run on start.
 
 ## Open questions (all resolved 2026-11-02)
 
 1. **Units:** a unit label on the lease for 2–4 unit properties. A Unit model only if the rent roll needs per-unit expenses (plan.md L10).
-2. **Hosted deploy:** comes right after G9 (G10), so the first hosted users get pricing and screening, and renewals land on a hosted app.
-3. **Paid tenant screening:** in scope (G12), after hosting. The screening provider collects consent, SSN and date of birth directly from the applicant; prei stores only the result and checks it against the investor's written criteria. The choice of provider is a human decision.
+2. **Hosted deploy:** comes right after G9 (G10), so the first hosted users get pricing and screening, and renewals land on a hosted app. *Reversed 2026-11-06: G10 is a published GHCR image that users run locally; hosting is Later.*
+3. **Paid tenant screening:** in scope (G12), after hosting. The screening provider collects consent, SSN and date of birth directly from the applicant; prei stores only the result and checks it against the investor's written criteria. The choice of provider is a human decision. *Reversed 2026-11-06: dropped; applicant screening against written criteria (Fill) is deferred.*
 4. **Renewal and turnover:** the renew-or-re-let *decision* is analytics and in scope. Maintenance and rent collection stay out (VISION non-goal). Confirmed for now; revisit if renewals pull in tenant communication.
