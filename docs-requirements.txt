@@ -2,5 +2,5 @@
 # All pinned to exact versions for reproducible doc builds
 mkdocs==1.6.1
 mkdocs-material==9.8.0
-mkdocs-git-revision-date-localized-plugin==1.6.2
+mkdocs-git-revision-date-localized-plugin==1.6.3
 pymdown-extensions==12.3
