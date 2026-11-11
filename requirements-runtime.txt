@@ -13,7 +13,7 @@ requests==2.34.2
 beautifulsoup4==4.15.0
 defusedxml==0.7.1
 playwright==1.62.0
-reportlab==5.0.1
+reportlab==5.1.0
 matplotlib==3.11.1
 pillow==13.0.0
 structlog==26.1.0

@@ -34,7 +34,7 @@ defusedxml==0.7.1  # XXE-hardened XML parsing for county RSS feeds (S314)
 playwright==1.62.0
 cffi==2.1.0
 pypdf==6.21.4
-reportlab==5.0.1
+reportlab==5.1.0
 svglib==2.2.0
 matplotlib==3.11.1
 pillow==13.0.0
